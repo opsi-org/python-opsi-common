@@ -6,7 +6,6 @@ stages:
   - publish
 
 test:pytests:
-  when: manual
   stage: test
   script:
     - export DEBIAN_FRONTEND=noninteractive
