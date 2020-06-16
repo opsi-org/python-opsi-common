@@ -13,7 +13,7 @@ import os
 import logging
 import colorlog
 
-from logging import LogRecord, Formatter, StreamHandler
+from logging import LogRecord, Formatter, StreamHandler, Filter
 from logging.handlers import WatchedFileHandler, RotatingFileHandler
 
 from .utils import Singleton
@@ -127,14 +127,6 @@ def essential(self, msg, *args, **kwargs):
 logging.Logger.essential = essential
 logging.Logger.comment = essential
 
-def logrecord_init(self, name, level, pathname, lineno, msg, args, exc_info, func=None, sinfo=None, **kwargs):
-	self.__init_orig__(name, level, pathname, lineno, msg, args, exc_info, func=func, sinfo=sinfo, **kwargs)
-	self.opsilevel = logging._levelToOpsiLevel.get(level, level)
-	self.client_address = kwargs.get("client_address", "")
-
-LogRecord.__init_orig__ = LogRecord.__init__
-LogRecord.__init__ = logrecord_init
-
 try:
 	# Replace OPSI Logger
 	import OPSI.Logger
@@ -166,7 +158,7 @@ except ImportError:
 	pass
 
 
-def handle_log_exception(exc, record=None, log=True):
+def handle_log_exception(exc, record: logging.LogRecord = None, log: bool = True):
 	print("Logging error:", file=sys.stderr)
 	traceback.print_exc(file=sys.stderr)
 	if not log:
@@ -180,15 +172,40 @@ def handle_log_exception(exc, record=None, log=True):
 		pass
 
 
+class SecretFormatter(object):
+	def __init__(self, orig_formatter):
+		if orig_formatter is None:
+			orig_formatter = Formatter()
+		self.orig_formatter = orig_formatter
+	
+	def format(self, record):
+		msg = self.orig_formatter.format(record)
+		if record.levelno != logging.SECRET:
+			for secret in secret_filter.secrets:
+				msg = msg.replace(secret, SECRET_REPLACEMENT_STRING)
+		return msg
+	
+	def __getattr__(self, attr):
+		return getattr(self.orig_formatter, attr)
+
 class SecretFilter(metaclass=Singleton):
-	def __init__(self, min_length=6):
+	def __init__(self, min_length: int = 6):
 		self._min_length = min_length
 		self.secrets = []
+
+	def _initialize_handlers(self):
+		for handler in logging.root.handlers:
+			if not isinstance(handler.formatter, SecretFormatter):
+				handler.formatter = SecretFormatter(handler.formatter)
+	
+	def set_min_length(self, min_length: int):
+		self._min_length = min_length
 	
 	def clear_secrets(self):
 		self.secrets = []
 	
 	def add_secrets(self, *secrets):
+		self._initialize_handlers()
 		for secret in secrets:
 			if secret and len(secret) >= self._min_length and not secret in self.secrets:
 				self.secrets.append(secret)
@@ -199,17 +216,3 @@ class SecretFilter(metaclass=Singleton):
 				self.secrets.remove(secret)
 
 secret_filter = SecretFilter()
-
-class SecretFormatter(object):
-	def __init__(self, orig_formatter):
-		self.orig_formatter = orig_formatter
-	
-	def format(self, record):
-		msg = self.orig_formatter.format(record)
-		for secret in secret_filter.secrets:
-			msg = msg.replace(secret, SECRET_REPLACEMENT_STRING)
-		return msg
-	
-	def __getattr__(self, attr):
-		return getattr(self.orig_formatter, attr)
-
