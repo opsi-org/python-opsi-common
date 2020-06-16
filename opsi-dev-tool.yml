@@ -1,0 +1,7 @@
+package:
+  name: python3-opsi-common
+  type: poetry
+  depends:
+    - python3-colorlog
+    - python3-psutil
+
