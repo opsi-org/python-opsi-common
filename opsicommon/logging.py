@@ -158,7 +158,7 @@ except ImportError:
 	pass
 
 
-def handle_log_exception(exc, record: logging.LogRecord = None, log: bool = True):
+def handle_log_exception(exc: Exception, record: logging.LogRecord = None, log: bool = True):
 	print("Logging error:", file=sys.stderr)
 	traceback.print_exc(file=sys.stderr)
 	if not log:
@@ -173,12 +173,12 @@ def handle_log_exception(exc, record: logging.LogRecord = None, log: bool = True
 
 
 class SecretFormatter(object):
-	def __init__(self, orig_formatter):
+	def __init__(self, orig_formatter: Formatter):
 		if orig_formatter is None:
 			orig_formatter = Formatter()
 		self.orig_formatter = orig_formatter
 	
-	def format(self, record):
+	def format(self, record: LogRecord):
 		msg = self.orig_formatter.format(record)
 		if record.levelno != logging.SECRET:
 			for secret in secret_filter.secrets:
@@ -204,13 +204,13 @@ class SecretFilter(metaclass=Singleton):
 	def clear_secrets(self):
 		self.secrets = []
 	
-	def add_secrets(self, *secrets):
+	def add_secrets(self, *secrets: str):
 		self._initialize_handlers()
 		for secret in secrets:
 			if secret and len(secret) >= self._min_length and not secret in self.secrets:
 				self.secrets.append(secret)
 	
-	def remove_secrets(self, *secrets):
+	def remove_secrets(self, *secrets: str):
 		for secret in secrets:
 			if secret in self.secrets:
 				self.secrets.remove(secret)
