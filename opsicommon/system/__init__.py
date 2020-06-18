@@ -22,24 +22,23 @@ if sys.platform == "linux":
 	)
 
 def ensure_not_already_running(process_name: str = None):
-	pid = os.getpid()
-	running = None
+	our_pid = os.getpid()
+	other_pid = None
 	try:
-		proc = psutil.Process(pid)
+		our_proc = psutil.Process(our_pid)
 		if not process_name:
-			process_name = proc.name()
-		parent_pid = proc.ppid()
-		child_pids = [p.pid for p in proc.children(recursive=True)]
-		
+			process_name = our_proc.name()
+		ignore_pids = [p.pid for p in our_proc.children(recursive=True)]
+		ignore_pids += [p.pid for p in our_proc.parents()]
 		for proc in psutil.process_iter():
 			#logger.debug("Found running process: %s", proc)
 			if proc.name() == process_name or proc.name() == f"{process_name}.exe":
 				logger.debug("Found running '%s' process: %s", process_name, proc)
-				if proc.pid != pid and proc.pid != parent_pid and proc.pid not in child_pids:
-					running = proc.pid
+				if proc.pid != our_pid and proc.pid not in ignore_pids:
+					other_pid = proc.pid
 					break
 	except Exception as error:
 		logger.debug("Check for running processes failed: %s", error)
 	
-	if running:
-		raise RuntimeError(f"Another '{process_name}' process is running (pids: {running} / {pid}).")
+	if other_pid:
+		raise RuntimeError(f"Another '{process_name}' process is running (pids: {other_pid} / {our_pid}).")
