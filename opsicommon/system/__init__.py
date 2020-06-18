@@ -33,7 +33,7 @@ def ensure_not_already_running(process_name: str = None):
 		
 		for proc in psutil.process_iter():
 			#logger.debug("Found running process: %s", proc)
-			if proc.name() == process_name:
+			if proc.name() == process_name or proc.name() == f"{process_name}.exe":
 				logger.debug("Found running '%s' process: %s", process_name, proc)
 				if proc.pid != pid and proc.pid != parent_pid and proc.pid not in child_pids:
 					running = proc.pid
