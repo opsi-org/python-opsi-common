@@ -22,21 +22,28 @@ def get_user_sessions(username: str = None, session_type: str = None):
 		if username is not None and user.name != username:
 			continue	
 		_type = None
-		if user.terminal.startswith(":"):
+		terminal = user.terminal
+		if terminal.startswith(":"):
 			_type = "x11"
-		elif user.terminal.startswith("tty"):
+		elif terminal.startswith("tty"):
 			_type = "tty"
-		elif user.terminal.startswith("pts"):
+			proc = psutil.Process(user.pid)
+			env = proc.environ()
+			# DISPLAY, XDG_SESSION_TYPE, XDG_SESSION_ID
+			if env.get("DISPLAY"):
+				_type = "x11"
+				terminal = env["DISPLAY"]
+		elif terminal.startswith("pts"):
 			_type = "pts"
 		if session_type is not None and session_type != _type:
 			continue
 		yield Session(
-			id=user.terminal,
+			id=terminal,
 			type=_type,
 			username=user.name,
 			started=user.started,
 			login_pid=user.pid,
-			terminal=user.terminal
+			terminal=terminal
 		)
 
 def run_process_in_session(command: List[str], session_id: str, shell: bool = False, impersonate: bool = False):
