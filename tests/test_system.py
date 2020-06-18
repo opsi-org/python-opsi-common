@@ -7,11 +7,16 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import os
-import getpass
 import pytest
+import shutil
+import getpass
+import subprocess
 
-from opsicommon.system import get_user_sessions, run_process_in_session
-
+from opsicommon.system import (
+	get_user_sessions,
+	run_process_in_session,
+	ensure_not_already_running
+)
 
 running_in_docker = False
 with open("/proc/self/cgroup") as f:
@@ -39,3 +44,17 @@ def test_run_process_in_session():
 			out = proc.stdout.read().decode()
 			assert f"{session.username}\n" == out
 			proc.wait()
+
+def test_ensure_not_already_running(tmpdir):
+	test_system_sleep = tmpdir.join("test_system_sleep")
+	shutil.copy("/bin/sleep", test_system_sleep)
+	subprocess.Popen([f"{test_system_sleep} 3 </dev/null &>/dev/null &"], shell=True)
+	with pytest.raises(RuntimeError) as exc:
+		ensure_not_already_running("test_system_sleep")
+
+def test_ensure_not_already_running_child_process(tmpdir):
+	test_system_sleep = tmpdir.join("test_system_sleep_child")
+	shutil.copy("/bin/sleep", test_system_sleep)
+	subprocess.Popen([test_system_sleep, "3"])
+	# test_system_sleep_child is our child => no Exception should be raised 
+	ensure_not_already_running("test_system_sleep_child")
