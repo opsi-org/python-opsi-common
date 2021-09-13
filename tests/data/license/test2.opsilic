@@ -1,0 +1,16 @@
+[7cf9ef7e-6e6f-43f5-8b52-7c4e582ff6f1]
+type = core
+schema_version = 2
+opsi_version = 4.2
+customer_id =
+customer_name =
+customer_address =
+customer_unit =
+module_id = scalability1
+client_number = 10
+issued_at = 2021-01-01
+valid_from = 2021-01-01
+valid_until = 2031-12-31
+revoked_ids =
+note =
+signature = 0102030405060708090a0b0c0d0e

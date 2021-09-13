@@ -1,45 +1,30 @@
-image: ubuntu:focal
+image: docker.uib.gmbh/opsi/dev/pybuilder:latest
 
 stages:
   - test
-  - package
   - publish
 
-test:pytests:
+test:pylint-pytest:
+  #when: manual
   stage: test
-  script:
-    - export DEBIAN_FRONTEND=noninteractive
-    - apt update
-    - apt -y install python3-pip python3-venv
-    - pip3 install poetry
-    - "[ -e coverage.xml ] && rm coverage.xml"
-    - poetry install
-    - poetry run pytest -o junit_family=xunit2 --junitxml=testreport.xml --cov-config .coveragerc --cov opsicommon --cov-report term --cov-report xml -v tests
+  script: |
+    poetry install
+    poetry run pylint --disable=R,C,fixme opsicommon
+    poetry run pytest -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+)%/'
   artifacts:
     name: 'python-opsi-common_test'
     paths:
       - coverage.xml
       - testreport.xml
-    expire_in: 14 days
-
-package:obs:
-  stage: package
-  script:
-    - export DEBIAN_FRONTEND=noninteractive
-    - apt update
-    - apt -y install python3-all python3-pip dh-python python3-venv debhelper osc
-    - pip3 install poetry
-    - poetry install
-    - poetry run opsi-dev-tool -l debug --obs-update-package https://obs.uib.local home:uibmz:opsi:4.2:experimental
+    reports:
+      junit: testreport.xml
+    expire_in: 7 days
 
 publish:uibpypi:
   stage: publish
   script:
-    - export DEBIAN_FRONTEND=noninteractive
-    - apt update
-    - apt -y upgrade
-    - apt -y install python3-all python3-pip dh-python python3-venv
-    - pip3 install poetry
     - poetry install
     - poetry run opsi-dev-tool -l info --uib-pypi-publish
+  only:
+    - tags

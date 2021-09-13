@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "python-opsi-common"
-version = "4.2.0.0"
+version = "4.2.0.1"
 description = "The opsi python common library"
 homepage = "https://www.opsi.org"
 license = "AGPL-3.0"
@@ -15,9 +15,13 @@ name = "uibpypi"
 url = "http://pypi.uib.gmbh:8080/simple"
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.7"
 colorlog = "^4.1.0"
 psutil = "^5.7.0"
+pycryptodome = "^3.10.1"
+msgpack = "^1.0.2"
+requests = "^2.26.0"
+lz4 = "^3.1.3"
 
 [tool.poetry.dev-dependencies]
 opsi-dev-tools = "^1.0"

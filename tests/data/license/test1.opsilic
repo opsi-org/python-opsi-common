@@ -1,0 +1,53 @@
+[707ef1b7-6139-4ec4-b60d-8480ce6dae34]
+type = standard
+schema_version = 2
+opsi_version = 4.2
+customer_id = 12345
+customer_name = uib GmbH - Mainz
+customer_address = Mainz
+customer_unit = Unit 1
+contract_id =
+module_id = vpn
+client_number = 999999999
+issued_at = 2019-08-01
+valid_from = 2019-08-01
+valid_until = 9999-12-31
+revoked_ids =
+note =
+signature = 405060708090a0b0c0d0e0102030
+
+[e7f707a7-c184-45e2-a477-27dbf5516b1c]
+type = standard
+schema_version = 2
+opsi_version = 4.2
+customer_id = 12345
+customer_name = uib GmbH
+customer_address = Mainz
+customer_unit = Unit 1
+contract_id = 23423432
+module_id = scalability1
+client_number = 1000
+issued_at = 2020-01-01
+valid_from = 2020-01-01
+valid_until = 2031-12-31
+revoked_ids = c6af25cf-62e4-4b90-8f4b-21c542d8b74b, cc4e2986-d28d-4bef-807b-a74ba9a8df04
+note = Some notes\n\tLine 2\n\tLine 3
+signature = 0102030405060708090a0b0c0d0e
+
+[c6af25cf-62e4-4b90-8f4b-21c542d8b74b]
+type = standard
+schema_version = 2
+opsi_version = 4.2
+customer_id = 12345
+customer_name = uib GmbH
+customer_address = Mainz
+customer_unit =
+contract_id = XH23334
+module_id = scalability1
+client_number = 999999999
+issued_at = 2021-01-05
+valid_from = 2021-02-01
+valid_until = 2031-12-31
+revoked_ids =
+note =
+signature = 0e0102030405060708090a0b0c0d

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""
-:copyright: uib GmbH <info@uib.de>
-This file is part of opsi - https://www.opsi.org
 
-:license: GNU Affero General Public License version 3
+# Copyright (c) uib GmbH <info@uib.de>
+# License: AGPL-3.0
+"""
+system
 """
 
 import os
@@ -37,8 +37,8 @@ def ensure_not_already_running(process_name: str = None):
 				if proc.pid != our_pid and proc.pid not in ignore_pids:
 					other_pid = proc.pid
 					break
-	except Exception as error:
-		logger.debug("Check for running processes failed: %s", error)
-	
+	except Exception as err:  # pylint: disable=broad-except
+		logger.debug("Check for running processes failed: %s", err)
+
 	if other_pid:
 		raise RuntimeError(f"Another '{process_name}' process is running (pids: {other_pid} / {our_pid}).")
