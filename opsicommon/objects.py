@@ -169,6 +169,13 @@ def objects_differ(obj1, obj2, exclude_attributes=None):  # pylint: disable=too-
 	return False
 
 
+class classproperty:  # pylint: disable=invalid-name,too-few-public-methods
+	def __init__(self, fget):
+		self.fget = fget
+
+	def __get__(self, owner_self, owner_cls):  # pylint: disable=unused-argument
+		return self.fget(owner_cls)
+
 class BaseObject:
 	sub_classes = {}
 	ident_separator = ';'
@@ -176,21 +183,21 @@ class BaseObject:
 	backend_method_prefix = ''
 	_is_generated_default = False
 
-	@property
-	def subClasses(self):  # pylint: disable=invalid-name
-		return self.sub_classes
+	@classproperty
+	def subClasses(cls):  # pylint: disable=invalid-name,no-self-argument
+		return cls.sub_classes
 
-	@property
-	def identSeparator(self):  # pylint: disable=invalid-name
-		return self.ident_separator
+	@classproperty
+	def identSeparator(cls):  # pylint: disable=invalid-name,no-self-argument
+		return cls.ident_separator
 
-	@property
-	def foreignIdAttributes(self):  # pylint: disable=invalid-name
-		return self.foreign_id_attributes
+	@classproperty
+	def foreignIdAttributes(cls):  # pylint: disable=invalid-name,no-self-argument
+		return cls.foreign_id_attributes
 
-	@property
-	def backendMethodPrefix(self):  # pylint: disable=invalid-name
-		return self.backend_method_prefix
+	@classproperty
+	def backendMethodPrefix(cls):  # pylint: disable=invalid-name,no-self-argument
+		return cls.backend_method_prefix
 
 	def getBackendMethodPrefix(self):  # pylint: disable=invalid-name
 		return self.backend_method_prefix
