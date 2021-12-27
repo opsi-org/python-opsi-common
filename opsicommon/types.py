@@ -503,6 +503,9 @@ def forceObjectClass(var, objectClass):  # pylint: disable=invalid-name
 			_class = getattr(opsicommon.objects, var['type'])
 			if issubclass(_class, objectClass):
 				var = _class.fromHash(var)
+		except AttributeError as err:
+			logger.debug("Failed to get object from dict %s: %s", var, err)
+			exception = ValueError(f"Invalid object type: {var['type']}")
 		except Exception as err:  # pylint: disable=broad-except
 			exception = err
 			logger.debug("Failed to get object from dict %s: %s", var, err)

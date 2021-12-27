@@ -41,7 +41,7 @@ class OpsiError(Exception):
 	def __repr__(self) -> str:
 		if self.message:
 			return f'<{self.__class__.__name__}("{self.message}")>'
-		return f'<{self.__class__.__name__}>()'
+		return f'<{self.__class__.__name__}>'
 
 
 class OpsiBackupFileError(OpsiError):
@@ -87,11 +87,6 @@ class OpsiProductOrderingError(OpsiError):
 		super().__init__(message)
 		self.problematicRequirements = problematicRequirements or []  # pylint: disable=invalid-name
 
-	def __repr__(self) -> str:
-		if self.message:
-			return f'<{self.__class__.__name__}("{self.message}", {self.problematicRequirements})>'
-		return f"<{self.__class__.__name__}()>"
-
 	def __str__(self) -> str:
 		if self.message:
 			if self.problematicRequirements:
@@ -99,6 +94,12 @@ class OpsiProductOrderingError(OpsiError):
 			return f"{self.ExceptionShortDescription}: {self.message}"
 		return self.ExceptionShortDescription
 
+	def __repr__(self) -> str:
+		if self.message:
+			if self.problematicRequirements:
+				return f'<{self.__class__.__name__}("{self.message}", {self.problematicRequirements})>'
+			return f'<{self.__class__.__name__}("{self.message}")>'
+		return f'<{self.__class__.__name__}>'
 
 class BackendError(OpsiError):
 	"""Exception raised if there is an error in the backend."""

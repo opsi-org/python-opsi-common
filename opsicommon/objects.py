@@ -279,13 +279,17 @@ class BaseObject:
 	def isGeneratedDefault(self):  # pylint: disable=invalid-name
 		return self._is_generated_default
 
-	def toHash(self):  # pylint: disable=invalid-name
+	def to_hash(self):  # pylint: disable=invalid-name
 		object_hash = dict(self.__dict__)
 		object_hash['type'] = self.getType()
 		return object_hash
 
+	toHash = to_hash
+
 	def to_json(self):
 		return to_json(self)
+
+	toJson = to_json
 
 	def __eq__(self, other):
 		if not isinstance(other, self.__class__):
