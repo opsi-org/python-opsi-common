@@ -22,7 +22,7 @@ from opsicommon.ssl import install_ca, remove_ca
 
 def create_certification():
 	subprocess.check_call([
-		"openssl", "req", "-nodes", "-x509", "-newkey", "rsa:2048", "-days", "730", "-keyout", "tests/data/ssl/ca.key"
+		"openssl", "req", "-nodes", "-x509", "-newkey", "rsa:2048", "-days", "730", "-keyout", "tests/data/ssl/ca.key",
 		"-out", "tests/data/ssl/ca.crt", "-new", "-sha512", "-subj", "/C=DE/ST=RP/L=Mainz/O=uib/OU=root/CN=uib-Signing-Authority"
 	])
 	subprocess.check_call([
@@ -35,7 +35,7 @@ def create_certification():
 	])
 	subprocess.check_call([
 		"openssl", "ca", "-config", "tests/data/ssl/ca.conf", "-gencrl",
-		"-keyfile", "tests/data/ssl/ca.key", "-cert tests/data/ssl/ca.crt", "-out", "tests/data/ssl/root.crl.pem"
+		"-keyfile", "tests/data/ssl/ca.key", "-cert", "tests/data/ssl/ca.crt", "-out", "tests/data/ssl/root.crl.pem"
 	])
 	subprocess.check_call([
 		"openssl", "crl", "-inform", "PEM", "-in", "tests/data/ssl/root.crl.pem", "-outform", "DER", "-out", "tests/data/ssl/root.crl"
@@ -64,7 +64,7 @@ def start_httpserver():
 def test_curl(start_httpserver):  # pylint: disable=redefined-outer-name, unused-argument
 	time.sleep(5)
 
-	with open("tests/data/ssl/ca.crt", "rb", encoding="utf8") as file:
+	with open("tests/data/ssl/ca.crt", "rb") as file:
 		ca_cert = load_certificate(FILETYPE_PEM, file.read())
 		install_ca(ca_cert)
 
