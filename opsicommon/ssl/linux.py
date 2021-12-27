@@ -18,17 +18,20 @@ __all__ = ["install_ca", "load_ca", "remove_ca"]
 
 
 def _get_cert_path_and_cmd():
-	like = distro.like()
-	if "centos" in like or "rhel" in like:
+	dist = {distro.id()}
+	for name in distro.like().split(" "):
+		if name:
+			dist.add(name)
+	if "centos" in dist or "rhel" in dist:
 		# /usr/share/pki/ca-trust-source/anchors/
 		return ("/etc/pki/ca-trust/source/anchors", "update-ca-trust")
-	if "debian" in like or "ubuntu" in like:
+	if "debian" in dist or "ubuntu" in dist:
 		return ("/usr/local/share/ca-certificates", "update-ca-certificates")
-	if "sles" in like or "suse" in like:
+	if "sles" in dist or "suse" in dist:
 		return ("/usr/share/pki/trust/anchors", "update-ca-certificates")
 
-	logger.error("Failed to set system cert path on distro '%s', like: %s", distro.id(), like)
-	raise RuntimeError(f"Failed to set system cert path on distro '{distro.id()}', like: {like}")
+	logger.error("Failed to set system cert path on distro '%s', like: %s", distro.id(), distro.like())
+	raise RuntimeError(f"Failed to set system cert path on distro '{distro.id()}', like: {distro.like()}")
 
 
 def install_ca(ca_cert: crypto.X509):
