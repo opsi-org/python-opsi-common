@@ -176,6 +176,22 @@ class BaseObject:
 	backend_method_prefix = ''
 	_is_generated_default = False
 
+	@property
+	def subClasses(self):  # pylint: disable=invalid-name
+		return self.sub_classes
+
+	@property
+	def identSeparator(self):  # pylint: disable=invalid-name
+		return self.ident_separator
+
+	@property
+	def foreignIdAttributes(self):  # pylint: disable=invalid-name
+		return self.foreign_id_attributes
+
+	@property
+	def backendMethodPrefix(self):  # pylint: disable=invalid-name
+		return self.backend_method_prefix
+
 	def getBackendMethodPrefix(self):  # pylint: disable=invalid-name
 		return self.backend_method_prefix
 
