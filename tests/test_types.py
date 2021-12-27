@@ -14,14 +14,17 @@ import pytest
 
 from opsicommon.objects import OpsiClient, Host, ProductOnClient
 from opsicommon.types import (
-	args, forceActionRequest, forceActionProgress,
+	args, forceActionRequest, forceActionRequestList, forceActionProgress, forceActionResult,
+	forceRequirementType,
 	forceArchitecture, forceBool, forceDict, forceBoolList, forceEmailAddress,
 	forceFilename, forceFloat, forceFqdn, forceGroupType, forceHardwareAddress,
 	forceHostId, forceInstallationStatus, forceInt, forceUnsignedInt, forceIntList,
 	forceIPAddress, forceHostAddress, forceNetmask,
 	forceNetworkAddress, forceLanguageCode, forceList, forceObjectClass,
 	forceOct, forceOpsiHostKey, forceOpsiTimestamp,	forcePackageVersion, forcePackageVersionList,
-	forceProductId, forceProductType, forceProductVersion, forceProductVersionList,
+	forceProductId, forceProductIdList, forcePackageCustomName, forceProductType,
+	forceProductVersion, forceProductVersionList, forceProductPropertyId, forceConfigId,
+	forceProductPropertyType, forceProductPriority, forceProductTargetConfiguration,
 	forceTime, forceHardwareVendorId, forceHardwareDeviceId,
 	forceUnicode, forceUnicodeList, forceUnicodeLowerList, forceUniqueList,
 	forceUrl
@@ -80,6 +83,11 @@ def test_forcing_object_class_from_json_has_good_error_description():
 		pytest.fail("No error from invalid type.")
 	except ValueError as error:
 		assert "Invalid object type: NotValid" in str(error)
+
+
+def test_forcing_object_class_from_invalid_json():
+	with pytest.raises(ValueError):
+		forceObjectClass('{"id":"x"', ProductOnClient)
 
 
 @pytest.mark.parametrize("cls", [Host, OpsiClient])
@@ -472,6 +480,31 @@ def test_force_product_id_with_invalid_product_id_raises_exceptions(product_id):
 		forceProductId(product_id)
 
 
+@pytest.mark.parametrize("value, expected, exc", (
+	('testProduct1', ['testproduct1'], None),
+	(['testproduct1', 'testproduct2'], ['testproduct1', 'testproduct2'], None),
+	('ööö', None, ValueError),
+))
+def test_force_product_id_list(value, expected, exc):
+	if exc:
+		with pytest.raises(exc):
+			forceProductIdList(value)
+	else:
+		assert forceProductIdList(value) == expected
+
+
+@pytest.mark.parametrize("value, expected, exc", (
+	('cust', 'cust', None),
+	('xy-', None, ValueError),
+))
+def test_force_package_custom_name(value, expected, exc):
+	if exc:
+		with pytest.raises(exc):
+			forcePackageCustomName(value)
+	else:
+		assert forcePackageCustomName(value) == expected
+
+
 @pytest.mark.parametrize("path, expected", (
 	('c:\\tmp\\test.txt', 'c:\\tmp\\test.txt'),
 ))
@@ -516,6 +549,52 @@ def test_force_action_request(action_request):
 
 def test_force_action_request_returns_none_on_undefined():
 	assert forceActionRequest("undefined") is None
+
+
+@pytest.mark.parametrize("value, expected, exc", (
+	("setup", ["setup"], None),
+	(["setup", "Always"], ["setup", "always"], None),
+	(["invalid"], None, ValueError),
+	("INVALID", None, ValueError)
+))
+def test_force_action_request_list(value, expected, exc):
+	if exc:
+		with pytest.raises(exc):
+			forceActionRequestList(value)
+	else:
+		assert forceActionRequestList(value) == expected
+
+
+
+@pytest.mark.parametrize("value, expected, exc", (
+	("failed", "failed", None),
+	("successful", "successful", None),
+	("none", "none", None),
+	(None, "none", None),
+	("", None, None),
+	("x", None, ValueError),
+	("-", None, ValueError)
+))
+def test_force_action_result(value, expected, exc):
+	if exc:
+		with pytest.raises(exc):
+			forceActionResult(value)
+	else:
+		assert forceActionResult(value) == expected
+
+
+@pytest.mark.parametrize("value, expected, exc", (
+	("Before", "before", None),
+	("after", "after", None),
+	("", None, None),
+	("-", None, ValueError)
+))
+def test_force_requirement_type(value, expected, exc):
+	if exc:
+		with pytest.raises(exc):
+			forceRequirementType(value)
+	else:
+		assert forceRequirementType(value) == expected
 
 
 def test_force_action_progress():
@@ -627,6 +706,78 @@ def testforce_product_type_to_localboot_product(inp):
 @pytest.mark.parametrize("inp", ('NetbOOtProduct', 'nETbOOT'))
 def testforce_product_type_to_netboot_product(inp):
 	assert 'NetbootProduct' == forceProductType(inp)
+
+
+
+@pytest.mark.parametrize("value, expected, exc", (
+	("prop1", "prop1", None),
+	("PROP2", "prop2", None),
+	("inv alid", None, ValueError)
+))
+def test_force_product_property_id(value, expected, exc):
+	if exc:
+		with pytest.raises(exc):
+			forceProductPropertyId(value)
+	else:
+		assert forceProductPropertyId(value) == expected
+
+
+@pytest.mark.parametrize("value, expected, exc", (
+	("config.name", "config.name", None),
+	("CONF.NAme", "conf.name", None),
+	("not valid", None, ValueError)
+))
+def test_force_config_id(value, expected, exc):
+	if exc:
+		with pytest.raises(exc):
+			forceConfigId(value)
+	else:
+		assert forceConfigId(value) == expected
+
+
+@pytest.mark.parametrize("value, expected, exc", (
+	("UnicodeProductProperty", "UnicodeProductProperty", None),
+	("Unicodeproductproperty", "UnicodeProductProperty", None),
+	("BoolProductProperty", "BoolProductProperty", None),
+	("ProductProperty", None, ValueError)
+))
+def test_force_product_property_type(value, expected, exc):
+	if exc:
+		with pytest.raises(exc):
+			forceProductPropertyType(value)
+	else:
+		assert forceProductPropertyType(value) == expected
+
+
+
+@pytest.mark.parametrize("value, expected, exc", (
+	("100", 100, None),
+	(-101, -100, None),
+	(1000, 100, None),
+	(0.0, 0, None),
+	("high", None, ValueError)
+))
+def test_force_product_priority(value, expected, exc):
+	if exc:
+		with pytest.raises(exc):
+			forceProductPriority(value)
+	else:
+		assert forceProductPriority(value) == expected
+
+
+@pytest.mark.parametrize("value, expected, exc", (
+	("Installed", "installed", None),
+	("always", "always", None),
+	("forbidden", "forbidden", None),
+	("undefineD", "undefined", None),
+	("other", None, ValueError)
+))
+def test_force_product_target_configuration(value, expected, exc):
+	if exc:
+		with pytest.raises(exc):
+			forceProductTargetConfiguration(value)
+	else:
+		assert forceProductTargetConfiguration(value) == expected
 
 
 @pytest.mark.parametrize("inp, expected", [

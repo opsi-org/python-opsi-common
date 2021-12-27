@@ -467,7 +467,9 @@ def forceActionProgress(var):  # pylint: disable=invalid-name
 
 def forceActionResult(var):  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
-	if var and var not in ('failed', 'successful', 'none'):
+	if not var:
+		return None
+	if var not in ('failed', 'successful', 'none'):
 		raise ValueError(f"Bad action result: '{var}'")
 	return var
 
