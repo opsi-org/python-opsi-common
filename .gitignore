@@ -2,3 +2,24 @@
 /dist
 __pycache__
 
+# Generated test data
+/tests/data/ssl/11.pem
+/tests/data/ssl/12.pem
+/tests/data/ssl/13.pem
+/tests/data/ssl/14.pem
+/tests/data/ssl/15.pem
+/tests/data/ssl/16.pem
+/tests/data/ssl/17.pem
+/tests/data/ssl/18.pem
+/tests/data/ssl/ca.crt
+/tests/data/ssl/ca.key
+/tests/data/ssl/certindex.attr
+/tests/data/ssl/certindex.attr.old
+/tests/data/ssl/certindex.old
+/tests/data/ssl/certserial.old
+/tests/data/ssl/crlnumber.old
+/tests/data/ssl/root.crl
+/tests/data/ssl/root.crl.pem
+/tests/data/ssl/test-server.crt
+/tests/data/ssl/test-server.csr
+/tests/data/ssl/test-server.key

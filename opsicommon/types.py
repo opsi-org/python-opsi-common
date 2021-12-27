@@ -498,17 +498,11 @@ def forceObjectClass(var, objectClass):  # pylint: disable=invalid-name
 		if 'type' not in var:
 			raise ValueError(f"Key 'type' missing in hash {var}")
 
-		from opsicommon.objects import Object  # pylint: disable=import-outside-toplevel,unused-import
+		import opsicommon.objects  # pylint: disable=import-outside-toplevel,unused-import
 		try:
-			_class = f"Object.{var['type']}"  # pylint: disable=eval-used
+			_class = getattr(opsicommon.objects, var['type'])
 			if issubclass(_class, objectClass):
 				var = _class.fromHash(var)
-		except AttributeError as err:
-			if "module 'Object' has no attribute" in str(err):
-				err = ValueError(f"Invalild object type: {var['type']}")
-
-			exception = err
-			logger.debug("Failed to get object from dict %s: %s", var, err)
 		except Exception as err:  # pylint: disable=broad-except
 			exception = err
 			logger.debug("Failed to get object from dict %s: %s", var, err)
