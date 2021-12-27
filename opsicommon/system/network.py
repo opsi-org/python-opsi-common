@@ -38,7 +38,7 @@ def get_ip_addresses():
 			}
 
 def get_fqdn():
-	return socket.getfqdn()
+	return socket.getfqdn().lower()
 
 def get_domain():
 	return '.'.join(get_fqdn().split('.')[1:])

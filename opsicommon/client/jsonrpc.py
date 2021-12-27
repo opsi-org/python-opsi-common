@@ -8,6 +8,7 @@ This file is part of opsi - https://www.opsi.org
 
 import os
 import re
+import time
 import types
 import socket
 import threading
@@ -30,16 +31,13 @@ except ModuleNotFoundError:
 		import json
 import lz4.frame
 
-from OPSI.Backend import no_export
-from OPSI.Backend.Base import Backend
-from OPSI.Util import serialize, deserialize
-from OPSI.Exceptions import (
+from opsicommon import __version__
+from opsicommon.logging import logger, secret_filter
+from opsicommon.exceptions import (
 	OpsiRpcError, OpsiServiceVerificationError,
 	BackendAuthenticationError, BackendPermissionDeniedError
 )
-
-from opsicommon import __version__
-from opsicommon.logging import logger, secret_filter
+from opsicommon.utils import serialize, deserialize
 
 urllib3.disable_warnings()
 
@@ -48,6 +46,9 @@ _LZ4_COMPRESSION = 'lz4'
 _DEFAULT_HTTP_PORT = 4444
 _DEFAULT_HTTPS_PORT = 4447
 
+def no_export(func):
+	func.no_export = True
+	return func
 
 class TimeoutHTTPAdapter(HTTPAdapter):
 	def __init__(self, *args, **kwargs):
@@ -65,7 +66,9 @@ class TimeoutHTTPAdapter(HTTPAdapter):
 
 class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	_rpc_timeouts = {
-		"depot_installPackage": 3600
+		"depot_installPackage": 3600,
+		"depot_librsyncPatchFile" : 3600,
+		"depot_getMD5Sum" : 3600
 	}
 
 	def __init__(self, address, **kwargs):  # pylint: disable=too-many-branches,too-many-statements
@@ -76,6 +79,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._application = f"opsi-jsonrpc-client/{__version__}"
 		self._compression = False
 		self._connect_on_init = True
+		self._create_methods = True
 		self._connected = False
 		self._interface = None
 		self._rpc_id = 0
@@ -88,9 +92,10 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._serialization = "auto"
 		self._ip_version = "auto"
 		self._connect_timeout = 10
-		self._read_timeout = 60
+		self._read_timeout = 300
 		self._http_pool_maxsize = 10
 		self._http_max_retries = 1
+		self._session_lifetime = 150 # In seconds
 		self.server_name = None
 		self.base_url = None
 
@@ -109,10 +114,14 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				self.setCompression(value)
 			elif option == 'connectoninit':
 				self._connectOnInit = bool(value)
+			elif option == 'createmethods':
+				self._create_methods = bool(value)
 			elif option == 'connectionpoolsize' and value not in (None, ""):
 				self._connection_pool_size = int(value)
 			elif option == 'retry':
-				if not value:
+				if isinstance(value, int):
+					self._http_max_retries = max(value, 0)
+				elif not value:
 					self._http_max_retries = 0
 			elif option == 'connecttimeout' and value not in (None, ""):
 				self._connect_timeout = int(value)
@@ -134,6 +143,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 					self._serialization = value
 				else:
 					logger.error("Invalid serialization '%s', using %s", value, self._serialization)
+			elif option == 'sessionlifetime' and value:
+				self._session_lifetime = int(value)
 
 		self._set_address(address)
 
@@ -143,13 +154,18 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._session = requests.Session()
 		self._session.auth = (self._username or '', self._password or '')
 		self._session.headers.update({
-			'User-Agent': self._application
+			"User-Agent": self._application,
+			"X-opsi-session-lifetime": str(self._session_lifetime)
 		})
 		if session_id:
-			cookie_name, cookie_value = session_id.split("=")
-			self._session.cookies.set(
-				cookie_name, cookie_value, domain=self.hostname
-			)
+			if "=" in session_id:
+				logger.confidential("Using session id passed: %s", session_id)
+				cookie_name, cookie_value = session_id.split("=")
+				self._session.cookies.set(
+					cookie_name, cookie_value, domain=self.hostname
+				)
+			else:
+				logger.warning("Invalid session id passed: %s", session_id)
 
 		if self._proxy_url:
 			# Use a proxy
@@ -165,6 +181,12 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			if no_proxy != ["*"]:
 				no_proxy.extend(["localhost", "127.0.0.1", "ip6-localhost", "::1"])
 			os.environ["no_proxy"] = ",".join(set(no_proxy))
+			logger.info(
+				"Using proxy settings: http_proxy='%s', https_proxy='%s', no_proxy='%s'",
+				os.environ.get("http_proxy"),
+				os.environ.get("https_proxy"),
+				os.environ.get("no_proxy")
+			)
 		else:
 			# Do not use a proxy
 			os.environ['no_proxy'] = '*'
@@ -224,6 +246,16 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		return self._session
 
 	@property
+	def session_id(self):
+		if not self._session.cookies or not self._session.cookies._cookies:  # pylint: disable=protected-access
+			return None
+		for tmp1 in self._session.cookies._cookies.values():  # pylint: disable=protected-access
+			for tmp2 in tmp1.values():
+				for cookie in tmp2.values():
+					return f"{cookie.name}={cookie.value}"
+		return None
+
+	@property
 	def server_version(self):
 		try:
 			if self.server_name:
@@ -242,9 +274,12 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 	@property
 	def interface(self):
-		if not self._connected:
+		if not self._interface and self._create_methods:
 			self.connect()
 		return self._interface
+
+	def backend_getInterface(self):
+		return self.interface
 
 	@no_export
 	def getInterface(self):
@@ -265,9 +300,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			else:
 				self._compression = False
 
-	@no_export
-	def setCompression(self, compression):
-		return self.set_compression(compression)
+	setCompression = set_compression
 
 	@no_export
 	def get(self, path, headers=None):
@@ -296,7 +329,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		if not path or path == "/":
 			path = "/rpc"
 
-		hostname = url.hostname
+		hostname = str(url.hostname)
 		if ":" in hostname:
 			hostname = f"[{hostname}]"
 		self.base_url = f"{url.scheme}://{hostname}:{port}{path}"
@@ -305,7 +338,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		if url.password and not self._password:
 			self._password = url.password
 
-	def execute_rpc(self, method, params=None):  # pylint: disable=too-many-branches,too-many-statements
+	@no_export
+	def execute_rpc(self, method, params=None):  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		params = params or []
 
 		rpc_id = 0
@@ -370,6 +404,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			self.base_url, self._ip_version, rpc_id, method,
 			headers.get('Content-Type', ''), headers.get('Content-Encoding', ''), timeout
 		)
+		start_time = time.time()
 		try:
 			response = self._session.post(self.base_url, headers=headers, data=data, stream=True, timeout=timeout)
 		except SSLError as err:
@@ -378,8 +413,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		content_type = response.headers.get("Content-Type", "")
 		content_encoding = response.headers.get("Content-Encoding", "")
 		logger.info(
-			"Got response status=%s, Content-Type=%s, Content-Encoding=%s",
-			response.status_code, content_type, content_encoding
+			"Got response status=%s, Content-Type=%s, Content-Encoding=%s, duration=%0.3fs",
+			response.status_code, content_type, content_encoding, (time.time() - start_time)
 		)
 
 		if 'server' in response.headers:
@@ -430,8 +465,10 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			try:
 				method_name = method['name']
 
-				if method_name in ('backend_exit', 'backend_getInterface'):
+				if method_name in ('backend_exit', 'backend_getInterface', 'jsonrpc_getSessionId'):
 					continue
+
+				logger.debug("Creating instance method: %s", method_name)
 
 				args = method['args']
 				varargs = method['varargs']
@@ -447,7 +484,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 					if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):
 						default = defaults[len(defaults) - len(args) + i]
 						if isinstance(default, str):
-							default = "{0!r}".format(default).replace('"', "'")
+							default = "{0!r}".format(default).replace('"', "'")  # pylint: disable=consider-using-f-string
 						arg_string.append(f'{argument}={default}')
 					else:
 						arg_string.append(argument)
@@ -472,14 +509,17 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			except Exception as err:  # pylint: disable=broad-except
 				logger.critical("Failed to create instance method '%s': %s", method, err)
 
+	@no_export
 	def connect(self):
 		logger.info("Connecting to service %s", self.base_url)
-		self._interface = self.execute_rpc('backend_getInterface')
-		self._create_instance_methods()
+		if self._create_methods:
+			self._interface = self.execute_rpc('backend_getInterface')
+			self._create_instance_methods()
 		self._http_adapter.max_retries = Retry.from_int(self._http_max_retries)
 		logger.debug("Connected to service %s", self.base_url)
 		self._connected = True
 
+	@no_export
 	def disconnect(self):
 		if self._connected:
 			try:
@@ -487,32 +527,3 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			except Exception:  # pylint: disable=broad-except
 				pass
 			self._connected = False
-
-
-class JSONRPCBackend(Backend, JSONRPCClient):  # pylint: disable=too-many-instance-attributes
-
-	def __init__(self, address, **kwargs):  # pylint: disable=too-many-branches,too-many-statements
-		"""
-		Backend for JSON-RPC access to another opsi service.
-
-		:param compression: Should requests be compressed?
-		:type compression: bool
-		"""
-
-		self._name = 'jsonrpc'
-
-		Backend.__init__(self, **kwargs)
-		JSONRPCClient.__init__(self, address, **kwargs)
-
-		self._application = 'opsi-jsonrpc-backend/%s' % __version__
-
-	def jsonrpc_getSessionId(self):
-		if not self._session.cookies or not self._session.cookies._cookies:  # pylint: disable=protected-access
-			return None
-		for tmp1 in self._session.cookies._cookies.values():  # pylint: disable=protected-access
-			for tmp2 in tmp1.values():
-				for cookie in tmp2.values():
-					return f"{cookie.name}={cookie.value}"
-
-	def backend_exit(self):
-		self.disconnect()

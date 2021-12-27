@@ -15,7 +15,7 @@ from OPSI.System import (
 
 from opsicommon.logging import logger
 
-__all__ = ["install_ca", "remove_ca"]
+__all__ = ["install_ca", "load_ca", "remove_ca"]
 
 
 def _get_cert_path_and_cmd():
@@ -47,21 +47,37 @@ def install_ca(ca_cert: crypto.X509):
 	logger.debug("Output of '%s': %s", cmd, output)
 
 
+def load_ca(subject_name: str) -> crypto.X509:
+	system_cert_path, _cmd = _get_cert_path_and_cmd()
+	if os.path.exists(system_cert_path):
+		for root, _dirs, files in os.walk(system_cert_path):
+			for entry in files:
+				with open(os.path.join(root, entry), "rb") as file:
+					try:
+						ca = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())
+						if ca.get_subject().CN == subject_name:
+							return ca
+					except crypto.Error:
+						continue
+	return None
+
+
 def remove_ca(subject_name: str) -> bool:
 	system_cert_path, cmd = _get_cert_path_and_cmd()
 	removed = 0
-	for entry in os.listdir(system_cert_path):
-		filename = os.path.join(system_cert_path, entry)
-		ca = None
-		with open(filename, "rb") as file:
-			try:
-				ca = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())
-			except crypto.Error:
-				continue
-		if ca.get_subject().CN == subject_name:
-			logger.info("Removing CA '%s' (%s)", subject_name, filename)
-			os.remove(filename)
-			removed += 1
+	if os.path.exists(system_cert_path):
+		for root, _dirs, files in os.walk(system_cert_path):
+			for entry in files:
+				filename = os.path.join(root, entry)
+				with open(filename, "rb") as file:
+					try:
+						ca = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())
+						if ca.get_subject().CN == subject_name:
+							logger.info("Removing CA '%s' (%s)", subject_name, filename)
+							os.remove(filename)
+							removed += 1
+					except crypto.Error:
+						continue
 
 	if removed:
 		output = execute(cmd)

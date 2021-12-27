@@ -93,6 +93,8 @@ def _str2date(value) -> date:
 
 def _hexstr2bytes(value) -> bytes:
 	if isinstance(value, str):
+		if len(value) % 2:
+			value = "0" + value
 		return bytes.fromhex(value)
 	return value
 
@@ -367,16 +369,16 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 			at_date = date.today()
 		_hash = self.get_hash()
 		public_key = get_signature_public_key(self.schema_version)
-		if self.schema_version == 1:
-			h_int = int.from_bytes(_hash.digest(), "big")
-			s_int = public_key._encrypt(int(self.signature.hex()))  # pylint: disable=protected-access
-			if h_int != s_int:
-				return OPSI_LICENSE_STATE_INVALID_SIGNATURE
-		else:
-			try:
+		try:
+			if self.schema_version == 1:
+				h_int = int.from_bytes(_hash.digest(), "big")
+				s_int = public_key._encrypt(int(self.signature.hex()))  # pylint: disable=protected-access
+				if h_int != s_int:
+					return OPSI_LICENSE_STATE_INVALID_SIGNATURE
+			else:
 				pss.new(public_key).verify(_hash, self.signature)
-			except (ValueError, TypeError):
-				return OPSI_LICENSE_STATE_INVALID_SIGNATURE
+		except (ValueError, TypeError):
+			return OPSI_LICENSE_STATE_INVALID_SIGNATURE
 
 		if self.type == OPSI_LICENSE_TYPE_CORE and self._license_pool:
 			for lic in self._license_pool.get_licenses(

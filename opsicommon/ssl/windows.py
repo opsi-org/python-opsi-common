@@ -16,7 +16,7 @@ from opsicommon.logging import logger
 
 crypt32 = ctypes.WinDLL('crypt32.dll')
 
-__all__ = ["install_ca", "remove_ca"]
+__all__ = ["install_ca", "load_ca", "remove_ca"]
 
 # lpszStoreProvider
 CERT_STORE_PROV_SYSTEM = 0x0000000A
@@ -63,7 +63,7 @@ CERT_NAME_FRIENDLY_DISPLAY_TYPE = 5
 # The default is My.
 
 @contextmanager
-def _open_cert_store(store_name: str, ctype: bool = False):
+def _open_cert_store(store_name: str, ctype: bool = False, force_close: bool = True):
 	_open = win32crypt.CertOpenStore
 	if ctype:
 		_open = crypt32.CertOpenStore
@@ -78,10 +78,11 @@ def _open_cert_store(store_name: str, ctype: bool = False):
 	try:
 		yield store
 	finally:
+		flag = CERT_CLOSE_STORE_FORCE_FLAG if force_close else 0
 		if ctype:
-			crypt32.CertCloseStore(store, CERT_CLOSE_STORE_FORCE_FLAG)
+			crypt32.CertCloseStore(store, flag)
 		else:
-			store.CertCloseStore(CERT_CLOSE_STORE_FORCE_FLAG)
+			store.CertCloseStore(flag)
 
 
 def install_ca(ca_cert: crypto.X509):
@@ -95,6 +96,21 @@ def install_ca(ca_cert: crypto.X509):
 			crypto.dump_certificate(crypto.FILETYPE_ASN1, ca_cert),
 			CERT_STORE_ADD_REPLACE_EXISTING
 		)
+
+
+def load_ca(subject_name: str) -> crypto.X509:
+	store_name = "Root"
+	logger.debug("Trying to find %s in certificate store", subject_name)
+	with _open_cert_store(store_name, force_close=False) as store:
+		for certificate in store.CertEnumCertificatesInStore():
+			#logger.trace("checking certificate %s", certificate.SerialNumber)	# ASN1 encoded integer
+			ca = crypto.load_certificate(crypto.FILETYPE_ASN1, certificate.CertEncoded)
+			logger.trace("checking certificate %s", ca.get_subject().CN)
+			if ca.get_subject().CN == subject_name:
+				logger.debug("Found matching ca %s", subject_name)
+				return ca
+	logger.debug("Did not find ca")
+	return None
 
 
 def remove_ca(subject_name: str) -> bool:

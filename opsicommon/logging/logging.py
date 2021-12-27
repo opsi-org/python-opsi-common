@@ -15,6 +15,7 @@ from logging.handlers import RotatingFileHandler
 import tempfile
 import warnings
 import contextvars
+from urllib.parse import quote
 from contextlib import contextmanager
 from typing import Dict, Any, IO
 import colorlog
@@ -23,7 +24,6 @@ from .constants import (
 	DEFAULT_COLORED_FORMAT, DEFAULT_FORMAT, DATETIME_FORMAT,
 	LOG_COLORS, SECRET_REPLACEMENT_STRING
 )
-from ..utils import Singleton
 
 logger = logging.getLogger()
 context = contextvars.ContextVar('context', default={})
@@ -159,6 +159,15 @@ def handle_log_exception(exc: Exception, record: logging.LogRecord = None, stder
 
 	except Exception: # pylint: disable=broad-except
 		pass
+
+
+class Singleton(type):
+	_instances = {}
+	def __call__(cls, *args, **kwargs):
+		if cls not in cls._instances:
+			cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+		return cls._instances[cls]
+
 
 class ContextFilter(logging.Filter, metaclass=Singleton):
 	"""
@@ -353,7 +362,7 @@ class SecretFilter(metaclass=Singleton):
 		:type min_length: int
 		"""
 		self._min_length = min_length
-		self.secrets = []
+		self.secrets = set()
 
 	def _initialize_handlers(self):  # pylint: disable=no-self-use
 		"""
@@ -385,7 +394,7 @@ class SecretFilter(metaclass=Singleton):
 
 		This method clears the list of secret strings.
 		"""
-		self.secrets = []
+		self.secrets = set()
 
 	def add_secrets(self, *secrets: str):
 		"""
@@ -398,8 +407,9 @@ class SecretFilter(metaclass=Singleton):
 		"""
 		self._initialize_handlers()
 		for _secret in secrets:
-			if _secret and len(_secret) >= self._min_length and not _secret in self.secrets:
-				self.secrets.append(_secret)
+			if _secret and len(_secret) >= self._min_length:
+				self.secrets.add(_secret)
+				self.secrets.add(quote(_secret))
 
 	def remove_secrets(self, *secrets: str):
 		"""
@@ -411,8 +421,10 @@ class SecretFilter(metaclass=Singleton):
 		:type *secrets: str
 		"""
 		for _secret in secrets:
-			if _secret in self.secrets:
+			try:
 				self.secrets.remove(_secret)
+			except KeyError:
+				pass
 
 class ObservableHandler(logging.StreamHandler, metaclass=Singleton):
 	def __init__(self):
