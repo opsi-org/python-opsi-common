@@ -104,11 +104,11 @@ def load_ca(subject_name: str) -> crypto.X509:
 	with _open_cert_store(store_name, force_close=False) as store:
 		for certificate in store.CertEnumCertificatesInStore():
 			#logger.trace("checking certificate %s", certificate.SerialNumber)	# ASN1 encoded integer
-			ca = crypto.load_certificate(crypto.FILETYPE_ASN1, certificate.CertEncoded)
-			logger.trace("checking certificate %s", ca.get_subject().CN)
-			if ca.get_subject().CN == subject_name:
+			ca_cert = crypto.load_certificate(crypto.FILETYPE_ASN1, certificate.CertEncoded)
+			logger.trace("checking certificate %s", ca_cert.get_subject().CN)
+			if ca_cert.get_subject().CN == subject_name:
 				logger.debug("Found matching ca %s", subject_name)
-				return ca
+				return ca_cert
 	logger.debug("Did not find ca")
 	return None
 

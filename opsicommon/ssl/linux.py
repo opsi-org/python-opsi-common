@@ -7,8 +7,9 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import os
-import distro
 import subprocess
+
+import distro
 from OpenSSL import crypto
 
 from opsicommon.logging import logger
@@ -53,9 +54,9 @@ def load_ca(subject_name: str) -> crypto.X509:
 			for entry in files:
 				with open(os.path.join(root, entry), "rb") as file:
 					try:
-						ca = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())
-						if ca.get_subject().CN == subject_name:
-							return ca
+						ca_cert = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())
+						if ca_cert.get_subject().CN == subject_name:
+							return ca_cert
 					except crypto.Error:
 						continue
 	return None
@@ -70,8 +71,8 @@ def remove_ca(subject_name: str) -> bool:
 				filename = os.path.join(root, entry)
 				with open(filename, "rb") as file:
 					try:
-						ca = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())
-						if ca.get_subject().CN == subject_name:
+						ca_cert = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())
+						if ca_cert.get_subject().CN == subject_name:
 							logger.info("Removing CA '%s' (%s)", subject_name, filename)
 							os.remove(filename)
 							removed += 1

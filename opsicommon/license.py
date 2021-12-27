@@ -122,13 +122,13 @@ def get_signature_public_key(schema_version: int):
 		# Key type can be found in 4:11.
 		rest = data[11:]
 		count = 0
-		mp = []
+		tmp = []
 		for _ in range(2):
 			length = struct.unpack('>L', rest[count:count + 4])[0]
-			mp.append(bytes_to_long(rest[count + 4:count + 4 + length]))
+			tmp.append(bytes_to_long(rest[count + 4:count + 4 + length]))
 			count += 4 + length
 
-		return RSA.construct((mp[1], mp[0]))
+		return RSA.construct((tmp[1], tmp[0]))
 
 	return RSA.import_key(
 		"-----BEGIN PUBLIC KEY-----\n"

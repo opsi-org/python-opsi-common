@@ -21,22 +21,25 @@ from opsicommon.ssl import install_ca, remove_ca
 
 
 def create_certification():
-	openssl = (
-		"openssl req -nodes -x509 -newkey rsa:2048 -days 730 -keyout tests/data/ssl/ca.key "
-		"-out tests/data/ssl/ca.crt -new -sha512 -subj /C=DE/ST=RP/L=Mainz/O=uib/OU=root/CN=uib-Signing-Authority"
-	)
-	subprocess.check_call(openssl.split(" "), encoding="utf-8")
-	openssl = (
-		"openssl req -nodes -newkey rsa:2048 -keyout tests/data/ssl/test-server.key "
-		"-out tests/data/ssl/test-server.csr -subj /C=DE/ST=RP/L=Mainz/O=uib/OU=root/CN=test-server"
-	)
-	subprocess.check_call(openssl.split(" "), encoding="utf-8")
-	openssl = "openssl ca -batch -config tests/data/ssl/ca.conf -notext -in tests/data/ssl/test-server.csr -out tests/data/ssl/test-server.crt"
-	subprocess.check_call(openssl.split(" "), encoding="utf-8")
-	openssl = "openssl ca -config ca.conf -gencrl -keyfile tests/data/ssl/ca.key -cert ca.crt -out tests/data/ssl/root.crl.pem"
-	subprocess.check_call(openssl.split(" "), encoding="utf-8")
-	openssl = "openssl crl -inform PEM -in tests/data/ssl/root.crl.pem -outform DER -out tests/data/ssl/root.crl"
-	subprocess.check_call(openssl.split(" "), encoding="utf-8")
+	subprocess.check_call([
+		"openssl", "req", "-nodes", "-x509", "-newkey", "rsa:2048", "-days", "730", "-keyout", "tests/data/ssl/ca.key"
+		"-out", "tests/data/ssl/ca.crt", "-new", "-sha512", "-subj", "/C=DE/ST=RP/L=Mainz/O=uib/OU=root/CN=uib-Signing-Authority"
+	])
+	subprocess.check_call([
+		"openssl", "req", "-nodes", "-newkey", "rsa:2048", "-keyout", "tests/data/ssl/test-server.key",
+		"-out", "tests/data/ssl/test-server.csr", "-subj", "/C=DE/ST=RP/L=Mainz/O=uib/OU=root/CN=test-server"
+	])
+	subprocess.check_call([
+		"openssl", "ca", "-batch", "-config", "tests/data/ssl/ca.conf", "-notext",
+		"-in", "tests/data/ssl/test-server.csr", "-out", "tests/data/ssl/test-server.crt"
+	])
+	subprocess.check_call([
+		"openssl", "ca", "-config", "tests/data/ssl/ca.conf", "-gencrl",
+		"-keyfile", "tests/data/ssl/ca.key", "-cert tests/data/ssl/ca.crt", "-out", "tests/data/ssl/root.crl.pem"
+	])
+	subprocess.check_call([
+		"openssl", "crl", "-inform", "PEM", "-in", "tests/data/ssl/root.crl.pem", "-outform", "DER", "-out", "tests/data/ssl/root.crl"
+	])
 
 
 @pytest.fixture(scope="function")

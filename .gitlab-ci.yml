@@ -9,9 +9,9 @@ test:pylint-pytest:
   stage: test
   script: |
     poetry install
-    poetry run pylint --disable=R,C,fixme opsicommon
+    poetry run pylint --disable=R,fixme opsicommon
     poetry run pytest -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
-     poetry run pytest -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
+    poetry run pytest -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+)%/'
   artifacts:
     name: 'python-opsi-common_test'
