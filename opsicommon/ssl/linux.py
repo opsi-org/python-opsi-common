@@ -27,8 +27,8 @@ def _get_cert_path_and_cmd():
 	if "sles" in like or "suse" in like:
 		return ("/usr/share/pki/trust/anchors", "update-ca-certificates")
 
-	logger.error("Failed to set system cert path")
-	raise RuntimeError("Failed to set system cert path")
+	logger.error("Failed to set system cert path on: %s")
+	raise RuntimeError(f"Failed to set system cert path on: {like}")
 
 
 def install_ca(ca_cert: crypto.X509):
