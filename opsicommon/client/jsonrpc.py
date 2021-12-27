@@ -113,7 +113,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			elif option == 'compression':
 				self.setCompression(value)
 			elif option == 'connectoninit':
-				self._connectOnInit = bool(value)
+				self._connectOnInit = bool(value)  # pylint: disable=invalid-name
 			elif option == 'createmethods':
 				self._create_methods = bool(value)
 			elif option == 'connectionpoolsize' and value not in (None, ""):
@@ -269,7 +269,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	serverVersion = server_version
 
 	@property
-	def serverName(self):
+	def serverName(self):  # pylint: disable=invalid-name
 		return self.server_name
 
 	@property
@@ -278,11 +278,11 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			self.connect()
 		return self._interface
 
-	def backend_getInterface(self):
+	def backend_getInterface(self):  # pylint: disable=invalid-name
 		return self.interface
 
 	@no_export
-	def getInterface(self):
+	def getInterface(self):  # pylint: disable=invalid-name
 		return self.interface
 
 	@no_export
@@ -361,8 +361,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		serialization = self._serialization
 		if serialization == "auto":
 			serialization = "json"
-			sv = self.server_version
-			if sv and (sv[0] > 4 or (sv[0] == 4 and sv[1] > 1)):
+			serv = self.server_version
+			if serv and (serv[0] > 4 or (serv[0] == 4 and serv[1] > 1)):
 				serialization = "msgpack"
 
 		if serialization == "msgpack":
@@ -382,8 +382,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				# Do not compress if opsi server version < 4.2
 				# opsiconfd 4.2.0.96 (uvicorn)
 				compression = None
-				sv = self.server_version
-				if sv and (sv[0] > 4 or (sv[0] == 4 and sv[1] > 1)):
+				serv = self.server_version
+				if serv and (serv[0] > 4 or (serv[0] == 4 and serv[1] > 1)):
 					compression = _LZ4_COMPRESSION
 
 			if compression == _LZ4_COMPRESSION:
@@ -455,7 +455,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		data = deserialize(
 			data.get('result'),
-			preventObjectCreation=method.endswith('_getHashes')
+			prevent_object_creation=method.endswith('_getHashes')
 		)
 
 		return data

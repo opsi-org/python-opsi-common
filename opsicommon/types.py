@@ -487,9 +487,9 @@ def forceObjectClass(var, objectClass):
 
 	exception = None
 	if isinstance(var, str) and var.lstrip().startswith('{'):
-		from OPSI.Util import fromJson  # pylint: disable=import-outside-toplevel
+		from OPSI.Util import from_json  # pylint: disable=import-outside-toplevel
 		try:
-			var = fromJson(var)
+			var = from_json(var)
 		except Exception as err:  # pylint: disable=broad-except
 			exception = err
 			logger.debug("Failed to get object from json %s: %s", var, err)
