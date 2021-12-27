@@ -15,10 +15,11 @@ import logging
 import threading
 import asyncio
 import random
-import requests
-from contextlib import contextmanager
-import pytest
 import tempfile
+from contextlib import contextmanager
+
+import requests
+import pytest
 
 from opsicommon.logging import (
 	logger, handle_log_exception, secret_filter, observable_handler,
@@ -28,35 +29,32 @@ from opsicommon.logging import (
 
 )
 from opsicommon.logging.constants import (
-	LOG_SECRET, LOG_WARNING, LOG_ERROR, LOG_DEBUG, LOG_TRACE, LOG_INFO,
-	OPSI_LEVEL_TO_LEVEL
+	LOG_SECRET, LOG_WARNING, LOG_ERROR, LOG_DEBUG, LOG_TRACE, LOG_INFO
 )
-
-try:
-	from OPSI.Logger import Logger as LegacyLogger
-except ImportError:
-	LegacyLogger = None
 
 MY_FORMAT = "%(log_color)s[%(opsilevel)d] [%(asctime)s.%(msecs)03d]%(reset)s [%(contextstring)s] %(message)s"
 OTHER_FORMAT = "[%(opsilevel)d] [%(asctime)s.%(msecs)03d] [%(contextstring)s] %(message)s   (%(filename)s:%(lineno)d)"
 
 
-class Utils:
+class Utils:  # pylint: disable=too-few-public-methods
 	@staticmethod
 	@contextmanager
-	def log_stream(new_level, format=None):
+	def log_stream(new_level, format=None):  # pylint: disable=redefined-builtin
 		stream = io.StringIO()
 		logging_config(stderr_level=new_level, stderr_format=format, stderr_file=stream)
 		try:
 			yield stream
 		finally:
-			pass	#somehow revert to previous values? Impossible as logging_config deletes all stream handlers
+			# somehow revert to previous values? Impossible as logging_config deletes all stream handlers
+			pass
+
 
 @pytest.fixture
 def utils():
 	return Utils
 
-def test_levels(utils):
+
+def test_levels(utils):  # pylint: disable=redefined-outer-name
 	with utils.log_stream(LOG_SECRET, format="%(message)s") as stream:
 		expected = ""
 		print_logger_info()
@@ -80,19 +78,21 @@ def test_log_exception_handler():
 		os.remove(filename)
 	try:
 		raise Exception("TESTäöüß")
-	except Exception as err:
+	except Exception as err:  # pylint: disable=broad-except
 		handle_log_exception(exc=err, record=log_record, log=True, temp_file=True, stderr=True)
 		with codecs.open(filename, "r", "utf-8") as file:
 			data = file.read()
 			assert "TESTäöüß" in data
 			assert "'levelname': 'ERROR'" in data
 
+
 def test_secret_formatter_attr():
 	log_record = logging.LogRecord(name=None, level=logging.ERROR, pathname=None, lineno=1, msg="t", args=None, exc_info=None)
-	sf = ContextSecretFormatter(logging.Formatter())
-	sf.format(log_record)
+	csf = ContextSecretFormatter(logging.Formatter())
+	csf.format(log_record)
 
-def test_secret_filter(utils):
+
+def test_secret_filter(utils):  # pylint: disable=redefined-outer-name
 	secret_filter.set_min_length(7)
 	secret_filter.add_secrets("PASSWORD", "2SHORT", "SECRETSTRING")
 
@@ -140,24 +140,13 @@ def test_secret_filter(utils):
 		assert "SECRETSTRING3" not in log
 
 
-@pytest.mark.skipif(not LegacyLogger, reason="OPSI.Logger not available.")
-def test_legacy_logger_file(utils):
+def test_context(utils):  # pylint: disable=redefined-outer-name
 	with utils.log_stream(LOG_SECRET) as stream:
-		legacy_logger = LegacyLogger("/tmp/test.log")
-		assert legacy_logger == logger
-		legacy_logger.info("test should appear")
-
-		stream.seek(0)
-		log = stream.read()
-		assert "test should appear" in log
-
-	with open("/tmp/test.log") as logfile:
-		content = logfile.read()
-		assert "test should appear" in content
-
-def test_context(utils):
-	with utils.log_stream(LOG_SECRET) as stream:
-		set_format(stderr_format="%(log_color)s[%(opsilevel)d] [%(asctime)s.%(msecs)03d]%(reset)s [%(contextstring)s] %(message)s   (%(filename)s:%(lineno)d)")
+		set_format(
+			stderr_format=(
+			"%(log_color)s[%(opsilevel)d] [%(asctime)s.%(msecs)03d]%(reset)s "
+			"[%(contextstring)s] %(message)s   (%(filename)s:%(lineno)d)"
+		))
 
 		logger.info("before setting context")
 		with log_context({'whoami' : "first-context"}):
@@ -170,16 +159,16 @@ def test_context(utils):
 		assert "second-context" in log
 
 
-def test_context_threads(utils):
+def test_context_threads(utils):  # pylint: disable=redefined-outer-name
 	def common_work():
 		time.sleep(0.2)
 		logger.info("common_work")
 		time.sleep(0.2)
 
-	class Main():
-		def run(self):
+	class Main():  # pylint: disable=too-few-public-methods
+		def run(self):  # pylint: disable=no-self-use
 			AsyncMain().start()
-			for _ in range(5):		#perform 5 iterations
+			for _ in range(5): # perform 5 iterations
 				threads = []
 				for i in range(2):
 					_thread = MyModule(client=f"Client-{i}")
@@ -202,7 +191,7 @@ def test_context_threads(utils):
 			loop.run_until_complete(self.arun())
 			loop.close()
 
-		async def handle_client(self, client: str):
+		async def handle_client(self, client: str):  # pylint: disable=no-self-use
 			with log_context({'whoami' : "handler for " + str(client)}):
 				logger.essential("handling client %s", client)
 				seconds = random.random() * 1
@@ -246,113 +235,25 @@ def test_context_threads(utils):
 			# to check for corrent handling of async contexti when eventloop is not running in main thread
 			assert re.search(r"handler for client Client-0.*handling client Client-1", log) is None
 
-def test_observable_handler(utils):
-	class LogObserver():
+
+def test_observable_handler(utils):  # pylint: disable=redefined-outer-name
+	class LogObserver():  # pylint: disable=too-few-public-methods
 		def __init__(self):
 			self.messages = []
 
-		def messageChanged(self, handler, message):
+		def messageChanged(self, handler, message):  # pylint: disable=unused-argument,invalid-name
 			self.messages.append(message)
 
 	with utils.log_stream(LOG_SECRET):
-		lo = LogObserver()
-		observable_handler.attach_observer(lo)
+		log_observer = LogObserver()
+		observable_handler.attach_observer(log_observer)
 		logger.error("error")
 		logger.warning("warning")
 		logger.info("in%s%s", "f", "o")
-		assert lo.messages == ["error", "warning", "info"]
+		assert log_observer.messages == ["error", "warning", "info"]
 
 
-@pytest.mark.skipif(not LegacyLogger, reason="OPSI.Logger not available.")
-def test_legacy_logger(utils):
-	with utils.log_stream(LOG_TRACE) as stream:
-		legacy_logger = LegacyLogger()
-		assert legacy_logger == logger
-		#init_logging(file_level=logging.SECRET)
-		#legacy_logger.setLogFile("/tmp/test.log")
-		# This method does nothing
-		legacy_logger.setLogFormat("xy")
-
-		secret_filter.set_min_length(7)
-		legacy_logger.setConfidentialStrings(["SECRETSTRING1", "SECRETSTRING2"])
-		legacy_logger.addConfidentialString("SECRETSTRING3")
-		legacy_logger.info("SECRETSTRING1 SECRETSTRING2 SECRETSTRING3")
-
-		stream.seek(0)
-		log = stream.read()
-		assert "SECRETSTRING1" not in log
-		assert "SECRETSTRING2" not in log
-		assert "SECRETSTRING3" not in log
-
-		legacy_logger.logException(Exception("LOG_EXCEPTION"), logLevel=logging.CRITICAL)
-		stream.seek(0)
-		log = stream.read()
-		assert "LOG_EXCEPTION" in log
-
-@pytest.mark.skipif(not LegacyLogger, reason="OPSI.Logger not available.")
-def test_legacy_logger_calls(utils):
-	legacy_logger = LegacyLogger()
-	assert legacy_logger == logger
-	legacy_logger.getStderr()
-	legacy_logger.getStdout()
-	legacy_logger.setConfidentialStrings(["topsecret"])
-	legacy_logger.addConfidentialString("evenmoresecret")
-	legacy_logger.setLogFormat("%s some format %s", currentThread=False, object=None)
-	legacy_logger.setConsoleFormat("%s some format %s", currentThread=False, object=None)
-	legacy_logger.setComponentName("name", currentThread=False, object=None)
-	legacy_logger.logToStdout(None)
-	legacy_logger.setSyslogFormat("%s some format %s", currentThread=False, object=None)
-	legacy_logger.setFileFormat("%s some format %s", currentThread=False, object=None)
-	legacy_logger.setUniventionFormat("%s some format %s", currentThread=False, object=None)
-	legacy_logger.setMessageSubjectFormat("%s some format %s", currentThread=False, object=None)
-	legacy_logger.setUniventionLogger(None)
-	legacy_logger.setUniventionClass(None)
-	legacy_logger.getMessageSubject()
-	legacy_logger.setColor(True)
-	legacy_logger.setConsoleColor(True)
-	legacy_logger.setSyslogLevel(0)
-	legacy_logger.setMessageSubjectLevel(0)
-	legacy_logger.setConsoleLevel(0)
-	legacy_logger.getConsoleLevel()
-	legacy_logger.getFileLevel()
-	legacy_logger.getLogFile(currentThread=False, object=None)
-	legacy_logger.setLogFile("logfile.log", currentThread=False, object=None)
-	legacy_logger.linkLogFile("logfile", currentThread=False, object=None)
-	legacy_logger.setFileLevel(0)
-	legacy_logger.exit(object=None)
-	legacy_logger._setThreadConfig(None, None)
-	legacy_logger._getThreadConfig(key=None)
-	legacy_logger._setObjectConfig(None, None, None)
-	legacy_logger._getObjectConfig(None, key=None)
-	legacy_logger.logException(None)
-	legacy_logger.logFailure(None)
-	legacy_logger.logTraceback(None)
-	legacy_logger.logWarnings()
-	legacy_logger.startTwistedLogging()
-	legacy_logger.setConsoleLevel(9)
-
-	with utils.log_stream(LOG_SECRET) as stream:
-		legacy_logger.confidential("mymessage %s", "fill-value")
-		legacy_logger.debug3("mymessage %s", "fill-value")
-		legacy_logger.debug2("mymessage %s", "fill-value")
-		legacy_logger.debug("mymessage %s", "fill-value")
-		legacy_logger.info("mymessage %s", "fill-value")
-		legacy_logger.msg("mymessage %s", "fill-value")
-		legacy_logger.notice("mymessage %s", "fill-value")
-		legacy_logger.warning("mymessage %s", "fill-value")
-		legacy_logger.error("mymessage %s", "fill-value")
-		legacy_logger.err("mymessage %s", "fill-value")
-		legacy_logger.critical("mymessage %s", "fill-value")
-		legacy_logger.essential("mymessage %s", "fill-value")
-		legacy_logger.comment("mymessage %s", "fill-value")
-		# calling log still fails as method signature has changed with opsi 4.2
-		#legacy_logger.log(3, "text %s", raiseException=False, formatArgs=["some format arg"], formatKwargs={})
-		stream.seek(0)
-		log = stream.read()
-		assert log.count("fill-value") == 13
-
-
-def test_simple_colored(utils):
+def test_simple_colored(utils):  # pylint: disable=redefined-outer-name
 	with utils.log_stream(LOG_WARNING, format=MY_FORMAT) as stream:
 		with log_context({'firstcontext' : 'asdf', 'secondcontext' : 'jkl'}):
 			logger.error("test message")
@@ -360,7 +261,8 @@ def test_simple_colored(utils):
 		log = stream.read()
 		assert "asdf" in log and "jkl" in log
 
-def test_simple_plain(utils):
+
+def test_simple_plain(utils):  # pylint: disable=redefined-outer-name
 	with utils.log_stream(LOG_WARNING, format=OTHER_FORMAT) as stream:
 		with log_context({'firstcontext' : 'asdf', 'secondcontext' : 'jkl'}):
 			logger.error("test message")
@@ -368,7 +270,8 @@ def test_simple_plain(utils):
 		log = stream.read()
 		assert "asdf" in log and "jkl" in log
 
-def test_set_context(utils):
+
+def test_set_context(utils):  # pylint: disable=redefined-outer-name
 	with utils.log_stream(LOG_WARNING, format=MY_FORMAT) as stream:
 		set_context({'firstcontext' : 'asdf', 'secondcontext' : 'jkl'})
 		logger.error("test message")
@@ -400,7 +303,8 @@ def test_set_context(utils):
 		log = stream.read()
 		assert "suddenly a string" not in log	# must be given as dictionary
 
-def test_foreign_logs(utils):
+
+def test_foreign_logs(utils):  # pylint: disable=redefined-outer-name
 	with utils.log_stream(LOG_DEBUG, format="%(message)s") as stream:
 		logger.error("message before request")
 
@@ -411,7 +315,8 @@ def test_foreign_logs(utils):
 		log = stream.read()
 		assert "www.uib.de" in log
 
-def test_filter(utils):
+
+def test_filter(utils):  # pylint: disable=redefined-outer-name
 	with utils.log_stream(LOG_WARNING, format="%(message)s") as stream:
 		set_filter({"testkey" : ["t1", "t3"]})
 		with log_context({"testkey" : "t1"}):
@@ -423,7 +328,8 @@ def test_filter(utils):
 		assert "test that should appear" in log
 		assert "test that should not appear" not in log
 
-def test_filter_from_string(utils):
+
+def test_filter_from_string(utils):  # pylint: disable=redefined-outer-name
 	with utils.log_stream(LOG_WARNING, format="%(message)s") as stream:
 		# as one string (like --log-filter "")
 		set_filter_from_string("testkey = t1 , t3 ; alsotest = a1")
@@ -450,7 +356,8 @@ def test_filter_from_string(utils):
 		assert "test that should also appear" in log
 		assert "test that should not appear" not in log
 
-def test_log_devel(utils):
+
+def test_log_devel(utils):  # pylint: disable=redefined-outer-name
 	with utils.log_stream(LOG_ERROR) as stream:
 		logger.warning("warning")
 		logger.devel("devel")
@@ -462,7 +369,8 @@ def test_log_devel(utils):
 		assert "warning" not in log
 		assert "debug" not in log
 
-def test_multi_call_init_logging(tmpdir, utils):
+
+def test_multi_call_init_logging(tmpdir):
 	log_file = tmpdir.join("opsi.log")
 	init_logging(stderr_level=logging.INFO, log_file=log_file, file_level=logging.INFO, file_format="%(message)s")
 	print_logger_info()
@@ -474,6 +382,6 @@ def test_multi_call_init_logging(tmpdir, utils):
 	init_logging(stderr_level=logging.NONE, file_level=logging.INFO)
 	logger.info("LINE4")
 
-	with open(log_file) as f:
-		data = f.read()
+	with open(log_file, encoding="utf-8") as file:
+		data = file.read()
 		assert data == "LINE1\nLINE2\nLINE4\n"

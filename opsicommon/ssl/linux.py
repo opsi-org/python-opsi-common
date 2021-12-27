@@ -7,11 +7,9 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import os
+import distro
+import subprocess
 from OpenSSL import crypto
-
-from OPSI.System import (
-	execute, isCentOS, isDebian, isOpenSUSE, isRHEL, isSLES, isUbuntu
-)
 
 from opsicommon.logging import logger
 
@@ -19,13 +17,14 @@ __all__ = ["install_ca", "load_ca", "remove_ca"]
 
 
 def _get_cert_path_and_cmd():
-	if isCentOS() or isRHEL():
+	like = distro.like()
+	if "centos" in like or "rhel" in like:
 		# /usr/share/pki/ca-trust-source/anchors/
-		return("/etc/pki/ca-trust/source/anchors", "update-ca-trust")
-	if isDebian() or isUbuntu():
-		return("/usr/local/share/ca-certificates", "update-ca-certificates")
-	if isOpenSUSE() or isSLES():
-		return("/usr/share/pki/trust/anchors", "update-ca-certificates")
+		return ("/etc/pki/ca-trust/source/anchors", "update-ca-trust")
+	if "debian" in like or "ubuntu" in like:
+		return ("/usr/local/share/ca-certificates", "update-ca-certificates")
+	if "sles" in like or "suse" in like:
+		return ("/usr/share/pki/trust/anchors", "update-ca-certificates")
 
 	logger.error("Failed to set system cert path")
 	raise RuntimeError("Failed to set system cert path")
@@ -43,7 +42,7 @@ def install_ca(ca_cert: crypto.X509):
 	with open(cert_file, "wb") as file:
 		file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, ca_cert))
 
-	output = execute(cmd)
+	output = subprocess.check_output([cmd], shell=False)
 	logger.debug("Output of '%s': %s", cmd, output)
 
 
@@ -80,7 +79,7 @@ def remove_ca(subject_name: str) -> bool:
 						continue
 
 	if removed:
-		output = execute(cmd)
+		output = subprocess.check_output([cmd], shell=False)
 		logger.debug("Output of '%s': %s", cmd, output)
 	else:
 		logger.info(

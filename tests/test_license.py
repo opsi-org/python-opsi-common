@@ -194,9 +194,9 @@ def test_opsi_license_hash():
 
 
 def test_load_opsi_license_pool():
-	modules_file = "tests/testopsicommon/data/license/modules"
+	modules_file = "tests/data/license/modules"
 	olp = OpsiLicensePool(
-		license_file_path="tests/testopsicommon/data/license/test1.opsilic"
+		license_file_path="tests/data/license/test1.opsilic"
 	)
 	olp.load()
 
@@ -205,7 +205,7 @@ def test_load_opsi_license_pool():
 	assert "707ef1b7-6139-4ec4-b60d-8480ce6dae34" in [lic.id for lic in olp.licenses]
 	assert "c6af25cf-62e4-4b90-8f4b-21c542d8b74b" in [lic.id for lic in olp.licenses]
 
-	olp.license_file_path = "tests/testopsicommon/data/license"
+	olp.license_file_path = "tests/data/license"
 	olp.load()
 	assert len(olp.licenses) == 4
 	assert "e7f707a7-c184-45e2-a477-27dbf5516b1c" in [lic.id for lic in olp.licenses]
@@ -231,7 +231,7 @@ def test_load_opsi_license_pool():
 def test_opsi_license_pool_modified(tmp_path):
 	license_file_path = tmp_path / "licenses"
 	modules_file_path = tmp_path / "licenses" / "modules"
-	shutil.copytree("tests/testopsicommon/data/license", str(license_file_path))
+	shutil.copytree("tests/data/license", str(license_file_path))
 	olp = OpsiLicensePool(
 		license_file_path=str(license_file_path),
 		modules_file_path=str(modules_file_path)
@@ -259,7 +259,7 @@ def test_opsi_license_pool_modified(tmp_path):
 
 def test_opsi_license_pool_licenses_checksum():
 	olp = OpsiLicensePool(
-		license_file_path="tests/testopsicommon/data/license"
+		license_file_path="tests/data/license"
 	)
 	olp.load()
 	private_key, public_key = generate_key_pair(return_pem=False)
@@ -272,7 +272,7 @@ def test_opsi_license_pool_licenses_checksum():
 
 def test_opsi_license_pool_relevant_dates():
 	olp = OpsiLicensePool(
-		license_file_path="tests/testopsicommon/data/license"
+		license_file_path="tests/data/license"
 	)
 	olp.load()
 	private_key, public_key = generate_key_pair(return_pem=False)
@@ -312,8 +312,8 @@ def test_opsi_license_pool_relevant_dates():
 
 def test_licensing_info_and_cache():
 	olp = OpsiLicensePool(
-		license_file_path="tests/testopsicommon/data/license",
-		modules_file_path="tests/testopsicommon/data/license/modules"
+		license_file_path="tests/data/license",
+		modules_file_path="tests/data/license/modules"
 	)
 	olp.load()
 	private_key, public_key = generate_key_pair(return_pem=False)
@@ -471,7 +471,7 @@ def test_license_state():
 
 
 def test_license_state_modules(tmp_path):
-	modules = pathlib.Path("tests/testopsicommon/data/license/modules").read_text()
+	modules = pathlib.Path("tests/data/license/modules").read_text(encoding="utf-8")
 	modules_file = tmp_path / "modules"
 	modules_file.write_text(modules)
 
@@ -515,7 +515,7 @@ def test_license_state_modules(tmp_path):
 
 def test_license_state_replaced_by_non_core():
 	olp = OpsiLicensePool(
-		license_file_path="tests/testopsicommon/data/license"
+		license_file_path="tests/data/license"
 	)
 	olp.load()
 	private_key, public_key = generate_key_pair(return_pem=False)
@@ -529,7 +529,7 @@ def test_license_state_replaced_by_non_core():
 
 def test_license_state_revoked():
 	olp = OpsiLicensePool(
-		license_file_path="tests/testopsicommon/data/license"
+		license_file_path="tests/data/license"
 	)
 	olp.load()
 	private_key, public_key = generate_key_pair(return_pem=False)
@@ -542,8 +542,8 @@ def test_license_state_revoked():
 
 
 def test_opsi_modules_file():
-	modules_file = "tests/testopsicommon/data/license/modules"
-	raw_data = pathlib.Path(modules_file).read_text()
+	modules_file = "tests/data/license/modules"
+	raw_data = pathlib.Path(modules_file).read_text(encoding="utf-8")
 	modules, expires, _customer, signature = _read_modules_file(modules_file)
 	omf = OpsiModulesFile(modules_file)
 	omf.read()

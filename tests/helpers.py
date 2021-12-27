@@ -14,7 +14,7 @@ import http.server
 import socketserver
 
 class HTTPJSONRPCServerRequestHandler(http.server.SimpleHTTPRequestHandler):
-	def do_POST(self):
+	def do_POST(self):  # pylint: disable=invalid-name
 		length = int(self.headers['Content-Length'])
 		request = json.loads(self.rfile.read(length))
 		response = {"id": request["id"], "result": []}

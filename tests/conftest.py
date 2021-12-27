@@ -24,5 +24,5 @@ LogCaptureHandler.emit = emit
 
 
 @pytest.fixture
-def onWindows():
+def on_windows():
 	return bool(os.name == 'nt')
