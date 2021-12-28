@@ -9,10 +9,7 @@ General utility functions.
 import time
 import types
 import secrets
-try:
-	import orjson as json  # pyright: reportMissingModuleSource=false
-except ImportError:
-	import json
+import json
 
 from opsicommon.logging import logger
 
