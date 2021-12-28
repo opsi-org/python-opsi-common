@@ -29,8 +29,8 @@ def as_pem(cert_or_key: Union[X509, PKey], passphrase=None):
 		return dump_privatekey(
 			FILETYPE_PEM,
 			cert_or_key,
-			cipher=None if passphrase is None else PRIVATE_KEY_CIPHER,
-			passphrase=None if passphrase is None else passphrase.encode("utf-8")
+			cipher=PRIVATE_KEY_CIPHER if passphrase else None,
+			passphrase=passphrase.encode("utf-8") if passphrase else None
 		).decode("ascii")
 	raise TypeError(f"Invalid type: {cert_or_key}")
 
