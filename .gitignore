@@ -1,5 +1,10 @@
 /.venv
 /dist
+/.coverage
+/.hypothesis
+/coverage.xml
+/testreport.xml
+
 __pycache__
 
 # Generated test data
