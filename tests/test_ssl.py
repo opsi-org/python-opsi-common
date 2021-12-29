@@ -13,11 +13,96 @@ import http.server
 import socketserver
 import ssl
 import threading
+import ipaddress
 
 import pytest
-from OpenSSL.crypto import load_certificate, FILETYPE_PEM
 
-from opsicommon.ssl import install_ca, remove_ca
+from OpenSSL.crypto import load_certificate, FILETYPE_PEM, X509, PKey
+
+from opsicommon.ssl import (
+	create_x590_name, as_pem, create_ca, create_server_cert,
+	install_ca, remove_ca
+)
+
+def test_create_x590_name():
+	subject = {"emailAddress": "test@test.de"}
+	x590_name = create_x590_name(subject)
+	assert x590_name.emailAddress == subject["emailAddress"]
+	assert x590_name.CN == "opsi"
+
+
+def test_create_ca():
+	subject = {
+		"CN": "opsi CA",
+		"OU": "opsi",
+		"emailAddress": "opsi@opsi.org"
+	}
+	cert, key = create_ca(subject, 100)
+	assert isinstance(cert, X509)
+	assert isinstance(key, PKey)
+	assert cert.get_subject().CN == subject["CN"]
+	assert cert.get_subject().OU == subject["OU"]
+	assert cert.get_subject().emailAddress == subject["emailAddress"]
+
+	del subject["CN"]
+	with pytest.raises(ValueError):
+		create_ca(subject, 100)
+
+
+def test_create_server_cert():
+	subject = {
+		"CN": "opsi CA",
+		"OU": "opsi",
+		"emailAddress": "opsi@opsi.org"
+	}
+	ca_cert, ca_key = create_ca(subject, 1000)
+	kwargs = {
+		"subject": {"CN": "server.dom.tld"},
+		"valid_days": 100,
+		"ip_addresses": {"172.0.0.1", "::1", "192.168.1.1"},
+		"hostnames": {"localhost", "opsi", "opsi.dom.tld"},
+		"ca_key": ca_key,
+		"ca_cert": ca_cert
+	}
+	cert, key = create_server_cert(**kwargs)
+	assert isinstance(cert, X509)
+	assert isinstance(key, PKey)
+	assert cert.get_subject().CN == kwargs["subject"]["CN"]
+
+	cert_hns = set()
+	cert_ips = set()
+	for idx in range(cert.get_extension_count()):
+		ext = cert.get_extension(idx)
+		if ext.get_short_name() == b"subjectAltName":
+			for alt_name in str(ext).split(","):
+				alt_name = alt_name.strip()
+				if alt_name.startswith("DNS:"):
+					cert_hns.add(alt_name.split(":", 1)[-1].strip())
+				elif alt_name.startswith(("IP:", "IP Address:")):
+					addr = alt_name.split(":", 1)[-1].strip()
+					addr = ipaddress.ip_address(addr)
+					cert_ips.add(addr.compressed)
+			break
+
+	assert cert_hns == kwargs["hostnames"]
+	assert cert_ips == kwargs["ip_addresses"]
+
+
+def test_as_pem():
+	subject = {
+		"CN": "opsi CA",
+		"OU": "opsi",
+		"emailAddress": "opsi@opsi.org"
+	}
+	cert, key = create_ca(subject, 100)
+	pem = as_pem(cert, "")
+	assert pem.startswith("-----BEGIN CERTIFICATE-----")
+	pem = as_pem(key, None)
+	assert pem.startswith("-----BEGIN PRIVATE KEY-----")
+	pem = as_pem(key, "password")
+	assert pem.startswith("-----BEGIN ENCRYPTED PRIVATE KEY-----")
+	with pytest.raises(TypeError):
+		as_pem(create_x590_name({}))
 
 
 def create_certification():
@@ -59,6 +144,7 @@ def start_httpserver():
 	thread.start()
 	yield None
 	httpd.shutdown()
+
 
 @pytest.mark.skipif(os.geteuid() != 0, reason="no root permissons")
 def test_curl(start_httpserver):  # pylint: disable=redefined-outer-name, unused-argument

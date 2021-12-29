@@ -45,7 +45,7 @@ def create_x590_name(subject: dict = None) -> X509Name:
 		"CN": "opsi",
 		"emailAddress": "info@opsi.org"
 	}
-	subj.update(subject)
+	subj.update(subject or {})
 
 	x509_name = X509Name(X509().get_subject())
 	x509_name.countryName = subj.get("countryName", subj.get("C"))
