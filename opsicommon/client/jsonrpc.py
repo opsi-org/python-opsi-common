@@ -70,6 +70,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		"depot_librsyncPatchFile" : 3600,
 		"depot_getMD5Sum" : 3600
 	}
+	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]
 
 	def __init__(self, address, **kwargs):  # pylint: disable=too-many-branches,too-many-statements
 		"""
@@ -171,26 +172,30 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		if self._proxy_url:
 			# Use a proxy
 			if self._proxy_url.lower() != "system":
-				self._session.proxies.update({
-					"http": self._proxy_url,
-					"https": self._proxy_url,
-				})
-				for key in ("http_proxy", "https_proxy"):
-					if key in os.environ:
-						del os.environ[key]
+				if self.hostname in self.no_proxy_addresses:
+					logger.info("Not using proxy for address %s", self.hostname)
+				else:
+					self._session.proxies.update({
+						"http": self._proxy_url,
+						"https": self._proxy_url,
+					})
+					for key in ("http_proxy", "https_proxy"):
+						if key in os.environ:
+							del os.environ[key]
 			no_proxy = [x.strip() for x in os.environ.get("no_proxy", "").split(",") if x.strip()]
 			if no_proxy != ["*"]:
-				no_proxy.extend(["localhost", "127.0.0.1", "ip6-localhost", "::1"])
+				no_proxy.extend(self.no_proxy_addresses)
 			os.environ["no_proxy"] = ",".join(set(no_proxy))
-			logger.info(
-				"Using proxy settings: http_proxy='%s', https_proxy='%s', no_proxy='%s'",
-				os.environ.get("http_proxy"),
-				os.environ.get("https_proxy"),
-				os.environ.get("no_proxy")
-			)
 		else:
 			# Do not use a proxy
 			os.environ['no_proxy'] = '*'
+
+		logger.info(
+			"Using proxy settings: http_proxy=%r, https_proxy=%r, no_proxy=%r",
+			self._proxy_url if self._proxy_url.lower() != "system" else os.environ.get("http_proxy"),
+			self._proxy_url if self._proxy_url.lower() != "system" else os.environ.get("https_proxy"),
+			os.environ.get("no_proxy")
+		)
 
 		if self._verify_server_cert:
 			self._session.verify = self._ca_cert_file or True

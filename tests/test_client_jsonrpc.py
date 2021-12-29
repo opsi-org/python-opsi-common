@@ -6,13 +6,16 @@
 This file is part of opsi - https://www.opsi.org
 """
 
+import os
+import time
 import json
 from urllib.parse import unquote
+from requests.exceptions import ConnectionError as RConnectionError, ReadTimeout
 import pytest
 
 from opsicommon.client.jsonrpc import JSONRPCClient, BackendAuthenticationError, BackendPermissionDeniedError, OpsiRpcError
 
-from .helpers import http_jsonrpc_server
+from .helpers import http_jsonrpc_server, environment
 
 
 
@@ -74,6 +77,58 @@ def test_arguments():
 
 	client = JSONRPCClient("http://[::1]", **kwargs)
 	assert getattr(client, "_ip_version") == 6
+
+
+def test_timeouts():
+	with http_jsonrpc_server(response_delay=3) as server:
+		start = time.time()
+		with pytest.raises(RConnectionError):
+			JSONRPCClient(f"http://localhost:{server.port+1}", connect_timeout=2)
+			assert round(time.time() - start) == 2
+
+		with pytest.raises(ReadTimeout):
+			JSONRPCClient(f"http://localhost:{server.port}", read_timeout=2)
+			assert round(time.time() - start) == 2
+
+		JSONRPCClient(f"http://localhost:{server.port}", read_timeout=6)
+
+
+def test_proxy(tmp_path):
+	log_file = tmp_path / "request.log"
+	with http_jsonrpc_server(log_file=log_file, response_delay=3) as server:
+		# Proxy will not be used for localhost (JSONRPCClient.no_proxy_addresses)
+		with pytest.raises(RConnectionError):
+			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url=f"http://localhost:{server.port}", connect_timeout=2)
+
+		proxy_env = {
+			"http_proxy": f"http://localhost:{server.port}",
+			"https_proxy": f"http://localhost:{server.port}"
+		}
+		with environment(proxy_env), pytest.raises(RConnectionError):
+			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url="system", connect_timeout=2)
+
+
+		JSONRPCClient.no_proxy_addresses = []
+		# Now proxy will be used for localhost
+
+		JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url=f"http://localhost:{server.port}", connect_timeout=2)
+
+		request = json.loads(log_file.read_text(encoding="utf-8"))
+		#print(request)
+		assert request.get("path") == f"http://localhost:{server.port+1}/rpc"
+		os.remove(log_file)
+
+		proxy_env = {
+			"http_proxy": f"http://localhost:{server.port}",
+			"https_proxy": f"http://localhost:{server.port+2}",
+			"no_proxy": ""
+		}
+		with environment(proxy_env):
+			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url="system", connect_timeout=2)
+			request = json.loads(log_file.read_text(encoding="utf-8"))
+			#print(request)
+			assert request.get("path") == f"http://localhost:{server.port+1}/rpc"
+			os.remove(log_file)
 
 
 def test_cookie_handling(tmp_path):

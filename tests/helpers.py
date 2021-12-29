@@ -6,8 +6,10 @@
 Helpers for testing opsi.
 """
 
+import os
 import gzip
 import json
+import time
 import threading
 import socket
 from contextlib import closing, contextmanager
@@ -15,6 +17,7 @@ import http.server
 import socketserver
 import lz4
 import msgpack
+
 
 class HTTPJSONRPCServerRequestHandler(http.server.SimpleHTTPRequestHandler):
 	def _log(self, data):  # pylint: disable=invalid-name
@@ -32,6 +35,8 @@ class HTTPJSONRPCServerRequestHandler(http.server.SimpleHTTPRequestHandler):
 		return super().version_string()
 
 	def _send_headers(self, headers=None):
+		if self.server.response_delay:
+			time.sleep(self.server.response_delay)
 		headers = headers or {}
 		headers.update(self.server.response_headers)
 		for name, value in headers.items():
@@ -92,13 +97,14 @@ class HTTPJSONRPCServerRequestHandler(http.server.SimpleHTTPRequestHandler):
 		self._send_headers(headers)
 		self.wfile.write(response)
 
-class HTTPJSONRPCServer(threading.Thread):
-	def __init__(self, log_file=None, response_headers=None, response_status=None, response_body=None):
+class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-attributes
+	def __init__(self, log_file=None, response_headers=None, response_status=None, response_body=None, response_delay=None):  # pylint: disable=too-many-arguments
 		super().__init__()
 		self.log_file = str(log_file) if log_file else None
 		self.response_headers = response_headers if response_headers else {}
 		self.response_status = response_status if response_status else None
 		self.response_body = response_body if response_body else None
+		self.response_delay = response_delay if response_delay else None
 		# Auto select free port
 		with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
 			sock.bind(('', 0))
@@ -112,6 +118,7 @@ class HTTPJSONRPCServer(threading.Thread):
 		self.server.response_headers = self.response_headers
 		self.server.response_status = self.response_status
 		self.server.response_body = self.response_body
+		self.server.response_delay = self.response_delay
 		#print("Server started at localhost:" + str(self.port))
 		self.server.serve_forever()
 
@@ -121,11 +128,21 @@ class HTTPJSONRPCServer(threading.Thread):
 
 
 @contextmanager
-def http_jsonrpc_server(log_file=None, response_headers=None, response_status=None, response_body=None):
-	server = HTTPJSONRPCServer(log_file, response_headers, response_status, response_body)
+def http_jsonrpc_server(log_file=None, response_headers=None, response_status=None, response_body=None, response_delay=None):
+	server = HTTPJSONRPCServer(log_file, response_headers, response_status, response_body, response_delay)
 	server.daemon = True
 	server.start()
 	try:
 		yield server
 	finally:
 		server.stop()
+
+
+@contextmanager
+def environment(env_vars: dict):
+	old_environ = os.environ.copy()
+	os.environ.update(env_vars)
+	#print(os.environ)
+	yield
+	os.environ.clear()
+	os.environ.update(old_environ)
