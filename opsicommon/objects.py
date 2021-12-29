@@ -159,10 +159,6 @@ def objects_differ(obj1, obj2, exclude_attributes=None):  # pylint: disable=too-
 			for value in value1:
 				if value not in value2:
 					return True
-
-			for value in value2:
-				if value not in value1:
-					return True
 		else:
 			if value1 != value2:
 				return True
@@ -354,17 +350,17 @@ class Entity(BaseObject):
 		try:
 			return cls(**kwargs)
 		except TypeError as err:
-			if '__init__() takes at least' in forceUnicode(err):
-				try:
-					args = mandatory_constructor_args(cls)
-					missing_args = [arg for arg in args if arg not in kwargs]
-					if missing_args:
-						raise TypeError(
-							f"Missing required argument(s): {', '.join(repr(a) for a in missing_args)}"
-						 ) from err
-				except NameError:
-					pass
+			missing_args = []
+			try:
+				args = mandatory_constructor_args(cls)
+				missing_args = [arg for arg in args if arg not in kwargs]
+			except Exception:  # pylint: disable=broad-except
+				pass
 
+			if missing_args:
+				raise TypeError(
+					f"Missing required argument(s): {', '.join(repr(a) for a in missing_args)}"
+				) from err
 			raise err
 
 	def clone(self, identOnly=False):  # pylint: disable=invalid-name
