@@ -100,6 +100,7 @@ class HTTPJSONRPCServerRequestHandler(http.server.SimpleHTTPRequestHandler):
 class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-attributes
 	def __init__(self, log_file=None, response_headers=None, response_status=None, response_body=None, response_delay=None):  # pylint: disable=too-many-arguments
 		super().__init__()
+		self.running = threading.Event()
 		self.log_file = str(log_file) if log_file else None
 		self.response_headers = response_headers if response_headers else {}
 		self.response_status = response_status if response_status else None
@@ -120,6 +121,7 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 		self.server.response_body = self.response_body
 		self.server.response_delay = self.response_delay
 		#print("Server started at localhost:" + str(self.port))
+		self.running.set()
 		self.server.serve_forever()
 
 	def stop(self):
@@ -132,6 +134,7 @@ def http_jsonrpc_server(log_file=None, response_headers=None, response_status=No
 	server = HTTPJSONRPCServer(log_file, response_headers, response_status, response_body, response_delay)
 	server.daemon = True
 	server.start()
+	server.running.wait(3.0)
 	try:
 		yield server
 	finally:
