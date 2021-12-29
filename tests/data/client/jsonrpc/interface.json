@@ -1,0 +1,8770 @@
+{
+  "id": 1,
+  "result": [
+    {
+      "name": "SSHCommand_createObject",
+      "params": [
+        "menuText",
+        "*commands",
+        "*position",
+        "*needSudo",
+        "*tooltipText",
+        "*parentMenuText"
+      ],
+      "args": [
+        "self",
+        "menuText",
+        "commands",
+        "position",
+        "needSudo",
+        "tooltipText",
+        "parentMenuText"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        0,
+        false,
+        "",
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "SSHCommand_createObjects",
+      "params": [
+        "commandList"
+      ],
+      "args": [
+        "self",
+        "commandList"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "SSHCommand_deleteObject",
+      "params": [
+        "menuText"
+      ],
+      "args": [
+        "self",
+        "menuText"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "SSHCommand_deleteObjects",
+      "params": [
+        "menuTextList"
+      ],
+      "args": [
+        "self",
+        "menuTextList"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "SSHCommand_getObject",
+      "params": [
+        "menuText"
+      ],
+      "args": [
+        "self",
+        "menuText"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "SSHCommand_getObjects",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "SSHCommand_updateObject",
+      "params": [
+        "menuText",
+        "*commands",
+        "*position",
+        "*needSudo",
+        "*tooltipText",
+        "*parentMenuText"
+      ],
+      "args": [
+        "self",
+        "menuText",
+        "commands",
+        "position",
+        "needSudo",
+        "tooltipText",
+        "parentMenuText"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "SSHCommand_updateObjects",
+      "params": [
+        "commandList"
+      ],
+      "args": [
+        "self",
+        "commandList"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "accessControl_authenticated",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "accessControl_getUserGroups",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "accessControl_userIsAdmin",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "accessControl_userIsReadOnlyUser",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "addProductIdsToLicensePool",
+      "params": [
+        "productIds",
+        "licensePoolId"
+      ],
+      "args": [
+        "self",
+        "productIds",
+        "licensePoolId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "addSoftwareLicenseToLicensePool",
+      "params": [
+        "softwareLicenseId",
+        "licensePoolId",
+        "*licenseKey"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseId",
+        "licensePoolId",
+        "licenseKey"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        ""
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "areDepotsSynchronous",
+      "params": [
+        "*depotIds"
+      ],
+      "args": [
+        "self",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardwareOnHost_create",
+      "params": [
+        "hostId",
+        "hardwareClass",
+        "*firstseen",
+        "*lastseen",
+        "*state",
+        "**kwargs"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "hardwareClass",
+        "firstseen",
+        "lastseen",
+        "state"
+      ],
+      "varargs": null,
+      "keywords": "kwargs",
+      "defaults": [
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardwareOnHost_createObjects",
+      "params": [
+        "auditHardwareOnHosts"
+      ],
+      "args": [
+        "self",
+        "auditHardwareOnHosts"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardwareOnHost_delete",
+      "params": [
+        "hostId",
+        "hardwareClass",
+        "*firstseen",
+        "*lastseen",
+        "*state",
+        "**kwargs"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "hardwareClass",
+        "firstseen",
+        "lastseen",
+        "state"
+      ],
+      "varargs": null,
+      "keywords": "kwargs",
+      "defaults": [
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardwareOnHost_deleteObjects",
+      "params": [
+        "auditHardwareOnHosts"
+      ],
+      "args": [
+        "self",
+        "auditHardwareOnHosts"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardwareOnHost_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardwareOnHost_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardwareOnHost_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardwareOnHost_insertObject",
+      "params": [
+        "auditHardwareOnHost"
+      ],
+      "args": [
+        "self",
+        "auditHardwareOnHost"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardwareOnHost_setObsolete",
+      "params": [
+        "hostId"
+      ],
+      "args": [
+        "self",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardwareOnHost_updateObject",
+      "params": [
+        "auditHardwareOnHost"
+      ],
+      "args": [
+        "self",
+        "auditHardwareOnHost"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardwareOnHost_updateObjects",
+      "params": [
+        "auditHardwareOnHosts"
+      ],
+      "args": [
+        "self",
+        "auditHardwareOnHosts"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardware_create",
+      "params": [
+        "hardwareClass",
+        "**kwargs"
+      ],
+      "args": [
+        "self",
+        "hardwareClass"
+      ],
+      "varargs": null,
+      "keywords": "kwargs",
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardware_createObjects",
+      "params": [
+        "auditHardwares"
+      ],
+      "args": [
+        "self",
+        "auditHardwares"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardware_delete",
+      "params": [
+        "hardwareClass",
+        "**kwargs"
+      ],
+      "args": [
+        "self",
+        "hardwareClass"
+      ],
+      "varargs": null,
+      "keywords": "kwargs",
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardware_deleteObjects",
+      "params": [
+        "auditHardwares"
+      ],
+      "args": [
+        "self",
+        "auditHardwares"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardware_getConfig",
+      "params": [
+        "*language"
+      ],
+      "args": [
+        "self",
+        "language"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardware_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardware_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardware_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardware_insertObject",
+      "params": [
+        "auditHardware"
+      ],
+      "args": [
+        "self",
+        "auditHardware"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardware_updateObject",
+      "params": [
+        "auditHardware"
+      ],
+      "args": [
+        "self",
+        "auditHardware"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditHardware_updateObjects",
+      "params": [
+        "auditHardwares"
+      ],
+      "args": [
+        "self",
+        "auditHardwares"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareOnClient_create",
+      "params": [
+        "name",
+        "version",
+        "subVersion",
+        "language",
+        "architecture",
+        "clientId",
+        "*uninstallString",
+        "*binaryName",
+        "*firstseen",
+        "*lastseen",
+        "*state",
+        "*usageFrequency",
+        "*lastUsed",
+        "*licenseKey"
+      ],
+      "args": [
+        "self",
+        "name",
+        "version",
+        "subVersion",
+        "language",
+        "architecture",
+        "clientId",
+        "uninstallString",
+        "binaryName",
+        "firstseen",
+        "lastseen",
+        "state",
+        "usageFrequency",
+        "lastUsed",
+        "licenseKey"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareOnClient_createObjects",
+      "params": [
+        "auditSoftwareOnClients"
+      ],
+      "args": [
+        "self",
+        "auditSoftwareOnClients"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareOnClient_delete",
+      "params": [
+        "name",
+        "version",
+        "subVersion",
+        "language",
+        "architecture",
+        "clientId"
+      ],
+      "args": [
+        "self",
+        "name",
+        "version",
+        "subVersion",
+        "language",
+        "architecture",
+        "clientId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareOnClient_deleteObjects",
+      "params": [
+        "auditSoftwareOnClients"
+      ],
+      "args": [
+        "self",
+        "auditSoftwareOnClients"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareOnClient_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareOnClient_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareOnClient_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareOnClient_insertObject",
+      "params": [
+        "auditSoftwareOnClient"
+      ],
+      "args": [
+        "self",
+        "auditSoftwareOnClient"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareOnClient_setObsolete",
+      "params": [
+        "clientId"
+      ],
+      "args": [
+        "self",
+        "clientId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareOnClient_updateObject",
+      "params": [
+        "auditSoftwareOnClient"
+      ],
+      "args": [
+        "self",
+        "auditSoftwareOnClient"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareOnClient_updateObjects",
+      "params": [
+        "auditSoftwareOnClients"
+      ],
+      "args": [
+        "self",
+        "auditSoftwareOnClients"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareToLicensePool_create",
+      "params": [
+        "name",
+        "version",
+        "subVersion",
+        "language",
+        "architecture",
+        "licensePoolId"
+      ],
+      "args": [
+        "self",
+        "name",
+        "version",
+        "subVersion",
+        "language",
+        "architecture",
+        "licensePoolId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareToLicensePool_createObjects",
+      "params": [
+        "auditSoftwareToLicensePools"
+      ],
+      "args": [
+        "self",
+        "auditSoftwareToLicensePools"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareToLicensePool_delete",
+      "params": [
+        "name",
+        "version",
+        "subVersion",
+        "language",
+        "architecture",
+        "licensePoolId"
+      ],
+      "args": [
+        "self",
+        "name",
+        "version",
+        "subVersion",
+        "language",
+        "architecture",
+        "licensePoolId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareToLicensePool_deleteObjects",
+      "params": [
+        "auditSoftwareToLicensePools"
+      ],
+      "args": [
+        "self",
+        "auditSoftwareToLicensePools"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareToLicensePool_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareToLicensePool_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareToLicensePool_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareToLicensePool_insertObject",
+      "params": [
+        "auditSoftwareToLicensePool"
+      ],
+      "args": [
+        "self",
+        "auditSoftwareToLicensePool"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareToLicensePool_updateObject",
+      "params": [
+        "auditSoftwareToLicensePool"
+      ],
+      "args": [
+        "self",
+        "auditSoftwareToLicensePool"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftwareToLicensePool_updateObjects",
+      "params": [
+        "auditSoftwareToLicensePools"
+      ],
+      "args": [
+        "self",
+        "auditSoftwareToLicensePools"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftware_create",
+      "params": [
+        "name",
+        "version",
+        "subVersion",
+        "language",
+        "architecture",
+        "*windowsSoftwareId",
+        "*windowsDisplayName",
+        "*windowsDisplayVersion",
+        "*installSize"
+      ],
+      "args": [
+        "self",
+        "name",
+        "version",
+        "subVersion",
+        "language",
+        "architecture",
+        "windowsSoftwareId",
+        "windowsDisplayName",
+        "windowsDisplayVersion",
+        "installSize"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftware_createObjects",
+      "params": [
+        "auditSoftwares"
+      ],
+      "args": [
+        "self",
+        "auditSoftwares"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftware_delete",
+      "params": [
+        "name",
+        "version",
+        "subVersion",
+        "language",
+        "architecture"
+      ],
+      "args": [
+        "self",
+        "name",
+        "version",
+        "subVersion",
+        "language",
+        "architecture"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftware_deleteObjects",
+      "params": [
+        "auditSoftwares"
+      ],
+      "args": [
+        "self",
+        "auditSoftwares"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftware_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftware_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftware_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftware_insertObject",
+      "params": [
+        "auditSoftware"
+      ],
+      "args": [
+        "self",
+        "auditSoftware"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftware_updateObject",
+      "params": [
+        "auditSoftware"
+      ],
+      "args": [
+        "self",
+        "auditSoftware"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "auditSoftware_updateObjects",
+      "params": [
+        "auditSoftwares"
+      ],
+      "args": [
+        "self",
+        "auditSoftwares"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "authenticate",
+      "params": [
+        "username",
+        "password",
+        "*forceGroups",
+        "*auth_type"
+      ],
+      "args": [
+        "self",
+        "username",
+        "password",
+        "forceGroups",
+        "auth_type"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "authenticated",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "backend_createBase",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "backend_deleteBase",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "backend_exit",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "backend_getInterface",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "backend_getLicensingInfo",
+      "params": [
+        "*licenses",
+        "*legacy_modules",
+        "*dates"
+      ],
+      "args": [
+        "self",
+        "licenses",
+        "legacy_modules",
+        "dates"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        false,
+        false,
+        false
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "backend_getOptions",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "backend_getSystemConfiguration",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "backend_info",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "backend_setOptions",
+      "params": [
+        "options"
+      ],
+      "args": [
+        "self",
+        "options"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "changeWANConfig",
+      "params": [
+        "boolean",
+        "clientIds"
+      ],
+      "args": [
+        "self",
+        "boolean",
+        "clientIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "configState_create",
+      "params": [
+        "configId",
+        "objectId",
+        "*values"
+      ],
+      "args": [
+        "self",
+        "configId",
+        "objectId",
+        "values"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "configState_createObjects",
+      "params": [
+        "configStates"
+      ],
+      "args": [
+        "self",
+        "configStates"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "configState_delete",
+      "params": [
+        "configId",
+        "objectId"
+      ],
+      "args": [
+        "self",
+        "configId",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "configState_deleteObjects",
+      "params": [
+        "configStates"
+      ],
+      "args": [
+        "self",
+        "configStates"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "configState_getClientToDepotserver",
+      "params": [
+        "*depotIds",
+        "*clientIds",
+        "*masterOnly",
+        "*productIds"
+      ],
+      "args": [
+        "self",
+        "depotIds",
+        "clientIds",
+        "masterOnly",
+        "productIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        [],
+        true,
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "configState_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "configState_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "configState_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "configState_insertObject",
+      "params": [
+        "configState"
+      ],
+      "args": [
+        "self",
+        "configState"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "configState_updateObject",
+      "params": [
+        "configState"
+      ],
+      "args": [
+        "self",
+        "configState"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "configState_updateObjects",
+      "params": [
+        "configStates"
+      ],
+      "args": [
+        "self",
+        "configStates"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "config_create",
+      "params": [
+        "id",
+        "*description",
+        "*possibleValues",
+        "*defaultValues",
+        "*editable",
+        "*multiValue"
+      ],
+      "args": [
+        "self",
+        "id",
+        "description",
+        "possibleValues",
+        "defaultValues",
+        "editable",
+        "multiValue"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "config_createBool",
+      "params": [
+        "id",
+        "*description",
+        "*defaultValues"
+      ],
+      "args": [
+        "self",
+        "id",
+        "description",
+        "defaultValues"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "config_createObjects",
+      "params": [
+        "configs"
+      ],
+      "args": [
+        "self",
+        "configs"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "config_createUnicode",
+      "params": [
+        "id",
+        "*description",
+        "*possibleValues",
+        "*defaultValues",
+        "*editable",
+        "*multiValue"
+      ],
+      "args": [
+        "self",
+        "id",
+        "description",
+        "possibleValues",
+        "defaultValues",
+        "editable",
+        "multiValue"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "config_delete",
+      "params": [
+        "id"
+      ],
+      "args": [
+        "self",
+        "id"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "config_deleteObjects",
+      "params": [
+        "configs"
+      ],
+      "args": [
+        "self",
+        "configs"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "config_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "config_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "config_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "config_insertObject",
+      "params": [
+        "config"
+      ],
+      "args": [
+        "self",
+        "config"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "config_updateObject",
+      "params": [
+        "config"
+      ],
+      "args": [
+        "self",
+        "config"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "config_updateObjects",
+      "params": [
+        "configs"
+      ],
+      "args": [
+        "self",
+        "configs"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "createClient",
+      "params": [
+        "clientName",
+        "domain",
+        "*description",
+        "*notes",
+        "*ipAddress",
+        "*hardwareAddress"
+      ],
+      "args": [
+        "self",
+        "clientName",
+        "domain",
+        "description",
+        "notes",
+        "ipAddress",
+        "hardwareAddress"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": true,
+      "alternative_method": "host_createOpsiClient"
+    },
+    {
+      "name": "createDepot",
+      "params": [
+        "depotName",
+        "domain",
+        "depotLocalUrl",
+        "depotRemoteUrl",
+        "repositoryLocalUrl",
+        "repositoryRemoteUrl",
+        "network",
+        "*description",
+        "*notes",
+        "*maxBandwidth"
+      ],
+      "args": [
+        "self",
+        "depotName",
+        "domain",
+        "depotLocalUrl",
+        "depotRemoteUrl",
+        "repositoryLocalUrl",
+        "repositoryRemoteUrl",
+        "network",
+        "description",
+        "notes",
+        "maxBandwidth"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        0
+      ],
+      "deprecated": true,
+      "alternative_method": "host_createOpsiDepotserver"
+    },
+    {
+      "name": "createGroup",
+      "params": [
+        "groupId",
+        "*members",
+        "*description",
+        "*parentGroupId"
+      ],
+      "args": [
+        "self",
+        "groupId",
+        "members",
+        "description",
+        "parentGroupId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        "",
+        ""
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "createLicenseContract",
+      "params": [
+        "*licenseContractId",
+        "*partner",
+        "*conclusionDate",
+        "*notificationDate",
+        "*expirationDate",
+        "*notes"
+      ],
+      "args": [
+        "self",
+        "licenseContractId",
+        "partner",
+        "conclusionDate",
+        "notificationDate",
+        "expirationDate",
+        "notes"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "createLicensePool",
+      "params": [
+        "*licensePoolId",
+        "*description",
+        "*productIds",
+        "*windowsSoftwareIds"
+      ],
+      "args": [
+        "self",
+        "licensePoolId",
+        "description",
+        "productIds",
+        "windowsSoftwareIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        "",
+        "",
+        [],
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "createLocalBootProduct",
+      "params": [
+        "productId",
+        "name",
+        "productVersion",
+        "packageVersion",
+        "*licenseRequired",
+        "*setupScript",
+        "*uninstallScript",
+        "*updateScript",
+        "*alwaysScript",
+        "*onceScript",
+        "*priority",
+        "*description",
+        "*advice",
+        "*productClassNames",
+        "*windowsSoftwareIds",
+        "*depotIds"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "name",
+        "productVersion",
+        "packageVersion",
+        "licenseRequired",
+        "setupScript",
+        "uninstallScript",
+        "updateScript",
+        "alwaysScript",
+        "onceScript",
+        "priority",
+        "description",
+        "advice",
+        "productClassNames",
+        "windowsSoftwareIds",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        0,
+        "",
+        "",
+        "",
+        "",
+        "",
+        0,
+        "",
+        "",
+        "localBoot",
+        [],
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "createNetBootProduct",
+      "params": [
+        "productId",
+        "name",
+        "productVersion",
+        "packageVersion",
+        "*licenseRequired",
+        "*setupScript",
+        "*uninstallScript",
+        "*updateScript",
+        "*alwaysScript",
+        "*onceScript",
+        "*priority",
+        "*description",
+        "*advice",
+        "*productClassNames",
+        "*pxeConfigTemplate",
+        "*windowsSoftwareIds",
+        "*depotIds"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "name",
+        "productVersion",
+        "packageVersion",
+        "licenseRequired",
+        "setupScript",
+        "uninstallScript",
+        "updateScript",
+        "alwaysScript",
+        "onceScript",
+        "priority",
+        "description",
+        "advice",
+        "productClassNames",
+        "pxeConfigTemplate",
+        "windowsSoftwareIds",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        0,
+        "",
+        "",
+        "",
+        "",
+        "",
+        0,
+        "",
+        "",
+        "netboot",
+        "",
+        [],
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "createOpsiBase",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "backend_createBase"
+    },
+    {
+      "name": "createProduct",
+      "params": [
+        "productType",
+        "productId",
+        "name",
+        "productVersion",
+        "packageVersion",
+        "*licenseRequired",
+        "*setupScript",
+        "*uninstallScript",
+        "*updateScript",
+        "*alwaysScript",
+        "*onceScript",
+        "*priority",
+        "*description",
+        "*advice",
+        "*productClassNames",
+        "*pxeConfigTemplate",
+        "*windowsSoftwareIds",
+        "*depotIds"
+      ],
+      "args": [
+        "self",
+        "productType",
+        "productId",
+        "name",
+        "productVersion",
+        "packageVersion",
+        "licenseRequired",
+        "setupScript",
+        "uninstallScript",
+        "updateScript",
+        "alwaysScript",
+        "onceScript",
+        "priority",
+        "description",
+        "advice",
+        "productClassNames",
+        "pxeConfigTemplate",
+        "windowsSoftwareIds",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        0,
+        "",
+        "",
+        "",
+        "",
+        "",
+        0,
+        "",
+        "",
+        [],
+        "",
+        [],
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "createProductDependency",
+      "params": [
+        "productId",
+        "action",
+        "*requiredProductId",
+        "*requiredProductClassId",
+        "*requiredAction",
+        "*requiredInstallationStatus",
+        "*requirementType",
+        "*depotIds"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "action",
+        "requiredProductId",
+        "requiredProductClassId",
+        "requiredAction",
+        "requiredInstallationStatus",
+        "requirementType",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "createProductPropertyDefinition",
+      "params": [
+        "productId",
+        "name",
+        "*description",
+        "*defaultValue",
+        "*possibleValues",
+        "*depotIds"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "name",
+        "description",
+        "defaultValue",
+        "possibleValues",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        [],
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "createServer",
+      "params": [
+        "serverName",
+        "domain",
+        "*description",
+        "*notes"
+      ],
+      "args": [
+        "self",
+        "serverName",
+        "domain",
+        "description",
+        "notes"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null
+      ],
+      "deprecated": true,
+      "alternative_method": "host_createOpsiConfigserver"
+    },
+    {
+      "name": "createSoftwareLicense",
+      "params": [
+        "*softwareLicenseId",
+        "*licenseContractId",
+        "*licenseType",
+        "*maxInstallations",
+        "*boundToHost",
+        "*expirationDate"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseId",
+        "licenseContractId",
+        "licenseType",
+        "maxInstallations",
+        "boundToHost",
+        "expirationDate"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "deleteAllSoftwareLicenseUsages",
+      "params": [
+        "hostIds"
+      ],
+      "args": [
+        "self",
+        "hostIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "deleteClient",
+      "params": [
+        "clientId"
+      ],
+      "args": [
+        "self",
+        "clientId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "host_delete"
+    },
+    {
+      "name": "deleteDepot",
+      "params": [
+        "depotId"
+      ],
+      "args": [
+        "self",
+        "depotId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "host_delete"
+    },
+    {
+      "name": "deleteGeneralConfig",
+      "params": [
+        "objectId"
+      ],
+      "args": [
+        "self",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "configState_delete"
+    },
+    {
+      "name": "deleteGroup",
+      "params": [
+        "groupId"
+      ],
+      "args": [
+        "self",
+        "groupId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "group_delete"
+    },
+    {
+      "name": "deleteHardwareInformation",
+      "params": [
+        "hostId"
+      ],
+      "args": [
+        "self",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "auditHardwareOnHost_delete"
+    },
+    {
+      "name": "deleteLicenseContract",
+      "params": [
+        "licenseContractId"
+      ],
+      "args": [
+        "self",
+        "licenseContractId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "deleteLicensePool",
+      "params": [
+        "licensePoolId",
+        "*deleteLicenses"
+      ],
+      "args": [
+        "self",
+        "licensePoolId",
+        "deleteLicenses"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        false
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "deleteProductDependency",
+      "params": [
+        "productId",
+        "*action",
+        "*requiredProductId",
+        "*requiredProductClassId",
+        "*requirementType",
+        "*depotIds"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "action",
+        "requiredProductId",
+        "requiredProductClassId",
+        "requirementType",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        "",
+        "",
+        "",
+        "",
+        []
+      ],
+      "deprecated": true,
+      "alternative_method": null
+    },
+    {
+      "name": "deleteProductPropertyDefinition",
+      "params": [
+        "productId",
+        "name",
+        "*depotIds"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "name",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "deleteProductPropertyDefinitions",
+      "params": [
+        "productId",
+        "*depotIds"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "deleteServer",
+      "params": [
+        "serverId"
+      ],
+      "args": [
+        "self",
+        "serverId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "host_delete"
+    },
+    {
+      "name": "deleteSoftwareInformation",
+      "params": [
+        "hostId"
+      ],
+      "args": [
+        "self",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "auditSoftwareOnClient_delete"
+    },
+    {
+      "name": "deleteSoftwareLicense",
+      "params": [
+        "softwareLicenseId",
+        "*removeFromPools"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseId",
+        "removeFromPools"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        false
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "deleteSoftwareLicenseUsage",
+      "params": [
+        "hostId",
+        "*softwareLicenseId",
+        "*licensePoolId",
+        "*productId",
+        "*windowsSoftwareId"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "softwareLicenseId",
+        "licensePoolId",
+        "productId",
+        "windowsSoftwareId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "depot_createMd5SumFile",
+      "params": [
+        "filename",
+        "md5sumFilename"
+      ],
+      "args": [
+        "self",
+        "filename",
+        "md5sumFilename"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "depot_createZsyncFile",
+      "params": [
+        "filename",
+        "zsyncFilename"
+      ],
+      "args": [
+        "self",
+        "filename",
+        "zsyncFilename"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "depot_getDiskSpaceUsage",
+      "params": [
+        "path"
+      ],
+      "args": [
+        "self",
+        "path"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "depot_getHostRSAPublicKey",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "depot_getMD5Sum",
+      "params": [
+        "filename",
+        "*forceCalculation"
+      ],
+      "args": [
+        "self",
+        "filename",
+        "forceCalculation"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        false
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "depot_installPackage",
+      "params": [
+        "filename",
+        "*force",
+        "*propertyDefaultValues",
+        "*tempDir",
+        "*forceProductId",
+        "*suppressPackageContentFileGeneration"
+      ],
+      "args": [
+        "self",
+        "filename",
+        "force",
+        "propertyDefaultValues",
+        "tempDir",
+        "forceProductId",
+        "suppressPackageContentFileGeneration"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        false,
+        null,
+        null,
+        null,
+        false
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "depot_librsyncDeltaFile",
+      "params": [
+        "filename",
+        "signature",
+        "deltafile"
+      ],
+      "args": [
+        "self",
+        "filename",
+        "signature",
+        "deltafile"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "depot_librsyncPatchFile",
+      "params": [
+        "oldfile",
+        "deltafile",
+        "newfile"
+      ],
+      "args": [
+        "self",
+        "oldfile",
+        "deltafile",
+        "newfile"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "depot_librsyncSignature",
+      "params": [
+        "filename"
+      ],
+      "args": [
+        "self",
+        "filename"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "depot_uninstallPackage",
+      "params": [
+        "productId",
+        "*force",
+        "*deleteFiles"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "force",
+        "deleteFiles"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        false,
+        true
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "dhcpd_deleteHost",
+      "params": [
+        "host"
+      ],
+      "args": [
+        "self",
+        "host"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "dhcpd_updateHost",
+      "params": [
+        "host"
+      ],
+      "args": [
+        "self",
+        "host"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "dispatcher_getBackendNames",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "dispatcher_getConfig",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "exit",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "backend_exit"
+    },
+    {
+      "name": "getAndAssignSoftwareLicenseKey",
+      "params": [
+        "hostId",
+        "*licensePoolId",
+        "*productId",
+        "*windowsSoftwareId"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "licensePoolId",
+        "productId",
+        "windowsSoftwareId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        "",
+        "",
+        ""
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getBackendInfos_listOfHashes",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "dispatcher_getConfig"
+    },
+    {
+      "name": "getClientIDs",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getClientIdByMac",
+      "params": [
+        "mac"
+      ],
+      "args": [
+        "self",
+        "mac"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "host_getIdents"
+    },
+    {
+      "name": "getClientIds_list",
+      "params": [
+        "*serverId",
+        "*depotIds",
+        "*groupId",
+        "*productId",
+        "*installationStatus",
+        "*actionRequest",
+        "*productVersion",
+        "*packageVersion",
+        "*hwFilter"
+      ],
+      "args": [
+        "self",
+        "serverId",
+        "depotIds",
+        "groupId",
+        "productId",
+        "installationStatus",
+        "actionRequest",
+        "productVersion",
+        "packageVersion",
+        "hwFilter"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        [],
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": true,
+      "alternative_method": "getClientIDs"
+    },
+    {
+      "name": "getClients",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getClientsOnDepot",
+      "params": [
+        "depotIds"
+      ],
+      "args": [
+        "self",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getClientsWithActionRequest",
+      "params": [
+        "actionRequests"
+      ],
+      "args": [
+        "self",
+        "actionRequests"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getClientsWithOutdatedProduct",
+      "params": [
+        "productId"
+      ],
+      "args": [
+        "self",
+        "productId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getClientsWithProducts",
+      "params": [
+        "productIds",
+        "*installationStatus"
+      ],
+      "args": [
+        "self",
+        "productIds",
+        "installationStatus"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getClients_listOfHashes",
+      "params": [
+        "*serverId",
+        "*depotIds",
+        "*groupId",
+        "*productId",
+        "*installationStatus",
+        "*actionRequest",
+        "*productVersion",
+        "*packageVersion",
+        "*hwFilter"
+      ],
+      "args": [
+        "self",
+        "serverId",
+        "depotIds",
+        "groupId",
+        "productId",
+        "installationStatus",
+        "actionRequest",
+        "productVersion",
+        "packageVersion",
+        "hwFilter"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        [],
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": true,
+      "alternative_method": "getClients"
+    },
+    {
+      "name": "getData",
+      "params": [
+        "query"
+      ],
+      "args": [
+        "self",
+        "query"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getDepotId",
+      "params": [
+        "clientId"
+      ],
+      "args": [
+        "self",
+        "clientId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getDepotIds_list",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getDepotSelectionAlgorithm",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getDepotSelectionAlgorithmByLatency",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getDepotSelectionAlgorithmByMasterDepotAndLatency",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getDepotSelectionAlgorithmByNetworkAddress",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getDepotSelectionAlgorithmByNetworkAddressBestMatch",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getDepotSelectionAlgorithmByRandom",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getDepot_hash",
+      "params": [
+        "depotId"
+      ],
+      "args": [
+        "self",
+        "depotId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getDiskSpaceUsage",
+      "params": [
+        "path"
+      ],
+      "args": [
+        "self",
+        "path"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getDomain",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getGeneralConfigValue",
+      "params": [
+        "key",
+        "*objectId"
+      ],
+      "args": [
+        "self",
+        "key",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": true,
+      "alternative_method": "configState_getObjects"
+    },
+    {
+      "name": "getGeneralConfig_hash",
+      "params": [
+        "*objectId"
+      ],
+      "args": [
+        "self",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": true,
+      "alternative_method": "configState_getObjects"
+    },
+    {
+      "name": "getGroupIds_list",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getHardwareAuditDataCount",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getHardwareInformation_hash",
+      "params": [
+        "hostId"
+      ],
+      "args": [
+        "self",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "auditHardwareOnHost_getObjects"
+    },
+    {
+      "name": "getHostGroupTree_hash",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getHostId",
+      "params": [
+        "hostname"
+      ],
+      "args": [
+        "self",
+        "hostname"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getHostRSAPublicKey",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getHost_hash",
+      "params": [
+        "hostId"
+      ],
+      "args": [
+        "self",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getInstallableLocalBootProductIds_list",
+      "params": [
+        "clientId"
+      ],
+      "args": [
+        "self",
+        "clientId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getInstallableNetBootProductIds_list",
+      "params": [
+        "clientId"
+      ],
+      "args": [
+        "self",
+        "clientId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getInstallableProductIds_list",
+      "params": [
+        "clientId"
+      ],
+      "args": [
+        "self",
+        "clientId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getInstalledLocalBootProductIds_list",
+      "params": [
+        "objectId"
+      ],
+      "args": [
+        "self",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getInstalledNetBootProductIds_list",
+      "params": [
+        "objectId"
+      ],
+      "args": [
+        "self",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getInstalledProductIds_list",
+      "params": [
+        "objectId"
+      ],
+      "args": [
+        "self",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getIpAddress",
+      "params": [
+        "hostId"
+      ],
+      "args": [
+        "self",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "host_getObjects"
+    },
+    {
+      "name": "getKioskProductInfosForClient",
+      "params": [
+        "clientId",
+        "*addConfigs"
+      ],
+      "args": [
+        "self",
+        "clientId",
+        "addConfigs"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        false
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getLicenseContractIds_list",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getLicenseContract_hash",
+      "params": [
+        "licenseContractId"
+      ],
+      "args": [
+        "self",
+        "licenseContractId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getLicenseContracts_listOfHashes",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getLicenseKey",
+      "params": [
+        "productId",
+        "clientId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "clientId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": null
+    },
+    {
+      "name": "getLicensePoolId",
+      "params": [
+        "*productId",
+        "*windowsSoftwareId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "windowsSoftwareId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        "",
+        ""
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getLicensePoolIds_list",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getLicensePool_hash",
+      "params": [
+        "licensePoolId"
+      ],
+      "args": [
+        "self",
+        "licensePoolId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getLicensePools_listOfHashes",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getLicenseStatistics_hash",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getLocalBootProductIds_list",
+      "params": [
+        "*objectId",
+        "*installationStatus"
+      ],
+      "args": [
+        "self",
+        "objectId",
+        "installationStatus"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getLocalBootProductStates_hash",
+      "params": [
+        "*objectIds",
+        "*options"
+      ],
+      "args": [
+        "self",
+        "objectIds",
+        "options"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        {}
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getMD5Sum",
+      "params": [
+        "filename"
+      ],
+      "args": [
+        "self",
+        "filename"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getMacAddress",
+      "params": [
+        "hostId"
+      ],
+      "args": [
+        "self",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getMacAddresses_list",
+      "params": [
+        "hostId"
+      ],
+      "args": [
+        "self",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getNetBootProductIds_list",
+      "params": [
+        "*objectId",
+        "*installationStatus"
+      ],
+      "args": [
+        "self",
+        "objectId",
+        "installationStatus"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getNetBootProductStates_hash",
+      "params": [
+        "*objectIds",
+        "*options"
+      ],
+      "args": [
+        "self",
+        "objectIds",
+        "options"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        {}
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getNetworkConfigValue",
+      "params": [
+        "key",
+        "*objectId"
+      ],
+      "args": [
+        "self",
+        "key",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": true,
+      "alternative_method": null
+    },
+    {
+      "name": "getNetworkConfig_hash",
+      "params": [
+        "*objectId"
+      ],
+      "args": [
+        "self",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": true,
+      "alternative_method": null
+    },
+    {
+      "name": "getOpsiCACert",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getOpsiHWAuditConf",
+      "params": [
+        "*locale"
+      ],
+      "args": [
+        "self",
+        "locale"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": true,
+      "alternative_method": "auditHardware_getConfig"
+    },
+    {
+      "name": "getOpsiHostKey",
+      "params": [
+        "hostId"
+      ],
+      "args": [
+        "self",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getOpsiInformation_hash",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "backend_info"
+    },
+    {
+      "name": "getOrCreateSoftwareLicenseUsage_hash",
+      "params": [
+        "hostId",
+        "*licensePoolId",
+        "*productId",
+        "*windowsSoftwareId"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "licensePoolId",
+        "productId",
+        "windowsSoftwareId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        "",
+        "",
+        ""
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getPcpatchPassword",
+      "params": [
+        "hostId"
+      ],
+      "args": [
+        "self",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getPossibleImagefileValuesForHostGroup",
+      "params": [
+        "groupId"
+      ],
+      "args": [
+        "self",
+        "groupId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getPossibleMethods_listOfHashes",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "backend_getInterface"
+    },
+    {
+      "name": "getPossibleProductActions_hash",
+      "params": [
+        "*depotId"
+      ],
+      "args": [
+        "self",
+        "depotId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getPossibleProductActions_list",
+      "params": [
+        "*productId",
+        "*depotId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "depotId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProductActionRequests_listOfHashes",
+      "params": [
+        "clientId",
+        "*options"
+      ],
+      "args": [
+        "self",
+        "clientId",
+        "options"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProductDependencies_listOfHashes",
+      "params": [
+        "*productId",
+        "*depotId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "depotId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProductIds_list",
+      "params": [
+        "*productType",
+        "*objectId",
+        "*installationStatus"
+      ],
+      "args": [
+        "self",
+        "productType",
+        "objectId",
+        "installationStatus"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProductInstallationStatus_hash",
+      "params": [
+        "productId",
+        "objectId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProductInstallationStatus_listOfHashes",
+      "params": [
+        "objectId"
+      ],
+      "args": [
+        "self",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProductLocks_hash",
+      "params": [
+        "*depotIds"
+      ],
+      "args": [
+        "self",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProductOrdering",
+      "params": [
+        "depotId",
+        "*sortAlgorithm"
+      ],
+      "args": [
+        "self",
+        "depotId",
+        "sortAlgorithm"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProductProperties_hash",
+      "params": [
+        "productId",
+        "*objectId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProductPropertyDefinitions_hash",
+      "params": [
+        "*depotId"
+      ],
+      "args": [
+        "self",
+        "depotId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProductPropertyDefinitions_listOfHashes",
+      "params": [
+        "productId",
+        "*depotId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "depotId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProductStates_hash",
+      "params": [
+        "*objectIds",
+        "*options"
+      ],
+      "args": [
+        "self",
+        "objectIds",
+        "options"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        {}
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProduct_hash",
+      "params": [
+        "productId",
+        "*depotId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "depotId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProducts_hash",
+      "params": [
+        "*depotIds"
+      ],
+      "args": [
+        "self",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProducts_listOfHashes",
+      "params": [
+        "*depotId"
+      ],
+      "args": [
+        "self",
+        "depotId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProvidedLocalBootProductIds_list",
+      "params": [
+        "depotId"
+      ],
+      "args": [
+        "self",
+        "depotId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getProvidedNetBootProductIds_list",
+      "params": [
+        "depotId"
+      ],
+      "args": [
+        "self",
+        "depotId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getRawData",
+      "params": [
+        "query"
+      ],
+      "args": [
+        "self",
+        "query"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getServerId",
+      "params": [
+        "clientId"
+      ],
+      "args": [
+        "self",
+        "clientId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getServerIds_list",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getServiceTime",
+      "params": [
+        "*utctime"
+      ],
+      "args": [
+        "self",
+        "utctime"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        false
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getSoftwareAuditDataCount",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getSoftwareInformation_hash",
+      "params": [
+        "hostId"
+      ],
+      "args": [
+        "self",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "auditSoftwareOnClient_getObjects"
+    },
+    {
+      "name": "getSoftwareInformation_listOfHashes",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "auditSoftwareOnClient_getObjects"
+    },
+    {
+      "name": "getSoftwareLicenseIds_list",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getSoftwareLicenseUsages_listOfHashes",
+      "params": [
+        "*hostIds",
+        "*licensePoolIds"
+      ],
+      "args": [
+        "self",
+        "hostIds",
+        "licensePoolIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getSoftwareLicense_hash",
+      "params": [
+        "softwareLicenseId"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "getSoftwareLicenses_listOfHashes",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "get_jsonrpc_backend",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "group_createHostGroup",
+      "params": [
+        "id",
+        "*description",
+        "*notes",
+        "*parentGroupId"
+      ],
+      "args": [
+        "self",
+        "id",
+        "description",
+        "notes",
+        "parentGroupId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "group_createObjects",
+      "params": [
+        "groups"
+      ],
+      "args": [
+        "self",
+        "groups"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "group_createProductGroup",
+      "params": [
+        "id",
+        "*description",
+        "*notes",
+        "*parentGroupId"
+      ],
+      "args": [
+        "self",
+        "id",
+        "description",
+        "notes",
+        "parentGroupId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "group_delete",
+      "params": [
+        "id"
+      ],
+      "args": [
+        "self",
+        "id"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "group_deleteObjects",
+      "params": [
+        "groups"
+      ],
+      "args": [
+        "self",
+        "groups"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "group_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "group_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "group_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "group_insertObject",
+      "params": [
+        "group"
+      ],
+      "args": [
+        "self",
+        "group"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "group_rename",
+      "params": [
+        "oldGroupId",
+        "newGroupId"
+      ],
+      "args": [
+        "self",
+        "oldGroupId",
+        "newGroupId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "group_updateObject",
+      "params": [
+        "group"
+      ],
+      "args": [
+        "self",
+        "group"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "group_updateObjects",
+      "params": [
+        "groups"
+      ],
+      "args": [
+        "self",
+        "groups"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "groupname_exists",
+      "params": [
+        "groupId"
+      ],
+      "args": [
+        "self",
+        "groupId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControlSafe_execute",
+      "params": [
+        "command",
+        "*hostIds",
+        "*waitForEnding",
+        "*captureStderr",
+        "*encoding",
+        "*timeout"
+      ],
+      "args": [
+        "self",
+        "command",
+        "hostIds",
+        "waitForEnding",
+        "captureStderr",
+        "encoding",
+        "timeout"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        true,
+        true,
+        null,
+        300
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControlSafe_fireEvent",
+      "params": [
+        "event",
+        "*hostIds"
+      ],
+      "args": [
+        "self",
+        "event",
+        "hostIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControlSafe_getActiveSessions",
+      "params": [
+        "*hostIds"
+      ],
+      "args": [
+        "self",
+        "hostIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControlSafe_opsiclientdRpc",
+      "params": [
+        "method",
+        "*params",
+        "*hostIds",
+        "*timeout"
+      ],
+      "args": [
+        "self",
+        "method",
+        "params",
+        "hostIds",
+        "timeout"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        [],
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControlSafe_reachable",
+      "params": [
+        "*hostIds",
+        "*timeout"
+      ],
+      "args": [
+        "self",
+        "hostIds",
+        "timeout"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControlSafe_reboot",
+      "params": [
+        "*hostIds"
+      ],
+      "args": [
+        "self",
+        "hostIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControlSafe_showPopup",
+      "params": [
+        "message",
+        "*hostIds",
+        "*mode",
+        "*addTimestamp",
+        "*displaySeconds"
+      ],
+      "args": [
+        "self",
+        "message",
+        "hostIds",
+        "mode",
+        "addTimestamp",
+        "displaySeconds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        "prepend",
+        true,
+        0
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControlSafe_shutdown",
+      "params": [
+        "*hostIds"
+      ],
+      "args": [
+        "self",
+        "hostIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControlSafe_start",
+      "params": [
+        "*hostIds"
+      ],
+      "args": [
+        "self",
+        "hostIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControlSafe_uptime",
+      "params": [
+        "*hostIds"
+      ],
+      "args": [
+        "self",
+        "hostIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControl_execute",
+      "params": [
+        "command",
+        "*hostIds",
+        "*waitForEnding",
+        "*captureStderr",
+        "*encoding",
+        "*timeout"
+      ],
+      "args": [
+        "self",
+        "command",
+        "hostIds",
+        "waitForEnding",
+        "captureStderr",
+        "encoding",
+        "timeout"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        true,
+        true,
+        null,
+        300
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControl_fireEvent",
+      "params": [
+        "event",
+        "*hostIds"
+      ],
+      "args": [
+        "self",
+        "event",
+        "hostIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControl_getActiveSessions",
+      "params": [
+        "*hostIds"
+      ],
+      "args": [
+        "self",
+        "hostIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControl_opsiclientdRpc",
+      "params": [
+        "method",
+        "*params",
+        "*hostIds",
+        "*timeout"
+      ],
+      "args": [
+        "self",
+        "method",
+        "params",
+        "hostIds",
+        "timeout"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        [],
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControl_reachable",
+      "params": [
+        "*hostIds",
+        "*timeout"
+      ],
+      "args": [
+        "self",
+        "hostIds",
+        "timeout"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControl_reboot",
+      "params": [
+        "*hostIds"
+      ],
+      "args": [
+        "self",
+        "hostIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControl_showPopup",
+      "params": [
+        "message",
+        "*hostIds",
+        "*mode",
+        "*addTimestamp",
+        "*displaySeconds"
+      ],
+      "args": [
+        "self",
+        "message",
+        "hostIds",
+        "mode",
+        "addTimestamp",
+        "displaySeconds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        [],
+        "prepend",
+        true,
+        0
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControl_shutdown",
+      "params": [
+        "*hostIds"
+      ],
+      "args": [
+        "self",
+        "hostIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControl_start",
+      "params": [
+        "*hostIds"
+      ],
+      "args": [
+        "self",
+        "hostIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "hostControl_uptime",
+      "params": [
+        "*hostIds"
+      ],
+      "args": [
+        "self",
+        "hostIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_createObjects",
+      "params": [
+        "hosts"
+      ],
+      "args": [
+        "self",
+        "hosts"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_createOpsiClient",
+      "params": [
+        "id",
+        "*opsiHostKey",
+        "*description",
+        "*notes",
+        "*hardwareAddress",
+        "*ipAddress",
+        "*inventoryNumber",
+        "*oneTimePassword",
+        "*created",
+        "*lastSeen"
+      ],
+      "args": [
+        "self",
+        "id",
+        "opsiHostKey",
+        "description",
+        "notes",
+        "hardwareAddress",
+        "ipAddress",
+        "inventoryNumber",
+        "oneTimePassword",
+        "created",
+        "lastSeen"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_createOpsiConfigserver",
+      "params": [
+        "id",
+        "*opsiHostKey",
+        "*depotLocalUrl",
+        "*depotRemoteUrl",
+        "*depotWebdavUrl",
+        "*repositoryLocalUrl",
+        "*repositoryRemoteUrl",
+        "*description",
+        "*notes",
+        "*hardwareAddress",
+        "*ipAddress",
+        "*inventoryNumber",
+        "*networkAddress",
+        "*maxBandwidth",
+        "*isMasterDepot",
+        "*masterDepotId",
+        "*workbenchLocalUrl",
+        "*workbenchRemoteUrl"
+      ],
+      "args": [
+        "self",
+        "id",
+        "opsiHostKey",
+        "depotLocalUrl",
+        "depotRemoteUrl",
+        "depotWebdavUrl",
+        "repositoryLocalUrl",
+        "repositoryRemoteUrl",
+        "description",
+        "notes",
+        "hardwareAddress",
+        "ipAddress",
+        "inventoryNumber",
+        "networkAddress",
+        "maxBandwidth",
+        "isMasterDepot",
+        "masterDepotId",
+        "workbenchLocalUrl",
+        "workbenchRemoteUrl"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_createOpsiDepotserver",
+      "params": [
+        "id",
+        "*opsiHostKey",
+        "*depotLocalUrl",
+        "*depotRemoteUrl",
+        "*depotWebdavUrl",
+        "*repositoryLocalUrl",
+        "*repositoryRemoteUrl",
+        "*description",
+        "*notes",
+        "*hardwareAddress",
+        "*ipAddress",
+        "*inventoryNumber",
+        "*networkAddress",
+        "*maxBandwidth",
+        "*isMasterDepot",
+        "*masterDepotId",
+        "*workbenchLocalUrl",
+        "*workbenchRemoteUrl"
+      ],
+      "args": [
+        "self",
+        "id",
+        "opsiHostKey",
+        "depotLocalUrl",
+        "depotRemoteUrl",
+        "depotWebdavUrl",
+        "repositoryLocalUrl",
+        "repositoryRemoteUrl",
+        "description",
+        "notes",
+        "hardwareAddress",
+        "ipAddress",
+        "inventoryNumber",
+        "networkAddress",
+        "maxBandwidth",
+        "isMasterDepot",
+        "masterDepotId",
+        "workbenchLocalUrl",
+        "workbenchRemoteUrl"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_delete",
+      "params": [
+        "id"
+      ],
+      "args": [
+        "self",
+        "id"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_deleteObjects",
+      "params": [
+        "hosts"
+      ],
+      "args": [
+        "self",
+        "hosts"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_getTLSCertificate",
+      "params": [
+        "hostId"
+      ],
+      "args": [
+        "self",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_insertObject",
+      "params": [
+        "host"
+      ],
+      "args": [
+        "self",
+        "host"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_renameOpsiClient",
+      "params": [
+        "id",
+        "newId"
+      ],
+      "args": [
+        "self",
+        "id",
+        "newId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_renameOpsiDepotserver",
+      "params": [
+        "oldId",
+        "newId"
+      ],
+      "args": [
+        "self",
+        "oldId",
+        "newId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_updateObject",
+      "params": [
+        "host"
+      ],
+      "args": [
+        "self",
+        "host"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "host_updateObjects",
+      "params": [
+        "hosts"
+      ],
+      "args": [
+        "self",
+        "hosts"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "librsyncSignature",
+      "params": [
+        "filename"
+      ],
+      "args": [
+        "self",
+        "filename"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseContract_create",
+      "params": [
+        "id",
+        "*description",
+        "*notes",
+        "*partner",
+        "*conclusionDate",
+        "*notificationDate",
+        "*expirationDate"
+      ],
+      "args": [
+        "self",
+        "id",
+        "description",
+        "notes",
+        "partner",
+        "conclusionDate",
+        "notificationDate",
+        "expirationDate"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseContract_createObjects",
+      "params": [
+        "licenseContracts"
+      ],
+      "args": [
+        "self",
+        "licenseContracts"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseContract_delete",
+      "params": [
+        "id"
+      ],
+      "args": [
+        "self",
+        "id"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseContract_deleteObjects",
+      "params": [
+        "licenseContracts"
+      ],
+      "args": [
+        "self",
+        "licenseContracts"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseContract_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseContract_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseContract_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseContract_insertObject",
+      "params": [
+        "licenseContract"
+      ],
+      "args": [
+        "self",
+        "licenseContract"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseContract_updateObject",
+      "params": [
+        "licenseContract"
+      ],
+      "args": [
+        "self",
+        "licenseContract"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseContract_updateObjects",
+      "params": [
+        "licenseContracts"
+      ],
+      "args": [
+        "self",
+        "licenseContracts"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseOnClient_create",
+      "params": [
+        "softwareLicenseId",
+        "licensePoolId",
+        "clientId",
+        "*licenseKey",
+        "*notes"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseId",
+        "licensePoolId",
+        "clientId",
+        "licenseKey",
+        "notes"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseOnClient_createObjects",
+      "params": [
+        "licenseOnClients"
+      ],
+      "args": [
+        "self",
+        "licenseOnClients"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseOnClient_delete",
+      "params": [
+        "softwareLicenseId",
+        "licensePoolId",
+        "clientId"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseId",
+        "licensePoolId",
+        "clientId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseOnClient_deleteObjects",
+      "params": [
+        "licenseOnClients"
+      ],
+      "args": [
+        "self",
+        "licenseOnClients"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseOnClient_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseOnClient_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseOnClient_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseOnClient_getOrCreateObject",
+      "params": [
+        "clientId",
+        "*licensePoolId",
+        "*productId",
+        "*windowsSoftwareId"
+      ],
+      "args": [
+        "self",
+        "clientId",
+        "licensePoolId",
+        "productId",
+        "windowsSoftwareId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseOnClient_insertObject",
+      "params": [
+        "licenseOnClient"
+      ],
+      "args": [
+        "self",
+        "licenseOnClient"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseOnClient_updateObject",
+      "params": [
+        "licenseOnClient"
+      ],
+      "args": [
+        "self",
+        "licenseOnClient"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licenseOnClient_updateObjects",
+      "params": [
+        "licenseOnClients"
+      ],
+      "args": [
+        "self",
+        "licenseOnClients"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licensePool_create",
+      "params": [
+        "id",
+        "*description",
+        "*productIds"
+      ],
+      "args": [
+        "self",
+        "id",
+        "description",
+        "productIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licensePool_createObjects",
+      "params": [
+        "licensePools"
+      ],
+      "args": [
+        "self",
+        "licensePools"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licensePool_delete",
+      "params": [
+        "id"
+      ],
+      "args": [
+        "self",
+        "id"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licensePool_deleteObjects",
+      "params": [
+        "licensePools"
+      ],
+      "args": [
+        "self",
+        "licensePools"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licensePool_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licensePool_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licensePool_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licensePool_insertObject",
+      "params": [
+        "licensePool"
+      ],
+      "args": [
+        "self",
+        "licensePool"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licensePool_updateObject",
+      "params": [
+        "licensePool"
+      ],
+      "args": [
+        "self",
+        "licensePool"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "licensePool_updateObjects",
+      "params": [
+        "licensePools"
+      ],
+      "args": [
+        "self",
+        "licensePools"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "lockProduct",
+      "params": [
+        "productId",
+        "*depotIds"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "log_read",
+      "params": [
+        "logType",
+        "*objectId",
+        "*maxSize"
+      ],
+      "args": [
+        "self",
+        "logType",
+        "objectId",
+        "maxSize"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        0
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "log_write",
+      "params": [
+        "logType",
+        "data",
+        "*objectId",
+        "*append"
+      ],
+      "args": [
+        "self",
+        "logType",
+        "data",
+        "objectId",
+        "append"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        false
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "objectToGroup_create",
+      "params": [
+        "groupType",
+        "groupId",
+        "objectId"
+      ],
+      "args": [
+        "self",
+        "groupType",
+        "groupId",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "objectToGroup_createObjects",
+      "params": [
+        "objectToGroups"
+      ],
+      "args": [
+        "self",
+        "objectToGroups"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "objectToGroup_delete",
+      "params": [
+        "groupType",
+        "groupId",
+        "objectId"
+      ],
+      "args": [
+        "self",
+        "groupType",
+        "groupId",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "objectToGroup_deleteObjects",
+      "params": [
+        "objectToGroups"
+      ],
+      "args": [
+        "self",
+        "objectToGroups"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "objectToGroup_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "objectToGroup_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "objectToGroup_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "objectToGroup_insertObject",
+      "params": [
+        "objectToGroup"
+      ],
+      "args": [
+        "self",
+        "objectToGroup"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "objectToGroup_updateObject",
+      "params": [
+        "objectToGroup"
+      ],
+      "args": [
+        "self",
+        "objectToGroup"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "objectToGroup_updateObjects",
+      "params": [
+        "objectToGroups"
+      ],
+      "args": [
+        "self",
+        "objectToGroups"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "opsipxeconfd_updatePXEBootConfiguration",
+      "params": [
+        "clientId",
+        "*data"
+      ],
+      "args": [
+        "self",
+        "clientId",
+        "data"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "powerOnHost",
+      "params": [
+        "hostId"
+      ],
+      "args": [
+        "self",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "hostControl_start"
+    },
+    {
+      "name": "productDependency_create",
+      "params": [
+        "productId",
+        "productVersion",
+        "packageVersion",
+        "productAction",
+        "requiredProductId",
+        "*requiredProductVersion",
+        "*requiredPackageVersion",
+        "*requiredAction",
+        "*requiredInstallationStatus",
+        "*requirementType"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "productVersion",
+        "packageVersion",
+        "productAction",
+        "requiredProductId",
+        "requiredProductVersion",
+        "requiredPackageVersion",
+        "requiredAction",
+        "requiredInstallationStatus",
+        "requirementType"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productDependency_createObjects",
+      "params": [
+        "productDependencies"
+      ],
+      "args": [
+        "self",
+        "productDependencies"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productDependency_delete",
+      "params": [
+        "productId",
+        "productVersion",
+        "packageVersion",
+        "productAction",
+        "requiredProductId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "productVersion",
+        "packageVersion",
+        "productAction",
+        "requiredProductId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productDependency_deleteObjects",
+      "params": [
+        "productDependencies"
+      ],
+      "args": [
+        "self",
+        "productDependencies"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productDependency_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productDependency_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productDependency_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productDependency_insertObject",
+      "params": [
+        "productDependency"
+      ],
+      "args": [
+        "self",
+        "productDependency"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productDependency_updateObject",
+      "params": [
+        "productDependency"
+      ],
+      "args": [
+        "self",
+        "productDependency"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productDependency_updateObjects",
+      "params": [
+        "productDependencies"
+      ],
+      "args": [
+        "self",
+        "productDependencies"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnClient_addDependencies",
+      "params": [
+        "productOnClients"
+      ],
+      "args": [
+        "self",
+        "productOnClients"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnClient_create",
+      "params": [
+        "productId",
+        "productType",
+        "clientId",
+        "*installationStatus",
+        "*actionRequest",
+        "*lastAction",
+        "*actionProgress",
+        "*actionResult",
+        "*productVersion",
+        "*packageVersion",
+        "*modificationTime"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "productType",
+        "clientId",
+        "installationStatus",
+        "actionRequest",
+        "lastAction",
+        "actionProgress",
+        "actionResult",
+        "productVersion",
+        "packageVersion",
+        "modificationTime"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnClient_createObjects",
+      "params": [
+        "productOnClients"
+      ],
+      "args": [
+        "self",
+        "productOnClients"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnClient_delete",
+      "params": [
+        "productId",
+        "clientId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "clientId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnClient_deleteObjects",
+      "params": [
+        "productOnClients"
+      ],
+      "args": [
+        "self",
+        "productOnClients"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnClient_generateSequence",
+      "params": [
+        "productOnClients"
+      ],
+      "args": [
+        "self",
+        "productOnClients"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnClient_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnClient_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnClient_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnClient_insertObject",
+      "params": [
+        "productOnClient"
+      ],
+      "args": [
+        "self",
+        "productOnClient"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnClient_updateObject",
+      "params": [
+        "productOnClient"
+      ],
+      "args": [
+        "self",
+        "productOnClient"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnClient_updateObjects",
+      "params": [
+        "productOnClients"
+      ],
+      "args": [
+        "self",
+        "productOnClients"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnDepot_create",
+      "params": [
+        "productId",
+        "productType",
+        "productVersion",
+        "packageVersion",
+        "depotId",
+        "*locked"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "productType",
+        "productVersion",
+        "packageVersion",
+        "depotId",
+        "locked"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnDepot_createObjects",
+      "params": [
+        "productOnDepots"
+      ],
+      "args": [
+        "self",
+        "productOnDepots"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnDepot_delete",
+      "params": [
+        "productId",
+        "depotId",
+        "*productVersion",
+        "*packageVersion"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "depotId",
+        "productVersion",
+        "packageVersion"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnDepot_deleteObjects",
+      "params": [
+        "productOnDepots"
+      ],
+      "args": [
+        "self",
+        "productOnDepots"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnDepot_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnDepot_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnDepot_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnDepot_insertObject",
+      "params": [
+        "productOnDepot"
+      ],
+      "args": [
+        "self",
+        "productOnDepot"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnDepot_updateObject",
+      "params": [
+        "productOnDepot"
+      ],
+      "args": [
+        "self",
+        "productOnDepot"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productOnDepot_updateObjects",
+      "params": [
+        "productOnDepots"
+      ],
+      "args": [
+        "self",
+        "productOnDepots"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productPropertyState_create",
+      "params": [
+        "productId",
+        "propertyId",
+        "objectId",
+        "*values"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "propertyId",
+        "objectId",
+        "values"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productPropertyState_createObjects",
+      "params": [
+        "productPropertyStates"
+      ],
+      "args": [
+        "self",
+        "productPropertyStates"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productPropertyState_delete",
+      "params": [
+        "productId",
+        "propertyId",
+        "objectId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "propertyId",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productPropertyState_deleteObjects",
+      "params": [
+        "productPropertyStates"
+      ],
+      "args": [
+        "self",
+        "productPropertyStates"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productPropertyState_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productPropertyState_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productPropertyState_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productPropertyState_insertObject",
+      "params": [
+        "productPropertyState"
+      ],
+      "args": [
+        "self",
+        "productPropertyState"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productPropertyState_updateObject",
+      "params": [
+        "productPropertyState"
+      ],
+      "args": [
+        "self",
+        "productPropertyState"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productPropertyState_updateObjects",
+      "params": [
+        "productPropertyStates"
+      ],
+      "args": [
+        "self",
+        "productPropertyStates"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productProperty_create",
+      "params": [
+        "productId",
+        "productVersion",
+        "packageVersion",
+        "propertyId",
+        "*description",
+        "*possibleValues",
+        "*defaultValues",
+        "*editable",
+        "*multiValue"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "productVersion",
+        "packageVersion",
+        "propertyId",
+        "description",
+        "possibleValues",
+        "defaultValues",
+        "editable",
+        "multiValue"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productProperty_createBool",
+      "params": [
+        "productId",
+        "productVersion",
+        "packageVersion",
+        "propertyId",
+        "*description",
+        "*defaultValues"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "productVersion",
+        "packageVersion",
+        "propertyId",
+        "description",
+        "defaultValues"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productProperty_createObjects",
+      "params": [
+        "productProperties"
+      ],
+      "args": [
+        "self",
+        "productProperties"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productProperty_createUnicode",
+      "params": [
+        "productId",
+        "productVersion",
+        "packageVersion",
+        "propertyId",
+        "*description",
+        "*possibleValues",
+        "*defaultValues",
+        "*editable",
+        "*multiValue"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "productVersion",
+        "packageVersion",
+        "propertyId",
+        "description",
+        "possibleValues",
+        "defaultValues",
+        "editable",
+        "multiValue"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productProperty_delete",
+      "params": [
+        "productId",
+        "productVersion",
+        "packageVersion",
+        "propertyId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "productVersion",
+        "packageVersion",
+        "propertyId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productProperty_deleteObjects",
+      "params": [
+        "productProperties"
+      ],
+      "args": [
+        "self",
+        "productProperties"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productProperty_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productProperty_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productProperty_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productProperty_insertObject",
+      "params": [
+        "productProperty"
+      ],
+      "args": [
+        "self",
+        "productProperty"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productProperty_updateObject",
+      "params": [
+        "productProperty"
+      ],
+      "args": [
+        "self",
+        "productProperty"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "productProperty_updateObjects",
+      "params": [
+        "productProperties"
+      ],
+      "args": [
+        "self",
+        "productProperties"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "product_createLocalboot",
+      "params": [
+        "id",
+        "productVersion",
+        "packageVersion",
+        "*name",
+        "*licenseRequired",
+        "*setupScript",
+        "*uninstallScript",
+        "*updateScript",
+        "*alwaysScript",
+        "*onceScript",
+        "*priority",
+        "*description",
+        "*advice",
+        "*changelog",
+        "*productClassIds",
+        "*windowsSoftwareIds"
+      ],
+      "args": [
+        "self",
+        "id",
+        "productVersion",
+        "packageVersion",
+        "name",
+        "licenseRequired",
+        "setupScript",
+        "uninstallScript",
+        "updateScript",
+        "alwaysScript",
+        "onceScript",
+        "priority",
+        "description",
+        "advice",
+        "changelog",
+        "productClassIds",
+        "windowsSoftwareIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "product_createNetboot",
+      "params": [
+        "id",
+        "productVersion",
+        "packageVersion",
+        "*name",
+        "*licenseRequired",
+        "*setupScript",
+        "*uninstallScript",
+        "*updateScript",
+        "*alwaysScript",
+        "*onceScript",
+        "*priority",
+        "*description",
+        "*advice",
+        "*changelog",
+        "*productClassIds",
+        "*windowsSoftwareIds",
+        "*pxeConfigTemplate"
+      ],
+      "args": [
+        "self",
+        "id",
+        "productVersion",
+        "packageVersion",
+        "name",
+        "licenseRequired",
+        "setupScript",
+        "uninstallScript",
+        "updateScript",
+        "alwaysScript",
+        "onceScript",
+        "priority",
+        "description",
+        "advice",
+        "changelog",
+        "productClassIds",
+        "windowsSoftwareIds",
+        "pxeConfigTemplate"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "product_createObjects",
+      "params": [
+        "products"
+      ],
+      "args": [
+        "self",
+        "products"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "product_delete",
+      "params": [
+        "productId",
+        "productVersion",
+        "packageVersion"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "productVersion",
+        "packageVersion"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "product_deleteObjects",
+      "params": [
+        "products"
+      ],
+      "args": [
+        "self",
+        "products"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "product_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "product_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "product_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "product_insertObject",
+      "params": [
+        "product"
+      ],
+      "args": [
+        "self",
+        "product"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "product_updateObject",
+      "params": [
+        "product"
+      ],
+      "args": [
+        "self",
+        "product"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "product_updateObjects",
+      "params": [
+        "products"
+      ],
+      "args": [
+        "self",
+        "products"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "readLog",
+      "params": [
+        "type",
+        "*objectId",
+        "*maxSize"
+      ],
+      "args": [
+        "self",
+        "type",
+        "objectId",
+        "maxSize"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        0
+      ],
+      "deprecated": true,
+      "alternative_method": "log_read"
+    },
+    {
+      "name": "removeProductIdsFromLicensePool",
+      "params": [
+        "productIds",
+        "licensePoolId"
+      ],
+      "args": [
+        "self",
+        "productIds",
+        "licensePoolId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "removeSoftwareLicenseFromLicensePool",
+      "params": [
+        "softwareLicenseId",
+        "licensePoolId"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseId",
+        "licensePoolId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setActionRequestWhereOutdated",
+      "params": [
+        "actionRequest",
+        "productId"
+      ],
+      "args": [
+        "self",
+        "actionRequest",
+        "productId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setActionRequestWhereOutdatedWithDependencies",
+      "params": [
+        "actionRequest",
+        "productId"
+      ],
+      "args": [
+        "self",
+        "actionRequest",
+        "productId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setGeneralConfig",
+      "params": [
+        "config",
+        "*objectId"
+      ],
+      "args": [
+        "self",
+        "config",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": true,
+      "alternative_method": "configState_create"
+    },
+    {
+      "name": "setGeneralConfigValue",
+      "params": [
+        "key",
+        "value",
+        "*objectId"
+      ],
+      "args": [
+        "self",
+        "key",
+        "value",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": true,
+      "alternative_method": "configState_create"
+    },
+    {
+      "name": "setHardwareInformation",
+      "params": [
+        "hostId",
+        "info"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "info"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "auditHardwareOnHost_updateObjects"
+    },
+    {
+      "name": "setHostDescription",
+      "params": [
+        "hostId",
+        "description"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "description"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setHostInventoryNumber",
+      "params": [
+        "hostId",
+        "inventoryNumber"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "inventoryNumber"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setHostLastSeen",
+      "params": [
+        "hostId",
+        "timestamp"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "timestamp"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": null
+    },
+    {
+      "name": "setHostNotes",
+      "params": [
+        "hostId",
+        "notes"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "notes"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setMacAddress",
+      "params": [
+        "hostId",
+        "mac"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "mac"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setMacAddresses",
+      "params": [
+        "hostId",
+        "*macs"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "macs"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setNetworkConfig",
+      "params": [
+        "config",
+        "*objectId"
+      ],
+      "args": [
+        "self",
+        "config",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": true,
+      "alternative_method": "configState_create"
+    },
+    {
+      "name": "setOpsiHostKey",
+      "params": [
+        "hostId",
+        "opsiHostKey"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "opsiHostKey"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setProductActionProgress",
+      "params": [
+        "productId",
+        "hostId",
+        "productActionProgress"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "hostId",
+        "productActionProgress"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setProductActionRequest",
+      "params": [
+        "productId",
+        "clientId",
+        "actionRequest"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "clientId",
+        "actionRequest"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setProductActionRequestForHostGroup",
+      "params": [
+        "hostGroupId",
+        "productId",
+        "actionRequest"
+      ],
+      "args": [
+        "self",
+        "hostGroupId",
+        "productId",
+        "actionRequest"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setProductActionRequestForProductGroup",
+      "params": [
+        "hostGroupId",
+        "productGroupId",
+        "actionRequest"
+      ],
+      "args": [
+        "self",
+        "hostGroupId",
+        "productGroupId",
+        "actionRequest"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setProductActionRequestWithDependencies",
+      "params": [
+        "productId",
+        "clientId",
+        "actionRequest"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "clientId",
+        "actionRequest"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setProductInstallationStatus",
+      "params": [
+        "productId",
+        "objectId",
+        "installationStatus"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "objectId",
+        "installationStatus"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setProductProperties",
+      "params": [
+        "productId",
+        "properties",
+        "*objectId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "properties",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setProductProperty",
+      "params": [
+        "productId",
+        "propertyId",
+        "value",
+        "*objectId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "propertyId",
+        "value",
+        "objectId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setProductPropertyForHostGroup",
+      "params": [
+        "productId",
+        "propertyId",
+        "propertyValue",
+        "groupId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "propertyId",
+        "propertyValue",
+        "groupId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setProductState",
+      "params": [
+        "productId",
+        "objectId",
+        "*installationStatus",
+        "*actionRequest",
+        "*productVersion",
+        "*packageVersion",
+        "*lastStateChange",
+        "*productActionProgress"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "objectId",
+        "installationStatus",
+        "actionRequest",
+        "productVersion",
+        "packageVersion",
+        "lastStateChange",
+        "productActionProgress"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        {}
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setRights",
+      "params": [
+        "*path"
+      ],
+      "args": [
+        "self",
+        "path"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setSoftwareInformation",
+      "params": [
+        "hostId",
+        "info"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "info"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": true,
+      "alternative_method": "auditSoftwareOnClient_updateObjects"
+    },
+    {
+      "name": "setSoftwareLicenseUsage",
+      "params": [
+        "hostId",
+        "licensePoolId",
+        "softwareLicenseId",
+        "*licenseKey",
+        "*notes"
+      ],
+      "args": [
+        "self",
+        "hostId",
+        "licensePoolId",
+        "softwareLicenseId",
+        "licenseKey",
+        "notes"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        "",
+        ""
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setWindowsSoftwareIdsToLicensePool",
+      "params": [
+        "windowsSoftwareIds",
+        "licensePoolId"
+      ],
+      "args": [
+        "self",
+        "windowsSoftwareIds",
+        "licensePoolId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setupWhereFailed",
+      "params": [
+        "productId"
+      ],
+      "args": [
+        "self",
+        "productId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setupWhereInstalled",
+      "params": [
+        "productId"
+      ],
+      "args": [
+        "self",
+        "productId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "setupWhereNotInstalled",
+      "params": [
+        "productId"
+      ],
+      "args": [
+        "self",
+        "productId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicenseToLicensePool_create",
+      "params": [
+        "softwareLicenseId",
+        "licensePoolId",
+        "*licenseKey"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseId",
+        "licensePoolId",
+        "licenseKey"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicenseToLicensePool_createObjects",
+      "params": [
+        "softwareLicenseToLicensePools"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseToLicensePools"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicenseToLicensePool_delete",
+      "params": [
+        "softwareLicenseId",
+        "licensePoolId"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseId",
+        "licensePoolId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicenseToLicensePool_deleteObjects",
+      "params": [
+        "softwareLicenseToLicensePools"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseToLicensePools"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicenseToLicensePool_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicenseToLicensePool_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicenseToLicensePool_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicenseToLicensePool_insertObject",
+      "params": [
+        "softwareLicenseToLicensePool"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseToLicensePool"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicenseToLicensePool_updateObject",
+      "params": [
+        "softwareLicenseToLicensePool"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseToLicensePool"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicenseToLicensePool_updateObjects",
+      "params": [
+        "softwareLicenseToLicensePools"
+      ],
+      "args": [
+        "self",
+        "softwareLicenseToLicensePools"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicense_createConcurrent",
+      "params": [
+        "id",
+        "licenseContractId",
+        "*maxInstallations",
+        "*boundToHost",
+        "*expirationDate"
+      ],
+      "args": [
+        "self",
+        "id",
+        "licenseContractId",
+        "maxInstallations",
+        "boundToHost",
+        "expirationDate"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicense_createOEM",
+      "params": [
+        "id",
+        "licenseContractId",
+        "*maxInstallations",
+        "*boundToHost",
+        "*expirationDate"
+      ],
+      "args": [
+        "self",
+        "id",
+        "licenseContractId",
+        "maxInstallations",
+        "boundToHost",
+        "expirationDate"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicense_createObjects",
+      "params": [
+        "softwareLicenses"
+      ],
+      "args": [
+        "self",
+        "softwareLicenses"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicense_createRetail",
+      "params": [
+        "id",
+        "licenseContractId",
+        "*maxInstallations",
+        "*boundToHost",
+        "*expirationDate"
+      ],
+      "args": [
+        "self",
+        "id",
+        "licenseContractId",
+        "maxInstallations",
+        "boundToHost",
+        "expirationDate"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicense_createVolume",
+      "params": [
+        "id",
+        "licenseContractId",
+        "*maxInstallations",
+        "*boundToHost",
+        "*expirationDate"
+      ],
+      "args": [
+        "self",
+        "id",
+        "licenseContractId",
+        "maxInstallations",
+        "boundToHost",
+        "expirationDate"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        null,
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicense_delete",
+      "params": [
+        "id"
+      ],
+      "args": [
+        "self",
+        "id"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicense_deleteObjects",
+      "params": [
+        "softwareLicenses"
+      ],
+      "args": [
+        "self",
+        "softwareLicenses"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicense_getHashes",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicense_getIdents",
+      "params": [
+        "*returnType",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "returnType"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        "unicode"
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicense_getObjects",
+      "params": [
+        "*attributes",
+        "**filter"
+      ],
+      "args": [
+        "self",
+        "attributes"
+      ],
+      "varargs": null,
+      "keywords": "filter",
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicense_insertObject",
+      "params": [
+        "softwareLicense"
+      ],
+      "args": [
+        "self",
+        "softwareLicense"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicense_updateObject",
+      "params": [
+        "softwareLicense"
+      ],
+      "args": [
+        "self",
+        "softwareLicense"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "softwareLicense_updateObjects",
+      "params": [
+        "softwareLicenses"
+      ],
+      "args": [
+        "self",
+        "softwareLicenses"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "uninstallWhereInstalled",
+      "params": [
+        "productId"
+      ],
+      "args": [
+        "self",
+        "productId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "unlockProduct",
+      "params": [
+        "productId",
+        "*depotIds"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "depotIds"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        []
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "unsetProductActionRequest",
+      "params": [
+        "productId",
+        "clientId"
+      ],
+      "args": [
+        "self",
+        "productId",
+        "clientId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "updateWIMConfig",
+      "params": [
+        "productId"
+      ],
+      "args": [
+        "self",
+        "productId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "updateWIMConfigFromPath",
+      "params": [
+        "path",
+        "targetProductId"
+      ],
+      "args": [
+        "self",
+        "path",
+        "targetProductId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "updateWhereInstalled",
+      "params": [
+        "productId"
+      ],
+      "args": [
+        "self",
+        "productId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "userIsAdmin",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "userIsReadOnlyUser",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "user_getCredentials",
+      "params": [
+        "*username",
+        "*hostId"
+      ],
+      "args": [
+        "self",
+        "username",
+        "hostId"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        "pcpatch",
+        null
+      ],
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "user_setCredentials",
+      "params": [
+        "username",
+        "password"
+      ],
+      "args": [
+        "self",
+        "username",
+        "password"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "webvue_clientToDepot",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "webvue_depot_getHashes",
+      "params": [
+        "username"
+      ],
+      "args": [
+        "self",
+        "username"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "webvue_getHashes",
+      "params": [
+        "username"
+      ],
+      "args": [
+        "self",
+        "username"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "webvue_hostWithProduct_getHashes",
+      "params": [
+        "username"
+      ],
+      "args": [
+        "self",
+        "username"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "webvue_prodPropState_getHashes",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "webvue_prodProp_getHashes",
+      "params": [],
+      "args": [
+        "self"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": null,
+      "deprecated": false,
+      "alternative_method": null
+    },
+    {
+      "name": "writeLog",
+      "params": [
+        "type",
+        "data",
+        "*objectId",
+        "*append"
+      ],
+      "args": [
+        "self",
+        "type",
+        "data",
+        "objectId",
+        "append"
+      ],
+      "varargs": null,
+      "keywords": null,
+      "defaults": [
+        null,
+        true
+      ],
+      "deprecated": true,
+      "alternative_method": "log_write"
+    }
+  ],
+  "jsonrpc": "2.0"
+}

@@ -12,7 +12,7 @@ import time
 import types
 import socket
 import threading
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote, unquote
 import gzip
 import ipaddress
 import requests
@@ -111,18 +111,18 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			elif option == 'sessionid':
 				session_id = str(value)
 			elif option == 'compression':
-				self.setCompression(value)
+				self.set_compression(value)
 			elif option == 'connectoninit':
-				self._connectOnInit = bool(value)  # pylint: disable=invalid-name
+				self._connect_on_init = bool(value)
 			elif option == 'createmethods':
 				self._create_methods = bool(value)
-			elif option == 'connectionpoolsize' and value not in (None, ""):
-				self._connection_pool_size = int(value)
-			elif option == 'retry':
-				if isinstance(value, int):
-					self._http_max_retries = max(value, 0)
-				elif not value:
+			elif option in ('connectionpoolsize', 'httppoolmaxsize') and value not in (None, ""):
+				self._http_pool_maxsize = int(value)
+			elif option in ('retry', 'httpmaxretries'):
+				if not value:
 					self._http_max_retries = 0
+				elif isinstance(value, int):
+					self._http_max_retries = max(value, 0)
 			elif option == 'connecttimeout' and value not in (None, ""):
 				self._connect_timeout = int(value)
 			elif option in ('readtimeout', 'timeout', 'sockettimeout') and value not in (None, ""):
@@ -145,6 +145,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 					logger.error("Invalid serialization '%s', using %s", value, self._serialization)
 			elif option == 'sessionlifetime' and value:
 				self._session_lifetime = int(value)
+			else:
+				logger.warning("Invalid Argument '%s'", option)
 
 		self._set_address(address)
 
@@ -152,7 +154,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			secret_filter.add_secrets(self._password)
 
 		self._session = requests.Session()
-		self._session.auth = (self._username or '', self._password or '')
+		if self._username or self._password:
+			self._session.auth = (self._username or '', self._password or '')
 		self._session.headers.update({
 			"User-Agent": self._application,
 			"X-opsi-session-lifetime": str(self._session_lifetime)
@@ -160,10 +163,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		if session_id:
 			if "=" in session_id:
 				logger.confidential("Using session id passed: %s", session_id)
-				cookie_name, cookie_value = session_id.split("=")
-				self._session.cookies.set(
-					cookie_name, cookie_value, domain=self.hostname
-				)
+				cookie_name, cookie_value = session_id.split("=", 1)
+				self._session.cookies.set(cookie_name, quote(cookie_value))
 			else:
 				logger.warning("Invalid session id passed: %s", session_id)
 
@@ -252,7 +253,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		for tmp1 in self._session.cookies._cookies.values():  # pylint: disable=protected-access
 			for tmp2 in tmp1.values():
 				for cookie in tmp2.values():
-					return f"{cookie.name}={cookie.value}"
+					return f"{cookie.name}={unquote(cookie.value)}"
 		return None
 
 	@property
