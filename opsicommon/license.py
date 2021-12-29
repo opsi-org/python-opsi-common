@@ -18,6 +18,7 @@ import struct
 import base64
 import codecs
 import configparser
+from collections import OrderedDict
 from functools import lru_cache
 from datetime import date, timedelta
 import attr
@@ -36,7 +37,7 @@ except (ImportError, OSError):
 	from Cryptodome.Signature import pss
 
 
-OPSI_LICENCE_ID_REGEX = re.compile(r"[a-zA-Z0-9\-_]{10,}")
+OPSI_LICENCE_ID_REGEX = re.compile(r"^[a-zA-Z0-9\-_]{10,}$")
 
 OPSI_LICENSE_TYPE_CORE = "core"
 OPSI_LICENSE_TYPE_STANDARD = "standard"
@@ -142,6 +143,7 @@ def get_signature_public_key(schema_version: int):
 		"-----END PUBLIC KEY-----\n"
 	)
 
+MAX_STATE_CACHE_VALUES = 64
 @attr.s(slots=True, auto_attribs=True, kw_only=True)
 class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-attributes
 	id: str = attr.ib( # pylint: disable=invalid-name
@@ -165,7 +167,7 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 
 	opsi_version: str = attr.ib(
 		default="4.2",
-		validator=attr.validators.matches_re(r"\d+\.\d+")
+		validator=attr.validators.matches_re(r"^\d+\.\d+$")
 	)
 
 	customer_id: str = attr.ib(
@@ -176,7 +178,7 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 		if (
 			self.schema_version > 1 and
 			self.type != OPSI_LICENSE_TYPE_CORE and
-			not re.match(r"[a-zA-Z0-9\-_]{5,}", value)
+			not re.match(r"^[a-zA-Z0-9\-_]{5,}$", value)
 		):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -185,7 +187,7 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 	def validate_customer_name(self, attribute, value):
 		if (
 			self.type != OPSI_LICENSE_TYPE_CORE and
-			not re.match(r"\S.*\S", value)
+			not re.match(r"^\S.*\S$", value)
 		):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -197,7 +199,7 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 		if (
 			self.schema_version > 1 and
 			self.type != OPSI_LICENSE_TYPE_CORE and
-			not re.match(r"\S.*\S", value)
+			not re.match(r"^\S.*\S$", value)
 		):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -214,11 +216,11 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 	)
 	@service_id.validator
 	def validate_service_id(self, attribute, value): # pylint: disable=no-self-use
-		if value is not None and not re.match(r"[a-z0-9\-\.]+", value):
+		if value is not None and not re.match(r"^[a-z0-9\-\.]+$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
 	module_id: str = attr.ib(
-		validator=attr.validators.matches_re(r"[a-z0-9\-_]+")
+		validator=attr.validators.matches_re(r"^[a-z0-9\-_]+$")
 	)
 
 	client_number: int = attr.ib(
@@ -280,7 +282,7 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 	)
 
 	_cached_state: typing.Dict[str, str] = attr.ib(
-		default={}
+		default=OrderedDict()
 	)
 
 	def set_license_pool(self, license_pool: 'OpsiLicensePool'):
@@ -345,7 +347,7 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 		return _hash
 
 	def clear_state_cache(self):
-		self._cached_state = {}
+		self._cached_state = OrderedDict()
 
 	def get_state(self, test_revoked: bool = True, at_date: date = None) -> str:
 		checksum = self.get_checksum(with_signature=True)
@@ -353,8 +355,8 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 			self.clear_state_cache()
 		self._checksum = checksum
 
-		if len(self._cached_state) > 64:
-			self.clear_state_cache()
+		if len(self._cached_state) >= MAX_STATE_CACHE_VALUES:
+			self._cached_state.popitem(last=False)
 
 		cache_key = f"{test_revoked}{at_date}"
 		if cache_key not in self._cached_state:
@@ -751,18 +753,23 @@ class OpsiLicensePool:
 			self._read_modules_file()
 
 
-default_opsi_license_pool = None  # pylint: disable=invalid-name
+_default_opsi_license_pool = None  # pylint: disable=invalid-name
+def set_default_opsi_license_pool(pool: OpsiLicensePool):
+	global _default_opsi_license_pool  # pylint: disable=invalid-name,global-statement
+	_default_opsi_license_pool = pool
+
+
 def get_default_opsi_license_pool(
 	license_file_path: str = None,
 	modules_file_path: str = None,
 	client_info: typing.Union[dict, typing.Callable] = None
 ):
-	global default_opsi_license_pool  # pylint: disable=invalid-name,global-statement
-	if not default_opsi_license_pool:
-		default_opsi_license_pool = OpsiLicensePool(
+	global _default_opsi_license_pool  # pylint: disable=invalid-name,global-statement
+	if not _default_opsi_license_pool:
+		_default_opsi_license_pool = OpsiLicensePool(
 			license_file_path=license_file_path,
 			modules_file_path=modules_file_path,
 			client_info=client_info
 		)
-		default_opsi_license_pool.load()
-	return default_opsi_license_pool
+		_default_opsi_license_pool.load()
+	return _default_opsi_license_pool

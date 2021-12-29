@@ -16,6 +16,8 @@ from unittest import mock
 import pytest
 
 from opsicommon.license import (
+	set_default_opsi_license_pool,
+	get_default_opsi_license_pool,
 	OPSI_MODULE_STATE_CLOSE_TO_LIMIT,
 	OPSI_MODULE_STATE_OVER_LIMIT,
 	OpsiLicenseFile,
@@ -33,8 +35,11 @@ from opsicommon.license import (
 	OPSI_MODULE_STATE_LICENSED,
 	OPSI_MODULE_STATE_UNLICENSED,
 	OPSI_MODULE_IDS,
+	OPSI_LICENSE_DATE_UNLIMITED,
+	OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED,
 	CLIENT_LIMIT_THRESHOLD_PERCENT,
-	CLIENT_LIMIT_THRESHOLD_PERCENT_WARNING
+	CLIENT_LIMIT_THRESHOLD_PERCENT_WARNING,
+	MAX_STATE_CACHE_VALUES
 )
 
 LIC1 = {
@@ -73,7 +78,7 @@ def _read_modules_file(modules_file):
 			key = key.strip()
 			val = val.strip()
 			if key == "expires":
-				expires = date.fromisoformat("2999-12-31") if val == "never" else date.fromisoformat(val)
+				expires = date.fromisoformat(OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED) if val == "never" else date.fromisoformat(val)
 			elif key == "customer":
 				customer = val
 			elif key == "signature":
@@ -137,22 +142,25 @@ def test_opsi_license_defaults():
 		("customer_address", "üö", None),
 		("customer_address", "", ValueError),
 		("customer_address", " Mainz", ValueError),
+		("service_id", "opsi.uinit.dom.tld", None),
+		("service_id", "invalid value", ValueError),
 		("module_id", "vpn", None),
 		("module_id", "", ValueError),
-		("client_number", 999999999, None),
+		("client_number", OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED, None),
 		("client_number", -1, ValueError),
 		("issued_at", "2021-01-01", None),
 		("issued_at", "", ValueError),
 		("valid_from", date.today(), None),
 		("valid_from", None, TypeError),
-		("valid_until", "9999-12-31", None),
+		("valid_until", OPSI_LICENSE_DATE_UNLIMITED, None),
 		("valid_until", "0000-00-00", ValueError),
 		("revoked_ids", ["a62e8266-5df8-41b3-bce3-6f69a81da9d0", "legacy_scalability1"], None),
 		("revoked_ids", ["1", 2], ValueError),
+		("revoked_ids", "not-a-list", ValueError),
 		("signature", "----------------------------", ValueError),
 		("signature", "0102030405060708090a0b0c0d0e", None),
 		("signature", "102030405060708090a0b0c0d0e", None),
-		("signature", bytes.fromhex("0102030405060708090a0b0c0d0e"), None),
+		("signature", bytes.fromhex("0102030405060708090a0b0c0d0e"), None)
 	),
 )
 def test_opsi_license_validation(attribute, value, exception):
@@ -184,6 +192,16 @@ def test_opsi_license_to_from_json():
 	data = json.loads(lic.to_json(with_state=True))
 	assert data["_state"] == OPSI_LICENSE_STATE_INVALID_SIGNATURE
 
+def test_opsi_license_to_from_dict():
+	lic = OpsiLicense(**LIC1)
+	lic_dict = lic.to_dict(serializable=True)
+	assert lic_dict == LIC1
+
+	lic_dict2 = lic_dict.copy()
+	lic_dict2["_attribute_with_underscore"] = "should_be_removed"
+	lic = OpsiLicense.from_dict(lic_dict2)
+	assert lic.to_dict(serializable=True) == lic_dict
+
 
 def test_opsi_license_hash():
 	lic = OpsiLicense(**LIC1)
@@ -191,6 +209,26 @@ def test_opsi_license_hash():
 		"137cd167b2b1104cdbdd5190e12bd9a6cf5bb2726218c966d136c80c271f262c"
 		"4766a3d9ff31d1f0e2790d00aab733b3aea12da3ec41e7e93c13b7ae687aa564"
 	)
+	assert lic.get_hash(digest=True) == bytes.fromhex(
+		"137cd167b2b1104cdbdd5190e12bd9a6cf5bb2726218c966d136c80c271f262c"
+		"4766a3d9ff31d1f0e2790d00aab733b3aea12da3ec41e7e93c13b7ae687aa564"
+	)
+
+
+def test_default_opsi_license_pool():
+	def_pool1 = get_default_opsi_license_pool()
+	pool = OpsiLicensePool(
+		license_file_path="/tmp/licenses"
+	)
+	set_default_opsi_license_pool(pool)
+	def_pool2 = get_default_opsi_license_pool()
+	assert def_pool1 != def_pool2
+	assert def_pool2 == pool
+
+	set_default_opsi_license_pool(None)
+	def_pool3 = get_default_opsi_license_pool()
+	assert def_pool3 != def_pool1
+	assert def_pool3 != def_pool2
 
 
 def test_load_opsi_license_pool():
@@ -255,6 +293,43 @@ def test_opsi_license_pool_modified(tmp_path):
 	assert olp.modified()
 	olp.load()
 	assert not olp.modified()
+
+
+def test_opsi_license_pool_add_remove_license(tmp_path):
+	license_file_path = tmp_path / "licenses"
+	modules_file_path = tmp_path / "licenses" / "modules"
+	shutil.copytree("tests/data/license", str(license_file_path))
+	olp = OpsiLicensePool(
+		license_file_path=str(license_file_path),
+		modules_file_path=str(modules_file_path)
+	)
+	olp.load()
+	licenses = list(olp._licenses.values())  # pylint: disable=protected-access
+	assert len(licenses) == 25
+	for lic in licenses:
+		lic.get_state()
+		assert len(lic._cached_state) > 0  # pylint: disable=protected-access
+
+	removed_lic = licenses.pop()
+	olp.remove_license(removed_lic)
+
+	licenses = list(olp._licenses.values())  # pylint: disable=protected-access
+	assert len(licenses) == 24
+	# Assert empty cache
+	for lic in licenses:
+		assert len(lic._cached_state) == 0  # pylint: disable=protected-access
+
+	# Fill cache
+	for lic in licenses:
+		lic.get_state()
+		assert len(lic._cached_state) > 0  # pylint: disable=protected-access
+
+	olp.add_license(removed_lic)
+	licenses = list(olp._licenses.values())  # pylint: disable=protected-access
+	assert len(licenses) == 25
+	# Assert empty cache
+	for lic in licenses:
+		assert len(lic._cached_state) == 0  # pylint: disable=protected-access
 
 
 def test_opsi_license_pool_licenses_checksum():
@@ -350,7 +425,7 @@ def test_licensing_info_and_cache():
 				# Cached should be faster
 				assert timings[2] > timings[1]
 
-def test_license_state_client_number_thresholds():
+def test_license_state_client_number_thresholds():  # pylint: disable=too-many-statements
 	private_key, public_key = generate_key_pair(return_pem=False)
 	client_numbers = {}
 
@@ -378,8 +453,20 @@ def test_license_state_client_number_thresholds():
 		lic3.client_number = 50
 		lic3.sign(private_key)
 
+		lic4 = OpsiLicense(**lic)
+		lic4.module_id = "linux_agent"
+		lic4.type = OPSI_LICENSE_TYPE_CORE
+		lic4.client_number = 1
+		lic4.sign(private_key)
+
+		lic5 = OpsiLicense(**lic)
+		lic5.module_id = "macos_agent"
+		lic5.type = OPSI_LICENSE_TYPE_CORE
+		lic5.client_number = 1
+		lic5.sign(private_key)
+
 		olp = OpsiLicensePool(client_info=client_info)
-		olp.add_license(lic1, lic2, lic3)
+		olp.add_license(lic1, lic2, lic3, lic4, lic5)
 
 		client_numbers = {
 			"macos": 0,
@@ -391,6 +478,9 @@ def test_license_state_client_number_thresholds():
 		assert modules["scalability1"]["client_number"] == 100
 		assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_LICENSED
 
+		assert modules["linux_agent"]["available"]
+		assert modules["macos_agent"]["available"]
+
 		client_numbers = {
 			"macos": 5,
 			"linux": 10,
@@ -399,6 +489,8 @@ def test_license_state_client_number_thresholds():
 		modules = olp.get_modules()
 		assert modules["scalability1"]["available"]
 		assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_LICENSED
+		assert not modules["linux_agent"]["available"]
+		assert not modules["macos_agent"]["available"]
 
 		client_numbers = {
 			"macos": 5,
@@ -468,6 +560,41 @@ def test_license_state():
 
 		lic.client_number = 1234567
 		assert lic.get_state() == OPSI_LICENSE_STATE_INVALID_SIGNATURE
+
+def test_license_state_cache():
+	private_key, public_key = generate_key_pair(return_pem=False)
+	with mock.patch('opsicommon.license.get_signature_public_key', lambda x: public_key):
+		lic = OpsiLicense(**LIC1)
+		lic.sign(private_key)
+
+		assert len(lic._cached_state) == 0  # pylint: disable=protected-access
+
+		lic.valid_from = date.today() - timedelta(days=10)
+		lic.valid_until = date.today() - timedelta(days=1)
+		lic.sign(private_key)
+
+		for num in range(1, MAX_STATE_CACHE_VALUES + 5):
+			assert lic.get_state(at_date=date.today() + timedelta(days=num)) == OPSI_LICENSE_STATE_EXPIRED
+			assert len(lic._cached_state) == min(MAX_STATE_CACHE_VALUES, num)  # pylint: disable=protected-access
+
+		lic.clear_state_cache()
+		assert len(lic._cached_state) == 0  # pylint: disable=protected-access
+
+		today = date.today()
+		start = time.perf_counter_ns()
+		lic.get_state(at_date=today)
+		uncached_time_ns = time.perf_counter_ns() - start
+
+		for _ in range(20):
+			start = time.perf_counter_ns()
+			lic.get_state(at_date=today)
+
+			# Cached state should be much faster
+			time_ns = time.perf_counter_ns() - start
+			assert time_ns * 2 < uncached_time_ns
+
+			# Cache should keep size
+			assert len(lic._cached_state) == 1  # pylint: disable=protected-access
 
 
 def test_license_state_modules(tmp_path):
@@ -541,18 +668,22 @@ def test_license_state_revoked():
 				assert lic.get_state() == OPSI_LICENSE_STATE_REVOKED
 
 
-def test_opsi_modules_file():
-	modules_file = "tests/data/license/modules"
-	raw_data = pathlib.Path(modules_file).read_text(encoding="utf-8")
+def test_opsi_modules_file(tmp_path):
+	orig_modules_file = "tests/data/license/modules"
+	raw_data = pathlib.Path(orig_modules_file).read_text(encoding="utf-8")
+
+	modules_file = tmp_path / "modules"
+	modules_file.write_text(raw_data, encoding="utf-8")
+
 	modules, expires, _customer, signature = _read_modules_file(modules_file)
 	omf = OpsiModulesFile(modules_file)
 	omf.read()
 	assert len(modules) == len(omf.licenses)
 	for lic in omf.licenses:
-		assert lic.get_state() == "valid"
+		assert lic.get_state() == OPSI_LICENSE_STATE_VALID
 		assert lic.module_id in modules
 		assert lic.valid_until == expires
-		client_number = 999999999
+		client_number = OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
 		if modules[lic.module_id] not in ("yes", "no"):
 			client_number = int(modules[lic.module_id])
 		assert lic.client_number == client_number
@@ -560,6 +691,16 @@ def test_opsi_modules_file():
 		assert \
 			sorted([x for x in raw_data.replace("\r","").split("\n") if x and not x.startswith("signature")]) == \
 			sorted([x for x in lic.additional_data.replace("\r","").split("\n") if x])
+
+	raw_data = raw_data.replace("expires = 2021-12-31", "expires = never")
+	modules_file.write_text(raw_data, encoding="utf-8")
+	omf = OpsiModulesFile(modules_file)
+	omf.read()
+	assert len(modules) == len(omf.licenses)
+	for lic in omf.licenses:
+		assert lic.valid_until == OPSI_LICENSE_DATE_UNLIMITED
+		assert lic.get_state() == OPSI_LICENSE_STATE_INVALID_SIGNATURE
+
 
 def test_write_license_file(tmp_path):
 	license_file = str(tmp_path / "test.opsilic")
