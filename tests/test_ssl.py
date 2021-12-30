@@ -171,15 +171,15 @@ def test_wget(tmpdir):  # pylint: disable=redefined-outer-name, unused-argument
 		try:
 			if platform.system().lower() == "windows":
 				assert subprocess.call([
-					"powershell", "-ExecutionPolicy", "Bypass", "-Command" f"Invoke-WebRequest https://localhost:{server.port}"
+					"powershell", "-ExecutionPolicy", "Bypass", "-Command" f"Invoke-WebRequest https://127.0.0.1:{server.port}"
 				]) == 0
 			else:
-				assert subprocess.call(["wget", f"https://localhost:{server.port}", "-O-"]) == 0
+				assert subprocess.call(["wget", f"https://127.0.0.1:{server.port}", "-O-"]) == 0
 		finally:
 			remove_ca(ca_cert.get_subject().CN)
 			if platform.system().lower() == "windows":
 				assert subprocess.call([
-					"powershell", "-ExecutionPolicy", "Bypass", "-Command" f"Invoke-WebRequest https://localhost:{server.port}"
+					"powershell", "-ExecutionPolicy", "Bypass", "-Command" f"Invoke-WebRequest https://127.0.0.1:{server.port}"
 				]) == 1
 			else:
-				assert subprocess.call(["wget", f"https://localhost:{server.port}", "-O-"]) == 5
+				assert subprocess.call(["wget", f"https://127.0.0.1:{server.port}", "-O-"]) == 5

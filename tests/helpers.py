@@ -135,7 +135,7 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 		self.server.response_status = self.response_status
 		self.server.response_body = self.response_body
 		self.server.response_delay = self.response_delay
-		#print("Server started at localhost:" + str(self.port))
+		#print("Server listening on port:" + str(self.port))
 		self.running.set()
 		self.server.serve_forever()
 
