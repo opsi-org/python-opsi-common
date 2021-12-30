@@ -13,29 +13,22 @@ import subprocess
 
 import pytest
 
-from opsicommon.system import (
-	get_user_sessions,
-	run_process_in_session,
-	ensure_not_already_running
-)
+from opsicommon.system import ensure_not_already_running
 
-running_in_docker = False # pylint: disable=invalid-name
-with open("/proc/self/cgroup", encoding="utf-8") as file: # pylint: disable=invalid-name
-	for line in file.readlines():
-		if line.split(':')[2].startswith("/docker/"):
-			running_in_docker = True # pylint: disable=invalid-name
-			break
 
-@pytest.mark.skipif(running_in_docker, reason="Running in docker.")
-def test_get_user_sessions():
+@pytest.mark.linux
+def test_get_user_sessions_linux():
+	from opsicommon.system import get_user_sessions  # pylint: disable=import-outside-toplevel
 	username = os.environ.get("SUDO_USER", getpass.getuser())
 	usernames = []
 	for sess in get_user_sessions():
 		usernames.append(sess.username)
 	assert username in usernames
 
-@pytest.mark.skipif(running_in_docker, reason="Running in docker.")
-def test_run_process_in_session():
+
+@pytest.mark.linux
+def test_run_process_in_session_linux():
+	from opsicommon.system import get_user_sessions, run_process_in_session  # pylint: disable=import-outside-toplevel
 	username = getpass.getuser()
 	for session in get_user_sessions():
 		if username in (session.username, "root"):
@@ -49,14 +42,18 @@ def test_run_process_in_session():
 			assert f"{session.username}\n" == out
 			proc.wait()
 
-def test_ensure_not_already_running(tmpdir):
+
+@pytest.mark.linux
+def test_ensure_not_already_running_linux(tmpdir):
 	test_system_sleep = tmpdir.join("test_system_sleep")
 	shutil.copy("/bin/sleep", test_system_sleep)
 	with subprocess.Popen([f"{test_system_sleep} 3 </dev/null &>/dev/null &"], shell=True):
 		with pytest.raises(RuntimeError):
 			ensure_not_already_running("test_system_sleep")
 
-def test_ensure_not_already_running_child_process(tmpdir):
+
+@pytest.mark.linux
+def test_ensure_not_already_running_child_process_linux(tmpdir):
 	test_system_sleep = tmpdir.join("test_system_sleep_child")
 	shutil.copy("/bin/sleep", test_system_sleep)
 	with subprocess.Popen([test_system_sleep, "3"]):

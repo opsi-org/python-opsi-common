@@ -41,6 +41,10 @@ def pytest_runtest_setup(item):
 	for marker in item.iter_markers():
 		if marker == "docker_linux" and not RUNNING_IN_DOCKER:
 			pytest.skip("Must run in docker")
+			return
+		if marker == "not_in_docker" and RUNNING_IN_DOCKER:
+			pytest.skip("Must not run in docker")
+			return
 		if marker.name in ("windows", "linux", "darwin", "posix"):
 			if marker.name == "posix":
 				supported_platforms.extend(["linux", "darwin"])
