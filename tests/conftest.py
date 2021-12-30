@@ -34,6 +34,7 @@ def running_in_docker():
 
 PLATFORM = platform.system().lower()
 RUNNING_IN_DOCKER = running_in_docker()
+ROOT_PERMISSIONS = PLATFORM in ("linux", "darwin") and os.geteuid() == 0
 
 
 def pytest_runtest_setup(item):
@@ -44,6 +45,9 @@ def pytest_runtest_setup(item):
 			return
 		if marker == "not_in_docker" and RUNNING_IN_DOCKER:
 			pytest.skip("Must not run in docker")
+			return
+		if marker == "root_permissions" and not ROOT_PERMISSIONS:
+			pytest.skip("No root permissions")
 			return
 		if marker.name in ("windows", "linux", "darwin", "posix"):
 			if marker.name == "posix":

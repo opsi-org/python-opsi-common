@@ -6,7 +6,6 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-import os
 import time
 import subprocess
 import http.server
@@ -146,7 +145,7 @@ def start_httpserver():
 	httpd.shutdown()
 
 
-@pytest.mark.skipif(os.geteuid() != 0, reason="no root permissons")
+@pytest.mark.root_permissions
 def test_curl(start_httpserver):  # pylint: disable=redefined-outer-name, unused-argument
 	time.sleep(5)
 
