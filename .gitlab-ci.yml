@@ -4,23 +4,64 @@ stages:
   - test
   - publish
 
-test:pylint-pytest:
+test:pylint-pytest-darwin:
   #when: manual
   stage: test
-  script: |
-    poetry install
-    poetry run pylint --disable=R,fixme opsicommon
-    poetry run pytest -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
-    poetry run pytest -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
+  tags:
+    - macos
+  script:
+    - source $HOME/.poetry/env
+    - poetry install
+    - poetry run pytest -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
+    - poetry run pytest -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
+  artifacts:
+    name: 'python-opsi-common_test_darwin'
+    paths:
+      - coverage.xml
+      - testreport.xml
+    expire_in: 3 days
+
+test:pylint-pytest-windows:
+  #when: manual
+  stage: test
+  needs:
+    # We want to combine test coverage from all test jobs
+    - job: test:pylint-pytest-darwin
+      artifacts: true
+  tags:
+    - win10
+  script:
+    - poetry install
+    - poetry run pytest -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests\\test_logging.py tests
+    - poetry run pytest -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests\\test_logging.py
+  artifacts:
+    name: 'python-opsi-common_test_windows'
+    paths:
+      - coverage.xml
+      - testreport.xml
+    expire_in: 3 days
+
+test:pylint-pytest-linux:
+  #when: manual
+  stage: test
+  needs:
+    # We want to combine test coverage from all test jobs
+    - job: test:pylint-pytest-windows
+      artifacts: true
+  script:
+    - poetry install
+    - poetry run pylint --disable=R,fixme opsicommon
+    - poetry run pytest -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
+    - poetry run pytest -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+)%/'
   artifacts:
-    name: 'python-opsi-common_test'
+    name: 'python-opsi-common_test_linux'
     paths:
       - coverage.xml
       - testreport.xml
     reports:
       junit: testreport.xml
-    expire_in: 7 days
+    expire_in: 3 days
 
 publish:uibpypi:
   stage: publish
