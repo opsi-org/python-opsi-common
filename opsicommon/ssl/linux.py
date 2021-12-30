@@ -19,7 +19,7 @@ __all__ = ["install_ca", "load_ca", "remove_ca"]
 
 def _get_cert_path_and_cmd():
 	dist = {distro.id()}
-	for name in distro.like().split(" "):
+	for name in (distro.like() or "").split(" "):
 		if name:
 			dist.add(name)
 	if "centos" in dist or "rhel" in dist:

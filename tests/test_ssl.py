@@ -6,22 +6,43 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-import time
 import subprocess
-import http.server
-import socketserver
-import ssl
-import threading
 import ipaddress
-
 import pytest
+from unittest import mock
 
-from OpenSSL.crypto import load_certificate, FILETYPE_PEM, X509, PKey
-
+from OpenSSL.crypto import X509, PKey
 from opsicommon.ssl import (
 	create_x590_name, as_pem, create_ca, create_server_cert,
-	install_ca, remove_ca
+	install_ca, load_ca, remove_ca
 )
+
+from .helpers import http_jsonrpc_server
+
+
+
+@pytest.mark.linux
+@pytest.mark.parametrize("distro_id, distro_like, expected_path, expected_cmd, exc", (
+	("centos", "", "/etc/pki/ca-trust/source/anchors", "update-ca-trust", None),
+	("somedist", "abc xyz rhel", "/etc/pki/ca-trust/source/anchors", "update-ca-trust", None),
+	("debian", "", "/usr/local/share/ca-certificates", "update-ca-certificates", None),
+	("", "ubuntu", "/usr/local/share/ca-certificates", "update-ca-certificates", None),
+	("sles", "sles", "/usr/share/pki/trust/anchors", "update-ca-certificates", None),
+	("suse", "", "/usr/share/pki/trust/anchors", "update-ca-certificates", None),
+	("unknown", "", "", "", RuntimeError),
+	("", "", "", "", RuntimeError),
+	(None, None, "", "", RuntimeError)
+))
+def test_get_cert_path_and_cmd(distro_id, distro_like, expected_path, expected_cmd, exc):
+	from opsicommon.ssl.linux import _get_cert_path_and_cmd  # pylint: disable=import-outside-toplevel
+
+	with mock.patch('distro.id', lambda: distro_id), mock.patch('distro.like', lambda: distro_like):
+		if exc:
+			with pytest.raises(exc):
+				_get_cert_path_and_cmd()
+		else:
+			assert _get_cert_path_and_cmd() == (expected_path, expected_cmd)
+
 
 def test_create_x590_name():
 	subject = {"emailAddress": "test@test.de"}
@@ -56,13 +77,18 @@ def test_create_server_cert():
 	}
 	ca_cert, ca_key = create_ca(subject, 1000)
 	kwargs = {
-		"subject": {"CN": "server.dom.tld"},
+		"subject": {"emailAddress": "opsi@opsi.org"},
 		"valid_days": 100,
 		"ip_addresses": {"172.0.0.1", "::1", "192.168.1.1"},
 		"hostnames": {"localhost", "opsi", "opsi.dom.tld"},
 		"ca_key": ca_key,
 		"ca_cert": ca_cert
 	}
+	with pytest.raises(ValueError) as err:
+		cert, key = create_server_cert(**kwargs)
+		assert "commonName missing in subject" in str(err)
+
+	kwargs["subject"]["CN"] = "server.dom.tld"
 	cert, key = create_server_cert(**kwargs)
 	assert isinstance(cert, X509)
 	assert isinstance(key, PKey)
@@ -104,59 +130,47 @@ def test_as_pem():
 		as_pem(create_x590_name({}))
 
 
-def create_certification():
-	subprocess.check_call([
-		"openssl", "req", "-nodes", "-x509", "-newkey", "rsa:2048", "-days", "730", "-keyout", "tests/data/ssl/ca.key",
-		"-out", "tests/data/ssl/ca.crt", "-new", "-sha512", "-subj", "/C=DE/ST=RP/L=Mainz/O=uib/OU=root/CN=uib-Signing-Authority"
-	])
-	subprocess.check_call([
-		"openssl", "req", "-nodes", "-newkey", "rsa:2048", "-keyout", "tests/data/ssl/test-server.key",
-		"-out", "tests/data/ssl/test-server.csr", "-subj", "/C=DE/ST=RP/L=Mainz/O=uib/OU=root/CN=test-server"
-	])
-	subprocess.check_call([
-		"openssl", "ca", "-batch", "-config", "tests/data/ssl/ca.conf", "-notext",
-		"-in", "tests/data/ssl/test-server.csr", "-out", "tests/data/ssl/test-server.crt"
-	])
-	subprocess.check_call([
-		"openssl", "ca", "-config", "tests/data/ssl/ca.conf", "-gencrl",
-		"-keyfile", "tests/data/ssl/ca.key", "-cert", "tests/data/ssl/ca.crt", "-out", "tests/data/ssl/root.crl.pem"
-	])
-	subprocess.check_call([
-		"openssl", "crl", "-inform", "PEM", "-in", "tests/data/ssl/root.crl.pem", "-outform", "DER", "-out", "tests/data/ssl/root.crl"
-	])
+@pytest.mark.admin_permissions
+def test_install_load_remove_ca():
+	subject_name = "python-opsi-common test ca"
+	ca_cert, _ca_key = create_ca({"CN": subject_name}, 3)
+	install_ca(ca_cert)
+	try:
+		ca_cert = load_ca(subject_name)
+		assert ca_cert
+		assert ca_cert.get_subject().CN == subject_name
+	finally:
+		remove_ca(subject_name)
+	ca_cert = load_ca(subject_name)
+	assert ca_cert is None
+	# Remove not existing ca
+	remove_ca(subject_name)
 
 
-@pytest.fixture(scope="function")
-def start_httpserver():
-	create_certification()
-	Handler = http.server.SimpleHTTPRequestHandler
+@pytest.mark.admin_permissions
+def test_wget(tmpdir):  # pylint: disable=redefined-outer-name, unused-argument
+	ca_cert, ca_key = create_ca({"CN": "python-opsi-common test ca"}, 3)
+	kwargs = {
+		"subject": {"CN": "python-opsi-common test server cert"},
+		"valid_days": 3,
+		"ip_addresses": {"172.0.0.1", "::1"},
+		"hostnames": {"localhost", "ip6-localhost"},
+		"ca_key": ca_key,
+		"ca_cert": ca_cert
+	}
+	cert, key = create_server_cert(**kwargs)
 
-	httpd = socketserver.TCPServer(("", 8080), Handler)
-	context = ssl.SSLContext()
-	context.load_cert_chain(
-		keyfile="tests/data/ssl/test-server.key",
-		certfile="tests/data/ssl/test-server.crt"
-	)
-	httpd.socket = context.wrap_socket(sock=httpd.socket, server_side=True)
-	thread = threading.Thread(target = httpd.serve_forever)
-	thread.daemon = True
-	thread.start()
-	yield None
-	httpd.shutdown()
+	server_cert = tmpdir / "server_cert.pem"
+	server_key = tmpdir / "server_key.pem"
+	server_cert.write_text(as_pem(cert), encoding="utf-8")
+	server_key.write_text(as_pem(key), encoding="utf-8")
 
-
-@pytest.mark.root_permissions
-def test_curl(start_httpserver):  # pylint: disable=redefined-outer-name, unused-argument
-	time.sleep(5)
-
-	with open("tests/data/ssl/ca.crt", "rb") as file:
-		ca_cert = load_certificate(FILETYPE_PEM, file.read())
+	with http_jsonrpc_server(server_key=server_key, server_cert=server_cert) as server:
 		install_ca(ca_cert)
-
-	return_code = subprocess.call(["curl", "https://localhost:8080"], encoding="utf-8")
-	assert return_code == 0
-
-	remove_ca(ca_cert.get_subject().CN)
-
-	return_code = subprocess.call(["curl", "https://localhost:8080"], encoding="utf-8")
-	assert return_code == 60
+		try:
+			return_code = subprocess.call(["wget", f"https://localhost:{server.port}", "-O-"], encoding="utf-8")
+			assert return_code == 0
+		finally:
+			remove_ca(ca_cert.get_subject().CN)
+			return_code = subprocess.call(["wget", f"https://localhost:{server.port}", "-O-"], encoding="utf-8")
+			assert return_code == 5

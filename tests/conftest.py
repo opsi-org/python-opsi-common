@@ -32,22 +32,53 @@ def running_in_docker():
 				return True
 	return False
 
+def admin_permissions():
+	try:
+		return os.geteuid() == 0
+	except AttributeError:
+		import ctypes  # pylint: disable=import-outside-toplevel
+		return ctypes.windll.shell32.IsUserAnAdmin() != 0
+
 PLATFORM = platform.system().lower()
 RUNNING_IN_DOCKER = running_in_docker()
-ROOT_PERMISSIONS = PLATFORM in ("linux", "darwin") and os.geteuid() == 0
+ADMIN_PERMISSIONS = admin_permissions()
+
+def pytest_configure(config):
+	# register custom markers
+	config.addinivalue_line(
+		"markers", "docker_linux: mark test to run only on linux in docker"
+	)
+	config.addinivalue_line(
+		"markers", "not_in_docker: mark test to run only if not running in docker"
+	)
+	config.addinivalue_line(
+		"markers", "admin_permissions: mark test to run only if user has admin permissions"
+	)
+	config.addinivalue_line(
+		"markers", "windows: mark test to run only on windows"
+	)
+	config.addinivalue_line(
+		"markers", "linux: mark test to run only on linux"
+	)
+	config.addinivalue_line(
+		"markers", "darwin: mark test to run only on darwin"
+	)
+	config.addinivalue_line(
+		"markers", "posix: mark test to run only on posix"
+	)
 
 
 def pytest_runtest_setup(item):
 	supported_platforms = []
 	for marker in item.iter_markers():
-		if marker == "docker_linux" and not RUNNING_IN_DOCKER:
+		if marker.name == "docker_linux" and not RUNNING_IN_DOCKER:
 			pytest.skip("Must run in docker")
 			return
-		if marker == "not_in_docker" and RUNNING_IN_DOCKER:
-			pytest.skip("Must not run in docker")
+		if marker.name == "not_in_docker" and RUNNING_IN_DOCKER:
+			pytest.skip("Cannot run in docker")
 			return
-		if marker == "root_permissions" and not ROOT_PERMISSIONS:
-			pytest.skip("No root permissions")
+		if marker.name == "admin_permissions" and not ADMIN_PERMISSIONS:
+			pytest.skip("No admin permissions")
 			return
 		if marker.name in ("windows", "linux", "darwin", "posix"):
 			if marker.name == "posix":

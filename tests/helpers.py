@@ -7,6 +7,7 @@ Helpers for testing opsi.
 """
 
 import os
+import ssl
 import gzip
 import json
 import time
@@ -14,7 +15,6 @@ import threading
 import socket
 from contextlib import closing, contextmanager
 import http.server
-import socketserver
 import lz4
 import msgpack
 
@@ -98,10 +98,21 @@ class HTTPJSONRPCServerRequestHandler(http.server.SimpleHTTPRequestHandler):
 		self.wfile.write(response)
 
 class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-attributes
-	def __init__(self, log_file=None, response_headers=None, response_status=None, response_body=None, response_delay=None):  # pylint: disable=too-many-arguments
+	def __init__(  # pylint: disable=too-many-arguments
+		self,
+		log_file=None,
+		server_key=None,
+		server_cert=None,
+		response_headers=None,
+		response_status=None,
+		response_body=None,
+		response_delay=None
+	):
 		super().__init__()
 		self.running = threading.Event()
 		self.log_file = str(log_file) if log_file else None
+		self.server_key = server_key if server_key else None
+		self.server_cert = server_cert if server_cert else None
 		self.response_headers = response_headers if response_headers else {}
 		self.response_status = response_status if response_status else None
 		self.response_body = response_body if response_body else None
@@ -114,7 +125,11 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 		self.server = None
 
 	def run(self):
-		self.server = socketserver.TCPServer(("", self.port), HTTPJSONRPCServerRequestHandler)
+		self.server = http.server.HTTPServer(("", self.port), HTTPJSONRPCServerRequestHandler)
+		if self.server_key and self.server_cert:
+			context = ssl.SSLContext()
+			context.load_cert_chain(keyfile=self.server_key, certfile=self.server_cert)
+			self.server.socket = context.wrap_socket(sock=self.server.socket, server_side=True)
 		self.server.log_file = self.log_file
 		self.server.response_headers = self.response_headers
 		self.server.response_status = self.response_status
@@ -130,8 +145,18 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 
 
 @contextmanager
-def http_jsonrpc_server(log_file=None, response_headers=None, response_status=None, response_body=None, response_delay=None):
-	server = HTTPJSONRPCServer(log_file, response_headers, response_status, response_body, response_delay)
+def http_jsonrpc_server(  # pylint: disable=too-many-arguments
+	log_file=None,
+	server_key=None,
+	server_cert=None,
+	response_headers=None,
+	response_status=None,
+	response_body=None,
+	response_delay=None
+):
+	server = HTTPJSONRPCServer(
+		log_file, server_key, server_cert, response_headers, response_status, response_body, response_delay
+	)
 	server.daemon = True
 	server.start()
 	server.running.wait(3.0)
