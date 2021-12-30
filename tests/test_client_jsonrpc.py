@@ -111,12 +111,18 @@ def test_proxy(tmp_path):
 		JSONRPCClient.no_proxy_addresses = []
 		# Now proxy will be used for localhost
 
-		JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url=f"http://localhost:{server.port}", connect_timeout=2)
+		for host, proxy_host in (
+			("localhost", "localhost"),
+			("localhost", "127.0.0.1"),
+			("127.0.0.1", "localhost"),
+			("127.0.0.1", "127.0.0.1")
+		):
+			JSONRPCClient(f"http://{host}:{server.port+1}", proxy_url=f"http://{proxy_host}:{server.port}", connect_timeout=2)
 
-		request = json.loads(log_file.read_text(encoding="utf-8"))
-		#print(request)
-		assert request.get("path") == f"http://localhost:{server.port+1}/rpc"
-		os.remove(log_file)
+			request = json.loads(log_file.read_text(encoding="utf-8"))
+			#print(request)
+			assert request.get("path") == f"http://{host}:{server.port+1}/rpc"
+			os.remove(log_file)
 
 		proxy_env = {
 			"http_proxy": f"http://localhost:{server.port}",
