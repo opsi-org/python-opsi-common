@@ -32,9 +32,15 @@ def install_ca(ca_cert: crypto.X509):
 
 
 def load_ca(subject_name: str) -> crypto.X509:
-	pem = subprocess.check_output([
-		"security", "find-certificate", "-p", "-c", subject_name, "/Library/Keychains/System.keychain"
-	], shell=False)
+	try:
+		pem = subprocess.check_output([
+			"security", "find-certificate", "-p", "-c", subject_name, "/Library/Keychains/System.keychain"
+		], shell=False, stderr=subprocess.STDOUT)
+	except subprocess.CalledProcessError as err:
+		if "could not be found" in err.output.decode():
+			pem = ""
+		else:
+			raise
 	if not pem or not pem.strip():
 		logger.notice("did not find certificate %s", subject_name)
 		return None
@@ -47,11 +53,15 @@ def remove_ca(subject_name: str) -> bool:
 		logger.info("CA '%s' not found, nothing to remove", subject_name)
 		return
 
-	logger.info("Removing CA '%s'", subject_name)
-	pem_file = tempfile.NamedTemporaryFile(mode="wb", delete=False)  # pylint: disable=consider-using-with
-	pem_file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, ca_cert))
-	pem_file.close()
-	try:
-		subprocess.check_call(["security", "remove-trusted-cert", "-d", pem_file.name], shell=False)
-	finally:
-		os.remove(pem_file.name)
+	removed_sha1_hash = None
+	while ca_cert:
+		logger.info("Removing CA '%s'", subject_name)
+		sha1_hash = ca_cert.digest("sha1").decode("ascii").replace(":", "")
+		if removed_sha1_hash and sha1_hash == removed_sha1_hash:
+			raise RuntimeError(f"Failed to remove certficate {removed_sha1_hash}")
+		subprocess.check_call(
+			["security", "delete-certificate", "-Z", sha1_hash, "/Library/Keychains/System.keychain", "-t"],
+			shell=False
+		)
+		removed_sha1_hash = sha1_hash
+		ca_cert = load_ca(subject_name)
