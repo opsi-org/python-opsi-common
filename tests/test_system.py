@@ -17,6 +17,7 @@ from opsicommon.system import ensure_not_already_running
 
 
 @pytest.mark.linux
+@pytest.mark.not_in_docker
 def test_get_user_sessions_linux():
 	from opsicommon.system import get_user_sessions  # pylint: disable=import-outside-toplevel
 	username = os.environ.get("SUDO_USER", getpass.getuser())
@@ -27,6 +28,7 @@ def test_get_user_sessions_linux():
 
 
 @pytest.mark.linux
+@pytest.mark.not_in_docker
 def test_run_process_in_session_linux():
 	from opsicommon.system import get_user_sessions, run_process_in_session  # pylint: disable=import-outside-toplevel
 	username = getpass.getuser()
