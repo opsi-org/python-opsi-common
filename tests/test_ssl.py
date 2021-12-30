@@ -6,10 +6,11 @@
 This file is part of opsi - https://www.opsi.org
 """
 
+import platform
 import subprocess
 import ipaddress
-import pytest
 from unittest import mock
+import pytest
 
 from OpenSSL.crypto import X509, PKey
 from opsicommon.ssl import (
@@ -168,9 +169,17 @@ def test_wget(tmpdir):  # pylint: disable=redefined-outer-name, unused-argument
 	with http_jsonrpc_server(server_key=server_key, server_cert=server_cert) as server:
 		install_ca(ca_cert)
 		try:
-			return_code = subprocess.call(["wget", f"https://localhost:{server.port}", "-O-"], encoding="utf-8")
-			assert return_code == 0
+			if platform.system().lower() == "windows":
+				assert subprocess.call([
+					"powershell", "-ExecutionPolicy", "Bypass", "-Command" f"Invoke-WebRequest https://localhost:{server.port}"
+				]) == 0
+			else:
+				assert subprocess.call(["wget", f"https://localhost:{server.port}", "-O-"]) == 0
 		finally:
 			remove_ca(ca_cert.get_subject().CN)
-			return_code = subprocess.call(["wget", f"https://localhost:{server.port}", "-O-"], encoding="utf-8")
-			assert return_code == 5
+			if platform.system().lower() == "windows":
+				assert subprocess.call([
+					"powershell", "-ExecutionPolicy", "Bypass", "-Command" f"Invoke-WebRequest https://localhost:{server.port}"
+				]) == 1
+			else:
+				assert subprocess.call(["wget", f"https://localhost:{server.port}", "-O-"]) == 5
