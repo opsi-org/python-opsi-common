@@ -53,7 +53,6 @@ test:pytest-linux:
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
     - mv .coverage coverage_linux
-  coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+)%/'
   artifacts:
     name: 'python-opsi-common_test_linux'
     paths:
@@ -69,6 +68,7 @@ test:pylint-pytest:
   stage: test
   needs:
     # We want to combine test coverage from all test jobs
+    # Set relative_files = True in .coveragerc for all test jobs
     - job: test:pytest-windows
       artifacts: true
     - job: test:pytest-darwin
@@ -76,11 +76,20 @@ test:pylint-pytest:
     - job: test:pytest-linux
       artifacts: true
   script:
+    - apt-get update
+    - apt-get --yes install sqlite3
     - poetry install
     - poetry run pylint --disable=R,fixme opsicommon
+    - for db in coverage_*; do qlite3 $db 'update file set path=replace(substr(path,instr(path,"opsicommon")),"\","/");'; done
     - poetry run coverage combine coverage_darwin coverage_windows coverage_linux
     - poetry run coverage xml
     - poetry run coverage report
+  coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+)%/'
+  artifacts:
+    name: 'python-opsi-common_test'
+    paths:
+      - coverage.xml
+    expire_in: 3 days
 
 publish:uibpypi:
   stage: publish
