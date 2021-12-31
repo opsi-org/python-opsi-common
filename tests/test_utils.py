@@ -68,8 +68,9 @@ def test_generate_opsi_host_key():
 
 
 def test_timestamp():
-	assert timestamp(1640946263) == '2021-12-31 11:24:23'
-	assert timestamp(1640946263, date_only=True) == '2021-12-31'
+	now = datetime.datetime.now()
+	assert timestamp(now.timestamp()) == now.strftime("%Y-%m-%d %H:%M:%S")
+	assert timestamp(now.timestamp(), date_only=True) == now.strftime("%Y-%m-%d")
 	assert timestamp() == datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
