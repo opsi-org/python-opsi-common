@@ -110,6 +110,7 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		log_file=None,
+		ip_version=None,
 		server_key=None,
 		server_cert=None,
 		response_headers=None,
@@ -120,6 +121,7 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 		super().__init__()
 		self.running = threading.Event()
 		self.log_file = str(log_file) if log_file else None
+		self.ip_version = 6 if ip_version == 6 else 4
 		self.server_key = server_key if server_key else None
 		self.server_cert = server_cert if server_cert else None
 		self.response_headers = response_headers if response_headers else {}
@@ -137,7 +139,7 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 		class HTTPServer6(http.server.HTTPServer):
 			address_family = socket.AF_INET6
 
-		self.server = HTTPServer6(("::", self.port), HTTPJSONRPCServerRequestHandler)
+		self.server = HTTPServer6(("::" if self.ip_version == 6 else "", self.port), HTTPJSONRPCServerRequestHandler)
 		if self.server_key and self.server_cert:
 			context = ssl.SSLContext()
 			context.load_cert_chain(keyfile=self.server_key, certfile=self.server_cert)
@@ -159,6 +161,7 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 @contextmanager
 def http_jsonrpc_server(  # pylint: disable=too-many-arguments
 	log_file=None,
+	ip_version=None,
 	server_key=None,
 	server_cert=None,
 	response_headers=None,
@@ -167,7 +170,7 @@ def http_jsonrpc_server(  # pylint: disable=too-many-arguments
 	response_delay=None
 ):
 	server = HTTPJSONRPCServer(
-		log_file, server_key, server_cert, response_headers, response_status, response_body, response_delay
+		log_file, ip_version, server_key, server_cert, response_headers, response_status, response_body, response_delay
 	)
 	server.daemon = True
 	server.start()

@@ -184,7 +184,7 @@ def test_force_ip_version(tmp_path, ip_version, expected_address):
 	log_file = tmp_path / "request.log"
 	if ip_version == 6 and not socket.has_ipv6:
 		pytest.skip("No IPv6 support")
-	with http_jsonrpc_server(log_file=log_file) as server:
+	with http_jsonrpc_server(ip_version=ip_version, log_file=log_file) as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}", ip_version=ip_version)
 		client.get("/")
 		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
