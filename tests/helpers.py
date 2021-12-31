@@ -167,18 +167,19 @@ def http_jsonrpc_server(  # pylint: disable=too-many-arguments
 	response_body=None,
 	response_delay=None
 ):
-	timeout = 10
+	timeout = 15
 	server = HTTPJSONRPCServer(
 		log_file, ip_version, server_key, server_cert, response_headers, response_status, response_body, response_delay
 	)
 	server.daemon = True
 	server.start()
+
 	running = False
 	start = time.time()
 	while time.time() - start < timeout:
 		with closing(socket.socket(socket.AF_INET6 if ip_version == 6 else socket.AF_INET, socket.SOCK_STREAM)) as sock:
 			sock.settimeout(1)
-			res = sock.connect_ex(('::1' if ip_version == 6 else "127.0.0.1", server.port))
+			res = sock.connect_ex(("::1" if ip_version == 6 else "127.0.0.1", server.port))
 			if res == 0:
 				running = True
 				break
