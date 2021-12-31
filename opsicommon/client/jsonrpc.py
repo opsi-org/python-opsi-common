@@ -192,8 +192,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		logger.info(
 			"Using proxy settings: http_proxy=%r, https_proxy=%r, no_proxy=%r",
-			self._proxy_url if self._proxy_url.lower() != "system" else os.environ.get("http_proxy"),
-			self._proxy_url if self._proxy_url.lower() != "system" else os.environ.get("https_proxy"),
+			self._proxy_url if self._proxy_url and self._proxy_url.lower() != "system" else os.environ.get("http_proxy"),
+			self._proxy_url if self._proxy_url and self._proxy_url.lower() != "system" else os.environ.get("https_proxy"),
 			os.environ.get("no_proxy")
 		)
 
@@ -259,17 +259,13 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			for tmp2 in tmp1.values():
 				for cookie in tmp2.values():
 					return f"{cookie.name}={unquote(cookie.value)}"
-		return None
 
 	@property
 	def server_version(self):
-		try:
-			if self.server_name:
-				match = re.search(r"^opsi\D+(\d+\.\d+\.\d+\.\d+)", self.server_name)
-				if match:
-					return [int(v) for v in match.group(1).split('.')]
-		except Exception as err:  # pylint: disable=broad-except
-			logger.warning("Failed to parse server version '%s': %s", self.server_name, err)
+		if self.server_name:
+			match = re.search(r"^opsi\D+(\d+\.\d+\.\d+\.\d+)", self.server_name)
+			if match:
+				return [int(v) for v in match.group(1).split('.')]
 		return None
 
 	serverVersion = server_version

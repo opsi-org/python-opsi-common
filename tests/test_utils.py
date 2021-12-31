@@ -75,7 +75,7 @@ def test_timestamp():
 
 
 def test_singleton():
-	class TestSingleton(metaclass=Singleton):
+	class TestSingleton(metaclass=Singleton):  # pylint: disable=too-few-public-methods
 		pass
 
 	assert id(TestSingleton()) == id(TestSingleton())

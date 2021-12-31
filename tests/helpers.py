@@ -62,7 +62,10 @@ class HTTPJSONRPCServerRequestHandler(http.server.SimpleHTTPRequestHandler):
 		elif "msgpack" in self.headers['Content-Type']:
 			request = msgpack.loads(request)
 
-		self._log({"method": "POST", "path": self.path, "headers": dict(self.headers), "request": request})
+		self._log({
+			"method": "POST", "client_address": self.client_address,
+			"path": self.path, "headers": dict(self.headers), "request": request
+		})
 		response = None
 		if self.server.response_body:
 			response = self.server.response_body
@@ -81,11 +84,17 @@ class HTTPJSONRPCServerRequestHandler(http.server.SimpleHTTPRequestHandler):
 		self.wfile.write(response)
 
 	def do_GET(self):
-		if self.server.response_status:
+		if self.headers['X-Response-Status']:
+			val = self.headers['X-Response-Status'].split(" ", 1)
+			self.send_response(int(val[0]), val[1])
+		elif self.server.response_status:
 			self.send_response(self.server.response_status[0], self.server.response_status[1])
 		else:
 			self.send_response(200, "OK")
-		self._log({"method": "GET", "path": self.path, "headers": dict(self.headers)})
+		self._log({
+			"method": "GET", "client_address": self.client_address,
+			"path": self.path, "headers": dict(self.headers)
+		})
 		response = None
 		if self.server.response_body:
 			response = self.server.response_body
@@ -125,16 +134,19 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 		self.server = None
 
 	def run(self):
-		self.server = http.server.HTTPServer(("", self.port), HTTPJSONRPCServerRequestHandler)
+		class HTTPServer6(http.server.HTTPServer):
+			address_family = socket.AF_INET6
+
+		self.server = HTTPServer6(("::", self.port), HTTPJSONRPCServerRequestHandler)
 		if self.server_key and self.server_cert:
 			context = ssl.SSLContext()
 			context.load_cert_chain(keyfile=self.server_key, certfile=self.server_cert)
 			self.server.socket = context.wrap_socket(sock=self.server.socket, server_side=True)
-		self.server.log_file = self.log_file
-		self.server.response_headers = self.response_headers
-		self.server.response_status = self.response_status
-		self.server.response_body = self.response_body
-		self.server.response_delay = self.response_delay
+		self.server.log_file = self.log_file  # pylint: disable=attribute-defined-outside-init
+		self.server.response_headers = self.response_headers  # pylint: disable=attribute-defined-outside-init
+		self.server.response_status = self.response_status  # pylint: disable=attribute-defined-outside-init
+		self.server.response_body = self.response_body  # pylint: disable=attribute-defined-outside-init
+		self.server.response_delay = self.response_delay  # pylint: disable=attribute-defined-outside-init
 		#print("Server listening on port:" + str(self.port))
 		self.running.set()
 		self.server.serve_forever()
