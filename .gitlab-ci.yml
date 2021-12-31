@@ -16,6 +16,7 @@ test:pylint-pytest-darwin:
     - poetry install
     - sudo poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
     - sudo poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
+  after_script:
     - sudo chown -R $USER .
   artifacts:
     name: 'python-opsi-common_test_darwin'
