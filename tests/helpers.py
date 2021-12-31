@@ -119,7 +119,6 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 		response_delay=None
 	):
 		super().__init__()
-		self.running = threading.Event()
 		self.log_file = str(log_file) if log_file else None
 		self.ip_version = 6 if ip_version == 6 else 4
 		self.server_key = server_key if server_key else None
@@ -150,7 +149,6 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 		self.server.response_body = self.response_body  # pylint: disable=attribute-defined-outside-init
 		self.server.response_delay = self.response_delay  # pylint: disable=attribute-defined-outside-init
 		#print("Server listening on port:" + str(self.port))
-		self.running.set()
 		self.server.serve_forever()
 
 	def stop(self):
@@ -169,12 +167,22 @@ def http_jsonrpc_server(  # pylint: disable=too-many-arguments
 	response_body=None,
 	response_delay=None
 ):
+	timeout = 5
 	server = HTTPJSONRPCServer(
 		log_file, ip_version, server_key, server_cert, response_headers, response_status, response_body, response_delay
 	)
 	server.daemon = True
 	server.start()
-	server.running.wait(3.0)
+	running = False
+	for _ in range(timeout):
+		sock = socket.socket(socket.AF_INET6 if ip_version == 6 else socket.AF_INET, socket.SOCK_STREAM)
+		res = sock.connect_ex(('::1' if ip_version == 6 else "127.0.0.1", server.port))
+		sock.close()
+		if res == 0:
+			running = True
+
+	if not running:
+		raise RuntimeError("Failed to start HTTPJSONRPCServer")
 	try:
 		yield server
 	finally:
