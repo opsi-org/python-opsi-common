@@ -10,7 +10,7 @@ import os
 import shutil
 import getpass
 import subprocess
-
+from unittest import mock
 import pytest
 
 from opsicommon.system import ensure_not_already_running
@@ -25,6 +25,16 @@ def test_get_user_sessions_linux():
 	for sess in get_user_sessions():
 		usernames.append(sess.username)
 	assert username in usernames
+
+
+@pytest.mark.linux
+def test_get_user_sessions_linux_mock():
+	import psutil  # pylint: disable=import-outside-toplevel
+	from opsicommon.system import get_user_sessions  # pylint: disable=import-outside-toplevel
+	with mock.patch('psutil.users', lambda: [
+		psutil._common.suser(name="mockuser", terminal="tty3", host="", started=1640687744.0, pid=668245)  # pylint: disable=protected-access
+	]):
+		assert "mockuser" in [sess.username for sess in get_user_sessions()]
 
 
 @pytest.mark.linux
@@ -61,3 +71,11 @@ def test_ensure_not_already_running_child_process_linux(tmpdir):
 	with subprocess.Popen([test_system_sleep, "3"]):
 		# test_system_sleep_child is our child => no Exception should be raised
 		ensure_not_already_running("test_system_sleep_child")
+
+
+@pytest.mark.linux
+@pytest.mark.admin_permissions
+def test_drop_privileges():
+	from opsicommon.system.linux import drop_privileges  # pylint: disable=import-outside-toplevel
+	username = getpass.getuser()
+	drop_privileges(username)
