@@ -80,7 +80,7 @@ test:pylint-pytest:
     - apt-get --yes install sqlite3
     - poetry install
     - poetry run pylint --disable=R,fixme opsicommon
-    - for db in coverage_*; do qlite3 $db 'update file set path=replace(substr(path,instr(path,"opsicommon")),"\","/");'; done
+    - for db in coverage_*; do sqlite3 $db 'update file set path=replace(substr(path,instr(path,"opsicommon")),"\","/");'; done
     - poetry run coverage combine coverage_darwin coverage_windows coverage_linux
     - poetry run coverage xml
     - poetry run coverage report
