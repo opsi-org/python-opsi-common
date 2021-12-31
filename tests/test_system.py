@@ -7,6 +7,7 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import os
+import time
 import shutil
 import getpass
 import subprocess
@@ -32,7 +33,7 @@ def test_get_user_sessions_linux_mock():
 	import psutil  # pylint: disable=import-outside-toplevel
 	from opsicommon.system import get_user_sessions  # pylint: disable=import-outside-toplevel
 	with mock.patch('psutil.users', lambda: [
-		psutil._common.suser(name="mockuser", terminal="tty3", host="", started=1640687744.0, pid=668245)  # pylint: disable=protected-access
+		psutil._common.suser(name="mockuser", terminal="tty3", host="", started=time.time(), pid=os.getpid())  # pylint: disable=protected-access
 	]):
 		assert "mockuser" in [sess.username for sess in get_user_sessions()]
 
