@@ -148,6 +148,9 @@ def test_install_load_remove_ca():
 	remove_ca(subject_name)
 
 
+# TODO: darwin
+@pytest.mark.linux
+@pytest.mark.windows
 @pytest.mark.admin_permissions
 def test_wget(tmpdir):  # pylint: disable=redefined-outer-name, unused-argument
 	ca_cert, ca_key = create_ca({"CN": "python-opsi-common test ca"}, 3)

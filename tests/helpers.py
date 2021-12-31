@@ -160,7 +160,6 @@ def http_jsonrpc_server(  # pylint: disable=too-many-arguments
 	server.daemon = True
 	server.start()
 	server.running.wait(3.0)
-	time.sleep(1)
 	try:
 		yield server
 	finally:
