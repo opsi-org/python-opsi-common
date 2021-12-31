@@ -96,7 +96,7 @@ def test_timeouts():
 
 def test_proxy(tmp_path):
 	log_file = tmp_path / "request.log"
-	with http_jsonrpc_server(log_file=log_file, response_delay=3) as server:
+	with http_jsonrpc_server(log_file=log_file) as server:
 		# Proxy will not be used for localhost (JSONRPCClient.no_proxy_addresses)
 		with pytest.raises(RConnectionError):
 			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url=f"http://localhost:{server.port}", connect_timeout=2)
@@ -180,16 +180,25 @@ def test_cookie_handling(tmp_path):
 		("auto", ""),
 	)
 )
-def test_force_ip_version(tmp_path, ip_version, expected_address):
+def test_force_ip_version_4(tmp_path):
 	log_file = tmp_path / "request.log"
-	if ip_version == 6 and not socket.has_ipv6:
-		pytest.skip("No IPv6 support")
-	with http_jsonrpc_server(ip_version=ip_version, log_file=log_file) as server:
-		client = JSONRPCClient(f"http://localhost:{server.port}", ip_version=ip_version)
+	with http_jsonrpc_server(ip_version=4, log_file=log_file) as server:
+		client = JSONRPCClient(f"http://localhost:{server.port}", ip_version=4)
 		client.get("/")
 		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
 		#print(request)
-		assert expected_address in request["client_address"][0]
+		assert "127.0.0.1" in request["client_address"][0]
+
+
+@pytest.mark.not_in_docker
+def test_force_ip_version_6(tmp_path):
+	log_file = tmp_path / "request.log"
+	with http_jsonrpc_server(ip_version=6, log_file=log_file) as server:
+		client = JSONRPCClient(f"http://localhost:{server.port}", ip_version=6)
+		client.get("/")
+		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
+		#print(request)
+		assert "::1" in request["client_address"][0]
 
 
 @pytest.mark.parametrize("server_name, expected_version", (
