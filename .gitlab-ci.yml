@@ -4,7 +4,7 @@ stages:
   - test
   - publish
 
-test:pylint-pytest-darwin:
+test:pytest-darwin:
   #when: manual
   stage: test
   tags:
@@ -16,6 +16,7 @@ test:pylint-pytest-darwin:
     - poetry install
     - sudo poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
     - sudo poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
+    - mv .coverage coverage_darwin
   after_script:
     - sudo chown -R $USER .
   artifacts:
@@ -23,49 +24,63 @@ test:pylint-pytest-darwin:
     paths:
       - coverage.xml
       - testreport.xml
+      - coverage_darwin
     expire_in: 3 days
 
-test:pylint-pytest-windows:
+test:pytest-windows:
   #when: manual
   stage: test
-  needs:
-    # We want to combine test coverage from all test jobs
-    - job: test:pylint-pytest-darwin
-      artifacts: true
   tags:
     - win10
   script:
     - poetry install
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests\\test_logging.py tests
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests\\test_logging.py
+    - Rename-Item -Path .coverage -NewName coverage_windows
   artifacts:
     name: 'python-opsi-common_test_windows'
     paths:
       - coverage.xml
       - testreport.xml
+      - coverage_windows
     expire_in: 3 days
 
-test:pylint-pytest-linux:
+test:pytest-linux:
   #when: manual
   stage: test
-  needs:
-    # We want to combine test coverage from all test jobs
-    - job: test:pylint-pytest-windows
-      artifacts: true
   script:
     - poetry install
-    - poetry run pylint --disable=R,fixme opsicommon
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
+    - mv .coverage coverage_linux
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+)%/'
   artifacts:
     name: 'python-opsi-common_test_linux'
     paths:
       - coverage.xml
       - testreport.xml
+      - coverage_linux
     reports:
       junit: testreport.xml
     expire_in: 3 days
+
+test:pylint-pytest:
+  #when: manual
+  stage: test
+  needs:
+    # We want to combine test coverage from all test jobs
+    - job: test:pytest-windows
+      artifacts: true
+    - job: test:pytest-darwin
+      artifacts: true
+    - job: test:pytest-linux
+      artifacts: true
+  script:
+    - poetry install
+    - poetry run pylint --disable=R,fixme opsicommon
+    - poetry run coverage combine coverage_darwin coverage_windows coverage_linux
+    - poetry run coverage xml
+    - poetry run coverage report
 
 publish:uibpypi:
   stage: publish
