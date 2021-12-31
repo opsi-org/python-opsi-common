@@ -172,14 +172,6 @@ def test_cookie_handling(tmp_path):
 	assert request["headers"].get("Cookie") == cookie
 
 
-@pytest.mark.parametrize(
-	"ip_version, expected_address",
-	(
-		(4, "127.0.0.1"),
-		(6, "::1"),
-		("auto", ""),
-	)
-)
 def test_force_ip_version_4(tmp_path):
 	log_file = tmp_path / "request.log"
 	with http_jsonrpc_server(ip_version=4, log_file=log_file) as server:
