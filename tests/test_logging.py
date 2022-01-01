@@ -86,10 +86,10 @@ def test_log_file(tmpdir):
 	logging_config(log_file=None, remove_handlers=True)
 
 
-def test_log_exception_handler(tmpdir):
+def test_log_exception_handler():
 	log_record = logging.LogRecord(name=None, level=logging.ERROR, pathname=None, lineno=1, msg="t", args=None, exc_info=None)
 
-	filename = os.path.join(tmpdir, f"log_exception_{os.getpid()}.txt")
+	filename = os.path.join(tempfile.gettempdir(), f"log_exception_{os.getpid()}.txt")
 	if os.path.exists(filename):
 		os.remove(filename)
 	try:
