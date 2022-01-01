@@ -76,15 +76,13 @@ def test_log_file(tmpdir):
 		assert file.read().strip() == "message"
 	with open(log_file2, "r", encoding="utf-8") as file:
 		assert file.read().strip() == "message"
-	os.remove(log_file1)
-	os.remove(log_file2)
 
 	logger.addHandler(logging.FileHandler(log_file3))
 	logging_config(log_file=log_file2, file_level=logging.INFO, file_format="%(message)s", remove_handlers=True)
-	logger.warning("message")
+	logger.warning("message2")
 	assert not os.path.exists(log_file3) or os.path.getsize(log_file3) == 0
 	with open(log_file2, "r", encoding="utf-8") as file:
-		assert file.read().strip() == "message"
+		assert "message2" in file.read()
 
 	logging_config(log_file=None, remove_handlers=True)
 
