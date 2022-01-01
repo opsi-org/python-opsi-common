@@ -6,6 +6,7 @@
 This file is part of opsi - https://www.opsi.org
 """
 
+import re
 import time
 import shutil
 import codecs
@@ -83,6 +84,8 @@ def _read_modules_file(modules_file):
 				customer = val
 			elif key == "signature":
 				signature = val
+				if len(signature) % 2:
+					signature = "0" + signature
 			else:
 				modules[key] = val
 	return modules, expires, customer, signature
@@ -692,7 +695,7 @@ def test_opsi_modules_file(tmp_path):
 			sorted([x for x in raw_data.replace("\r","").split("\n") if x and not x.startswith("signature")]) == \
 			sorted([x for x in lic.additional_data.replace("\r","").split("\n") if x])
 
-	raw_data = raw_data.replace("expires = 2021-12-31", "expires = never")
+	raw_data = re.sub(r"expires.*", "expires = never", raw_data, re.MULTILINE)
 	modules_file.write_text(raw_data, encoding="utf-8")
 	omf = OpsiModulesFile(modules_file)
 	omf.read()
