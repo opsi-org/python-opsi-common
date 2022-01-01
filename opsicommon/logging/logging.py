@@ -311,16 +311,13 @@ class ContextSecretFormatter(logging.Formatter):
 		:returns: The formatted log string.
 		:rytpe: str
 		"""
+		record.contextstring = ""
 		if hasattr(record, "context"):
 			current_context = record.context
 			if isinstance(current_context, dict):
 				values = current_context.values()
 				record.contextstring = ",".join([str(x) for x in values])
-			else:
-				record.contextstring = ""
-		else:
-			record.contextstring = ""
-		#record.contextstring = 	f"{record.contextstring:{CONTEXT_STRING_MIN_LENGTH}}"
+
 		msg = self.orig_formatter.format(record)
 		if not self.secret_filter_enabled:
 			return msg
@@ -764,13 +761,17 @@ def print_logger_info():
 				print(f"  - Handler: {name} ", file=sys.stderr)
 				print(f"    - Formatter: {_handler.formatter}", file=sys.stderr)
 
-def _log_warning(message, category, filename, lineno, line=None, file=None): # pylint: disable=unused-argument,too-many-arguments
-	logger.warning("Warning '%s' in file '%s', line %s", message, filename, lineno)
-	for entry in traceback.format_stack():
-		for _line in entry.split("\n"):
-			logger.debug(_line)
-warnings.showwarning = _log_warning
 
+def init_warnings_capture():
+	def _log_warning(message, category, filename, lineno, line=None, file=None): # pylint: disable=unused-argument,too-many-arguments
+		logger.warning("Warning '%s' in file '%s', line %s", message, filename, lineno)
+		for entry in traceback.format_stack():
+			for _line in entry.split("\n"):
+				logger.debug(_line)
+	warnings.showwarning = _log_warning
+
+
+init_warnings_capture()
 observable_handler = ObservableHandler()
 secret_filter = SecretFilter()
 context_filter = ContextFilter()

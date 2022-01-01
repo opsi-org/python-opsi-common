@@ -182,12 +182,22 @@ def test_object_classes():
 		assert obj.foreign_id_attributes is not None
 		assert obj.getIdentAttributes()
 		assert obj.getIdent()
+		assert obj.getType()
+		assert obj.to_json()
+
+		_dict = obj.to_hash()
+		for attr, value in _dict.items():
+			if attr == "type":
+				continue
+			getter = getattr(obj, f"get{attr[0].upper()}{attr[1:]}")
+			assert getter() == value
+			setter = getattr(obj, f"set{attr[0].upper()}{attr[1:]}")
+			if value is not None:
+				setter(value)
+
+		obj.update(obj.clone())
 		obj.emptyValues()
 		obj.setDefaults()
-		obj.update(obj.clone())
-		assert obj.getType()
-		assert obj.to_hash()
-		assert obj.to_json()
 
 
 def test_get_possible_class_attributes():
@@ -268,6 +278,19 @@ CONFIG_SERVER1 = {
 	"networkAddress": '192.168.1.0/24',
 	"maxBandwidth": 10000
 }
+
+
+def test_object_hash():
+	config_server1 = OpsiConfigserver(**CONFIG_SERVER1)
+	config_server2 = OpsiConfigserver(**CONFIG_SERVER1)
+	assert hash(config_server1) == hash(config_server2)
+
+
+def test_object_to_str():
+	config_server1 = OpsiConfigserver(**CONFIG_SERVER1)
+	_str = str(config_server1)
+	assert _str.startswith("<OpsiConfigserver")
+
 
 def test_objects_differ():
 	config_server1 = OpsiConfigserver(**CONFIG_SERVER1)

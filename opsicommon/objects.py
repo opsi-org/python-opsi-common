@@ -3188,7 +3188,7 @@ class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-
 		self.firstseen = forceOpsiTimestamp(firstseen)
 
 	def getLastseen(self):  # pylint: disable=invalid-name
-		return self.firstseen
+		return self.lastseen
 
 	def setLastseen(self, lastseen):  # pylint: disable=invalid-name
 		self.lastseen = forceOpsiTimestamp(lastseen)
