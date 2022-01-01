@@ -70,6 +70,7 @@ def test_levels(utils):  # pylint: disable=redefined-outer-name
 		stream.seek(0)
 		assert expected in stream.read()
 
+
 def test_log_exception_handler():
 	log_record = logging.LogRecord(name=None, level=logging.ERROR, pathname=None, lineno=1, msg="t", args=None, exc_info=None)
 

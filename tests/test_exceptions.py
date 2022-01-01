@@ -89,6 +89,8 @@ def test_opsi_product_ordering_exception(message, problematic_requirements):
 	_repr = repr(exc)
 	assert _repr.startswith('<')
 	assert _repr.endswith('>')
+	if message:
+		assert ":" in str(exc)
 
 
 def test_opsi_product_ordering_error_ordering_is_accessible():

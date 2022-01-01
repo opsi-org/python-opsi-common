@@ -600,6 +600,20 @@ def test_license_state_cache():
 			assert len(lic._cached_state) == 1  # pylint: disable=protected-access
 
 
+def test_opsi_license_pool_unknown_module_id():
+	private_key, public_key = generate_key_pair(return_pem=False)
+	with mock.patch('opsicommon.license.get_signature_public_key', lambda x: public_key):
+		olp = OpsiLicensePool()
+		lic = dict(LIC1)
+		lic["module_id"] = "unknownmod"
+		lic["valid_until"] = "2123-12-31"
+		lic = OpsiLicense(**lic)
+		lic.sign(private_key)
+		olp.add_license(lic)
+		mods = olp.get_modules()
+		assert "unknownmod" in mods
+
+
 def test_license_state_modules(tmp_path):
 	modules = pathlib.Path("tests/data/license/modules").read_text(encoding="utf-8")
 	modules_file = tmp_path / "modules"

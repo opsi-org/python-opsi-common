@@ -52,26 +52,29 @@ def test_arguments():
 
 	for serialization in ("invalid", "json", "msgpack", "auto"):
 		kwargs["serialization"] = serialization
-		client = JSONRPCClient("http://localhost", **kwargs)
+		client = JSONRPCClient("localhost", **kwargs)
 		if serialization == "invalid":
 			serialization = "auto"
 		assert getattr(client, "_serialization") == serialization
+		assert client.base_url == "https://localhost:4447/rpc"
 
 	for ip_version in ("8", "4", "6", "auto"):
 		kwargs["ip_version"] = ip_version
-		client = JSONRPCClient("http://localhost", **kwargs)
+		client = JSONRPCClient("https://localhost/base/path", **kwargs)
 		if ip_version == "8":
 			ip_version = "auto"
 		assert getattr(client, "_ip_version") == ip_version
+		assert client.base_url == "https://localhost:4447/base/path"
 
 	for compression in ("gzip", "lz4", "true", True, "false", False):
 		kwargs["compression"] = compression
-		client = JSONRPCClient("http://localhost", **kwargs)
+		client = JSONRPCClient("http://localhost:123/base/path", **kwargs)
 		if compression == "true":
 			compression = True
 		elif compression == "false":
 			compression = False
 		assert getattr(client, "_compression") == compression
+		assert client.base_url == "http://localhost:123/base/path"
 
 	client = JSONRPCClient("http://127.0.0.1", **kwargs)
 	assert getattr(client, "_ip_version") == 4
