@@ -14,12 +14,12 @@ import time
 import threading
 import socket
 from contextlib import closing, contextmanager
-import http.server
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 import lz4
 import msgpack
 
 
-class HTTPJSONRPCServerRequestHandler(http.server.SimpleHTTPRequestHandler):
+class HTTPJSONRPCServerRequestHandler(SimpleHTTPRequestHandler):
 	def _log(self, data):  # pylint: disable=invalid-name
 		if not self.server.log_file:
 			return
@@ -135,10 +135,14 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 		self.server = None
 
 	def run(self):
-		class HTTPServer6(http.server.HTTPServer):
+		class HTTPServer6(HTTPServer):
 			address_family = socket.AF_INET6
 
-		self.server = HTTPServer6(("::" if self.ip_version == 6 else "", self.port), HTTPJSONRPCServerRequestHandler)
+		if self.ip_version == 6:
+			self.server = HTTPServer6(("::", self.port), HTTPJSONRPCServerRequestHandler)
+		else:
+			self.server = HTTPServer(("", self.port), HTTPJSONRPCServerRequestHandler)
+
 		if self.server_key and self.server_cert:
 			context = ssl.SSLContext()
 			context.load_cert_chain(keyfile=self.server_key, certfile=self.server_cert)
