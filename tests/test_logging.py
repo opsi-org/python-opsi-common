@@ -64,9 +64,11 @@ def test_levels():  # pylint: disable=redefined-outer-name
 		assert expected in stream.read()
 
 
+
 def test_log_file(tmpdir):
 	log_file1 = tmpdir + "/log1"
 	log_file2 = tmpdir + "/log2"
+	log_file3 = tmpdir + "/log3"
 	logger.addHandler(logging.FileHandler(log_file1))
 	logging_config(log_file=log_file2, file_level=logging.INFO, file_format="%(message)s", remove_handlers=False)
 	logger.warning("message")
@@ -77,9 +79,10 @@ def test_log_file(tmpdir):
 	os.remove(log_file1)
 	os.remove(log_file2)
 
+	logger.addHandler(logging.FileHandler(log_file3))
 	logging_config(log_file=log_file2, file_level=logging.INFO, file_format="%(message)s", remove_handlers=True)
 	logger.warning("message")
-	assert not os.path.exists(log_file1)
+	assert not os.path.exists(log_file3) or os.path.getsize(log_file3) == 0
 	with open(log_file2, "r", encoding="utf-8") as file:
 		assert file.read().strip() == "message"
 
