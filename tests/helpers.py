@@ -171,7 +171,7 @@ def http_jsonrpc_server(  # pylint: disable=too-many-arguments
 	response_body=None,
 	response_delay=None
 ):
-	timeout = 15
+	timeout = 5
 	server = HTTPJSONRPCServer(
 		log_file, ip_version, server_key, server_cert, response_headers, response_status, response_body, response_delay
 	)
