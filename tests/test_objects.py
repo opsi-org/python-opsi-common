@@ -6,8 +6,8 @@
 test_objects
 """
 
+import json
 from contextlib import contextmanager
-
 from unittest import mock
 import pytest
 
@@ -194,6 +194,15 @@ def test_object_classes():
 			setter = getattr(obj, f"set{attr[0].upper()}{attr[1:]}")
 			if value is not None:
 				setter(value)
+
+		for key in dir(obj.__class__):
+			if isinstance(getattr(obj.__class__, key), property):
+				assert getattr(obj, key)
+
+		obj.__class__.fromHash(_dict)
+		del _dict["type"]
+		assert isinstance(obj.__class__.fromHash(_dict), obj.__class__)
+		assert isinstance(obj.__class__.from_json(json.dumps(_dict)), obj.__class__)
 
 		obj.update(obj.clone())
 		obj.emptyValues()
