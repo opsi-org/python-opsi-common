@@ -210,6 +210,7 @@ def test_server_name_handling(tmp_path, server_name, expected_version):
 	) as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}", compression=True)
 		assert client.server_name == server_name
+		assert client.server_name == client.serverName
 		assert client.server_version == expected_version
 		client.execute_rpc("method", ["param"*100])
 
