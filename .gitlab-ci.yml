@@ -90,6 +90,8 @@ test:pylint-pytest:
     paths:
       - coverage.xml
     expire_in: 3 days
+    reports:
+      cobertura: coverage.xml
 
 publish:uibpypi:
   stage: publish
