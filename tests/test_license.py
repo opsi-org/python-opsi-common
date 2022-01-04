@@ -15,6 +15,7 @@ import pathlib
 from datetime import date, timedelta
 from unittest import mock
 import pytest
+from Crypto.PublicKey import RSA
 
 from opsicommon.license import (
 	set_default_opsi_license_pool,
@@ -109,6 +110,16 @@ def test_sign_opsi_license():
 		assert lic.get_state() == OPSI_LICENSE_STATE_INVALID_SIGNATURE
 		lic.sign(private_key)
 		assert lic.get_state() == OPSI_LICENSE_STATE_VALID
+
+	private_key, public_key = generate_key_pair(return_pem=True)
+	with mock.patch('opsicommon.license.get_signature_public_key', lambda x: RSA.import_key(public_key)):
+		lic = OpsiLicense(**LIC1)
+		lic.sign(private_key)
+		assert lic.get_state() == OPSI_LICENSE_STATE_VALID
+
+		lic.schema_version = 1
+		with pytest.raises(NotImplementedError):
+			lic.sign(private_key)
 
 
 def test_opsi_license_defaults():

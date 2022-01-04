@@ -104,14 +104,11 @@ def generate_key_pair(bits: int = 2048, return_pem: int = False) -> typing.List[
 	key = RSA.generate(bits=bits)
 	if not return_pem:
 		return key, key.publickey()
-
-	private_key = key.export_key()
-	public_key = key.publickey().export_key()
-	return private_key.decode(), public_key.decode()
+	return key.export_key().decode(), key.publickey().export_key().decode()
 
 
 @lru_cache(maxsize=None)
-def get_signature_public_key(schema_version: int):
+def get_signature_public_key(schema_version: int) -> RSA.RsaKey:
 	if schema_version < 2:
 		data = base64.decodebytes(
 			b"AAAAB3NzaC1yc2EAAAADAQABAAABAQCAD/I79Jd0eKwwfuVwh5B2z+S8aV0C5suItJa18RrYip+d4P0ogzqoCfOoVWtDo"
@@ -404,7 +401,7 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 		if self.schema_version < 2:
 			raise NotImplementedError("Signing for schema_version < 2 not implemented")
 		if isinstance(private_key, str):
-			private_key = RSA.import_key(str.encode("ascii"))
+			private_key = RSA.import_key(private_key.encode("ascii"))
 		self.signature = pss.new(private_key).sign(self.get_hash())
 
 class OpsiLicenseFile:
@@ -419,9 +416,9 @@ class OpsiLicenseFile:
 	def add_license(self, opsi_license: OpsiLicense) -> None:
 		self._licenses[opsi_license.id] = opsi_license
 
-	def read(self):
+	def read_string(self, data: str) -> None:
 		ini = configparser.ConfigParser()
-		ini.read(self.filename, encoding="utf-8")
+		ini.read_string(data)
 		for section in ini.sections():
 			kwargs = dict(ini.items(section=section, raw=True))
 			kwargs["id"] = section
@@ -433,26 +430,35 @@ class OpsiLicenseFile:
 					kwargs[key] = None
 			self.add_license(OpsiLicense(**kwargs))
 
-	def write(self):
+	def read(self):
+		with open(self.filename, "r", encoding="utf-8") as file:
+			self.read_string(file.read())
+
+	def write_string(self) -> str:
 		if not self._licenses:
 			raise RuntimeError("No licenses to write")
-		with codecs.open(self.filename, "w", "utf-8") as file:
-			for license_id in sorted(self._licenses):
-				file.write(f"[{license_id}]\n")
-				data = self._licenses[license_id].to_dict(serializable=True)
-				for field in attr.fields(OpsiLicense):
-					value = data.get(field.name)
-					if field.name.startswith("_") or field.name == "id":
-						continue
-					if value in (None, ""):
-						value = ""
-					elif field.name == "revoked_ids":
-						value = ",".join(value)
-					elif field.name in ("customer_name", "customer_address", "customer_unit", "note"):
-						value = repr(value)[1:-1]
-					file.write(f"{field.name} = {value}\n")
-				file.write("\n")
 
+		data = ""
+		for license_id in sorted(self._licenses):
+			data = f"{data}[{license_id}]\n"
+			lic = self._licenses[license_id].to_dict(serializable=True)
+			for field in attr.fields(OpsiLicense):
+				value = lic.get(field.name)
+				if field.name.startswith("_") or field.name == "id":
+					continue
+				if value in (None, ""):
+					value = ""
+				elif field.name == "revoked_ids":
+					value = ",".join(value)
+				elif field.name in ("customer_name", "customer_address", "customer_unit", "note"):
+					value = repr(value)[1:-1]
+				data = f"{data}{field.name} = {value}\n"
+			data = f"{data}\n"
+		return data
+
+	def write(self):
+		with codecs.open(self.filename, "w", "utf-8") as file:
+			file.write(self.write_string())
 
 class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 	def __init__(self, filename: str) -> None:
