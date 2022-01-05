@@ -15,7 +15,9 @@ import functools
 from typing import List
 import psutil
 
+from opsicommon.logging import logger
 from .. import Session
+
 
 def get_user_sessions(username: str = None, session_type: str = None):
 	for user in psutil.users():
@@ -82,13 +84,13 @@ def run_process_in_session(command: List[str], session_id: str, shell: bool = Fa
 	)
 
 def drop_privileges(username: str):
-	#logger.debug("Switching to user %s", username)
+	logger.debug("Switching to user %s", username)
 	user = pwd.getpwnam(username)
 	gids = [user.pw_gid]
 	for _grp in grp.getgrall():
 		if user.pw_name in _grp.gr_mem and not _grp.gr_gid in gids:
 			gids.append(_grp.gr_gid)
-	#logger.debug("Set uid=%s, gid=%s, groups=%s", user.pw_uid, gids[0], gids)
+	logger.trace("Set uid=%s, gid=%s, groups=%s", user.pw_uid, gids[0], gids)
 	os.setgid(gids[0])
 	os.setgroups(gids)
 	os.setuid(user.pw_uid)
