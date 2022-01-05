@@ -9,7 +9,6 @@ This file is part of opsi - https://www.opsi.org
 import os
 import time
 import json
-import socket
 from urllib.parse import unquote
 from requests.exceptions import ConnectionError as RConnectionError, ReadTimeout, HTTPError
 import pytest

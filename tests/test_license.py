@@ -358,6 +358,26 @@ def test_opsi_license_pool_licenses_checksum():
 		checksum = olp.get_licenses_checksum()
 		assert checksum == "372ac8d6"
 
+	olp = OpsiLicensePool()
+	private_key, public_key = generate_key_pair(return_pem=False)
+	with mock.patch('opsicommon.license.get_signature_public_key', lambda x: public_key):
+		checksum = olp.get_licenses_checksum()
+		assert checksum == "0"
+
+		lic1 = OpsiLicense(**LIC1)
+		lic1.module_id = "directory-connector"
+		lic1.sign(private_key)
+		olp.add_license(lic1)
+		checksum = olp.get_licenses_checksum()
+		assert checksum == "2c3bde7c"
+
+		lic2 = OpsiLicense(**LIC1)
+		lic2.module_id = "dynamic_depot"
+		lic2.sign(private_key)
+		olp.add_license(lic2)
+		checksum = olp.get_licenses_checksum()
+		assert checksum == "34c7b2d2"
+
 
 def test_opsi_license_pool_relevant_dates():
 	olp = OpsiLicensePool(
