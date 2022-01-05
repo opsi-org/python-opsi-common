@@ -109,7 +109,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				self._username = str(value or "")
 			elif option == 'password':
 				self._password = str(value or "")
-			elif option == 'sessionid':
+			elif option == 'sessionid' and value:
 				session_id = str(value)
 			elif option == 'compression':
 				self.set_compression(value)
