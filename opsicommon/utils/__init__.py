@@ -143,7 +143,7 @@ def prepare_proxy_environment(hostname, proxy_url, no_proxy_addresses=None, sess
 	def add_protocol(host, protocol="http"):
 		if not host or "://" in host:
 			return host
-		logger.debug("adding http:// to form url from proxy %s", host)
+		logger.debug("Adding schema '%s://' to form proxy url from host '%s'", protocol, host)
 		return "://".join((protocol, host))
 
 	if no_proxy_addresses is None:
@@ -154,13 +154,12 @@ def prepare_proxy_environment(hostname, proxy_url, no_proxy_addresses=None, sess
 		# Use a proxy
 		if proxy_url.lower() == "system":
 			#making sure system proxy has correct form
-			os.environ["http_proxy"] = add_protocol(os.environ.get("http_proxy", ""))
-			os.environ["https_proxy"] = add_protocol(os.environ.get("https_proxy", ""))		#protocol=https?
+			if os.environ.get("http_proxy"):
+				os.environ["http_proxy"] = add_protocol(os.environ.get("http_proxy", ""))
+			if os.environ.get("https_proxy"):
+				os.environ["https_proxy"] = add_protocol(os.environ.get("https_proxy", ""))		#protocol=https?
 		else:
 			proxy_url = add_protocol(proxy_url)
-			if "://" not in proxy_url:
-				logger.debug("adding http:// to form url from proxy %s", proxy_url)
-				proxy_url = "://".join(("http", proxy_url))
 			if hostname in no_proxy_addresses:
 				logger.info("Not using proxy for address %s", hostname)
 			else:
