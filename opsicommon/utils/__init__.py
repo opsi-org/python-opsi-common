@@ -130,12 +130,14 @@ def timestamp(secs=0, date_only=False):
 		return time.strftime("%Y-%m-%d", time.localtime(secs))
 	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(secs))
 
+
 class Singleton(type):
 	_instances = {}
 	def __call__(cls, *args, **kwargs):
 		if cls not in cls._instances:
 			cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
 		return cls._instances[cls]
+
 
 def prepare_proxy_environment(hostname, proxy_url, no_proxy_addresses=None, session=None):
 	def add_protocol(host, protocol="http"):
