@@ -6,7 +6,6 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-import os
 import re
 import time
 import types
@@ -37,7 +36,7 @@ from opsicommon.exceptions import (
 	OpsiRpcError, OpsiServiceVerificationError,
 	BackendAuthenticationError, BackendPermissionDeniedError
 )
-from opsicommon.utils import serialize, deserialize
+from opsicommon.utils import serialize, deserialize, prepare_proxy_environment
 
 urllib3.disable_warnings()
 
@@ -169,32 +168,11 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			else:
 				logger.warning("Invalid session id passed: %s", session_id)
 
-		if self._proxy_url:
-			# Use a proxy
-			if self._proxy_url.lower() != "system":
-				if self.hostname in self.no_proxy_addresses:
-					logger.info("Not using proxy for address %s", self.hostname)
-				else:
-					self._session.proxies.update({
-						"http": self._proxy_url,
-						"https": self._proxy_url,
-					})
-					for key in ("http_proxy", "https_proxy"):
-						if key in os.environ:
-							del os.environ[key]
-			no_proxy = [x.strip() for x in os.environ.get("no_proxy", "").split(",") if x.strip()]
-			if no_proxy != ["*"]:
-				no_proxy.extend(self.no_proxy_addresses)
-			os.environ["no_proxy"] = ",".join(set(no_proxy))
-		else:
-			# Do not use a proxy
-			os.environ['no_proxy'] = '*'
-
-		logger.info(
-			"Using proxy settings: http_proxy=%r, https_proxy=%r, no_proxy=%r",
-			self._proxy_url if self._proxy_url and self._proxy_url.lower() != "system" else os.environ.get("http_proxy"),
-			self._proxy_url if self._proxy_url and self._proxy_url.lower() != "system" else os.environ.get("https_proxy"),
-			os.environ.get("no_proxy")
+		self._session = prepare_proxy_environment(
+			self.hostname,
+			self._proxy_url,
+			no_proxy_addresses=self.no_proxy_addresses,
+			session=self._session
 		)
 
 		if self._verify_server_cert:

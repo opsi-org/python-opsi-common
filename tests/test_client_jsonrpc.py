@@ -158,6 +158,32 @@ def test_proxy(tmp_path):
 			os.remove(log_file)
 
 
+def test_proxy_legacy(tmp_path):
+	log_file = tmp_path / "request.log"
+	with http_jsonrpc_server(log_file=log_file) as server:
+		JSONRPCClient.no_proxy_addresses = []
+		proxy_env = {
+			"http_proxy": "should-not-be-used",
+			"https_proxy": "should-not-be-used"
+		}
+
+		JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url=f"localhost:{server.port}", connect_timeout=2)
+		request = json.loads(log_file.read_text(encoding="utf-8"))
+		assert request.get("path") == f"http://localhost:{server.port+1}/rpc"
+		os.remove(log_file)
+
+		proxy_env = {
+			"http_proxy": f"localhost:{server.port}",
+			"https_proxy": f"localhost:{server.port+2}",
+			"no_proxy": ""
+		}
+		with environment(proxy_env):
+			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url="system", connect_timeout=2)
+			request = json.loads(log_file.read_text(encoding="utf-8"))
+			assert request.get("path") == f"http://localhost:{server.port+1}/rpc"
+			os.remove(log_file)
+
+
 def test_cookie_handling(tmp_path):
 	log_file = tmp_path / "request.log"
 	cookie = "COOKIE-NAME=abc"
