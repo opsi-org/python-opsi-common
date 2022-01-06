@@ -6,10 +6,12 @@
 General utility functions.
 """
 
+import os
 import time
 import types
 import secrets
 import json
+import requests
 
 from opsicommon.logging import logger
 
@@ -134,3 +136,52 @@ class Singleton(type):
 		if cls not in cls._instances:
 			cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
 		return cls._instances[cls]
+
+def prepare_proxy_environment(hostname, proxy_url, no_proxy_addresses=None, session=None):
+	def add_protocol(host, protocol="http"):
+		if not host or "://" in host:
+			return host
+		logger.debug("adding http:// to form url from proxy %s", host)
+		return "://".join((protocol, host))
+
+	if no_proxy_addresses is None:
+		no_proxy_addresses = []
+	if session is None:
+		session = requests.Session()
+	if proxy_url:
+		# Use a proxy
+		if proxy_url.lower() == "system":
+			#making sure system proxy has correct form
+			os.environ["http_proxy"] = add_protocol(os.environ.get("http_proxy", ""))
+			os.environ["https_proxy"] = add_protocol(os.environ.get("https_proxy", ""))		#protocol=https?
+		else:
+			proxy_url = add_protocol(proxy_url)
+			if "://" not in proxy_url:
+				logger.debug("adding http:// to form url from proxy %s", proxy_url)
+				proxy_url = "://".join(("http", proxy_url))
+			if hostname in no_proxy_addresses:
+				logger.info("Not using proxy for address %s", hostname)
+			else:
+				session.proxies.update({
+					"http": proxy_url,
+					"https": proxy_url,
+				})
+				for key in ("http_proxy", "https_proxy"):
+					if key in os.environ:
+						del os.environ[key]
+
+		no_proxy = [x.strip() for x in os.environ.get("no_proxy", "").split(",") if x.strip()]
+		if no_proxy != ["*"]:
+			no_proxy.extend(no_proxy_addresses)
+		os.environ["no_proxy"] = ",".join(set(no_proxy))
+	else:
+		# Do not use a proxy
+		os.environ['no_proxy'] = '*'
+
+	logger.info(
+		"Using proxy settings: http_proxy=%r, https_proxy=%r, no_proxy=%r",
+		proxy_url if proxy_url and proxy_url.lower() != "system" else os.environ.get("http_proxy"),
+		proxy_url if proxy_url and proxy_url.lower() != "system" else os.environ.get("https_proxy"),
+		os.environ.get("no_proxy")
+	)
+	return session
