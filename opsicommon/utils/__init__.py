@@ -139,7 +139,14 @@ class Singleton(type):
 		return cls._instances[cls]
 
 
-def prepare_proxy_environment(hostname, proxy_url, no_proxy_addresses=None, session=None):
+def prepare_proxy_environment(hostname, proxy_url="system", no_proxy_addresses=None, session=None):
+	"""
+	proxy_url can be:
+	* an explicid url like http://10.10.10.1:8080
+	* the string "system" in which case the os environment determines proxy behaviour
+	* emptystring or None to disable proxy usage.
+	If session is given its proxy settings are adapted. Else a new session is created and returned.
+	"""
 	def add_protocol(host, protocol="http"):
 		if not host or "://" in host:
 			return host
