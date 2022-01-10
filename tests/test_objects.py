@@ -398,8 +398,8 @@ def test_object_update():
 	assert product1.description == "NEW DESCRIPTION"
 
 	product1.update(product2, updateWithNoneValues=True)
-	assert product2.description == None
-	assert product1.description == None
+	assert product2.description is None
+	assert product1.description is None
 
 
 def test_from_hash():
@@ -666,7 +666,7 @@ def test_product_property_shows_optional_arguments_in_repr2(property_class, requ
 	[True],
 	True,
 ])
-def testProductPropertyStateShowSelectedValues(test_values):
+def test_product_property_state_show_selected_values(test_values):
 	product_id = 'testprod'
 	property_id = 'myproperty'
 	object_id = 'testobject.foo.bar'
