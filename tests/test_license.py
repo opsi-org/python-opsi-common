@@ -770,7 +770,7 @@ def test_write_license_file(tmp_path):
 		file = OpsiLicenseFile(license_file)
 		with pytest.raises(RuntimeError) as err:
 			file.write()
-			assert str(err) == "No licenses to write"
+		assert str(err.value) == "No licenses to write"
 
 		file = OpsiLicenseFile(license_file)
 		file.add_license(lic1)

@@ -32,19 +32,10 @@ from opsicommon.logging.constants import (
 	LOG_SECRET, LOG_WARNING, LOG_ERROR, LOG_DEBUG, LOG_TRACE, LOG_INFO
 )
 
+from .helpers import log_stream
+
 MY_FORMAT = "%(log_color)s[%(opsilevel)d] [%(asctime)s.%(msecs)03d]%(reset)s [%(contextstring)s] %(message)s"
 OTHER_FORMAT = "[%(opsilevel)d] [%(asctime)s.%(msecs)03d] [%(contextstring)s] %(message)s   (%(filename)s:%(lineno)d)"
-
-
-@contextmanager
-def log_stream(new_level, format=None):  # pylint: disable=redefined-builtin
-	stream = io.StringIO()
-	logging_config(stderr_level=new_level, stderr_format=format, stderr_file=stream)
-	try:
-		yield stream
-	finally:
-		# somehow revert to previous values? Impossible as logging_config deletes all stream handlers
-		pass
 
 
 def test_levels():  # pylint: disable=redefined-outer-name

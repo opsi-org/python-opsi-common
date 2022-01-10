@@ -414,7 +414,7 @@ def test_from_hash():
 
 	with pytest.raises(TypeError) as err:
 		LocalbootProduct.fromHash({"id": "p1"})
-		assert "Missing required argument(s): 'productVersion', 'packageVersion'" in err
+	assert "Missing required argument(s): 'productVersion', 'packageVersion'" in str(err.value)
 
 
 def test_clone():
@@ -498,10 +498,10 @@ def test_getting_helpful_error_message_with_baseclass_relationship():
 				# * packageVersion
 			})
 
-		#print(err)
-		assert '__init__() takes at least 6 arguments (6 given)' not in str(err)
-		assert 'productVersion' in str(err)
-		assert 'packageVersion' in str(err)
+	#print(err)
+	assert '__init__() takes at least 6 arguments (6 given)' not in str(err)
+	assert 'productVersion' in str(err)
+	assert 'packageVersion' in str(err)
 
 
 def test_getting_helpful_error_message_with_baseclass_entity():
@@ -518,10 +518,10 @@ def test_getting_helpful_error_message_with_baseclass_entity():
 				# * productVersion
 				# * packageVersion
 			})
-		#print(err)
-		assert '__init__() takes at least 6 arguments (6 given)' not in str(err)
-		assert 'productVersion' in str(err)
-		assert 'packageVersion' in str(err)
+	#print(err)
+	assert '__init__() takes at least 6 arguments (6 given)' not in str(err)
+	assert 'productVersion' in str(err)
+	assert 'packageVersion' in str(err)
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_no_arguments():

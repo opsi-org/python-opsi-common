@@ -6,6 +6,7 @@
 Helpers for testing opsi.
 """
 
+import io
 import os
 import ssl
 import gzip
@@ -17,6 +18,8 @@ from contextlib import closing, contextmanager
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import lz4
 import msgpack
+
+from opsicommon.logging import logging_config
 
 
 class HTTPJSONRPCServerRequestHandler(SimpleHTTPRequestHandler):
@@ -206,3 +209,13 @@ def environment(env_vars: dict):
 	finally:
 		os.environ.clear()
 		os.environ.update(old_environ)
+
+@contextmanager
+def log_stream(new_level, format=None):  # pylint: disable=redefined-builtin
+	stream = io.StringIO()
+	logging_config(stderr_level=new_level, stderr_format=format, stderr_file=stream)
+	try:
+		yield stream
+	finally:
+		# somehow revert to previous values? Impossible as logging_config deletes all stream handlers
+		pass

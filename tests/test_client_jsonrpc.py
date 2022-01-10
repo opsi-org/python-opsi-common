@@ -361,13 +361,13 @@ def test_error_handling():
 	with http_jsonrpc_server(response_body=response_body) as server:
 		with pytest.raises(OpsiRpcError) as err:
 			JSONRPCClient(f"http://localhost:{server.port}")
-		assert err.message == "err_msg"
+		assert err.value.message == "err_msg (error on server)"
 
 	response_body = json.dumps({"error": "err_msg2"}).encode("utf-8")
 	with http_jsonrpc_server(response_body=response_body) as server:
 		with pytest.raises(OpsiRpcError) as err:
 			JSONRPCClient(f"http://localhost:{server.port}")
-		assert err.message == "err_msg2"
+		assert err.value.message == "err_msg2 (error on server)"
 
 	with http_jsonrpc_server() as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}")
@@ -440,5 +440,4 @@ def test_env_requests_ca_bundle(tmpdir):
 				assert ca_bundle in str(err)
 				stream.seek(0)
 				log = stream.read()
-				print(log)
 				assert f"WARNING Environment variable REQUESTS_CA_BUNDLE is set to '{ca_bundle}'" in log

@@ -87,7 +87,7 @@ def test_create_server_cert():
 	}
 	with pytest.raises(ValueError) as err:
 		cert, key = create_server_cert(**kwargs)
-		assert "commonName missing in subject" in str(err)
+	assert "commonName missing in subject" in str(err)
 
 	kwargs["subject"]["CN"] = "server.dom.tld"
 	cert, key = create_server_cert(**kwargs)
