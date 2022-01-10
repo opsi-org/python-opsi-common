@@ -14,8 +14,10 @@ from requests.exceptions import ConnectionError as RConnectionError, ReadTimeout
 import pytest
 
 from opsicommon.client.jsonrpc import JSONRPCClient, BackendAuthenticationError, BackendPermissionDeniedError, OpsiRpcError
+from opsicommon.ssl import create_ca, create_server_cert, as_pem
+from opsicommon.logging import LOG_WARNING
 
-from .helpers import http_jsonrpc_server, environment
+from .helpers import http_jsonrpc_server, environment, log_stream
 
 
 
@@ -359,17 +361,17 @@ def test_error_handling():
 	with http_jsonrpc_server(response_body=response_body) as server:
 		with pytest.raises(OpsiRpcError) as err:
 			JSONRPCClient(f"http://localhost:{server.port}")
-			assert err.message == "err_msg"
+		assert err.message == "err_msg"
 
 	response_body = json.dumps({"error": "err_msg2"}).encode("utf-8")
 	with http_jsonrpc_server(response_body=response_body) as server:
 		with pytest.raises(OpsiRpcError) as err:
 			JSONRPCClient(f"http://localhost:{server.port}")
-			assert err.message == "err_msg2"
+		assert err.message == "err_msg2"
 
 	with http_jsonrpc_server() as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}")
-		with pytest.raises(HTTPError) as err:
+		with pytest.raises(HTTPError):
 			client.get("/", {"X-Response-Status": "500 Internal Server Error"})
 
 
@@ -392,3 +394,51 @@ def test_interface_and_exit(tmp_path):
 		client.disconnect()
 	request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
 	assert request["request"]["method"] == "backend_exit"
+
+
+def test_wget(tmpdir):  # pylint: disable=redefined-outer-name, unused-argument
+	ca_cert, ca_key = create_ca({"CN": "python-opsi-common test ca"}, 3)
+	kwargs = {
+		"subject": {"CN": "python-opsi-common test server cert"},
+		"valid_days": 3,
+		"ip_addresses": {"172.0.0.1", "::1"},
+		"hostnames": {"localhost", "ip6-localhost"},
+		"ca_key": ca_key,
+		"ca_cert": ca_cert
+	}
+	cert, key = create_server_cert(**kwargs)
+
+	server_cert = tmpdir / "server_cert.pem"
+	server_key = tmpdir / "server_key.pem"
+	server_cert.write_text(as_pem(cert), encoding="utf-8")
+	server_key.write_text(as_pem(key), encoding="utf-8")
+
+
+def test_env_requests_ca_bundle(tmpdir):
+	ca_cert, ca_key = create_ca({"CN": "python-opsi-common test ca"}, 3)
+	kwargs = {
+		"subject": {"CN": "python-opsi-common test server cert"},
+		"valid_days": 3,
+		"ip_addresses": {"172.0.0.1", "::1"},
+		"hostnames": {"localhost", "ip6-localhost"},
+		"ca_key": ca_key,
+		"ca_cert": ca_cert
+	}
+	cert, key = create_server_cert(**kwargs)
+	server_cert = tmpdir / "server_cert.pem"
+	server_key = tmpdir / "server_key.pem"
+	server_cert.write_text(as_pem(cert), encoding="utf-8")
+	server_key.write_text(as_pem(key), encoding="utf-8")
+
+	ca_bundle = "/error.crt"
+	with log_stream(LOG_WARNING, format="%(levelname)s %(message)s") as stream:
+		with environment({"REQUESTS_CA_BUNDLE": ca_bundle}):
+			with http_jsonrpc_server(server_key=server_key, server_cert=server_cert) as server:
+				with pytest.raises(OSError) as err:
+					JSONRPCClient(f"https://localhost:{server.port}")
+
+				assert ca_bundle in str(err)
+				stream.seek(0)
+				log = stream.read()
+				print(log)
+				assert f"WARNING Environment variable REQUESTS_CA_BUNDLE is set to '{ca_bundle}'" in log

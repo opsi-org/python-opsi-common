@@ -7,6 +7,7 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import re
+import os
 import time
 import types
 import socket
@@ -300,6 +301,11 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		url = urlparse(address)
 		if url.scheme not in ('http', 'https'):
 			raise ValueError(f"Protocol {url.scheme} not supported")
+
+		if url.scheme == "https":
+			ca_bundle = os.environ.get("REQUESTS_CA_BUNDLE", None)
+			if ca_bundle:
+				logger.warning("Environment variable REQUESTS_CA_BUNDLE is set to '%s'", ca_bundle)
 
 		port = url.port
 		if not port:
