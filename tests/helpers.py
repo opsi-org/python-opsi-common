@@ -201,6 +201,8 @@ def environment(env_vars: dict):
 	old_environ = os.environ.copy()
 	os.environ.update(env_vars)
 	#print(os.environ)
-	yield
-	os.environ.clear()
-	os.environ.update(old_environ)
+	try:
+		yield
+	finally:
+		os.environ.clear()
+		os.environ.update(old_environ)
