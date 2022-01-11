@@ -71,7 +71,7 @@ OPSI_MODULE_IDS = (
 	"macos_agent",
 	"monitoring",
 	"mysql_backend",
-	"os_install_by_wlan",
+	#"os_install_by_wlan",
 	"roaming_profiles",
 	"scalability1",
 	"secureboot",
