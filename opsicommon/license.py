@@ -149,7 +149,7 @@ def generate_license_id():
 @attr.s(slots=True, auto_attribs=True, kw_only=True)
 class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-attributes
 	id: str = attr.ib( # pylint: disable=invalid-name
-		factory=generate_license_id(),
+		factory=generate_license_id,
 		validator=attr.validators.matches_re(OPSI_LICENCE_ID_REGEX)
 	)
 
