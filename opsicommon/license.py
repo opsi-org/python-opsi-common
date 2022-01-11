@@ -141,10 +141,15 @@ def get_signature_public_key(schema_version: int) -> RSA.RsaKey:
 	)
 
 MAX_STATE_CACHE_VALUES = 64
+
+
+def generate_license_id():
+	return str(uuid.uuid4())
+
 @attr.s(slots=True, auto_attribs=True, kw_only=True)
 class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-attributes
 	id: str = attr.ib( # pylint: disable=invalid-name
-		factory=lambda: str(uuid.uuid4()),
+		factory=generate_license_id(),
 		validator=attr.validators.matches_re(OPSI_LICENCE_ID_REGEX)
 	)
 
