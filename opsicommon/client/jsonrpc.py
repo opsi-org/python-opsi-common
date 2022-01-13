@@ -46,9 +46,11 @@ _LZ4_COMPRESSION = 'lz4'
 _DEFAULT_HTTP_PORT = 4444
 _DEFAULT_HTTPS_PORT = 4447
 
+
 def no_export(func):
 	func.no_export = True
 	return func
+
 
 class TimeoutHTTPAdapter(HTTPAdapter):
 	def __init__(self, *args, **kwargs):
@@ -67,8 +69,8 @@ class TimeoutHTTPAdapter(HTTPAdapter):
 class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	_rpc_timeouts = {
 		"depot_installPackage": 3600,
-		"depot_librsyncPatchFile" : 3600,
-		"depot_getMD5Sum" : 3600
+		"depot_librsyncPatchFile": 3600,
+		"depot_getMD5Sum": 3600
 	}
 	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]
 
@@ -87,7 +89,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._rpc_id_lock = threading.Lock()
 		self._ca_cert_file = None
 		self._verify_server_cert = False
-		self._proxy_url = "system" # Use system proxy by default
+		self._proxy_url = "system"  # Use system proxy by default
 		self._username = None
 		self._password = None
 		self._serialization = "auto"
@@ -96,7 +98,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._read_timeout = 300
 		self._http_pool_maxsize = 10
 		self._http_max_retries = 1
-		self._session_lifetime = 150 # In seconds
+		self._session_lifetime = 150  # In seconds
 		self.server_name = None
 		self.base_url = None
 
@@ -109,45 +111,53 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				self._username = str(value or "")
 			elif option == 'password':
 				self._password = str(value or "")
-			elif option == 'sessionid' and value:
-				session_id = str(value)
+			elif option == 'sessionid':
+				if value:
+					session_id = str(value)
 			elif option == 'compression':
 				self.set_compression(value)
 			elif option == 'connectoninit':
 				self._connect_on_init = bool(value)
 			elif option == 'createmethods':
 				self._create_methods = bool(value)
-			elif option in ('connectionpoolsize', 'httppoolmaxsize') and value not in (None, ""):
-				self._http_pool_maxsize = int(value)
+			elif option in ('connectionpoolsize', 'httppoolmaxsize'):
+				if value not in (None, ""):
+					self._http_pool_maxsize = int(value)
 			elif option in ('retry', 'httpmaxretries'):
 				if not value:
 					self._http_max_retries = 0
 				elif isinstance(value, int):
 					self._http_max_retries = max(value, 0)
-			elif option == 'connecttimeout' and value not in (None, ""):
-				self._connect_timeout = int(value)
-			elif option in ('readtimeout', 'timeout', 'sockettimeout') and value not in (None, ""):
-				self._read_timeout = int(value)
+			elif option == 'connecttimeout':
+				if value not in (None, ""):
+					self._connect_timeout = int(value)
+			elif option in ('readtimeout', 'timeout', 'sockettimeout'):
+				if value not in (None, ""):
+					self._read_timeout = int(value)
 			elif option == 'verifyservercert':
 				self._verify_server_cert = bool(value)
-			elif option == 'cacertfile' and value not in (None, ""):
-				self._ca_cert_file = str(value)
+			elif option == 'cacertfile':
+				if value not in (None, ""):
+					self._ca_cert_file = str(value)
 			elif option == 'proxyurl':
 				self._proxy_url = str(value) if value else None
-			elif option == 'ipversion' and value not in (None, ""):
-				if str(value) in ("auto", "4", "6"):
-					self._ip_version = str(value)
-				else:
-					logger.error("Invalid ip version '%s', using %s", value, self._ip_version)
-			elif option == 'serialization' and value not in (None, ""):
-				if value in ("auto", "json", "msgpack"):
-					self._serialization = value
-				else:
-					logger.error("Invalid serialization '%s', using %s", value, self._serialization)
-			elif option == 'sessionlifetime' and value:
-				self._session_lifetime = int(value)
+			elif option == 'ipversion':
+				if value not in (None, ""):
+					if str(value) in ("auto", "4", "6"):
+						self._ip_version = str(value)
+					else:
+						logger.error("Invalid ip version '%s', using %s", value, self._ip_version)
+			elif option == 'serialization':
+				if value not in (None, ""):
+					if value in ("auto", "json", "msgpack"):
+						self._serialization = value
+					else:
+						logger.error("Invalid serialization '%s', using %s", value, self._serialization)
+			elif option == 'sessionlifetime':
+				if value:
+					self._session_lifetime = int(value)
 			else:
-				logger.warning("Invalid Argument '%s'", option)
+				logger.warning("Invalid argument '%s'", option)
 
 		self._set_address(address)
 
@@ -184,7 +194,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._http_adapter = TimeoutHTTPAdapter(
 			timeout=(self._connect_timeout, self._read_timeout),
 			pool_maxsize=self._http_pool_maxsize,
-			max_retries=0 # No retry on connect
+			max_retries=0  # No retry on connect
 		)
 		self._session.mount('http://', self._http_adapter)
 		self._session.mount('https://', self._http_adapter)
