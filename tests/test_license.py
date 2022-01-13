@@ -31,7 +31,6 @@ from opsicommon.license import (
 	OPSI_LICENSE_STATE_EXPIRED,
 	OPSI_LICENSE_STATE_NOT_YET_VALID,
 	OPSI_LICENSE_STATE_REVOKED,
-	OPSI_LICENSE_TYPE_CORE,
 	OPSI_LICENSE_TYPE_STANDARD,
 	OPSI_MODULE_STATE_FREE,
 	OPSI_MODULE_STATE_LICENSED,
@@ -489,7 +488,7 @@ def test_licensing_info_and_cache():
 		(1000, 100, 1010, 105, 0, 0, OPSI_MODULE_STATE_OVER_LIMIT, False, OPSI_MODULE_STATE_OVER_LIMIT, False),
 		(1000, 100, 1010, 105, -100000, -100000, OPSI_MODULE_STATE_OVER_LIMIT, False, OPSI_MODULE_STATE_OVER_LIMIT, False),
 		(1000, 100, 1010, 105, 100000, 100000, OPSI_MODULE_STATE_OVER_LIMIT, False, OPSI_MODULE_STATE_OVER_LIMIT, False)
-	)
+	)  # pylint: disable=too-many-arguments,too-many-locals
 )
 def test_license_state_client_number_warning_and_thresholds(
 	lic_scalability1, lic_linux, clients_total, clients_linux, warn_absolute, warn_percent,
@@ -575,6 +574,7 @@ def test_license_state():
 
 		lic.client_number = 1234567
 		assert lic.get_state() == OPSI_LICENSE_STATE_INVALID_SIGNATURE
+
 
 def test_license_state_cache():
 	private_key, public_key = generate_key_pair(return_pem=False)
