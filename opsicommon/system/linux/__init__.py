@@ -48,6 +48,7 @@ def get_user_sessions(username: str = None, session_type: str = None):
 			terminal=terminal
 		)
 
+
 def run_process_in_session(command: List[str], session_id: str, shell: bool = False, impersonate: bool = False):
 	session = None
 	for sess in get_user_sessions():
@@ -57,7 +58,7 @@ def run_process_in_session(command: List[str], session_id: str, shell: bool = Fa
 	if not session:
 		raise ValueError(f"Session {session_id} not found")
 
-	procs = [ psutil.Process(pid=session.login_pid) ]
+	procs = [psutil.Process(pid=session.login_pid)]
 	procs += procs[0].children(recursive=True)
 	env = {}
 	for proc in procs:
@@ -83,12 +84,13 @@ def run_process_in_session(command: List[str], session_id: str, shell: bool = Fa
 		env=env
 	)
 
+
 def drop_privileges(username: str):
 	logger.debug("Switching to user %s", username)
 	user = pwd.getpwnam(username)
 	gids = [user.pw_gid]
 	for _grp in grp.getgrall():
-		if user.pw_name in _grp.gr_mem and not _grp.gr_gid in gids:
+		if user.pw_name in _grp.gr_mem and _grp.gr_gid not in gids:
 			gids.append(_grp.gr_gid)
 	logger.trace("Set uid=%s, gid=%s, groups=%s", user.pw_uid, gids[0], gids)
 	os.setgid(gids[0])

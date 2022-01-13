@@ -97,7 +97,7 @@ def create_ca(
 	return (ca_cert, key)
 
 
-def create_server_cert(# pylint: disable=too-many-arguments
+def create_server_cert(  # pylint: disable=too-many-arguments
 	subject: dict,
 	valid_days: int,
 	ip_addresses: set,

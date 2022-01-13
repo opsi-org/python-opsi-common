@@ -21,7 +21,7 @@ from opsicommon.types import (
 	forceHostId, forceInstallationStatus, forceInt, forceUnsignedInt, forceIntList,
 	forceIPAddress, forceHostAddress, forceNetmask,
 	forceNetworkAddress, forceLanguageCode, forceList, forceObjectClass,
-	forceOct, forceOpsiHostKey, forceOpsiTimestamp,	forcePackageVersion, forcePackageVersionList,
+	forceOct, forceOpsiHostKey, forceOpsiTimestamp, forcePackageVersion, forcePackageVersionList,
 	forceProductId, forceProductIdList, forcePackageCustomName, forceProductType,
 	forceProductVersion, forceProductVersionList, forceProductPropertyId, forceConfigId,
 	forceProductPropertyType, forceProductPriority, forceProductTargetConfiguration,
@@ -424,6 +424,7 @@ def test_force_product_version(version, expected, exc):
 		assert expected == result
 		assert isinstance(result, str)
 
+
 @pytest.mark.parametrize("version, expected, exc", (
 	(['2.0', '2.1'], ['2.0', '2.1'], None),
 	('3.1k', ['3.1k'], None),
@@ -565,7 +566,6 @@ def test_force_action_request_list(value, expected, exc):
 		assert forceActionRequestList(value) == expected
 
 
-
 @pytest.mark.parametrize("value, expected, exc", (
 	("failed", "failed", None),
 	("successful", "successful", None),
@@ -660,6 +660,7 @@ def test_force_hardware_vendor_id(value, expected, exc):
 	else:
 		assert forceHardwareVendorId(value) == expected
 
+
 @pytest.mark.parametrize("value, expected, exc", (
 	("0adE", "0ADE", None),
 	("01aa", "01AA", None),
@@ -708,7 +709,6 @@ def testforce_product_type_to_netboot_product(inp):
 	assert 'NetbootProduct' == forceProductType(inp)
 
 
-
 @pytest.mark.parametrize("value, expected, exc", (
 	("prop1", "prop1", None),
 	("PROP2", "prop2", None),
@@ -747,7 +747,6 @@ def test_force_product_property_type(value, expected, exc):
 			forceProductPropertyType(value)
 	else:
 		assert forceProductPropertyType(value) == expected
-
 
 
 @pytest.mark.parametrize("value, expected, exc", (

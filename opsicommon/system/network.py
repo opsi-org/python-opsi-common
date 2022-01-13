@@ -12,6 +12,7 @@ import psutil
 
 from opsicommon.logging import logger
 
+
 def get_ip_addresses():
 	for interface, snics in psutil.net_if_addrs().items():
 		for snic in snics:
@@ -37,11 +38,14 @@ def get_ip_addresses():
 				"ip_address": ip_address
 			}
 
+
 def get_fqdn():
 	return socket.getfqdn().lower()
 
+
 def get_domain():
 	return '.'.join(get_fqdn().split('.')[1:])
+
 
 def get_hostnames():
 	names = {"localhost"}

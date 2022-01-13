@@ -55,7 +55,7 @@ _MANDATORY_CONSTRUCTOR_ARGS_CACHE = {}
 
 def mandatory_constructor_args(_class):
 	cache_key = _class.__name__
-	if not cache_key in _MANDATORY_CONSTRUCTOR_ARGS_CACHE:
+	if cache_key not in _MANDATORY_CONSTRUCTOR_ARGS_CACHE:
 		spec = inspect.getfullargspec(_class.__init__)
 		args = spec.args
 		defaults = spec.defaults
@@ -104,7 +104,7 @@ def get_backend_method_prefix(_class):
 
 
 def decode_ident(_class, _hash):
-	if not "ident" in _hash:
+	if "ident" not in _hash:
 		return _hash
 
 	ident = _hash.pop('ident')
@@ -171,6 +171,7 @@ class classproperty:  # pylint: disable=invalid-name,too-few-public-methods
 
 	def __get__(self, owner_self, owner_cls):  # pylint: disable=unused-argument
 		return self.fget(owner_cls)
+
 
 class BaseObject:
 	sub_classes = {}
@@ -591,8 +592,9 @@ class OpsiClient(Host):
 		oneTimePassword=None, created=None, lastSeen=None
 	):
 
-		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress,
-			inventoryNumber)
+		Host.__init__(
+			self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber
+		)
 		self.opsiHostKey = None  # pylint: disable=invalid-name
 		self.created = None  # pylint: disable=invalid-name
 		self.lastSeen = None  # pylint: disable=invalid-name
@@ -998,9 +1000,9 @@ class UnicodeConfig(Config):
 		defaultValues=None, editable=None, multiValue=None
 	):
 
-		Config.__init__(self, id, description, possibleValues, defaultValues,
-			editable, multiValue)
-
+		Config.__init__(
+			self, id, description, possibleValues, defaultValues, editable, multiValue
+		)
 		if possibleValues is not None:
 			self.setPossibleValues(possibleValues)
 		if defaultValues is not None:
@@ -1386,10 +1388,12 @@ class LocalbootProduct(Product):
 		productClassIds=None, windowsSoftwareIds=None
 	):
 
-		Product.__init__(self, id, productVersion, packageVersion, name,
+		Product.__init__(
+			self, id, productVersion, packageVersion, name,
 			licenseRequired, setupScript, uninstallScript, updateScript,
 			alwaysScript, onceScript, customScript, userLoginScript, priority,
-			description, advice, changelog, productClassIds, windowsSoftwareIds)
+			description, advice, changelog, productClassIds, windowsSoftwareIds
+		)
 
 	def setDefaults(self):
 		Product.setDefaults(self)
@@ -1423,10 +1427,12 @@ class NetbootProduct(Product):
 		windowsSoftwareIds=None, pxeConfigTemplate=''
 	):
 
-		Product.__init__(self, id, productVersion, packageVersion, name,
+		Product.__init__(
+			self, id, productVersion, packageVersion, name,
 			licenseRequired, setupScript, uninstallScript, updateScript,
 			alwaysScript, onceScript, customScript, None, priority,
-			description, advice, changelog, productClassIds, windowsSoftwareIds)
+			description, advice, changelog, productClassIds, windowsSoftwareIds
+		)
 		self.setPxeConfigTemplate(pxeConfigTemplate)
 
 	def setDefaults(self):
@@ -1628,9 +1634,11 @@ class UnicodeProductProperty(ProductProperty):
 		editable=None, multiValue=None
 	):
 
-		ProductProperty.__init__(self, productId, productVersion,
+		ProductProperty.__init__(
+			self, productId, productVersion,
 			packageVersion, propertyId, description, possibleValues,
-			defaultValues, editable, multiValue)
+			defaultValues, editable, multiValue
+		)
 
 		self.possibleValues = None
 		self.defaultValues = None
@@ -1677,9 +1685,11 @@ class BoolProductProperty(ProductProperty):
 		description=None, defaultValues=None
 	):
 
-		ProductProperty.__init__(self, productId, productVersion,
+		ProductProperty.__init__(
+			self, productId, productVersion,
 			packageVersion, propertyId, description, [True, False],
-			defaultValues, False, False)
+			defaultValues, False, False
+		)
 
 		if self.defaultValues is not None and len(self.defaultValues) > 1:
 			raise BackendBadValueError(f"Bool product property cannot have multiple default values: {self.defaultValues}")
@@ -1849,6 +1859,7 @@ class ProductDependency(Relationship):  # pylint: disable=too-many-instance-attr
 			f"packageVersion='{self.packageVersion}', productAction='{self.productAction}', "
 			f"requiredProductId='{self.requiredProductId}'>"
 		)
+
 
 Relationship.sub_classes['ProductDependency'] = ProductDependency
 
@@ -2091,6 +2102,7 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 			f"<{self.getType()}(clientId='{self.clientId}', productId='{self.productId}', "
 			f"installationStatus='{self.installationStatus}', actionRequest='{self.actionRequest}')>"
 		)
+
 
 Relationship.sub_classes['ProductOnClient'] = ProductOnClient
 
@@ -2538,8 +2550,9 @@ class RetailSoftwareLicense(SoftwareLicense):
 		boundToHost=None, expirationDate=None
 	):
 
-		SoftwareLicense.__init__(self, id, licenseContractId, maxInstallations,
-			boundToHost, expirationDate)
+		SoftwareLicense.__init__(
+			self, id, licenseContractId, maxInstallations, boundToHost, expirationDate
+		)
 
 	def setDefaults(self):
 		SoftwareLicense.setDefaults(self)
@@ -2568,8 +2581,9 @@ class OEMSoftwareLicense(SoftwareLicense):
 		self, id, licenseContractId, maxInstallations=None,  # pylint: disable=redefined-builtin
 		boundToHost=None, expirationDate=None
 	):
-		SoftwareLicense.__init__(self, id, licenseContractId, 1, boundToHost,
-			expirationDate)
+		SoftwareLicense.__init__(
+			self, id, licenseContractId, 1, boundToHost, expirationDate
+		)
 
 	def setDefaults(self):
 		SoftwareLicense.setDefaults(self)
@@ -2609,8 +2623,9 @@ class VolumeSoftwareLicense(SoftwareLicense):
 		self, id, licenseContractId, maxInstallations=None,  # pylint: disable=redefined-builtin
 		boundToHost=None, expirationDate=None
 	):
-		SoftwareLicense.__init__(self, id, licenseContractId, maxInstallations,
-			boundToHost, expirationDate)
+		SoftwareLicense.__init__(
+			self, id, licenseContractId, maxInstallations, boundToHost, expirationDate
+		)
 
 	def setDefaults(self):
 		SoftwareLicense.setDefaults(self)
@@ -2641,8 +2656,9 @@ class ConcurrentSoftwareLicense(SoftwareLicense):
 		self, id, licenseContractId, maxInstallations=None,  # pylint: disable=redefined-builtin
 		boundToHost=None, expirationDate=None
 	):
-		SoftwareLicense.__init__(self, id, licenseContractId, maxInstallations,
-			boundToHost, expirationDate)
+		SoftwareLicense.__init__(
+			self, id, licenseContractId, maxInstallations, boundToHost, expirationDate
+		)
 
 	def setDefaults(self):
 		SoftwareLicense.setDefaults(self)
@@ -3617,6 +3633,6 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 
 Relationship.sub_classes['AuditHardwareOnHost'] = AuditHardwareOnHost
 
-OBJECT_CLASSES  = {
+OBJECT_CLASSES = {
 	name: cls for (name, cls) in globals().items() if isinstance(cls, type) and issubclass(cls, BaseObject)
 }

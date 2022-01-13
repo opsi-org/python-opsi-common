@@ -74,6 +74,7 @@ def test_exception_has__repr__(exception):  # pylint: disable=redefined-outer-na
 	assert exception.__class__.__name__ in _repr
 	assert _repr.endswith('>')
 
+
 @pytest.mark.parametrize(
 	"message,problematic_requirements",
 	(
@@ -101,6 +102,7 @@ def test_opsi_product_ordering_error_ordering_is_accessible():
 def test_exception_is_sub_class_of_opsi_error(exception_class):  # pylint: disable=redefined-outer-name
 	with pytest.raises(OpsiError):
 		raise exception_class('message')
+
 
 @given(strategies.text())
 def test_exception_constuctor_hypothesis(message):

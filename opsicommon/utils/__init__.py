@@ -18,6 +18,8 @@ from opsicommon.logging import logger
 
 OBJECT_CLASSES = None
 BaseObject = None  # pylint: disable=invalid-name
+
+
 def deserialize(obj, prevent_object_creation=False):  # pylint: disable=invalid-name
 	"""
 	Deserialization of `obj`.
@@ -133,13 +135,14 @@ def timestamp(secs=0, date_only=False):
 
 class Singleton(type):
 	_instances = {}
+
 	def __call__(cls, *args, **kwargs):
 		if cls not in cls._instances:
 			cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
 		return cls._instances[cls]
 
 
-def prepare_proxy_environment(hostname, proxy_url="system", no_proxy_addresses=None, session=None):
+def prepare_proxy_environment(hostname, proxy_url="system", no_proxy_addresses=None, session=None):  # pylint: disable=too-many-branches
 	"""
 	proxy_url can be:
 	* an explicid url like http://10.10.10.1:8080
@@ -160,11 +163,11 @@ def prepare_proxy_environment(hostname, proxy_url="system", no_proxy_addresses=N
 	if proxy_url:
 		# Use a proxy
 		if proxy_url.lower() == "system":
-			#making sure system proxy has correct form
+			# Making sure system proxy has correct form
 			if os.environ.get("http_proxy"):
 				os.environ["http_proxy"] = add_protocol(os.environ.get("http_proxy", ""))
 			if os.environ.get("https_proxy"):
-				os.environ["https_proxy"] = add_protocol(os.environ.get("https_proxy", ""))		#protocol=https?
+				os.environ["https_proxy"] = add_protocol(os.environ.get("https_proxy", ""))  # protocol=https?
 		else:
 			proxy_url = add_protocol(proxy_url)
 			if hostname in no_proxy_addresses:

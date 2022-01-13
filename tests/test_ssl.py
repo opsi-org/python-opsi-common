@@ -21,7 +21,6 @@ from opsicommon.ssl import (
 from .helpers import http_jsonrpc_server
 
 
-
 @pytest.mark.linux
 @pytest.mark.parametrize("distro_id, distro_like, expected_path, expected_cmd, exc", (
 	("centos", "", "/etc/pki/ca-trust/source/anchors", "update-ca-trust", None),

@@ -269,6 +269,7 @@ def forceFqdn(var):  # pylint: disable=invalid-name
 		var = var[:-1]
 	return var
 
+
 forceHostId = forceFqdn
 
 
@@ -290,6 +291,7 @@ def forceHardwareAddress(var):  # pylint: disable=invalid-name
 		f"{match.group(4)}:{match.group(5)}:{match.group(6)}"
 	).lower()
 
+
 def forceIPAddress(var):  # pylint: disable=invalid-name
 	if not isinstance(var, (ipaddress.IPv4Address, ipaddress.IPv6Address, str)):
 		raise ValueError(f"Invalid ip address: '{var}'")
@@ -297,6 +299,7 @@ def forceIPAddress(var):  # pylint: disable=invalid-name
 	if isinstance(var, ipaddress.IPv6Address) and var.ipv4_mapped:
 		return var.ipv4_mapped.compressed
 	return var.compressed
+
 
 forceIpAddress = forceIPAddress
 

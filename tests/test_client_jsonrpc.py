@@ -20,7 +20,6 @@ from opsicommon.logging import LOG_WARNING
 from .helpers import http_jsonrpc_server, environment, log_stream
 
 
-
 def test_arguments():
 	kwargs = {
 		"application": "application test",
@@ -112,7 +111,6 @@ def test_proxy(tmp_path):
 		with environment(proxy_env), pytest.raises(RConnectionError):
 			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url="system", connect_timeout=2)
 
-
 		JSONRPCClient.no_proxy_addresses = []
 		# Now proxy will be used for localhost
 
@@ -130,7 +128,7 @@ def test_proxy(tmp_path):
 				JSONRPCClient(f"http://{host}:{server.port+1}", proxy_url=f"http://{proxy_host}:{server.port}", connect_timeout=2)
 
 				request = json.loads(log_file.read_text(encoding="utf-8"))
-				#print(request)
+				# print(request)
 				assert request.get("path") == f"http://{host}:{server.port+1}/rpc"
 				os.remove(log_file)
 
@@ -142,10 +140,9 @@ def test_proxy(tmp_path):
 		with environment(proxy_env):
 			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url="system", connect_timeout=2)
 			request = json.loads(log_file.read_text(encoding="utf-8"))
-			#print(request)
+			# print(request)
 			assert request.get("path") == f"http://localhost:{server.port+1}/rpc"
 			os.remove(log_file)
-
 
 		proxy_env = {
 			"http_proxy": "http://should-not-be-used",
@@ -155,7 +152,7 @@ def test_proxy(tmp_path):
 			# Do not use any proxy
 			JSONRPCClient(f"http://{host}:{server.port}", proxy_url=None, connect_timeout=2)
 			request = json.loads(log_file.read_text(encoding="utf-8"))
-			#print(request)
+			# print(request)
 			assert request.get("path") == "/rpc"
 			os.remove(log_file)
 
@@ -198,7 +195,7 @@ def test_cookie_handling(tmp_path):
 		assert client.session_id == cookie
 
 	request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
-	#print(request)
+	# print(request)
 	assert request["headers"].get("Cookie") == cookie
 
 
@@ -208,7 +205,7 @@ def test_force_ip_version_4(tmp_path):
 		client = JSONRPCClient(f"http://localhost:{server.port}", ip_version=4)
 		client.get("/")
 		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
-		#print(request)
+		# print(request)
 		assert "127.0.0.1" in request["client_address"][0]
 
 
@@ -219,7 +216,7 @@ def test_force_ip_version_6(tmp_path):
 		client = JSONRPCClient(f"http://localhost:{server.port}", ip_version=6)
 		client.get("/")
 		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
-		#print(request)
+		# print(request)
 		assert "::1" in request["client_address"][0]
 
 
@@ -239,11 +236,11 @@ def test_server_name_handling(tmp_path, server_name, expected_version):
 		assert client.server_name == server_name
 		assert client.server_name == client.serverName
 		assert client.server_version == expected_version
-		client.execute_rpc("method", ["param"*100])
+		client.execute_rpc("method", ["param" * 100])
 
 	if expected_version:
 		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
-		#print(request)
+		# print(request)
 		if expected_version[0] > 4 or (expected_version[0] == 4 and expected_version[1] >= 2):
 			assert request["headers"].get('Content-Type') == 'application/msgpack'
 			assert request["headers"].get('Content-Encoding') == 'lz4'
@@ -271,10 +268,10 @@ def test_compression_and_serialization(tmp_path):
 				f"http://localhost:{server.port}", compression=compression, serialization=serialization
 			)
 			assert client.server_name == server_name
-			client.execute_rpc("method", ["param"*100])
+			client.execute_rpc("method", ["param" * 100])
 
 		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
-		#print(request)
+		# print(request)
 		if compression is True:
 			compression = "lz4"
 		elif compression == "none":
@@ -288,7 +285,7 @@ def test_pass_session_id(tmp_path):
 	session_id = "opsi-session-id=_ABüßö&$§"
 	with http_jsonrpc_server(
 		log_file=log_file,
-		#response_headers={"Set-Cookie": "COOKIE-NAME=abc; SameSite=Lax"}
+		# response_headers={"Set-Cookie": "COOKIE-NAME=abc; SameSite=Lax"}
 	) as server:
 		client = JSONRPCClient(
 			f"http://localhost:{server.port}",
@@ -299,7 +296,7 @@ def test_pass_session_id(tmp_path):
 
 	for line in log_file.read_text(encoding="utf-8").strip().split("\n"):
 		request = json.loads(line)
-		#print(request)
+		# print(request)
 		assert unquote(request["headers"].get("Cookie")) == session_id
 
 
@@ -336,7 +333,7 @@ def test_get_path(tmp_path):
 
 	log = log_file.read_text(encoding="utf-8")
 	request = json.loads(log)
-	#print(request)
+	# print(request)
 	assert request["method"] == "GET"
 	assert request["path"] == "/path"
 	assert request["headers"]["User-Agent"] == user_agent

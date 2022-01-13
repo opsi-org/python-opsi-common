@@ -68,7 +68,6 @@ OPSI_MODULE_IDS = (
 	"macos_agent",
 	"monitoring",
 	"mysql_backend",
-	#"os_install_by_wlan",
 	"roaming_profiles",
 	"scalability1",
 	"secureboot",
@@ -137,15 +136,17 @@ def get_signature_public_key(schema_version: int) -> RSA.RsaKey:
 		"-----END PUBLIC KEY-----\n"
 	)
 
+
 MAX_STATE_CACHE_VALUES = 64
 
 
 def generate_license_id():
 	return str(uuid.uuid4())
 
+
 @attr.s(slots=True, auto_attribs=True, kw_only=True)
-class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-attributes
-	id: str = attr.ib( # pylint: disable=invalid-name
+class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
+	id: str = attr.ib(  # pylint: disable=invalid-name
 		factory=generate_license_id,
 		validator=attr.validators.matches_re(OPSI_LICENCE_ID_REGEX)
 	)
@@ -159,8 +160,9 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 		default=2,
 		converter=int
 	)
+
 	@schema_version.validator
-	def validate_schema_version(self, attribute, value): # pylint: disable=no-self-use
+	def validate_schema_version(self, attribute, value):  # pylint: disable=no-self-use
 		if not isinstance(value, int) or value <= 0:
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -172,6 +174,7 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 	customer_id: str = attr.ib(
 		default=None
 	)
+
 	@customer_id.validator
 	def validate_customer_id(self, attribute, value):
 		if (
@@ -182,6 +185,7 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 			raise ValueError(f"Invalid value for {attribute}", value)
 
 	customer_name: str = attr.ib()
+
 	@customer_name.validator
 	def validate_customer_name(self, attribute, value):
 		if (
@@ -193,6 +197,7 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 	customer_address: str = attr.ib(
 		default=None
 	)
+
 	@customer_address.validator
 	def validate_customer_address(self, attribute, value):
 		if (
@@ -213,8 +218,9 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 	service_id: str = attr.ib(
 		default=None,
 	)
+
 	@service_id.validator
-	def validate_service_id(self, attribute, value): # pylint: disable=no-self-use
+	def validate_service_id(self, attribute, value):  # pylint: disable=no-self-use
 		if value is not None and not re.match(r"^[a-z0-9\-\.]+$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -226,8 +232,9 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 		converter=int,
 		validator=attr.validators.instance_of(int)
 	)
+
 	@client_number.validator
-	def validate_client_number(self, attribute, value): # pylint: disable=no-self-use
+	def validate_client_number(self, attribute, value):  # pylint: disable=no-self-use
 		if value <= 0:
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -251,8 +258,9 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 	revoked_ids: typing.List[str] = attr.ib(
 		default=[]
 	)
+
 	@revoked_ids.validator
-	def validate_revoked_ids(self, attribute, value): # pylint: disable=no-self-use
+	def validate_revoked_ids(self, attribute, value):  # pylint: disable=no-self-use
 		if not isinstance(value, list):
 			raise ValueError(f"Invalid value for {attribute}", value)
 		for val in value:
@@ -360,8 +368,8 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 		cache_key = f"{test_revoked}{at_date}"
 		if cache_key not in self._cached_state:
 			self._cached_state[cache_key] = self._get_state(
-				test_revoked = test_revoked,
-				at_date = at_date
+				test_revoked=test_revoked,
+				at_date=at_date
 			)
 		return self._cached_state[cache_key]
 
@@ -405,6 +413,7 @@ class OpsiLicense: # pylint: disable=too-few-public-methods,too-many-instance-at
 		if isinstance(private_key, str):
 			private_key = RSA.import_key(private_key.encode("ascii"))
 		self.signature = pss.new(private_key).sign(self.get_hash())
+
 
 class OpsiLicenseFile:
 	def __init__(self, filename: str) -> None:
@@ -461,6 +470,7 @@ class OpsiLicenseFile:
 	def write(self):
 		with codecs.open(self.filename, "w", "utf-8") as file:
 			file.write(self.write_string())
+
 
 class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 	def __init__(self, filename: str) -> None:
@@ -531,6 +541,7 @@ class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 			kwargs["client_number"] = client_number
 			self.add_license(OpsiLicense(**kwargs))
 
+
 class OpsiLicensePool:
 	CLIENT_LIMIT_THRESHOLD_PERCENT = 105
 	CLIENT_LIMIT_THRESHOLD_ABSOLUTE = -10
@@ -579,7 +590,7 @@ class OpsiLicensePool:
 			client_numbers = dict(self._client_info)
 		client_numbers["all"] = 0
 		for client_type in ("windows", "linux", "macos"):
-			if not client_type in client_numbers:
+			if client_type not in client_numbers:
 				client_numbers[client_type] = 0
 			client_numbers["all"] += client_numbers[client_type]
 		return client_numbers
@@ -699,8 +710,8 @@ class OpsiLicensePool:
 				client_number = client_numbers["linux"]
 			elif module_id == "macos_agent":
 				client_number = client_numbers["macos"]
-			#elif module_id == "vpn":
-			#	client_number = client_numbers["vpn"]
+			# elif module_id == "vpn":
+			# client_number = client_numbers["vpn"]
 
 			usage_percent = client_number * 100 / info["client_number"]
 			absolute_free = info["client_number"] - client_number
@@ -760,7 +771,7 @@ class OpsiLicensePool:
 		if len(files) != len(self._file_modification_dates):
 			return True
 		for file in files:
-			if not file in self._file_modification_dates:
+			if file not in self._file_modification_dates:
 				return True
 			if os.path.getmtime(file) != self._file_modification_dates[file]:
 				return True
@@ -776,6 +787,8 @@ class OpsiLicensePool:
 
 
 _default_opsi_license_pool = None  # pylint: disable=invalid-name
+
+
 def set_default_opsi_license_pool(pool: OpsiLicensePool):
 	global _default_opsi_license_pool  # pylint: disable=invalid-name,global-statement
 	_default_opsi_license_pool = pool

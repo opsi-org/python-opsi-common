@@ -7,7 +7,6 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import os
-import io
 import re
 import time
 import codecs
@@ -17,7 +16,6 @@ import threading
 import asyncio
 import random
 import tempfile
-from contextlib import contextmanager
 
 import requests
 import pytest
@@ -53,7 +51,6 @@ def test_levels():  # pylint: disable=redefined-outer-name
 
 		stream.seek(0)
 		assert expected in stream.read()
-
 
 
 def test_log_file(tmpdir):
@@ -135,7 +132,6 @@ def test_secret_filter():  # pylint: disable=redefined-outer-name
 		log = stream.read()
 		assert "line 7 PASSWORD\n" in log
 
-
 	secret_filter.add_secrets("SECRETSTRING1", "SECRETSTRING2", "SECRETSTRING3")
 	secret_filter.remove_secrets("SECRETSTRING2")
 	with log_stream(LOG_INFO) as stream:
@@ -159,16 +155,17 @@ def test_context():  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_SECRET) as stream:
 		set_format(
 			stderr_format=(
-			"%(log_color)s[%(opsilevel)d] [%(asctime)s.%(msecs)03d]%(reset)s "
-			"[%(contextstring)s] %(message)s   (%(filename)s:%(lineno)d)"
-		))
+				"%(log_color)s[%(opsilevel)d] [%(asctime)s.%(msecs)03d]%(reset)s "
+				"[%(contextstring)s] %(message)s   (%(filename)s:%(lineno)d)"
+			)
+		)
 
 		logger.info("before setting context")
-		with log_context({'whoami' : "first-context"}):
+		with log_context({'whoami': "first-context"}):
 			logger.warning("lorem ipsum")
-		with log_context({'whoami' : "second-context"}):
+		with log_context({'whoami': "second-context"}):
 			logger.error("dolor sit amet")
-			assert context_filter.get_context() == {'whoami' : "second-context"}
+			assert context_filter.get_context() == {'whoami': "second-context"}
 		stream.seek(0)
 		log = stream.read()
 		assert "first-context" in log
@@ -184,7 +181,7 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 	class Main():  # pylint: disable=too-few-public-methods
 		def run(self):  # pylint: disable=no-self-use
 			AsyncMain().start()
-			for _ in range(5): # perform 5 iterations
+			for _ in range(5):  # perform 5 iterations
 				threads = []
 				for i in range(2):
 					_thread = MyModule(client=f"Client-{i}")
@@ -208,7 +205,7 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 			loop.close()
 
 		async def handle_client(self, client: str):  # pylint: disable=no-self-use
-			with log_context({'whoami' : "handler for " + str(client)}):
+			with log_context({'whoami': "handler for " + str(client)}):
 				logger.essential("handling client %s", client)
 				seconds = random.random() * 1
 				await asyncio.sleep(seconds)
@@ -229,11 +226,11 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 			logger.essential("initializing client: %s", client)
 
 		def run(self):
-			with log_context({'whoami' : "module " + str(self.client)}):
+			with log_context({'whoami': "module " + str(self.client)}):
 				logger.essential("MyModule.run")
 				common_work()
 
-	with log_context({'whoami' : "MAIN"}):
+	with log_context({'whoami': "MAIN"}):
 		with log_stream(LOG_INFO, format="%(contextstring)s %(message)s") as stream:
 			main = Main()
 			try:
@@ -277,7 +274,7 @@ def test_observable_handler():  # pylint: disable=redefined-outer-name
 
 def test_simple_colored():  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_WARNING, format=MY_FORMAT) as stream:
-		with log_context({'firstcontext' : 'asdf', 'secondcontext' : 'jkl'}):
+		with log_context({'firstcontext': 'asdf', 'secondcontext': 'jkl'}):
 			logger.error("test message")
 		stream.seek(0)
 		log = stream.read()
@@ -286,7 +283,7 @@ def test_simple_colored():  # pylint: disable=redefined-outer-name
 
 def test_simple_plain():  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_WARNING, format=OTHER_FORMAT) as stream:
-		with log_context({'firstcontext' : 'asdf', 'secondcontext' : 'jkl'}):
+		with log_context({'firstcontext': 'asdf', 'secondcontext': 'jkl'}):
 			logger.error("test message")
 		stream.seek(0)
 		log = stream.read()
@@ -295,7 +292,7 @@ def test_simple_plain():  # pylint: disable=redefined-outer-name
 
 def test_set_context():  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_WARNING, format=MY_FORMAT) as stream:
-		set_context({'firstcontext' : 'asdf', 'secondcontext' : 'jkl'})
+		set_context({'firstcontext': 'asdf', 'secondcontext': 'jkl'})
 		logger.error("test message")
 		stream.seek(0)
 		log = stream.read()
@@ -303,7 +300,7 @@ def test_set_context():  # pylint: disable=redefined-outer-name
 		stream.seek(0)
 		stream.truncate()
 
-		set_context({'firstcontext' : 'asdf'})
+		set_context({'firstcontext': 'asdf'})
 		logger.error("test message")
 		stream.seek(0)
 		log = stream.read()
@@ -323,7 +320,7 @@ def test_set_context():  # pylint: disable=redefined-outer-name
 		logger.error("test message")
 		stream.seek(0)
 		log = stream.read()
-		assert "suddenly a string" not in log	# must be given as dictionary
+		assert "suddenly a string" not in log  # must be given as dictionary
 
 		set_context(None)
 
@@ -342,15 +339,15 @@ def test_foreign_logs():  # pylint: disable=redefined-outer-name
 
 def test_filter():  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_WARNING, format="%(message)s") as stream:
-		set_filter({"testkey" : ["t1", "t3"]})
-		with log_context({"testkey" : "t1"}):
+		set_filter({"testkey": ["t1", "t3"]})
+		with log_context({"testkey": "t1"}):
 			logger.warning("test that should appear")
-		with log_context({"testkey" : "t2"}):
+		with log_context({"testkey": "t2"}):
 			logger.warning("test that should not appear")
-		set_filter({"testkey2" : "t1"})
-		with log_context({"testkey2" : "t1"}):
+		set_filter({"testkey2": "t1"})
+		with log_context({"testkey2": "t1"}):
 			logger.warning("test2 that should appear")
-		with log_context({"testkey2" : "t2"}):
+		with log_context({"testkey2": "t2"}):
 			logger.warning("test2 that should not appear")
 		stream.seek(0)
 		log = stream.read()
@@ -367,24 +364,24 @@ def test_filter_from_string():  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_WARNING, format="%(message)s") as stream:
 		# as one string (like --log-filter "")
 		set_filter_from_string("testkey = t1 , t3 ; alsotest = a1")
-		with log_context({"testkey" : "t1", "alsotest" : "a1"}):
+		with log_context({"testkey": "t1", "alsotest": "a1"}):
 			logger.warning("test that should appear")
-		with log_context({"testkey" : "t2", "alsotest" : "a1"}):
+		with log_context({"testkey": "t2", "alsotest": "a1"}):
 			logger.warning("test that should not appear")
-		with log_context({"testkey" : "t3", "alsotest" : "a2"}):
+		with log_context({"testkey": "t3", "alsotest": "a2"}):
 			logger.warning("test that should not appear")
 
 		# as list of strings (like --log-filter "" --log-filter "")
 		set_filter_from_string(["testkey = t1 , t3", "alsotest = a1"])
-		with log_context({"testkey" : "t1", "alsotest" : "a1"}):
+		with log_context({"testkey": "t1", "alsotest": "a1"}):
 			logger.warning("test that should also appear")
-		with log_context({"testkey" : "t2", "alsotest" : "a1"}):
+		with log_context({"testkey": "t2", "alsotest": "a1"}):
 			logger.warning("test that should not appear")
-		with log_context({"testkey" : "t3", "alsotest" : "a2"}):
+		with log_context({"testkey": "t3", "alsotest": "a2"}):
 			logger.warning("test that should not appear")
 
 		set_filter_from_string(None)
-		with log_context({"testkey" : "t3", "alsotest" : "a2"}):
+		with log_context({"testkey": "t3", "alsotest": "a2"}):
 			logger.warning("test that should appear after filter reset")
 
 		stream.seek(0)

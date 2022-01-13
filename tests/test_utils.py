@@ -25,7 +25,7 @@ from opsicommon.utils import (
 	(None, None),
 	([1, "b", {"x": "y"}], None)
 ))
-def test_serialize_deserialize(obj,json_exc):
+def test_serialize_deserialize(obj, json_exc):
 	assert obj == deserialize(serialize(obj))
 	if json_exc:
 		with pytest.raises(json_exc):

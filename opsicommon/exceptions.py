@@ -101,6 +101,7 @@ class OpsiProductOrderingError(OpsiError):
 			return f'<{self.__class__.__name__}("{self.message}")>'
 		return f'<{self.__class__.__name__}>'
 
+
 class BackendError(OpsiError):
 	"""Exception raised if there is an error in the backend."""
 	ExceptionShortDescription = "Backend error"

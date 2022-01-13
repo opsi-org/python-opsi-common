@@ -53,7 +53,7 @@ class HTTPJSONRPCServerRequestHandler(SimpleHTTPRequestHandler):
 	def do_POST(self):  # pylint: disable=invalid-name
 		length = int(self.headers['Content-Length'])
 		request = self.rfile.read(length)
-		#print(self.headers)
+		# print(self.headers)
 
 		if self.headers['Content-Encoding'] == "lz4":
 			request = lz4.frame.decompress(request)
@@ -109,6 +109,7 @@ class HTTPJSONRPCServerRequestHandler(SimpleHTTPRequestHandler):
 		self._send_headers(headers)
 		self.wfile.write(response)
 
+
 class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-attributes
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
@@ -155,7 +156,7 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 		self.server.response_status = self.response_status  # pylint: disable=attribute-defined-outside-init
 		self.server.response_body = self.response_body  # pylint: disable=attribute-defined-outside-init
 		self.server.response_delay = self.response_delay  # pylint: disable=attribute-defined-outside-init
-		#print("Server listening on port:" + str(self.port))
+		# print("Server listening on port:" + str(self.port))
 		self.server.serve_forever()
 
 	def stop(self):
@@ -203,12 +204,13 @@ def http_jsonrpc_server(  # pylint: disable=too-many-arguments
 def environment(env_vars: dict):
 	old_environ = os.environ.copy()
 	os.environ.update(env_vars)
-	#print(os.environ)
+	# print(os.environ)
 	try:
 		yield
 	finally:
 		os.environ.clear()
 		os.environ.update(old_environ)
+
 
 @contextmanager
 def log_stream(new_level, format=None):  # pylint: disable=redefined-builtin

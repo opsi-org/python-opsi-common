@@ -15,11 +15,14 @@ def test_get_ip_addresses():
 	addr = list(get_ip_addresses())
 	assert addr
 
+
 def test_get_fqdn():
 	assert get_fqdn()
 
+
 def test_get_domain():
 	assert get_domain()
+
 
 def test_get_hostnames():
 	hostnames = get_hostnames()

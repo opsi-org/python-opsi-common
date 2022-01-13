@@ -9,7 +9,7 @@ This file is part of opsi - https://www.opsi.org
 from contextlib import contextmanager
 # pyright: reportMissingImports=false
 import ctypes
-import win32crypt # pylint: disable=import-error
+import win32crypt  # pylint: disable=import-error
 from OpenSSL import crypto
 
 from opsicommon.logging import logger
@@ -27,22 +27,22 @@ CERT_STORE_OPEN_EXISTING_FLAG = 0x00004000
 CERT_CLOSE_STORE_FORCE_FLAG = 0x00000001
 
 # cert encoding flags.
-CRYPT_ASN_ENCODING= 0x00000001
-CRYPT_NDR_ENCODING= 0x00000002
-X509_ASN_ENCODING= 0x00000001
-X509_NDR_ENCODING= 0x00000002
-PKCS_7_ASN_ENCODING= 0x00010000
-PKCS_7_NDR_ENCODING= 0x00020000
-PKCS_7_OR_X509_ASN_ENCODING= (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
+CRYPT_ASN_ENCODING = 0x00000001
+CRYPT_NDR_ENCODING = 0x00000002
+X509_ASN_ENCODING = 0x00000001
+X509_NDR_ENCODING = 0x00000002
+PKCS_7_ASN_ENCODING = 0x00010000
+PKCS_7_NDR_ENCODING = 0x00020000
+PKCS_7_OR_X509_ASN_ENCODING = (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
 
 # Add certificate/CRL, encoded, context or element disposition values.
-CERT_STORE_ADD_NEW= 1
-CERT_STORE_ADD_USE_EXISTING= 2
-CERT_STORE_ADD_REPLACE_EXISTING= 3
-CERT_STORE_ADD_ALWAYS= 4
+CERT_STORE_ADD_NEW = 1
+CERT_STORE_ADD_USE_EXISTING = 2
+CERT_STORE_ADD_REPLACE_EXISTING = 3
+CERT_STORE_ADD_ALWAYS = 4
 CERT_STORE_ADD_REPLACE_EXISTING_INHERIT_PROPERTIES = 5
-CERT_STORE_ADD_NEWER= 6
-CERT_STORE_ADD_NEWER_INHERIT_PROPERTIES= 7
+CERT_STORE_ADD_NEWER = 6
+CERT_STORE_ADD_NEWER_INHERIT_PROPERTIES = 7
 
 CERT_FIND_SUBJECT_STR = 0x00080007
 CERT_FIND_SUBJECT_NAME = 0x00020007
@@ -62,6 +62,7 @@ CERT_NAME_FRIENDLY_DISPLAY_TYPE = 5
 
 # The default is My.
 
+
 @contextmanager
 def _open_cert_store(store_name: str, ctype: bool = False, force_close: bool = True):
 	_open = win32crypt.CertOpenStore
@@ -72,7 +73,7 @@ def _open_cert_store(store_name: str, ctype: bool = False, force_close: bool = T
 		CERT_STORE_PROV_SYSTEM,
 		0,
 		None,
-		CERT_SYSTEM_STORE_LOCAL_MACHINE|CERT_STORE_OPEN_EXISTING_FLAG,
+		CERT_SYSTEM_STORE_LOCAL_MACHINE | CERT_STORE_OPEN_EXISTING_FLAG,
 		store_name
 	)
 	try:
@@ -103,7 +104,7 @@ def load_ca(subject_name: str) -> crypto.X509:
 	logger.debug("Trying to find %s in certificate store", subject_name)
 	with _open_cert_store(store_name, force_close=False) as store:
 		for certificate in store.CertEnumCertificatesInStore():
-			#logger.trace("checking certificate %s", certificate.SerialNumber)	# ASN1 encoded integer
+			# logger.trace("checking certificate %s", certificate.SerialNumber)	# ASN1 encoded integer
 			ca_cert = crypto.load_certificate(crypto.FILETYPE_ASN1, certificate.CertEncoded)
 			logger.trace("checking certificate %s", ca_cert.get_subject().CN)
 			if ca_cert.get_subject().CN == subject_name:
@@ -120,7 +121,7 @@ def remove_ca(subject_name: str) -> bool:
 			store,
 			X509_ASN_ENCODING,
 			0,
-			CERT_FIND_SUBJECT_STR, # Searches for a certificate that contains the specified subject name string
+			CERT_FIND_SUBJECT_STR,  # Searches for a certificate that contains the specified subject name string
 			subject_name,
 			None
 		)

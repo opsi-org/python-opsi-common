@@ -21,6 +21,7 @@ if sys.platform == "linux":
 		run_process_in_session
 	)
 
+
 def ensure_not_already_running(process_name: str = None):
 	our_pid = os.getpid()
 	other_pid = None
@@ -31,7 +32,7 @@ def ensure_not_already_running(process_name: str = None):
 		ignore_pids = [p.pid for p in our_proc.children(recursive=True)]
 		ignore_pids += [p.pid for p in our_proc.parents()]
 		for proc in psutil.process_iter():
-			#logger.debug("Found running process: %s", proc)
+			# logger.debug("Found running process: %s", proc)
 			if proc.name() == process_name or proc.name() == f"{process_name}.exe":
 				logger.debug("Found running '%s' process: %s", process_name, proc)
 				if proc.pid != our_pid and proc.pid not in ignore_pids:

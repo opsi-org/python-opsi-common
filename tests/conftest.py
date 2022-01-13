@@ -20,6 +20,8 @@ urllib3.disable_warnings()
 
 def emit(*args, **kwargs) -> None:  # pylint: disable=unused-argument
 	pass
+
+
 LogCaptureHandler.emit = emit
 
 
@@ -32,6 +34,7 @@ def running_in_docker():
 				return True
 	return False
 
+
 def admin_permissions():
 	try:
 		return os.geteuid() == 0
@@ -39,9 +42,11 @@ def admin_permissions():
 		import ctypes  # pylint: disable=import-outside-toplevel
 		return ctypes.windll.shell32.IsUserAnAdmin() != 0
 
+
 PLATFORM = platform.system().lower()
 RUNNING_IN_DOCKER = running_in_docker()
 ADMIN_PERMISSIONS = admin_permissions()
+
 
 def pytest_configure(config):
 	# register custom markers

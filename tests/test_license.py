@@ -66,6 +66,7 @@ LIC1 = {
 	"signature": "0102030405060708090a0b0c0d0e"
 }
 
+
 def _read_modules_file(modules_file):
 	modules = {}
 	expires = None
@@ -203,6 +204,7 @@ def test_opsi_license_to_from_json():
 	data = json.loads(lic.to_json(with_state=True))
 	assert data["_state"] == OPSI_LICENSE_STATE_INVALID_SIGNATURE
 
+
 def test_opsi_license_to_from_dict():
 	lic = OpsiLicense(**LIC1)
 	lic_dict = lic.to_dict(serializable=True)
@@ -267,7 +269,7 @@ def test_load_opsi_license_pool():
 	olp.load()
 
 	modules, _expires, _customer, _signature = _read_modules_file(modules_file)
-	module_ids = [ m for m, v in modules.items() if v != "no" ]
+	module_ids = [m for m, v in modules.items() if v != "no"]
 	assert len(module_ids) == len(olp.licenses)
 
 	for lic in olp.licenses:
@@ -438,7 +440,7 @@ def test_licensing_info_and_cache():
 				"licenses_checksum": olp.get_licenses_checksum()
 			}
 			licenses = olp.get_licenses()
-			info["licenses"] = [ lic.to_dict(serializable=True, with_state=True) for lic in licenses ]
+			info["licenses"] = [lic.to_dict(serializable=True, with_state=True) for lic in licenses]
 			info["legacy_modules"] = olp.get_legacy_modules()
 			info["dates"] = {}
 			for at_date in olp.get_relevant_dates():
@@ -461,15 +463,15 @@ def test_licensing_info_and_cache():
 	"exp_state_scalabilty, exp_avail_scalability, exp_state_linux, exp_avail_linux",
 	(
 		# OPSI_MODULE_STATE_LICENSED
-		(1000, 100, 994, 94, 0,  0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
-		(1000, 100, 995, 94, 0,  0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
-		(1000, 100, 995, 95, 0,  0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
-		(1000, 100, 994, 94, 5,  0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
-		(1000, 100, 998, 98, 1,  0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 994, 94, 0, 0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 995, 94, 0, 0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 995, 95, 0, 0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 994, 94, 5, 0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 998, 98, 1, 0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
 		(1000, 100, 989, 98, 0, 99, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
 		# OPSI_MODULE_STATE_CLOSE_TO_LIMIT
-		(1000, 100, 995, 94, 5,  0, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True, OPSI_MODULE_STATE_LICENSED, True),
-		(1000, 100, 995, 95, 5,  0, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True),
+		(1000, 100, 995, 94, 5, 0, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 995, 95, 5, 0, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True),
 		(1000, 100, 949, 94, 0, 95, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
 		(1000, 100, 950, 94, 0, 95, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True, OPSI_MODULE_STATE_LICENSED, True),
 		(1000, 100, 950, 95, 0, 95, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True),
@@ -495,11 +497,13 @@ def test_license_state_client_number_warning_and_thresholds(
 	exp_state_scalabilty, exp_avail_scalability, exp_state_linux, exp_avail_linux
 ):
 	private_key, public_key = generate_key_pair(return_pem=False)
-	client_info = lambda: {
-		"macos": 0,
-		"linux": clients_linux,
-		"windows": clients_total - clients_linux
-	}
+
+	def client_info():
+		return {
+			"macos": 0,
+			"linux": clients_linux,
+			"windows": clients_total - clients_linux
+		}
 
 	with mock.patch('opsicommon.license.get_signature_public_key', lambda x: public_key):
 		lic = dict(LIC1)
@@ -718,8 +722,8 @@ def test_opsi_modules_file(tmp_path):
 		assert lic.client_number == client_number
 		assert lic.signature.hex() == signature
 		assert \
-			sorted([x for x in raw_data.replace("\r","").split("\n") if x and not x.startswith("signature")]) == \
-			sorted([x for x in lic.additional_data.replace("\r","").split("\n") if x])
+			sorted([x for x in raw_data.replace("\r", "").split("\n") if x and not x.startswith("signature")]) == \
+			sorted([x for x in lic.additional_data.replace("\r", "").split("\n") if x])
 
 	raw_data = re.sub(r"expires.*", "expires = never", raw_data, re.MULTILINE)
 	modules_file.write_text(raw_data, encoding="utf-8")

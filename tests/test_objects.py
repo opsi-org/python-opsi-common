@@ -20,7 +20,7 @@ from opsicommon.objects import (
 object_classes = []
 pre_globals = list(globals())
 from opsicommon.objects import (  # pylint: disable=wrong-import-position,unused-import
-	Host, OpsiClient,	OpsiDepotserver, OpsiConfigserver,
+	Host, OpsiClient, OpsiDepotserver, OpsiConfigserver,
 	Config, UnicodeConfig, BoolConfig, ConfigState,
 	Product, LocalbootProduct, NetbootProduct,
 	ProductProperty, UnicodeProductProperty, BoolProductProperty,
@@ -222,6 +222,7 @@ def test_get_possible_class_attributes():
 
 	class Test():  # pylint: disable=too-few-public-methods
 		sub_classes = {}
+
 		def __init__(no_self, arg):  # pylint: disable=unused-argument,no-self-argument
 			pass
 
@@ -268,7 +269,7 @@ def test_decode_ident(cls, value, expected, exc):
 			decode_ident(cls, value)
 	else:
 		result = decode_ident(cls, value)
-		#print(result)
+		# print(result)
 		assert result == expected
 
 
@@ -367,6 +368,8 @@ PRODUCT1 = {
 	"productClassIds": ['localboot-products'],
 	"windowsSoftwareIds": ['{98723-7898adf2-287aab}', 'xxxxxxxx']
 }
+
+
 def test_comparing_two_localboot_products_with_same_settings():
 	assert LocalbootProduct(**PRODUCT1) == LocalbootProduct(**PRODUCT1)
 
@@ -468,6 +471,7 @@ AUDIT_HARDWARE_ON_HOST1 = {
 	"totalPhysicalMemory": 1073741824
 }
 
+
 def test_audit_hardware_on_host_unicode():
 	audit_hardware_on_host = AuditHardwareOnHost(**AUDIT_HARDWARE_ON_HOST1)
 	assert str(audit_hardware_on_host)
@@ -488,17 +492,17 @@ def test_getting_helpful_error_message_with_baseclass_relationship():
 	"""
 	with pytest.raises(TypeError) as err:
 		ProductDependency.fromHash({
-				"productAction": "setup",
-				"requirementType": "after",
-				"requiredInstallationStatus": "installed",
-				"requiredProductId": "mshotfix",
-				"product_id": "msservicepack"
-				# The following attributes are missing:
-				# * productVersion
-				# * packageVersion
-			})
+			"productAction": "setup",
+			"requirementType": "after",
+			"requiredInstallationStatus": "installed",
+			"requiredProductId": "mshotfix",
+			"product_id": "msservicepack"
+			# The following attributes are missing:
+			# * productVersion
+			# * packageVersion
+		})
 
-	#print(err)
+	# print(err)
 	assert '__init__() takes at least 6 arguments (6 given)' not in str(err)
 	assert 'productVersion' in str(err)
 	assert 'packageVersion' in str(err)
@@ -513,12 +517,12 @@ def test_getting_helpful_error_message_with_baseclass_entity():
 	"""
 	with pytest.raises(TypeError) as err:
 		Product.fromHash({
-				"id": "newProduct",
-				# The following attributes are missing:
-				# * productVersion
-				# * packageVersion
-			})
-	#print(err)
+			"id": "newProduct",
+			# The following attributes are missing:
+			# * productVersion
+			# * packageVersion
+		})
+	# print(err)
 	assert '__init__() takes at least 6 arguments (6 given)' not in str(err)
 	assert 'productVersion' in str(err)
 	assert 'packageVersion' in str(err)
