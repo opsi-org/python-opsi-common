@@ -58,9 +58,6 @@ OPSI_MODULE_STATE_UNLICENSED = "unlicensed"
 OPSI_MODULE_STATE_OVER_LIMIT = "over_limit"
 OPSI_MODULE_STATE_CLOSE_TO_LIMIT = "close_to_limit"
 
-CLIENT_LIMIT_THRESHOLD_PERCENT = 5
-CLIENT_LIMIT_THRESHOLD_PERCENT_WARNING = 5
-
 OPSI_MODULE_IDS = (
 	"directory-connector",
 	"dynamic_depot",
@@ -535,14 +532,21 @@ class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 			self.add_license(OpsiLicense(**kwargs))
 
 class OpsiLicensePool:
-	def __init__(
+	CLIENT_LIMIT_THRESHOLD_PERCENT = 105
+	CLIENT_LIMIT_THRESHOLD_ABSOLUTE = -10
+
+	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		license_file_path: str = None,
 		modules_file_path: str = None,
-		client_info: typing.Union[dict, typing.Callable] = None
+		client_info: typing.Union[dict, typing.Callable] = None,
+		client_limit_warning_percent: int = 95,
+		client_limit_warning_absolute: int = 5
 	) -> None:
 		self.license_file_path: str = license_file_path
 		self.modules_file_path: str = modules_file_path
+		self.client_limit_warning_percent: int = client_limit_warning_percent
+		self.client_limit_warning_absolute: int = client_limit_warning_absolute
 		self._client_info: typing.Union[dict, typing.Callable] = client_info
 		self._licenses: typing.Dict[str, OpsiLicense] = {}
 		self._file_modification_dates: typing.Dict[str, int] = {}
@@ -699,12 +703,19 @@ class OpsiLicensePool:
 			#	client_number = client_numbers["vpn"]
 
 			usage_percent = client_number * 100 / info["client_number"]
-			if usage_percent > 100 + CLIENT_LIMIT_THRESHOLD_PERCENT:
+			absolute_free = info["client_number"] - client_number
+			if (
+				absolute_free <= self.CLIENT_LIMIT_THRESHOLD_ABSOLUTE or
+				usage_percent >= self.CLIENT_LIMIT_THRESHOLD_PERCENT
+			):
 				info["state"] = OPSI_MODULE_STATE_OVER_LIMIT
 				info["available"] = False
-			elif usage_percent > 100:
+			elif (absolute_free < 0 or usage_percent > 100):
 				info["state"] = OPSI_MODULE_STATE_OVER_LIMIT
-			elif usage_percent > 100 - CLIENT_LIMIT_THRESHOLD_PERCENT_WARNING:
+			elif (
+				(self.client_limit_warning_absolute and (absolute_free <= self.client_limit_warning_absolute)) or
+				(self.client_limit_warning_percent and (usage_percent >= self.client_limit_warning_percent))
+			):
 				info["state"] = OPSI_MODULE_STATE_CLOSE_TO_LIMIT
 
 		return modules

@@ -39,8 +39,6 @@ from opsicommon.license import (
 	OPSI_MODULE_IDS,
 	OPSI_LICENSE_DATE_UNLIMITED,
 	OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED,
-	CLIENT_LIMIT_THRESHOLD_PERCENT,
-	CLIENT_LIMIT_THRESHOLD_PERCENT_WARNING,
 	MAX_STATE_CACHE_VALUES
 )
 
@@ -458,12 +456,51 @@ def test_licensing_info_and_cache():
 				# Cached should be faster
 				assert timings[2] > timings[1]
 
-def test_license_state_client_number_thresholds():  # pylint: disable=too-many-statements
-	private_key, public_key = generate_key_pair(return_pem=False)
-	client_numbers = {}
 
-	def client_info():
-		return client_numbers
+@pytest.mark.parametrize(
+	"lic_scalability1, lic_linux, clients_total, clients_linux, warn_absolute, warn_percent,"
+	"exp_state_scalabilty, exp_avail_scalability, exp_state_linux, exp_avail_linux",
+	(
+		# OPSI_MODULE_STATE_LICENSED
+		(1000, 100, 994, 94, 0,  0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 995, 94, 0,  0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 995, 95, 0,  0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 994, 94, 5,  0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 998, 98, 1,  0, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 989, 98, 0, 99, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
+		# OPSI_MODULE_STATE_CLOSE_TO_LIMIT
+		(1000, 100, 995, 94, 5,  0, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 995, 95, 5,  0, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True),
+		(1000, 100, 949, 94, 0, 95, OPSI_MODULE_STATE_LICENSED, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 950, 94, 0, 95, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True, OPSI_MODULE_STATE_LICENSED, True),
+		(1000, 100, 950, 95, 0, 95, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True),
+		# OPSI_MODULE_STATE_OVER_LIMIT
+		# CLIENT_LIMIT_THRESHOLD_ABSOLUTE = -10
+		(1000, 100, 1009, 100, 5, 95, OPSI_MODULE_STATE_OVER_LIMIT, True, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True),
+		(1000, 100, 1000, 101, 5, 95, OPSI_MODULE_STATE_CLOSE_TO_LIMIT, True, OPSI_MODULE_STATE_OVER_LIMIT, True),
+		(1000, 100, 1001, 101, 5, 95, OPSI_MODULE_STATE_OVER_LIMIT, True, OPSI_MODULE_STATE_OVER_LIMIT, True),
+		(1000, 100, 1009, 101, 5, 95, OPSI_MODULE_STATE_OVER_LIMIT, True, OPSI_MODULE_STATE_OVER_LIMIT, True),
+		(1000, 100, 1010, 101, 5, 95, OPSI_MODULE_STATE_OVER_LIMIT, False, OPSI_MODULE_STATE_OVER_LIMIT, True),
+		# CLIENT_LIMIT_THRESHOLD_PERCENT = 105
+		(1000, 100, 1009, 104, 5, 95, OPSI_MODULE_STATE_OVER_LIMIT, True, OPSI_MODULE_STATE_OVER_LIMIT, True),
+		(1000, 100, 1009, 105, 5, 95, OPSI_MODULE_STATE_OVER_LIMIT, True, OPSI_MODULE_STATE_OVER_LIMIT, False),
+		(1000, 100, 1010, 105, 5, 95, OPSI_MODULE_STATE_OVER_LIMIT, False, OPSI_MODULE_STATE_OVER_LIMIT, False),
+		(1000, 100, 100000, 100000, 5, 95, OPSI_MODULE_STATE_OVER_LIMIT, False, OPSI_MODULE_STATE_OVER_LIMIT, False),
+		(1000, 100, 1010, 105, 0, 0, OPSI_MODULE_STATE_OVER_LIMIT, False, OPSI_MODULE_STATE_OVER_LIMIT, False),
+		(1000, 100, 1010, 105, -100000, -100000, OPSI_MODULE_STATE_OVER_LIMIT, False, OPSI_MODULE_STATE_OVER_LIMIT, False),
+		(1000, 100, 1010, 105, 100000, 100000, OPSI_MODULE_STATE_OVER_LIMIT, False, OPSI_MODULE_STATE_OVER_LIMIT, False)
+	)
+)
+def test_license_state_client_number_warning_and_thresholds(
+	lic_scalability1, lic_linux, clients_total, clients_linux, warn_absolute, warn_percent,
+	exp_state_scalabilty, exp_avail_scalability, exp_state_linux, exp_avail_linux
+):
+	private_key, public_key = generate_key_pair(return_pem=False)
+	client_info = lambda: {
+		"macos": 0,
+		"linux": clients_linux,
+		"windows": clients_total - clients_linux
+	}
 
 	with mock.patch('opsicommon.license.get_signature_public_key', lambda x: public_key):
 		lic = dict(LIC1)
@@ -472,85 +509,30 @@ def test_license_state_client_number_thresholds():  # pylint: disable=too-many-s
 		lic["type"] = OPSI_LICENSE_TYPE_STANDARD
 		lic["valid_from"] = "2000-01-01"
 		lic["valid_until"] = "9999-12-31"
-
+		lic["client_number"] = lic_scalability1
 		lic1 = OpsiLicense(**lic)
-		lic1.client_number = 90
 		lic1.sign(private_key)
 
+		lic["module_id"] = "linux_agent"
+		lic["client_number"] = lic_linux
 		lic2 = OpsiLicense(**lic)
-		lic2.client_number = 10
 		lic2.sign(private_key)
 
-		lic3 = OpsiLicense(**lic)
-		lic3.type = OPSI_LICENSE_TYPE_CORE
-		lic3.client_number = 50
-		lic3.sign(private_key)
+		olp = OpsiLicensePool(
+			client_info=client_info,
+			client_limit_warning_absolute=warn_absolute,
+			client_limit_warning_percent=warn_percent
+		)
+		olp.add_license(lic1, lic2)
 
-		lic4 = OpsiLicense(**lic)
-		lic4.module_id = "linux_agent"
-		lic4.type = OPSI_LICENSE_TYPE_CORE
-		lic4.client_number = 1
-		lic4.sign(private_key)
-
-		lic5 = OpsiLicense(**lic)
-		lic5.module_id = "macos_agent"
-		lic5.type = OPSI_LICENSE_TYPE_CORE
-		lic5.client_number = 1
-		lic5.sign(private_key)
-
-		olp = OpsiLicensePool(client_info=client_info)
-		olp.add_license(lic1, lic2, lic3, lic4, lic5)
-
-		client_numbers = {
-			"macos": 0,
-			"linux": 0,
-			"windows": 0
-		}
 		modules = olp.get_modules()
-		assert modules["scalability1"]["available"]
-		assert modules["scalability1"]["client_number"] == 100
-		assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_LICENSED
+		assert modules["scalability1"]["client_number"] == lic_scalability1
+		assert modules["scalability1"]["state"] == exp_state_scalabilty
+		assert modules["scalability1"]["available"] == exp_avail_scalability
 
-		assert modules["linux_agent"]["available"]
-		assert modules["macos_agent"]["available"]
-
-		client_numbers = {
-			"macos": 5,
-			"linux": 10,
-			"windows": 85 - CLIENT_LIMIT_THRESHOLD_PERCENT_WARNING
-		}
-		modules = olp.get_modules()
-		assert modules["scalability1"]["available"]
-		assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_LICENSED
-		assert not modules["linux_agent"]["available"]
-		assert not modules["macos_agent"]["available"]
-
-		client_numbers = {
-			"macos": 5,
-			"linux": 10,
-			"windows": 85 - CLIENT_LIMIT_THRESHOLD_PERCENT_WARNING + 1
-		}
-		modules = olp.get_modules()
-		assert modules["scalability1"]["available"]
-		assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_CLOSE_TO_LIMIT
-
-		client_numbers = {
-			"macos": 5,
-			"linux": 10,
-			"windows": 85 + CLIENT_LIMIT_THRESHOLD_PERCENT
-		}
-		modules = olp.get_modules()
-		assert modules["scalability1"]["available"]
-		assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_OVER_LIMIT
-
-		client_numbers = {
-			"macos": 5,
-			"linux": 10,
-			"windows": 85 + CLIENT_LIMIT_THRESHOLD_PERCENT + 1
-		}
-		modules = olp.get_modules()
-		assert not modules["scalability1"]["available"]
-		assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_OVER_LIMIT
+		assert modules["linux_agent"]["client_number"] == lic_linux
+		assert modules["linux_agent"]["state"] == exp_state_linux
+		assert modules["linux_agent"]["available"] == exp_avail_linux
 
 
 def test_license_state():
