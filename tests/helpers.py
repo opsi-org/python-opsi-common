@@ -22,7 +22,12 @@ import msgpack
 from opsicommon.logging import logging_config
 
 
-class HTTPJSONRPCServerRequestHandler(SimpleHTTPRequestHandler):
+class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
+	def __init__(self, *args, **kwargs):
+		if args[2].serve_directory:
+			kwargs["directory"] = args[2].serve_directory
+		super().__init__(*args, **kwargs)
+
 	def _log(self, data):  # pylint: disable=invalid-name
 		if not self.server.log_file:
 			return
@@ -87,6 +92,9 @@ class HTTPJSONRPCServerRequestHandler(SimpleHTTPRequestHandler):
 		self.wfile.write(response)
 
 	def do_GET(self):
+		if self.server.serve_directory:
+			return super().do_GET()
+
 		if self.headers['X-Response-Status']:
 			val = self.headers['X-Response-Status'].split(" ", 1)
 			self.send_response(int(val[0]), val[1])
@@ -108,9 +116,23 @@ class HTTPJSONRPCServerRequestHandler(SimpleHTTPRequestHandler):
 		}
 		self._send_headers(headers)
 		self.wfile.write(response)
+		return None
+
+	def do_PUT(self):
+		"""Serve a PUT request."""
+		if self.server.serve_directory:
+			path = self.translate_path(self.path)
+			length = int(self.headers['Content-Length'])
+			with open(path, 'wb') as file:
+				file.write(self.rfile.read(length))
+			self.send_response(201, "Created")
+			self.end_headers()
+		else:
+			self.send_response(500, "Not implemented")
+			self.end_headers()
 
 
-class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-attributes
+class HTTPTestServer(threading.Thread):  # pylint: disable=too-many-instance-attributes
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		log_file=None,
@@ -120,7 +142,8 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 		response_headers=None,
 		response_status=None,
 		response_body=None,
-		response_delay=None
+		response_delay=None,
+		serve_directory=None
 	):
 		super().__init__()
 		self.log_file = str(log_file) if log_file else None
@@ -131,6 +154,7 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 		self.response_status = response_status if response_status else None
 		self.response_body = response_body if response_body else None
 		self.response_delay = response_delay if response_delay else None
+		self.serve_directory = serve_directory if serve_directory else None
 		# Auto select free port
 		with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
 			sock.bind(('', 0))
@@ -143,9 +167,9 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 			address_family = socket.AF_INET6
 
 		if self.ip_version == 6:
-			self.server = HTTPServer6(("::", self.port), HTTPJSONRPCServerRequestHandler)
+			self.server = HTTPServer6(("::", self.port), HTTPTestServerRequestHandler)
 		else:
-			self.server = HTTPServer(("", self.port), HTTPJSONRPCServerRequestHandler)
+			self.server = HTTPServer(("", self.port), HTTPTestServerRequestHandler)
 
 		if self.server_key and self.server_cert:
 			context = ssl.SSLContext()
@@ -156,6 +180,7 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 		self.server.response_status = self.response_status  # pylint: disable=attribute-defined-outside-init
 		self.server.response_body = self.response_body  # pylint: disable=attribute-defined-outside-init
 		self.server.response_delay = self.response_delay  # pylint: disable=attribute-defined-outside-init
+		self.server.serve_directory = self.serve_directory  # pylint: disable=attribute-defined-outside-init
 		# print("Server listening on port:" + str(self.port))
 		self.server.serve_forever()
 
@@ -165,7 +190,7 @@ class HTTPJSONRPCServer(threading.Thread):  # pylint: disable=too-many-instance-
 
 
 @contextmanager
-def http_jsonrpc_server(  # pylint: disable=too-many-arguments
+def http_test_server(  # pylint: disable=too-many-arguments
 	log_file=None,
 	ip_version=None,
 	server_key=None,
@@ -173,11 +198,13 @@ def http_jsonrpc_server(  # pylint: disable=too-many-arguments
 	response_headers=None,
 	response_status=None,
 	response_body=None,
-	response_delay=None
+	response_delay=None,
+	serve_directory=None
 ):
 	timeout = 5
-	server = HTTPJSONRPCServer(
-		log_file, ip_version, server_key, server_cert, response_headers, response_status, response_body, response_delay
+	server = HTTPTestServer(
+		log_file, ip_version, server_key, server_cert,
+		response_headers, response_status, response_body, response_delay, serve_directory
 	)
 	server.daemon = True
 	server.start()
@@ -193,7 +220,7 @@ def http_jsonrpc_server(  # pylint: disable=too-many-arguments
 				break
 
 	if not running:
-		raise RuntimeError("Failed to start HTTPJSONRPCServer")
+		raise RuntimeError("Failed to start HTTPTestServer")
 	try:
 		yield server
 	finally:

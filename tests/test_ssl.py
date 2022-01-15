@@ -18,7 +18,7 @@ from opsicommon.ssl import (
 	install_ca, load_ca, remove_ca
 )
 
-from .helpers import http_jsonrpc_server
+from .helpers import http_test_server
 
 
 @pytest.mark.linux
@@ -168,7 +168,7 @@ def test_wget(tmpdir):  # pylint: disable=redefined-outer-name, unused-argument
 	server_cert.write_text(as_pem(cert), encoding="utf-8")
 	server_key.write_text(as_pem(key), encoding="utf-8")
 
-	with http_jsonrpc_server(server_key=server_key, server_cert=server_cert) as server:
+	with http_test_server(server_key=server_key, server_cert=server_cert) as server:
 		install_ca(ca_cert)
 		try:
 			if platform.system().lower() == "windows":

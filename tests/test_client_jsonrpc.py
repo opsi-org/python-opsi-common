@@ -17,7 +17,7 @@ from opsicommon.client.jsonrpc import JSONRPCClient, BackendAuthenticationError,
 from opsicommon.ssl import create_ca, create_server_cert, as_pem
 from opsicommon.logging import LOG_WARNING
 
-from .helpers import http_jsonrpc_server, environment, log_stream
+from .helpers import http_test_server, environment, log_stream
 
 
 def test_arguments():
@@ -84,7 +84,7 @@ def test_arguments():
 
 
 def test_timeouts():
-	with http_jsonrpc_server(response_delay=3) as server:
+	with http_test_server(response_delay=3) as server:
 		start = time.time()
 		with pytest.raises(RConnectionError):
 			JSONRPCClient(f"http://localhost:{server.port+1}", connect_timeout=2)
@@ -99,7 +99,7 @@ def test_timeouts():
 
 def test_proxy(tmp_path):
 	log_file = tmp_path / "request.log"
-	with http_jsonrpc_server(log_file=log_file) as server:
+	with http_test_server(log_file=log_file) as server:
 		# Proxy will not be used for localhost (JSONRPCClient.no_proxy_addresses)
 		with pytest.raises(RConnectionError):
 			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url=f"http://localhost:{server.port}", connect_timeout=2)
@@ -159,7 +159,7 @@ def test_proxy(tmp_path):
 
 def test_proxy_legacy(tmp_path):
 	log_file = tmp_path / "request.log"
-	with http_jsonrpc_server(log_file=log_file) as server:
+	with http_test_server(log_file=log_file) as server:
 		JSONRPCClient.no_proxy_addresses = []
 		proxy_env = {
 			"http_proxy": "should-not-be-used",
@@ -186,7 +186,7 @@ def test_proxy_legacy(tmp_path):
 def test_cookie_handling(tmp_path):
 	log_file = tmp_path / "request.log"
 	cookie = "COOKIE-NAME=abc"
-	with http_jsonrpc_server(
+	with http_test_server(
 		log_file=log_file,
 		response_headers={"Set-Cookie": cookie}
 	) as server:
@@ -201,7 +201,7 @@ def test_cookie_handling(tmp_path):
 
 def test_force_ip_version_4(tmp_path):
 	log_file = tmp_path / "request.log"
-	with http_jsonrpc_server(ip_version=4, log_file=log_file) as server:
+	with http_test_server(ip_version=4, log_file=log_file) as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}", ip_version=4)
 		client.get("/")
 		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
@@ -212,7 +212,7 @@ def test_force_ip_version_4(tmp_path):
 @pytest.mark.not_in_docker
 def test_force_ip_version_6(tmp_path):
 	log_file = tmp_path / "request.log"
-	with http_jsonrpc_server(ip_version=6, log_file=log_file) as server:
+	with http_test_server(ip_version=6, log_file=log_file) as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}", ip_version=6)
 		client.get("/")
 		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
@@ -228,7 +228,7 @@ def test_force_ip_version_6(tmp_path):
 ))
 def test_server_name_handling(tmp_path, server_name, expected_version):
 	log_file = tmp_path / f"{server_name}.log"
-	with http_jsonrpc_server(
+	with http_test_server(
 		log_file=log_file,
 		response_headers={"Server": server_name}
 	) as server:
@@ -260,7 +260,7 @@ def test_compression_and_serialization(tmp_path):
 	):
 		server_name = "opsiconfd 4.2.0.0"
 		log_file = tmp_path / f"{compression}_{serialization}.log"
-		with http_jsonrpc_server(
+		with http_test_server(
 			log_file=log_file,
 			response_headers={"Server": server_name}
 		) as server:
@@ -283,7 +283,7 @@ def test_compression_and_serialization(tmp_path):
 def test_pass_session_id(tmp_path):
 	log_file = tmp_path / "request.log"
 	session_id = "opsi-session-id=_ABüßö&$§"
-	with http_jsonrpc_server(
+	with http_test_server(
 		log_file=log_file,
 		# response_headers={"Set-Cookie": "COOKIE-NAME=abc; SameSite=Lax"}
 	) as server:
@@ -318,7 +318,7 @@ def test_get_path(tmp_path):
 	username = "abcüöäa"
 	password = "123&:%$§"
 
-	with http_jsonrpc_server(log_file=log_file) as server:
+	with http_test_server(log_file=log_file) as server:
 		client = JSONRPCClient(
 			f"http://localhost:{server.port}",
 			connect_on_init=False,
@@ -342,31 +342,31 @@ def test_get_path(tmp_path):
 
 
 def test_error_handling():
-	with http_jsonrpc_server(response_status=[500, "internal server error"]) as server:
+	with http_test_server(response_status=[500, "internal server error"]) as server:
 		with pytest.raises(OpsiRpcError):
 			JSONRPCClient(f"http://localhost:{server.port}")
 
-	with http_jsonrpc_server(response_status=[401, "auth error"]) as server:
+	with http_test_server(response_status=[401, "auth error"]) as server:
 		with pytest.raises(BackendAuthenticationError):
 			JSONRPCClient(f"http://localhost:{server.port}")
 
-	with http_jsonrpc_server(response_status=[403, "permission denied"]) as server:
+	with http_test_server(response_status=[403, "permission denied"]) as server:
 		with pytest.raises(BackendPermissionDeniedError):
 			JSONRPCClient(f"http://localhost:{server.port}")
 
 	response_body = json.dumps({"error": {"message": "err_msg"}}).encode("utf-8")
-	with http_jsonrpc_server(response_body=response_body) as server:
+	with http_test_server(response_body=response_body) as server:
 		with pytest.raises(OpsiRpcError) as err:
 			JSONRPCClient(f"http://localhost:{server.port}")
 		assert err.value.message == "err_msg (error on server)"
 
 	response_body = json.dumps({"error": "err_msg2"}).encode("utf-8")
-	with http_jsonrpc_server(response_body=response_body) as server:
+	with http_test_server(response_body=response_body) as server:
 		with pytest.raises(OpsiRpcError) as err:
 			JSONRPCClient(f"http://localhost:{server.port}")
 		assert err.value.message == "err_msg2 (error on server)"
 
-	with http_jsonrpc_server() as server:
+	with http_test_server() as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}")
 		with pytest.raises(HTTPError):
 			client.get("/", {"X-Response-Status": "500 Internal Server Error"})
@@ -377,7 +377,7 @@ def test_interface_and_exit(tmp_path):
 	with open("tests/data/client/jsonrpc/interface.json", "rb") as file:
 		interface = file.read()
 
-	with http_jsonrpc_server(log_file=log_file, response_body=interface) as server:
+	with http_test_server(log_file=log_file, response_body=interface) as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}", connect_on_init=False)
 		assert not hasattr(client, "host_getObjects")
 		assert client.interface
@@ -430,7 +430,7 @@ def test_env_requests_ca_bundle(tmpdir):
 	ca_bundle = "/error.crt"
 	with log_stream(LOG_WARNING, format="%(levelname)s %(message)s") as stream:
 		with environment({"REQUESTS_CA_BUNDLE": ca_bundle}):
-			with http_jsonrpc_server(server_key=server_key, server_cert=server_cert) as server:
+			with http_test_server(server_key=server_key, server_cert=server_cert) as server:
 				with pytest.raises(OSError) as err:
 					JSONRPCClient(f"https://localhost:{server.port}")
 
