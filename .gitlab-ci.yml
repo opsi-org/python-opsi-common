@@ -22,8 +22,8 @@ test:pytest-darwin:
   artifacts:
     name: 'python-opsi-common_test_darwin'
     paths:
-      - coverage.xml
-      - testreport.xml
+      - coverage_darwin.xml
+      - testreport_darwin.xml
       - coverage_darwin
     expire_in: 3 days
 
@@ -40,8 +40,8 @@ test:pytest-windows:
   artifacts:
     name: 'python-opsi-common_test_windows'
     paths:
-      - coverage.xml
-      - testreport.xml
+      - coverage_windows.xml
+      - testreport_windows.xml
       - coverage_windows
     expire_in: 3 days
 
@@ -56,11 +56,9 @@ test:pytest-linux:
   artifacts:
     name: 'python-opsi-common_test_linux'
     paths:
-      - coverage.xml
-      - testreport.xml
+      - coverage_linux.xml
+      - testreport_linux.xml
       - coverage_linux
-    reports:
-      junit: testreport.xml
     expire_in: 3 days
 
 test:pylint-pytest:
@@ -93,6 +91,9 @@ test:pylint-pytest:
     expire_in: 3 days
     reports:
       cobertura: coverage.xml
+      # TODO: Merge testrepots
+      junit: testreport_linux.xml
+
 
 publish:uibpypi:
   stage: publish
