@@ -147,7 +147,10 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		if self.server.serve_directory:
 			path = self.translate_path(self.path)
 			if os.path.exists(path):
-				os.remove(path)
+				if os.path.isdir(path):
+					shutil.rmtree(path)
+				else:
+					os.remove(path)
 				self.send_response(204, "Deleted")
 			else:
 				self.send_response(404, "Not found")
