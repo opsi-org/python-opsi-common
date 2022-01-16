@@ -91,7 +91,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self._send_headers(headers)
 		self.wfile.write(response)
 
-	def do_GET(self):
+	def do_GET(self):  # pylint: disable=invalid-name
 		if self.server.serve_directory:
 			return super().do_GET()
 
@@ -118,7 +118,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self.wfile.write(response)
 		return None
 
-	def do_PUT(self):
+	def do_PUT(self):  # pylint: disable=invalid-name
 		"""Serve a PUT request."""
 		if self.server.serve_directory:
 			path = self.translate_path(self.path)
@@ -126,6 +126,31 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			with open(path, 'wb') as file:
 				file.write(self.rfile.read(length))
 			self.send_response(201, "Created")
+			self.end_headers()
+		else:
+			self.send_response(500, "Not implemented")
+			self.end_headers()
+
+	def do_MKCOL(self):  # pylint: disable=invalid-name
+		"""Serve a MKCOL request."""
+		if self.server.serve_directory:
+			path = self.translate_path(self.path)
+			os.makedirs(path)
+			self.send_response(201, "Created")
+			self.end_headers()
+		else:
+			self.send_response(500, "Not implemented")
+			self.end_headers()
+
+	def do_DELETE(self):  # pylint: disable=invalid-name
+		"""Serve a DELETE request."""
+		if self.server.serve_directory:
+			path = self.translate_path(self.path)
+			if os.path.exists(path):
+				os.remove(path)
+				self.send_response(204, "Deleted")
+			else:
+				self.send_response(404, "Not found")
 			self.end_headers()
 		else:
 			self.send_response(500, "Not implemented")
