@@ -12,6 +12,7 @@ import ssl
 import gzip
 import json
 import time
+import shutil
 import threading
 import socket
 from contextlib import closing, contextmanager
