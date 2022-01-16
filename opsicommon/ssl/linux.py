@@ -82,11 +82,13 @@ def remove_ca(subject_name: str) -> bool:
 					except crypto.Error:
 						continue
 
-	if removed:
-		output = subprocess.check_output([cmd], shell=False)
-		logger.debug("Output of '%s': %s", cmd, output)
-	else:
+	if not removed:
 		logger.info(
 			"CA '%s' not found in '%s', nothing to remove",
 			subject_name, system_cert_path
 		)
+		return False
+
+	output = subprocess.check_output([cmd], shell=False)
+	logger.debug("Output of '%s': %s", cmd, output)
+	return True

@@ -51,7 +51,7 @@ def remove_ca(subject_name: str) -> bool:
 	ca_cert = load_ca(subject_name)
 	if not ca_cert:
 		logger.info("CA '%s' not found, nothing to remove", subject_name)
-		return
+		return False
 
 	removed_sha1_hash = None
 	while ca_cert:
@@ -65,3 +65,4 @@ def remove_ca(subject_name: str) -> bool:
 		)
 		removed_sha1_hash = sha1_hash
 		ca_cert = load_ca(subject_name)
+	return True

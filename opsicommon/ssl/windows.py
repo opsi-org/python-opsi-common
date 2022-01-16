@@ -116,34 +116,41 @@ def load_ca(subject_name: str) -> crypto.X509:
 
 def remove_ca(subject_name: str) -> bool:
 	store_name = "Root"
+	removed = 0
 	with _open_cert_store(store_name, ctype=True) as store:
-		p_cert_ctx = crypt32.CertFindCertificateInStore(
-			store,
-			X509_ASN_ENCODING,
-			0,
-			CERT_FIND_SUBJECT_STR,  # Searches for a certificate that contains the specified subject name string
-			subject_name,
-			None
-		)
-		if p_cert_ctx == 0:
-			# Cert not found
-			logger.info(
-				"CA '%s' not found in store '%s', nothing to remove",
-				subject_name, store_name
+		while True:
+			p_cert_ctx = crypt32.CertFindCertificateInStore(
+				store,
+				X509_ASN_ENCODING,
+				0,
+				CERT_FIND_SUBJECT_STR,  # Searches for a certificate that contains the specified subject name string
+				subject_name,
+				None
 			)
-			return False
+			if p_cert_ctx == 0:
+				break
 
-		cbsize = crypt32.CertGetNameStringW(
-			p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, None, 0
-		)
-		buf = ctypes.create_unicode_buffer(cbsize)
-		cbsize = crypt32.CertGetNameStringW(
-			p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, buf, cbsize
-		)
+			cbsize = crypt32.CertGetNameStringW(
+				p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, None, 0
+			)
+			buf = ctypes.create_unicode_buffer(cbsize)
+			cbsize = crypt32.CertGetNameStringW(
+				p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, buf, cbsize
+			)
+			logger.info(
+				"Removing CA '%s' (%s) from '%s' store",
+				subject_name, buf.value, store_name
+			)
+			crypt32.CertDeleteCertificateFromStore(p_cert_ctx)
+			crypt32.CertFreeCertificateContext(p_cert_ctx)
+			removed += 1
+
+	if not removed:
+		# Cert not found
 		logger.info(
-			"Removing CA '%s' (%s) from '%s' store",
-			subject_name, buf.value, store_name
+			"CA '%s' not found in store '%s', nothing to remove",
+			subject_name, store_name
 		)
-		crypt32.CertDeleteCertificateFromStore(p_cert_ctx)
-		crypt32.CertFreeCertificateContext(p_cert_ctx)
-		return True
+		return False
+
+	return True
