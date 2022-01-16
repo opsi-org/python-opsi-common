@@ -159,13 +159,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 	def do_HEAD(self):  # pylint: disable=invalid-name
 		"""Serve a HEAD request."""
 		if self.server.serve_directory:
-			path = self.translate_path(self.path)
-			if os.path.exists(path):
-				os.remove(path)
-				self.send_response(200, "OK")
-			else:
-				self.send_response(404, "Not found")
-			self.end_headers()
+			super().do_HEAD()
 		else:
 			self.send_response(200, "OK")
 			self.end_headers()
