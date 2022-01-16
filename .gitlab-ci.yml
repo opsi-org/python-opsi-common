@@ -14,8 +14,9 @@ test:pytest-darwin:
     # runner ALL=(ALL) NOPASSWD: ALL
     - source $HOME/.poetry/env
     - poetry install
-    - sudo poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_darwin.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
-    - sudo poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_darwin.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
+    - sudo poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_darwin1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
+    - sudo poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_darwin2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
+    - poetry run opsi-dev-tool -l info --testreport-merge testreport_darwin*.xml testreport_darwin.xml
     - mv .coverage coverage_darwin
   after_script:
     - sudo chown -R $USER .
@@ -34,8 +35,9 @@ test:pytest-windows:
     - win10
   script:
     - poetry install
-    - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_windows.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests\\test_logging.py tests
-    - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_windows.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests\\test_logging.py
+    - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_windows1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests\\test_logging.py tests
+    - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_windows2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests\\test_logging.py
+    - poetry run opsi-dev-tool -l info --testreport-merge testreport_windows*.xml testreport_windows.xml
     - Rename-Item -Path .coverage -NewName coverage_windows
   artifacts:
     name: 'python-opsi-common_test_windows'
@@ -50,8 +52,9 @@ test:pytest-linux:
   stage: test
   script:
     - poetry install
-    - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_linux.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
-    - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_linux.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
+    - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_linux1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
+    - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_linux2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
+    - poetry run opsi-dev-tool -l info --testreport-merge testreport_linux*.xml testreport_linux.xml
     - mv .coverage coverage_linux
   artifacts:
     name: 'python-opsi-common_test_linux'
