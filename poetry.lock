@@ -454,26 +454,26 @@ reference = "uibpypi"
 
 [[package]]
 name = "opsi-dev-tools"
-version = "1.0.80"
+version = "1.1.1"
 description = "opsi development tools"
 category = "dev"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = ">=3.7,<3.11"
 
 [package.dependencies]
-bs4 = ">=0.0.1,<0.0.2"
-colorlog = ">=6.6.0,<7.0.0"
-configargparse = ">=1.2.3,<2.0.0"
+bs4 = ">=0.0,<0.1"
+colorlog = ">=6.6,<7.0"
+configargparse = ">=1.2,<2.0"
 macholib = ">=1.14,<2.0"
-pefile = ">=2021.9.3,<2022.0.0"
+pefile = ">=2021.9,<2022.0"
 pyelftools = ">=0.27,<0.28"
-pypi-simple = ">=0.9.0,<0.10.0"
+pypi-simple = ">=0.9,<0.10"
 python-gettext = ">=4.0,<5.0"
 pyyaml = ">=6.0,<7.0"
 rarfile = ">=4.0,<5.0"
-requests = ">=2.23.0,<3.0.0"
-toml = ">=0.10.0,<0.11.0"
-virustotal3 = ">=1.0.8,<2.0.0"
+requests = ">=2.23,<3.0"
+toml = ">=0.10,<0.11"
+virustotal3 = ">=1.0,<2.0"
 
 [package.source]
 type = "legacy"
@@ -999,8 +999,8 @@ reference = "uibpypi"
 
 [metadata]
 lock-version = "1.1"
-python-versions = "^3.7"
-content-hash = "dd0f788d74d7c6aa595d8eec7350b3d2d0cc8920a3ef12947fcb48ee48edae09"
+python-versions = ">=3.7,<3.11"
+content-hash = "a8488c84f82d1bd6a27009bfc2b403b0b9aee45dad22007cd3beaba7b350b138"
 
 [metadata.files]
 altgraph = [
@@ -1307,8 +1307,8 @@ msgpack = [
     {file = "msgpack-1.0.3.tar.gz", hash = "sha256:51fdc7fb93615286428ee7758cecc2f374d5ff363bdd884c7ea622a7a327a81e"},
 ]
 opsi-dev-tools = [
-    {file = "opsi-dev-tools-1.0.80.tar.gz", hash = "sha256:1b10efee825118d6a27f40575fafe3a888dc3c7f3cb275c629ba5f48eead52df"},
-    {file = "opsi_dev_tools-1.0.80-py3-none-any.whl", hash = "sha256:3b249781b2baf023b3ad46dc81715d7d13df115a08d78922603531f78e0ae6d7"},
+    {file = "opsi-dev-tools-1.1.1.tar.gz", hash = "sha256:ff055a5d91b53c1360fe14a2db28fe076cf4a9dd750c98dd3c4edf254cfa9ccd"},
+    {file = "opsi_dev_tools-1.1.1-py3-none-any.whl", hash = "sha256:ae235f89c0847e91cb014207bd220b3fe48c0161fd78a9bb437a188956cdaf37"},
 ]
 packaging = [
     {file = "packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},
@@ -1337,6 +1337,11 @@ psutil = [
     {file = "psutil-5.9.0-cp310-cp310-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:742c34fff804f34f62659279ed5c5b723bb0195e9d7bd9907591de9f8f6558e2"},
     {file = "psutil-5.9.0-cp310-cp310-win32.whl", hash = "sha256:8293942e4ce0c5689821f65ce6522ce4786d02af57f13c0195b40e1edb1db61d"},
     {file = "psutil-5.9.0-cp310-cp310-win_amd64.whl", hash = "sha256:9b51917c1af3fa35a3f2dabd7ba96a2a4f19df3dec911da73875e1edaf22a40b"},
+    {file = "psutil-5.9.0-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:e9805fed4f2a81de98ae5fe38b75a74c6e6ad2df8a5c479594c7629a1fe35f56"},
+    {file = "psutil-5.9.0-cp36-cp36m-manylinux_2_12_i686.manylinux2010_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:c51f1af02334e4b516ec221ee26b8fdf105032418ca5a5ab9737e8c87dafe203"},
+    {file = "psutil-5.9.0-cp36-cp36m-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:32acf55cb9a8cbfb29167cd005951df81b567099295291bcfd1027365b36591d"},
+    {file = "psutil-5.9.0-cp36-cp36m-win32.whl", hash = "sha256:e5c783d0b1ad6ca8a5d3e7b680468c9c926b804be83a3a8e95141b05c39c9f64"},
+    {file = "psutil-5.9.0-cp36-cp36m-win_amd64.whl", hash = "sha256:d62a2796e08dd024b8179bd441cb714e0f81226c352c802fca0fd3f89eeacd94"},
     {file = "psutil-5.9.0-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:3d00a664e31921009a84367266b35ba0aac04a2a6cad09c550a89041034d19a0"},
     {file = "psutil-5.9.0-cp37-cp37m-manylinux_2_12_i686.manylinux2010_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:7779be4025c540d1d65a2de3f30caeacc49ae7a2152108adeaf42c7534a115ce"},
     {file = "psutil-5.9.0-cp37-cp37m-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:072664401ae6e7c1bfb878c65d7282d4b4391f1bc9a56d5e03b5a490403271b5"},

@@ -83,6 +83,7 @@ test:pylint-pytest:
     - poetry run coverage combine coverage_*
     - poetry run coverage xml
     - poetry run coverage report
+    - poetry run opsi-dev-tool -l info --testreport-merge testreport_*.xml testreport.xml
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+)%/'
   artifacts:
     name: 'python-opsi-common_test'
@@ -91,8 +92,7 @@ test:pylint-pytest:
     expire_in: 3 days
     reports:
       cobertura: coverage.xml
-      # TODO: Merge testrepots
-      junit: testreport_linux.xml
+      junit: testreport.xml
 
 
 publish:uibpypi:

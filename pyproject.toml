@@ -15,7 +15,7 @@ name = "uibpypi"
 url = "http://pypi.uib.gmbh:8080/simple"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = ">=3.7,<3.11"
 colorlog = "^6.6.0"
 distro = "^1.6.0"
 lz4 = "^3.1.3"
@@ -29,7 +29,7 @@ requests = "^2.26.0"
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0.1"
 hypothesis = "^6.32.1"
-opsi-dev-tools = "^1.0"
+opsi-dev-tools = "^1.1"
 pylint = "^2.7.4"
 pytest = "^6.2.3"
 pytest-cov = "^3.0.0"
