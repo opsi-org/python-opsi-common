@@ -144,6 +144,8 @@ def remove_ca(subject_name: str) -> bool:
 			crypt32.CertDeleteCertificateFromStore(p_cert_ctx)
 			crypt32.CertFreeCertificateContext(p_cert_ctx)
 			removed += 1
+			if removed >= 25:
+				raise RuntimeError(f"Stop loop after removing {removed} certficates")
 
 	if not removed:
 		# Cert not found
