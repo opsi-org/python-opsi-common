@@ -191,7 +191,7 @@ class HTTPTestServer(threading.Thread):  # pylint: disable=too-many-instance-att
 		self.response_status = response_status if response_status else None
 		self.response_body = response_body if response_body else None
 		self.response_delay = response_delay if response_delay else None
-		self.serve_directory = serve_directory if serve_directory else None
+		self.serve_directory = str(serve_directory) if serve_directory else None
 		# Auto select free port
 		with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
 			sock.bind(('', 0))
