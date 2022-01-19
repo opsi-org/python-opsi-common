@@ -160,9 +160,9 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		elif self.headers['Content-Encoding'] == "gzip":
 			request = gzip.decompress(request)
 
-		if "json" in self.headers['Content-Type']:
+		if "json" in self.headers.get('Content-Type', ''):
 			request = json.loads(request)
-		elif "msgpack" in self.headers['Content-Type']:
+		elif "msgpack" in self.headers.get('Content-Type', ''):
 			request = msgpack.loads(request)
 
 		self._log({
