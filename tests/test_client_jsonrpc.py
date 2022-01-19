@@ -343,6 +343,7 @@ def test_get_path(tmp_path):
 	auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
 	assert auth == f"{username}:{password}"
 
+
 def test_error_handling():
 	with http_test_server(response_status=[500, "internal server error"]) as server:
 		with pytest.raises(OpsiRpcError):
