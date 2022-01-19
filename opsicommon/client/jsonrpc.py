@@ -166,7 +166,10 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		self._session = requests.Session()
 		if self._username or self._password:
-			self._session.auth = (self._username or '', self._password or '')
+			self._session.auth = (
+				(self._username or '').encode('utf-8'),
+				(self._password or '').encode('utf-8')
+			)
 		self._session.headers.update({
 			"User-Agent": self._application,
 			"X-opsi-session-lifetime": str(self._session_lifetime)

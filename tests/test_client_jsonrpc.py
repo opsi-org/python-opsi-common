@@ -12,6 +12,7 @@ import json
 from urllib.parse import unquote
 from requests.exceptions import ConnectionError as RConnectionError, ReadTimeout, HTTPError
 import pytest
+import base64
 
 from opsicommon.client.jsonrpc import JSONRPCClient, BackendAuthenticationError, BackendPermissionDeniedError, OpsiRpcError
 from opsicommon.ssl import create_ca, create_server_cert, as_pem
@@ -338,8 +339,9 @@ def test_get_path(tmp_path):
 	assert request["path"] == "/path"
 	assert request["headers"]["User-Agent"] == user_agent
 	assert request["headers"]["X-opsi-session-lifetime"] == str(session_lifetime)
-	assert request["headers"]["Authorization"] == "Basic YWJj/PbkYToxMjMmOiUkpw=="
-
+	encoded_auth = request["headers"]["Authorization"][6:]  # Stripping "Basic "
+	auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
+	assert auth == f"{username}:{password}"
 
 def test_error_handling():
 	with http_test_server(response_status=[500, "internal server error"]) as server:
