@@ -14,11 +14,12 @@ from urllib.parse import unquote
 from requests.exceptions import ConnectionError as RConnectionError, ReadTimeout, HTTPError
 import pytest
 
+from opsicommon.logging import LOG_WARNING
 from opsicommon.client.jsonrpc import JSONRPCClient, BackendAuthenticationError, BackendPermissionDeniedError, OpsiRpcError
 from opsicommon.ssl import create_ca, create_server_cert, as_pem
-from opsicommon.logging import LOG_WARNING
+from opsicommon.testing.helpers import http_test_server, environment
 
-from .helpers import http_test_server, environment, log_stream
+from .helpers import log_stream
 
 
 def test_arguments():

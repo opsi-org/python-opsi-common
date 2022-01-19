@@ -18,7 +18,7 @@ from opsicommon.ssl import (
 	install_ca, load_ca, remove_ca
 )
 
-from .helpers import http_test_server
+from opsicommon.testing.helpers import http_test_server
 
 
 @pytest.mark.linux
