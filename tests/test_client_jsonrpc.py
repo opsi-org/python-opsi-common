@@ -9,10 +9,10 @@ This file is part of opsi - https://www.opsi.org
 import os
 import time
 import json
+import base64
 from urllib.parse import unquote
 from requests.exceptions import ConnectionError as RConnectionError, ReadTimeout, HTTPError
 import pytest
-import base64
 
 from opsicommon.client.jsonrpc import JSONRPCClient, BackendAuthenticationError, BackendPermissionDeniedError, OpsiRpcError
 from opsicommon.ssl import create_ca, create_server_cert, as_pem
