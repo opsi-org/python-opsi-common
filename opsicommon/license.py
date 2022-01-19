@@ -543,9 +543,6 @@ class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 
 
 class OpsiLicensePool:
-	CLIENT_LIMIT_THRESHOLD_PERCENT = 105
-	CLIENT_LIMIT_THRESHOLD_ABSOLUTE = -10
-
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		license_file_path: str = None,
@@ -715,10 +712,7 @@ class OpsiLicensePool:
 
 			usage_percent = client_number * 100 / info["client_number"]
 			absolute_free = info["client_number"] - client_number
-			if (
-				absolute_free <= self.CLIENT_LIMIT_THRESHOLD_ABSOLUTE or
-				usage_percent >= self.CLIENT_LIMIT_THRESHOLD_PERCENT
-			):
+			if client_number >= info["client_number"] + info["client_number"] ** 0.5:
 				info["state"] = OPSI_MODULE_STATE_OVER_LIMIT
 				info["available"] = False
 			elif (absolute_free < 0 or usage_percent > 100):
