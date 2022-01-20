@@ -64,7 +64,8 @@ def test_test_http_server_response_delay():
 		start = time.time()
 		res = requests.get(f"http://localhost:{server.port}")
 		assert res.status_code == 200
-		assert round(time.time() - start) == 2
+		delay = round(time.time() - start)
+		assert 6 >= delay >= 2
 
 
 def test_test_http_server_post():
