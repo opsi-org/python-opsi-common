@@ -82,52 +82,52 @@ def test_test_http_server_serve_files(tmp_path):
 	test_file2 = test_dir / "file2"
 	test_file2.write_text("test2", encoding="utf-8")
 	with http_test_server(serve_directory=tmp_path) as server:
-		res = requests.get(f"http://localhost:{server.port}/dir1")
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1")
 		assert res.status_code == 200
 		assert "Directory listing for /dir1" in res.text
 
-		res = requests.get(f"http://localhost:{server.port}/dir1/file2")
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2")
 		assert res.status_code == 200
 		assert res.text == "test2"
 
-		res = requests.get(f"http://localhost:{server.port}/dir1/file2", headers={"Range": "bytes=3-4"})
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", headers={"Range": "bytes=3-4"})
 		assert res.status_code == 206
 		assert res.text == "t2"
 
-		res = requests.get(f"http://localhost:{server.port}/dir1/file2", headers={"Range": "bytes=3-1024"})
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", headers={"Range": "bytes=3-1024"})
 		assert res.status_code == 206
 		assert res.text == "t2"
 
 		(test_dir / "index.html").write_text("index", encoding="utf-8")
 
-		res = requests.get(f"http://localhost:{server.port}/dir1")
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1")
 		assert res.status_code == 200
 		assert res.text == "index"
 
-		res = requests.get(f"http://localhost:{server.port}/dir2/")
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir2/")
 		assert res.status_code == 404
 
-		res = requests.get(f"http://localhost:{server.port}/404")
+		res = requests.get(f"http://127.0.0.1:{server.port}/404")
 		assert res.status_code == 404
 
 		date = email.utils.formatdate(timeval=time.time())
-		res = requests.get(f"http://localhost:{server.port}/dir1/file2", headers={"If-Modified-Since": date})
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", headers={"If-Modified-Since": date})
 		assert res.status_code == 304
 
-		res = requests.get(f"http://localhost:{server.port}/dir1/file2", headers={"If-Modified-Since": "INVALID"})
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", headers={"If-Modified-Since": "INVALID"})
 		assert res.status_code == 200
 
-		res = requests.put(f"http://localhost:{server.port}/dir1/put", data="test")
+		res = requests.put(f"http://127.0.0.1:{server.port}/dir1/put", data="test")
 		assert res.status_code == 201
 
-		res = requests.head(f"http://localhost:{server.port}/dir1/file1")
+		res = requests.head(f"http://127.0.0.1:{server.port}/dir1/file1")
 		assert res.status_code == 200
 
-		res = requests.delete(f"http://localhost:{server.port}/dir1/file1")
+		res = requests.delete(f"http://127.0.0.1:{server.port}/dir1/file1")
 		assert res.status_code == 204
 
-		res = requests.head(f"http://localhost:{server.port}/dir1/file1")
+		res = requests.head(f"http://127.0.0.1:{server.port}/dir1/file1")
 		assert res.status_code == 404
 
-		res = requests.request("MKCOL", f"http://localhost:{server.port}/newdir")
+		res = requests.request("MKCOL", f"http://127.0.0.1:{server.port}/newdir")
 		assert res.status_code == 201
