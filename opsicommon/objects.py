@@ -11,6 +11,7 @@ As an example this contains classes for hosts, products, configurations.
 # pylint: disable=too-many-lines
 
 import inspect
+from typing import List
 
 from opsicommon.logging import logger
 from opsicommon.exceptions import BackendBadValueError, BackendConfigurationError
@@ -53,7 +54,7 @@ __all__ = (
 _MANDATORY_CONSTRUCTOR_ARGS_CACHE = {}
 
 
-def mandatory_constructor_args(_class):
+def mandatory_constructor_args(_class: type) -> List[str]:
 	cache_key = _class.__name__
 	if cache_key not in _MANDATORY_CONSTRUCTOR_ARGS_CACHE:
 		spec = inspect.getfullargspec(_class.__init__)
