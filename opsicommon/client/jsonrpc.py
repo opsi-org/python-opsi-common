@@ -12,48 +12,53 @@ import time
 import types
 import socket
 import threading
+import warnings
+from typing import Callable
 from urllib.parse import urlparse, quote, unquote
 import gzip
 import ipaddress
+import urllib3
+from urllib3.util.retry import Retry
 import requests
 from requests.adapters import HTTPAdapter
-from requests.packages import urllib3
 from requests.exceptions import SSLError
-from urllib3.util.retry import Retry
-import msgpack
+import msgpack  # type: ignore[import]
+
 try:
 	# pyright: reportMissingModuleSource=false
 	import orjson as json  # pylint: disable=import-error
 except ModuleNotFoundError:
 	try:
-		import ujson as json
+		import ujson as json  # type: ignore[import,no-redef]
 	except ModuleNotFoundError:
-		import json
-import lz4.frame
+		import json  # type: ignore[no-redef]
+import lz4.frame  # type: ignore[import,no-redef]
 
 from opsicommon import __version__
 from opsicommon.logging import logger, secret_filter
 from opsicommon.exceptions import (
-	OpsiRpcError, OpsiServiceVerificationError,
-	BackendAuthenticationError, BackendPermissionDeniedError
+	OpsiRpcError,
+	OpsiServiceVerificationError,
+	BackendAuthenticationError,
+	BackendPermissionDeniedError,
 )
 from opsicommon.utils import serialize, deserialize, prepare_proxy_environment
 
-urllib3.disable_warnings()
+warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
 
-_GZIP_COMPRESSION = 'gzip'
-_LZ4_COMPRESSION = 'lz4'
+_GZIP_COMPRESSION = "gzip"
+_LZ4_COMPRESSION = "lz4"
 _DEFAULT_HTTP_PORT = 4444
 _DEFAULT_HTTPS_PORT = 4447
 
 
-def no_export(func):
-	func.no_export = True
+def no_export(func: Callable) -> Callable:
+	setattr(func, "no_export", True)
 	return func
 
 
 class TimeoutHTTPAdapter(HTTPAdapter):
-	def __init__(self, *args, **kwargs):
+	def __init__(self, *args, **kwargs) -> None:
 		self.timeout = None
 		if "timeout" in kwargs:
 			self.timeout = kwargs["timeout"]
@@ -70,7 +75,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	_rpc_timeouts = {
 		"depot_installPackage": 3600,
 		"depot_librsyncPatchFile": 3600,
-		"depot_getMD5Sum": 3600
+		"depot_getMD5Sum": 3600,
 	}
 	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]
 
@@ -105,55 +110,59 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		session_id = None
 		for option, value in kwargs.items():
 			option = option.lower().replace("_", "")
-			if option == 'application':
+			if option == "application":
 				self._application = str(value)
-			elif option == 'username':
+			elif option == "username":
 				self._username = str(value or "")
-			elif option == 'password':
+			elif option == "password":
 				self._password = str(value or "")
-			elif option == 'sessionid':
+			elif option == "sessionid":
 				if value:
 					session_id = str(value)
-			elif option == 'compression':
+			elif option == "compression":
 				self.set_compression(value)
-			elif option == 'connectoninit':
+			elif option == "connectoninit":
 				self._connect_on_init = bool(value)
-			elif option == 'createmethods':
+			elif option == "createmethods":
 				self._create_methods = bool(value)
-			elif option in ('connectionpoolsize', 'httppoolmaxsize'):
+			elif option in ("connectionpoolsize", "httppoolmaxsize"):
 				if value not in (None, ""):
 					self._http_pool_maxsize = int(value)
-			elif option in ('retry', 'httpmaxretries'):
+			elif option in ("retry", "httpmaxretries"):
 				if not value:
 					self._http_max_retries = 0
 				elif isinstance(value, int):
 					self._http_max_retries = max(value, 0)
-			elif option == 'connecttimeout':
+			elif option == "connecttimeout":
 				if value not in (None, ""):
 					self._connect_timeout = int(value)
-			elif option in ('readtimeout', 'timeout', 'sockettimeout'):
+			elif option in ("readtimeout", "timeout", "sockettimeout"):
 				if value not in (None, ""):
 					self._read_timeout = int(value)
-			elif option == 'verifyservercert':
+			elif option == "verifyservercert":
 				self._verify_server_cert = bool(value)
-			elif option == 'cacertfile':
+			elif option == "cacertfile":
 				if value not in (None, ""):
 					self._ca_cert_file = str(value)
-			elif option == 'proxyurl':
+			elif option == "proxyurl":
 				self._proxy_url = str(value) if value else None
-			elif option == 'ipversion':
+			elif option == "ipversion":
 				if value not in (None, ""):
 					if str(value) in ("auto", "4", "6"):
 						self._ip_version = str(value)
 					else:
 						logger.error("Invalid ip version '%s', using %s", value, self._ip_version)
-			elif option == 'serialization':
+			elif option == "serialization":
 				if value not in (None, ""):
 					if value in ("auto", "json", "msgpack"):
 						self._serialization = value
 					else:
-						logger.error("Invalid serialization '%s', using %s", value, self._serialization)
-			elif option == 'sessionlifetime':
+						logger.error(
+							"Invalid serialization '%s', using %s",
+							value,
+							self._serialization,
+						)
+			elif option == "sessionlifetime":
 				if value:
 					self._session_lifetime = int(value)
 			else:
@@ -167,13 +176,15 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._session = requests.Session()
 		if self._username or self._password:
 			self._session.auth = (
-				(self._username or '').encode('utf-8'),
-				(self._password or '').encode('utf-8')
+				(self._username or "").encode("utf-8"),
+				(self._password or "").encode("utf-8"),
 			)
-		self._session.headers.update({
-			"User-Agent": self._application,
-			"X-opsi-session-lifetime": str(self._session_lifetime)
-		})
+		self._session.headers.update(
+			{
+				"User-Agent": self._application,
+				"X-opsi-session-lifetime": str(self._session_lifetime),
+			}
+		)
 		if session_id:
 			if "=" in session_id:
 				logger.confidential("Using session id passed: %s", session_id)
@@ -186,7 +197,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			self.hostname,
 			self._proxy_url,
 			no_proxy_addresses=self.no_proxy_addresses,
-			session=self._session
+			session=self._session,
 		)
 
 		if self._verify_server_cert:
@@ -197,10 +208,10 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._http_adapter = TimeoutHTTPAdapter(
 			timeout=(self._connect_timeout, self._read_timeout),
 			pool_maxsize=self._http_pool_maxsize,
-			max_retries=0  # No retry on connect
+			max_retries=0,  # No retry on connect
 		)
-		self._session.mount('http://', self._http_adapter)
-		self._session.mount('https://', self._http_adapter)
+		self._session.mount("http://", self._http_adapter)
+		self._session.mount("https://", self._http_adapter)
 
 		try:
 			address = ipaddress.ip_address(self.hostname)
@@ -257,7 +268,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		if self.server_name:
 			match = re.search(r"^opsi\D+(\d+\.\d+\.\d+\.\d+)", self.server_name)
 			if match:
-				return [int(v) for v in match.group(1).split('.')]
+				return [int(v) for v in match.group(1).split(".")]
 		return None
 
 	serverVersion = server_version
@@ -285,7 +296,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			self._compression = compression
 		else:
 			compression = str(compression).strip().lower()
-			if compression in ('true', 'false'):
+			if compression in ("true", "false"):
 				self._compression = compression == "true"
 			elif compression == _GZIP_COMPRESSION:
 				self._compression = _GZIP_COMPRESSION
@@ -312,7 +323,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		if "://" not in address:
 			address = f"https://{address}"
 		url = urlparse(address)
-		if url.scheme not in ('http', 'https'):
+		if url.scheme not in ("http", "https"):
 			raise ValueError(f"Protocol {url.scheme} not supported")
 
 		if url.scheme == "https":
@@ -346,15 +357,13 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			self._rpc_id += 1
 			rpc_id = self._rpc_id
 
-		headers = {
-			'Accept-Encoding': 'gzip, lz4'
-		}
+		headers = {"Accept-Encoding": "deflate, gzip, lz4"}
 
 		data = {
 			"jsonrpc": "2.0",
 			"id": rpc_id,
 			"method": method,
-			"params": serialize(params)
+			"params": serialize(params),
 		}
 
 		serialization = self._serialization
@@ -365,10 +374,10 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				serialization = "msgpack"
 
 		if serialization == "msgpack":
-			headers['Accept'] = headers['Content-Type'] = 'application/msgpack'
+			headers["Accept"] = headers["Content-Type"] = "application/msgpack"
 			data = msgpack.dumps(data)
 		else:
-			headers['Accept'] = headers['Content-Type'] = 'application/json'
+			headers["Accept"] = headers["Content-Type"] = "application/json"
 			data = json.dumps(data)
 
 		if not isinstance(data, bytes):
@@ -387,21 +396,26 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 			if compression == _LZ4_COMPRESSION:
 				logger.trace("Compressing data with lz4")
-				headers['Content-Encoding'] = 'lz4'
-				headers['Accept-Encoding'] = 'lz4'
+				headers["Content-Encoding"] = "lz4"
+				headers["Accept-Encoding"] = "lz4"
 				data = lz4.frame.compress(data, compression_level=0, block_linked=True)
 			elif compression == _GZIP_COMPRESSION:
 				logger.trace("Compressing data with gzip")
-				headers['Content-Encoding'] = 'gzip'
-				headers['Accept-Encoding'] = 'gzip'
+				headers["Content-Encoding"] = "gzip"
+				headers["Accept-Encoding"] = "gzip"
 				data = gzip.compress(data)
 
 		timeout = self._rpc_timeouts.get(method, self._read_timeout)
 
 		logger.info(
 			"JSONRPC request to %s: ip_version=%s, id=%d, method=%s, Content-Type=%s, Content-Encoding=%s, timeout=%d",
-			self.base_url, self._ip_version, rpc_id, method,
-			headers.get('Content-Type', ''), headers.get('Content-Encoding', ''), timeout
+			self.base_url,
+			self._ip_version,
+			rpc_id,
+			method,
+			headers.get("Content-Type", ""),
+			headers.get("Content-Encoding", ""),
+			timeout,
 		)
 		start_time = time.time()
 		try:
@@ -413,11 +427,14 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		content_encoding = response.headers.get("Content-Encoding", "")
 		logger.info(
 			"Got response status=%s, Content-Type=%s, Content-Encoding=%s, duration=%0.3fs",
-			response.status_code, content_type, content_encoding, (time.time() - start_time)
+			response.status_code,
+			content_type,
+			content_encoding,
+			(time.time() - start_time),
 		)
 
-		if 'server' in response.headers:
-			self.server_name = response.headers.get('server')
+		if "server" in response.headers:
+			self.server_name = response.headers.get("server")
 
 		data = response.content
 		# gzip and deflate transfer-encodings are automatically decoded
@@ -440,70 +457,73 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			if response.status_code == 403:
 				error_cls = BackendPermissionDeniedError
 
-		if data.get('error'):
-			logger.debug('JSONRPC-response contains error')
+		if data.get("error"):
+			logger.debug("JSONRPC-response contains error")
 			if not error_cls:
 				error_cls = OpsiRpcError
-			if isinstance(data['error'], dict) and data['error'].get('message'):
-				error_msg = data['error']['message']
+			if isinstance(data["error"], dict) and data["error"].get("message"):
+				error_msg = data["error"]["message"]
 			else:
-				error_msg = str(data['error'])
+				error_msg = str(data["error"])
 
 		if error_cls:
 			raise error_cls(f"{error_msg} (error on server)")
 
-		data = deserialize(
-			data.get('result'),
-			prevent_object_creation=method.endswith('_getHashes')
-		)
+		data = deserialize(data.get("result"), prevent_object_creation=method.endswith("_getHashes"))
 
 		return data
 
 	def _create_instance_methods(self):
 		for method in self._interface:
 			try:
-				method_name = method['name']
+				method_name = method["name"]
 
-				if method_name in ('backend_exit', 'backend_getInterface', 'jsonrpc_getSessionId'):
+				if method_name in (
+					"backend_exit",
+					"backend_getInterface",
+					"jsonrpc_getSessionId",
+				):
 					continue
 
 				logger.debug("Creating instance method: %s", method_name)
 
-				args = method['args']
-				varargs = method['varargs']
-				keywords = method['keywords']
-				defaults = method['defaults']
+				args = method["args"]
+				varargs = method["varargs"]
+				keywords = method["keywords"]
+				defaults = method["defaults"]
 
 				arg_string = []
 				call_string = []
 				for i, argument in enumerate(args):
-					if argument == 'self':
+					if argument == "self":
 						continue
 
 					if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):
 						default = defaults[len(defaults) - len(args) + i]
 						if isinstance(default, str):
 							default = "{0!r}".format(default).replace('"', "'")  # pylint: disable=consider-using-f-string
-						arg_string.append(f'{argument}={default}')
+						arg_string.append(f"{argument}={default}")
 					else:
 						arg_string.append(argument)
 					call_string.append(argument)
 
 				if varargs:
 					for vararg in varargs:
-						arg_string.append(f'*{vararg}')
+						arg_string.append(f"*{vararg}")
 						call_string.append(vararg)
 
 				if keywords:
-					arg_string.append(f'**{keywords}')
+					arg_string.append(f"**{keywords}")
 					call_string.append(keywords)
 
-				arg_string = ', '.join(arg_string)
-				call_string = ', '.join(call_string)
+				arg_string = ", ".join(arg_string)
+				call_string = ", ".join(call_string)
 
 				logger.trace("%s: arg string is: %s", method_name, arg_string)
 				logger.trace("%s: call string is: %s", method_name, call_string)
-				exec(f'def {method_name}(self, {arg_string}): return self.execute_rpc("{method_name}", [{call_string}])')  # pylint: disable=exec-used
+				exec(  # pylint: disable=exec-used
+					f'def {method_name}(self, {arg_string}): return self.execute_rpc("{method_name}", [{call_string}])'
+				)
 				setattr(self, method_name, types.MethodType(eval(method_name), self))  # pylint: disable=eval-used
 			except Exception as err:  # pylint: disable=broad-except
 				logger.critical("Failed to create instance method '%s': %s", method, err)
@@ -512,7 +532,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	def connect(self):
 		logger.info("Connecting to service %s", self.base_url)
 		if self._create_methods:
-			self._interface = self.execute_rpc('backend_getInterface')
+			self._interface = self.execute_rpc("backend_getInterface")
 			self._create_instance_methods()
 		self._http_adapter.max_retries = Retry.from_int(self._http_max_retries)
 		logger.debug("Connected to service %s", self.base_url)
@@ -522,7 +542,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	def disconnect(self):
 		if self._connected:
 			try:
-				self.execute_rpc('backend_exit')
+				self.execute_rpc("backend_exit")
 			except Exception:  # pylint: disable=broad-except
 				pass
 			self._connected = False
