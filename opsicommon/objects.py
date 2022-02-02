@@ -3459,7 +3459,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 			for (attribute, value) in kwargs.items():
 				attr_type = self.hardware_attributes[hardwareClass].get(attribute)
 				if not attr_type:
-					del kwargs[attribute]  # pylint: disable=unnecessary-dict-index-lookup
+					del kwargs[attribute]
 					continue
 				if value is None:
 					continue

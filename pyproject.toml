@@ -33,6 +33,8 @@ opsi-dev-tools = "^1.1"
 pylint = "^2.7.4"
 pytest = "^6.2.3"
 pytest-cov = "^3.0.0"
+mypy = "^0.931"
+tan = "^21.14"
 
 [build-system]
 requires = ["poetry>=0.12"]
