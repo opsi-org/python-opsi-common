@@ -3457,7 +3457,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 					kwargs[attribute] = None
 
 		if self.hardware_attributes.get(hardwareClass):
-			for (attribute, value) in kwargs.items():
+			for (attribute, value) in list(kwargs.items()):
 				attr_type = self.hardware_attributes[hardwareClass].get(attribute)
 				if not attr_type:
 					del kwargs[attribute]
