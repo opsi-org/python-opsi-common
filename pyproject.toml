@@ -35,6 +35,13 @@ pytest = "^6.2.3"
 pytest-cov = "^3.0.0"
 mypy = "^0.931"
 tan = "^21.14"
+types-requests = "^2.27.8"
+types-orjson = "^3.6.2"
+
+[tool.black]
+line-length = 140
+target-version = ['py39', 'py310']
+use-tabs = true
 
 [build-system]
 requires = ["poetry>=0.12"]
