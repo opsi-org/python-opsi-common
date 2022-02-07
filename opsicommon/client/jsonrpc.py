@@ -166,7 +166,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				if value:
 					self._session_lifetime = int(value)
 			else:
-				logger.warning("Invalid argument '%s'", option)
+				if self.__class__.__name__ != "JSONRPCBackend":
+					logger.warning("Invalid argument '%s'", option)
 
 		self._set_address(address)
 
