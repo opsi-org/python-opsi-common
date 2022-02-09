@@ -32,7 +32,7 @@ test:pytest-windows:
   #when: manual
   stage: test
   tags:
-    - win10
+    - win10-py310
   script:
     - poetry install
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_windows1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests\\test_logging.py tests
