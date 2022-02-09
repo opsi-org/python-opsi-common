@@ -17,27 +17,27 @@ secondary = true
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.11"
-colorlog = "^6.6.0"
-distro = "^1.6.0"
-lz4 = "^3.1.3"
-msgpack = "^1.0.2"
-psutil = "^5.8.0"
-pycryptodome = "^3.10.1"
-pyopenssl = "^21.0.0"
-pywin32 = {platform = "win32", version = "^227"}
-requests = "^2.26.0"
+colorlog = "^6.6"
+distro = "^1.6"
+lz4 = "^3.1"
+msgpack = "^1.0"
+psutil = "^5.8"
+pycryptodome = "^3.10"
+pyopenssl = "^22.0"
+pywin32 = {platform = "win32", version = "^303"}
+requests = "^2.26"
 
 [tool.poetry.dev-dependencies]
-flake8 = "^4.0.1"
-hypothesis = "^6.32.1"
+flake8 = "^4.0"
+hypothesis = "^6.32"
 opsi-dev-tools = "^1.1"
-pylint = "^2.7.4"
-pytest = "^6.2.3"
-pytest-cov = "^3.0.0"
+pylint = "^2.7"
+pytest = "^7.0"
+pytest-cov = "^3.0"
 mypy = "^0.931"
 tan = "^21.14"
-types-requests = "^2.27.8"
-types-orjson = "^3.6.2"
+types-requests = "^2.27"
+types-orjson = "^3.6"
 
 [tool.black]
 line-length = 140
