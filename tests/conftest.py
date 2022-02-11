@@ -11,11 +11,10 @@ This file is part of opsi - https://www.opsi.org
 import os
 import platform
 import urllib3
+import warnings
+
 import pytest
 from _pytest.logging import LogCaptureHandler
-
-
-urllib3.disable_warnings()
 
 
 def emit(*args, **kwargs) -> None:  # pylint: disable=unused-argument
@@ -25,12 +24,25 @@ def emit(*args, **kwargs) -> None:  # pylint: disable=unused-argument
 LogCaptureHandler.emit = emit
 
 
+@pytest.hookimpl()
+def pytest_configure(config):
+	# https://pypi.org/project/pytest-asyncio
+	# When the mode is auto, all discovered async tests are considered
+	# asyncio-driven even if they have no @pytest.mark.asyncio marker.
+	config.option.asyncio_mode = "auto"
+
+
+@pytest.fixture(autouse=True)
+def disable_insecure_request_warning():
+	warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
+
+
 def running_in_docker():
 	if not os.path.exists("/proc/self/cgroup"):
 		return False
 	with open("/proc/self/cgroup", "r", encoding="utf-8") as file:
 		for line in file.readlines():
-			if line.split(':')[2].startswith("/docker/"):
+			if line.split(":")[2].startswith("/docker/"):
 				return True
 	return False
 
@@ -40,6 +52,7 @@ def admin_permissions():
 		return os.geteuid() == 0
 	except AttributeError:
 		import ctypes  # pylint: disable=import-outside-toplevel
+
 		return ctypes.windll.shell32.IsUserAnAdmin() != 0
 
 
@@ -50,27 +63,13 @@ ADMIN_PERMISSIONS = admin_permissions()
 
 def pytest_configure(config):
 	# register custom markers
-	config.addinivalue_line(
-		"markers", "docker_linux: mark test to run only on linux in docker"
-	)
-	config.addinivalue_line(
-		"markers", "not_in_docker: mark test to run only if not running in docker"
-	)
-	config.addinivalue_line(
-		"markers", "admin_permissions: mark test to run only if user has admin permissions"
-	)
-	config.addinivalue_line(
-		"markers", "windows: mark test to run only on windows"
-	)
-	config.addinivalue_line(
-		"markers", "linux: mark test to run only on linux"
-	)
-	config.addinivalue_line(
-		"markers", "darwin: mark test to run only on darwin"
-	)
-	config.addinivalue_line(
-		"markers", "posix: mark test to run only on posix"
-	)
+	config.addinivalue_line("markers", "docker_linux: mark test to run only on linux in docker")
+	config.addinivalue_line("markers", "not_in_docker: mark test to run only if not running in docker")
+	config.addinivalue_line("markers", "admin_permissions: mark test to run only if user has admin permissions")
+	config.addinivalue_line("markers", "windows: mark test to run only on windows")
+	config.addinivalue_line("markers", "linux: mark test to run only on linux")
+	config.addinivalue_line("markers", "darwin: mark test to run only on darwin")
+	config.addinivalue_line("markers", "posix: mark test to run only on posix")
 
 
 def pytest_runtest_setup(item):
