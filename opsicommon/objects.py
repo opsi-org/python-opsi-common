@@ -119,7 +119,7 @@ _MANDATORY_CONSTRUCTOR_ARGS_CACHE = {}
 def mandatory_constructor_args(_class: type) -> List[str]:
 	cache_key = _class.__name__
 	if cache_key not in _MANDATORY_CONSTRUCTOR_ARGS_CACHE:
-		spec = inspect.getfullargspec(_class.__init__)
+		spec = inspect.getfullargspec(_class.__init__)  # type: ignore[misc]
 		args = spec.args
 		defaults = spec.defaults
 		mandatory = None
@@ -571,10 +571,10 @@ class Host(Object):
 
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		id,
+		id,  # pylint: disable=redefined-builtin
 		description=None,
 		notes=None,
-		hardwareAddress=None,  # pylint: disable=redefined-builtin
+		hardwareAddress=None,
 		ipAddress=None,
 		inventoryNumber=None,
 	):
@@ -644,10 +644,10 @@ class OpsiClient(Host):
 
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		id,
+		id,  # pylint: disable=redefined-builtin
 		opsiHostKey=None,
 		description=None,
-		notes=None,  # pylint: disable=redefined-builtin
+		notes=None,
 		hardwareAddress=None,
 		ipAddress=None,
 		inventoryNumber=None,
@@ -727,9 +727,9 @@ class OpsiDepotserver(Host):  # pylint: disable=too-many-instance-attributes,too
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
 		self,
-		id,
+		id,  # pylint: disable=redefined-builtin
 		opsiHostKey=None,
-		depotLocalUrl=None,  # pylint: disable=redefined-builtin
+		depotLocalUrl=None,
 		depotRemoteUrl=None,
 		depotWebdavUrl=None,
 		repositoryLocalUrl=None,
@@ -901,9 +901,9 @@ class OpsiConfigserver(OpsiDepotserver):
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
 		self,
-		id,
+		id,  # pylint: disable=redefined-builtin
 		opsiHostKey=None,
-		depotLocalUrl=None,  # pylint: disable=redefined-builtin
+		depotLocalUrl=None,
 		depotRemoteUrl=None,
 		depotWebdavUrl=None,
 		repositoryLocalUrl=None,
@@ -972,10 +972,10 @@ class Config(Entity):
 
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		id,
+		id,  # pylint: disable=redefined-builtin,invalid-name
 		description=None,
-		possibleValues=None,  # pylint: disable=redefined-builtin,invalid-name
-		defaultValues=None,
+		possibleValues=None,  # pylint: disable=invalid-name
+		defaultValues=None,  # pylint: disable=invalid-name
 		editable=None,
 		multiValue=None,  # pylint: disable=invalid-name
 	):
@@ -1097,9 +1097,9 @@ class UnicodeConfig(Config):
 
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		id,
+		id,  # pylint: disable=redefined-builtin
 		description="",
-		possibleValues=None,  # pylint: disable=redefined-builtin
+		possibleValues=None,
 		defaultValues=None,
 		editable=None,
 		multiValue=None,
@@ -1243,23 +1243,23 @@ class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-instance-attributes,too-many-public-methods,too-many-locals,too-many-branches
 		self,
-		id,
-		productVersion,
-		packageVersion,
-		name=None,  # pylint: disable=redefined-builtin,invalid-name
-		licenseRequired=None,
-		setupScript=None,
+		id,  # pylint: disable=redefined-builtin,invalid-name
+		productVersion,  # pylint: disable=invalid-name
+		packageVersion,  # pylint: disable=invalid-name
+		name=None,
+		licenseRequired=None,  # pylint: disable=invalid-name
+		setupScript=None,  # pylint: disable=invalid-name
 		uninstallScript=None,  # pylint: disable=invalid-name
-		updateScript=None,
-		alwaysScript=None,
+		updateScript=None,  # pylint: disable=invalid-name
+		alwaysScript=None,  # pylint: disable=invalid-name
 		onceScript=None,  # pylint: disable=invalid-name
-		customScript=None,
-		userLoginScript=None,
+		customScript=None,  # pylint: disable=invalid-name
+		userLoginScript=None,  # pylint: disable=invalid-name
 		priority=None,  # pylint: disable=invalid-name
 		description=None,
 		advice=None,
 		changelog=None,  # pylint: disable=invalid-name
-		productClassIds=None,
+		productClassIds=None,  # pylint: disable=invalid-name
 		windowsSoftwareIds=None,  # pylint: disable=invalid-name
 	):
 		self.name = None
@@ -1487,10 +1487,10 @@ class LocalbootProduct(Product):
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
 		self,
-		id,
+		id,  # pylint: disable=redefined-builtin
 		productVersion,
 		packageVersion,
-		name=None,  # pylint: disable=redefined-builtin
+		name=None,
 		licenseRequired=None,
 		setupScript=None,
 		uninstallScript=None,
@@ -1554,10 +1554,10 @@ class NetbootProduct(Product):
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
 		self,
-		id,
+		id,  # pylint: disable=redefined-builtin
 		productVersion,
 		packageVersion,
-		name=None,  # pylint: disable=redefined-builtin
+		name=None,
 		licenseRequired=None,
 		setupScript=None,
 		uninstallScript=None,
@@ -1632,12 +1632,12 @@ class ProductProperty(Entity):  # pylint: disable=too-many-instance-attributes,t
 
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		productId,
-		productVersion,
-		packageVersion,
+		productId,  # pylint: disable=invalid-name
+		productVersion,  # pylint: disable=invalid-name
+		packageVersion,  # pylint: disable=invalid-name
 		propertyId,  # pylint: disable=invalid-name
 		description=None,
-		possibleValues=None,
+		possibleValues=None,  # pylint: disable=invalid-name
 		defaultValues=None,  # pylint: disable=invalid-name
 		editable=None,
 		multiValue=None,  # pylint: disable=invalid-name
@@ -1922,15 +1922,15 @@ class ProductDependency(Relationship):  # pylint: disable=too-many-instance-attr
 
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		productId,
-		productVersion,
+		productId,  # pylint: disable=invalid-name
+		productVersion,  # pylint: disable=invalid-name
 		packageVersion,  # pylint: disable=invalid-name
-		productAction,
-		requiredProductId,
+		productAction,  # pylint: disable=invalid-name
+		requiredProductId,  # pylint: disable=invalid-name
 		requiredProductVersion=None,  # pylint: disable=invalid-name
-		requiredPackageVersion=None,
+		requiredPackageVersion=None,  # pylint: disable=invalid-name
 		requiredAction=None,  # pylint: disable=invalid-name
-		requiredInstallationStatus=None,
+		requiredInstallationStatus=None,  # pylint: disable=invalid-name
 		requirementType=None,  # pylint: disable=invalid-name
 	):
 		self.requiredProductVersion = None  # pylint: disable=invalid-name
@@ -2048,11 +2048,11 @@ class ProductOnDepot(Relationship):
 
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		productId,
-		productType,
-		productVersion,
+		productId,  # pylint: disable=invalid-name
+		productType,  # pylint: disable=invalid-name
+		productVersion,  # pylint: disable=invalid-name
 		packageVersion,  # pylint: disable=invalid-name
-		depotId,
+		depotId,  # pylint: disable=invalid-name
 		locked=None,  # pylint: disable=invalid-name
 	):
 		self.locked = None
@@ -2132,18 +2132,18 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		productId,
-		productType,
+		productId,  # pylint: disable=invalid-name
+		productType,  # pylint: disable=invalid-name
 		clientId,  # pylint: disable=invalid-name
-		targetConfiguration=None,
+		targetConfiguration=None,  # pylint: disable=invalid-name
 		installationStatus=None,  # pylint: disable=invalid-name
-		actionRequest=None,
-		lastAction=None,
+		actionRequest=None,  # pylint: disable=invalid-name
+		lastAction=None,  # pylint: disable=invalid-name
 		actionProgress=None,  # pylint: disable=invalid-name
-		actionResult=None,
-		productVersion=None,
+		actionResult=None,  # pylint: disable=invalid-name
+		productVersion=None,  # pylint: disable=invalid-name
 		packageVersion=None,  # pylint: disable=invalid-name
-		modificationTime=None,
+		modificationTime=None,  # pylint: disable=invalid-name
 		actionSequence=None,  # pylint: disable=invalid-name
 	):
 		self.targetConfiguration = None  # pylint: disable=invalid-name
@@ -2524,11 +2524,11 @@ class LicenseContract(Entity):
 
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		id,
+		id,  # pylint: disable=redefined-builtin,invalid-name
 		description=None,
 		notes=None,
-		partner=None,  # pylint: disable=redefined-builtin,invalid-name
-		conclusionDate=None,
+		partner=None,
+		conclusionDate=None,  # pylint: disable=invalid-name
 		notificationDate=None,  # pylint: disable=invalid-name
 		expirationDate=None,  # pylint: disable=invalid-name
 	):
@@ -2650,10 +2650,10 @@ class SoftwareLicense(Entity):
 
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		id,
-		licenseContractId,
-		maxInstallations=None,  # pylint: disable=redefined-builtin,invalid-name
-		boundToHost=None,
+		id,  # pylint: disable=redefined-builtin,invalid-name
+		licenseContractId,  # pylint: disable=invalid-name
+		maxInstallations=None,  # pylint: disable=invalid-name
+		boundToHost=None,  # pylint: disable=invalid-name
 		expirationDate=None,  # pylint: disable=invalid-name
 	):
 		self.maxInstallations = None  # pylint: disable=invalid-name
@@ -3082,10 +3082,10 @@ class LicenseOnClient(Relationship):
 
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		softwareLicenseId,
-		licensePoolId,
+		softwareLicenseId,  # pylint: disable=invalid-name
+		licensePoolId,  # pylint: disable=invalid-name
 		clientId,  # pylint: disable=invalid-name
-		licenseKey=None,
+		licenseKey=None,  # pylint: disable=invalid-name
 		notes=None,  # pylint: disable=invalid-name
 	):
 		self.licenseKey = None  # pylint: disable=invalid-name
@@ -3163,12 +3163,12 @@ class AuditSoftware(Entity):  # pylint: disable=too-many-instance-attributes,too
 		self,
 		name,
 		version,
-		subVersion,
+		subVersion,  # pylint: disable=invalid-name
 		language,
 		architecture,  # pylint: disable=invalid-name
-		windowsSoftwareId=None,
+		windowsSoftwareId=None,  # pylint: disable=invalid-name
 		windowsDisplayName=None,  # pylint: disable=invalid-name
-		windowsDisplayVersion=None,
+		windowsDisplayVersion=None,  # pylint: disable=invalid-name
 		installSize=None,  # pylint: disable=invalid-name
 	):
 		self.windowsSoftwareId = None  # pylint: disable=invalid-name
@@ -3280,17 +3280,17 @@ class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-
 		self,
 		name,
 		version,
-		subVersion,
+		subVersion,  # pylint: disable=invalid-name
 		language,
 		architecture,  # pylint: disable=invalid-name
-		clientId,
-		uninstallString=None,
+		clientId,  # pylint: disable=invalid-name
+		uninstallString=None,  # pylint: disable=invalid-name
 		binaryName=None,  # pylint: disable=invalid-name
 		firstseen=None,
 		lastseen=None,
 		state=None,  # pylint: disable=invalid-name
-		usageFrequency=None,
-		lastUsed=None,
+		usageFrequency=None,  # pylint: disable=invalid-name
+		lastUsed=None,  # pylint: disable=invalid-name
 		licenseKey=None,  # pylint: disable=invalid-name
 	):
 		self.uninstallString = None  # pylint: disable=invalid-name

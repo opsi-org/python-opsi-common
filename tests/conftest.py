@@ -10,8 +10,8 @@ This file is part of opsi - https://www.opsi.org
 
 import os
 import platform
-import urllib3
 import warnings
+import urllib3
 
 import pytest
 from _pytest.logging import LogCaptureHandler
@@ -21,7 +21,7 @@ def emit(*args, **kwargs) -> None:  # pylint: disable=unused-argument
 	pass
 
 
-LogCaptureHandler.emit = emit
+LogCaptureHandler.emit = emit  # type: ignore[attr-defined]
 
 
 @pytest.hookimpl()
@@ -30,6 +30,14 @@ def pytest_configure(config):
 	# When the mode is auto, all discovered async tests are considered
 	# asyncio-driven even if they have no @pytest.mark.asyncio marker.
 	config.option.asyncio_mode = "auto"
+	# register custom markers
+	config.addinivalue_line("markers", "docker_linux: mark test to run only on linux in docker")
+	config.addinivalue_line("markers", "not_in_docker: mark test to run only if not running in docker")
+	config.addinivalue_line("markers", "admin_permissions: mark test to run only if user has admin permissions")
+	config.addinivalue_line("markers", "windows: mark test to run only on windows")
+	config.addinivalue_line("markers", "linux: mark test to run only on linux")
+	config.addinivalue_line("markers", "darwin: mark test to run only on darwin")
+	config.addinivalue_line("markers", "posix: mark test to run only on posix")
 
 
 @pytest.fixture(autouse=True)
@@ -59,17 +67,6 @@ def admin_permissions():
 PLATFORM = platform.system().lower()
 RUNNING_IN_DOCKER = running_in_docker()
 ADMIN_PERMISSIONS = admin_permissions()
-
-
-def pytest_configure(config):
-	# register custom markers
-	config.addinivalue_line("markers", "docker_linux: mark test to run only on linux in docker")
-	config.addinivalue_line("markers", "not_in_docker: mark test to run only if not running in docker")
-	config.addinivalue_line("markers", "admin_permissions: mark test to run only if user has admin permissions")
-	config.addinivalue_line("markers", "windows: mark test to run only on windows")
-	config.addinivalue_line("markers", "linux: mark test to run only on linux")
-	config.addinivalue_line("markers", "darwin: mark test to run only on darwin")
-	config.addinivalue_line("markers", "posix: mark test to run only on posix")
 
 
 def pytest_runtest_setup(item):
