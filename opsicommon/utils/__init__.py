@@ -11,6 +11,7 @@ import time
 import types
 import secrets
 import json
+from datetime import datetime, date
 import requests
 
 from opsicommon.logging import logger
@@ -46,21 +47,18 @@ def deserialize(obj, prevent_object_creation=False):  # pylint: disable=invalid-
 
 	if isinstance(obj, dict):
 		if (
-			not prevent_object_creation and
-			"type" in obj and
-			obj["type"] in OBJECT_CLASSES and
-			issubclass(OBJECT_CLASSES[obj['type']], BaseObject)
+			not prevent_object_creation
+			and "type" in obj
+			and obj["type"] in OBJECT_CLASSES
+			and issubclass(OBJECT_CLASSES[obj["type"]], BaseObject)
 		):
 			try:
-				return OBJECT_CLASSES[obj['type']].fromHash(obj)
+				return OBJECT_CLASSES[obj["type"]].fromHash(obj)
 			except Exception as err:  # pylint: disable=broad-except
 				logger.error(err, exc_info=True)
 				raise ValueError(f"Failed to create object from dict {obj}: {err}") from err
 
-		return {
-			key: deserialize(value, prevent_object_creation=prevent_object_creation)
-			for key, value in obj.items()
-		}
+		return {key: deserialize(value, prevent_object_creation=prevent_object_creation) for key, value in obj.items()}
 
 	return obj
 
@@ -80,6 +78,8 @@ def serialize(obj):
 	try:
 		return obj.serialize()
 	except AttributeError:
+		if isinstance(obj, (datetime, date)):
+			return obj.isoformat()
 		if isinstance(obj, (list, set, types.GeneratorType)):
 			return [serialize(tempObject) for tempObject in obj]
 		if isinstance(obj, dict):
@@ -105,7 +105,7 @@ def from_json(obj, object_type=None, prevent_object_creation=False):
 		obj = obj.decode("utf-8", "replace")
 	obj = json.loads(obj)
 	if isinstance(obj, dict) and object_type:
-		obj['type'] = object_type
+		obj["type"] = object_type
 	return deserialize(obj, prevent_object_creation=prevent_object_creation)
 
 
@@ -125,7 +125,7 @@ def generate_opsi_host_key():
 
 
 def timestamp(secs=0, date_only=False):
-	''' Returns a timestamp of the current system time format: YYYY-mm-dd[ HH:MM:SS] '''
+	"""Returns a timestamp of the current system time format: YYYY-mm-dd[ HH:MM:SS]"""
 	if not secs:
 		secs = time.time()
 	if date_only:
@@ -150,6 +150,7 @@ def prepare_proxy_environment(hostname, proxy_url="system", no_proxy_addresses=N
 	* emptystring or None to disable proxy usage.
 	If session is given its proxy settings are adapted. Else a new session is created and returned.
 	"""
+
 	def add_protocol(host, protocol="http"):
 		if not host or "://" in host:
 			return host
@@ -173,10 +174,12 @@ def prepare_proxy_environment(hostname, proxy_url="system", no_proxy_addresses=N
 			if hostname in no_proxy_addresses:
 				logger.info("Not using proxy for address %s", hostname)
 			else:
-				session.proxies.update({
-					"http": proxy_url,
-					"https": proxy_url,
-				})
+				session.proxies.update(
+					{
+						"http": proxy_url,
+						"https": proxy_url,
+					}
+				)
 				for key in ("http_proxy", "https_proxy"):
 					if key in os.environ:
 						del os.environ[key]
@@ -187,12 +190,12 @@ def prepare_proxy_environment(hostname, proxy_url="system", no_proxy_addresses=N
 		os.environ["no_proxy"] = ",".join(set(no_proxy))
 	else:
 		# Do not use a proxy
-		os.environ['no_proxy'] = '*'
+		os.environ["no_proxy"] = "*"
 
 	logger.info(
 		"Using proxy settings: http_proxy=%r, https_proxy=%r, no_proxy=%r",
 		proxy_url if proxy_url and proxy_url.lower() != "system" else os.environ.get("http_proxy"),
 		proxy_url if proxy_url and proxy_url.lower() != "system" else os.environ.get("https_proxy"),
-		os.environ.get("no_proxy")
+		os.environ.get("no_proxy"),
 	)
 	return session
