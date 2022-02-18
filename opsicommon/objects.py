@@ -12,43 +12,105 @@ As an example this contains classes for hosts, products, configurations.
 
 import inspect
 from typing import List
+from datetime import datetime, date
 
 from opsicommon.logging import logger
 from opsicommon.exceptions import BackendBadValueError, BackendConfigurationError
 from opsicommon.types import (
-	forceActionProgress, forceActionRequest,
-	forceActionResult, forceArchitecture, forceAuditState, forceBool,
-	forceBoolList, forceConfigId, forceFilename, forceFloat, forceGroupId,
-	forceGroupType, forceHardwareAddress, forceHardwareDeviceId,
-	forceHardwareVendorId, forceHostId, forceInstallationStatus, forceInt,
-	forceIPAddress, forceLanguageCode, forceLicenseContractId,
-	forceLicensePoolId, forceList, forceNetworkAddress, forceObjectId,
-	forceOpsiHostKey, forceOpsiTimestamp, forcePackageVersion, forceProductId,
-	forceProductIdList, forceProductPriority, forceProductPropertyId,
-	forceProductTargetConfiguration, forceProductType, forceProductVersion,
-	forceRequirementType, forceSoftwareLicenseId, forceUnicode,
-	forceUnicodeList, forceUnicodeLower, forceUnsignedInt, forceUrl
+	forceActionProgress,
+	forceActionRequest,
+	forceActionResult,
+	forceArchitecture,
+	forceAuditState,
+	forceBool,
+	forceBoolList,
+	forceConfigId,
+	forceFilename,
+	forceFloat,
+	forceGroupId,
+	forceGroupType,
+	forceHardwareAddress,
+	forceHardwareDeviceId,
+	forceHardwareVendorId,
+	forceHostId,
+	forceInstallationStatus,
+	forceInt,
+	forceIPAddress,
+	forceLanguageCode,
+	forceLicenseContractId,
+	forceLicensePoolId,
+	forceList,
+	forceNetworkAddress,
+	forceObjectId,
+	forceOpsiHostKey,
+	forceOpsiTimestamp,
+	forcePackageVersion,
+	forceProductId,
+	forceProductIdList,
+	forceProductPriority,
+	forceProductPropertyId,
+	forceProductTargetConfiguration,
+	forceProductType,
+	forceProductVersion,
+	forceRequirementType,
+	forceSoftwareLicenseId,
+	forceUnicode,
+	forceUnicodeList,
+	forceUnicodeLower,
+	forceUnsignedInt,
+	forceUrl,
 )
-from opsicommon.utils import (
-	combine_versions, from_json, to_json, generate_opsi_host_key, timestamp
-)
+from opsicommon.utils import combine_versions, from_json, to_json, generate_opsi_host_key, timestamp
 
 __all__ = (
-	"AuditHardware", "AuditHardwareOnHost", "AuditSoftware",
-	"AuditSoftwareOnClient", "AuditSoftwareToLicensePool", "BaseObject",
-	"BoolConfig", "BoolProductProperty", "ConcurrentSoftwareLicense",
-	"Config", "ConfigState", "Entity", "Group", "Host", "HostGroup",
-	"LicenseContract", "LicenseOnClient", "LicensePool", "LocalbootProduct",
-	"NetbootProduct", "OEMSoftwareLicense", "Object", "ObjectToGroup",
-	"OpsiClient", "OpsiConfigserver", "OpsiDepotserver", "Product",
-	"ProductDependency", "ProductGroup", "ProductOnClient", "ProductOnDepot",
-	"ProductProperty", "ProductPropertyState", "Relationship",
-	"RetailSoftwareLicense", "SoftwareLicense", "SoftwareLicenseToLicensePool",
-	"UnicodeConfig", "UnicodeProductProperty", "VolumeSoftwareLicense",
-	"decode_ident", "get_backend_method_prefix", "get_foreign_id_attributes",
-	"get_ident_attributes", "get_possible_class_attributes",
-	"mandatory_constructor_args", "objects_differ",
-	"OBJECT_CLASSES"
+	"AuditHardware",
+	"AuditHardwareOnHost",
+	"AuditSoftware",
+	"AuditSoftwareOnClient",
+	"AuditSoftwareToLicensePool",
+	"BaseObject",
+	"BoolConfig",
+	"BoolProductProperty",
+	"ConcurrentSoftwareLicense",
+	"Config",
+	"ConfigState",
+	"Entity",
+	"Group",
+	"Host",
+	"HostGroup",
+	"LicenseContract",
+	"LicenseOnClient",
+	"LicensePool",
+	"LocalbootProduct",
+	"NetbootProduct",
+	"OEMSoftwareLicense",
+	"Object",
+	"ObjectToGroup",
+	"OpsiClient",
+	"OpsiConfigserver",
+	"OpsiDepotserver",
+	"Product",
+	"ProductDependency",
+	"ProductGroup",
+	"ProductOnClient",
+	"ProductOnDepot",
+	"ProductProperty",
+	"ProductPropertyState",
+	"Relationship",
+	"RetailSoftwareLicense",
+	"SoftwareLicense",
+	"SoftwareLicenseToLicensePool",
+	"UnicodeConfig",
+	"UnicodeProductProperty",
+	"VolumeSoftwareLicense",
+	"decode_ident",
+	"get_backend_method_prefix",
+	"get_foreign_id_attributes",
+	"get_ident_attributes",
+	"get_possible_class_attributes",
+	"mandatory_constructor_args",
+	"objects_differ",
+	"OBJECT_CLASSES",
 )
 
 _MANDATORY_CONSTRUCTOR_ARGS_CACHE = {}
@@ -90,10 +152,10 @@ def get_possible_class_attributes(_class):
 		attributes.extend(inspect.getfullargspec(sub_class.__init__).args)
 
 	attributes = set(attributes)
-	attributes.add('type')
+	attributes.add("type")
 
 	try:
-		attributes.remove('self')
+		attributes.remove("self")
 	except KeyError:
 		pass
 
@@ -108,7 +170,7 @@ def decode_ident(_class, _hash):
 	if "ident" not in _hash:
 		return _hash
 
-	ident = _hash.pop('ident')
+	ident = _hash.pop("ident")
 	if not isinstance(ident, dict):
 		ident_keys = mandatory_constructor_args(_class)
 		ident_values = []
@@ -118,9 +180,7 @@ def decode_ident(_class, _hash):
 			ident_values = ident
 
 		if len(ident_values) != len(ident_keys):
-			raise ValueError(
-				f"Ident {ident} does not match class '{_class}' constructor arguments {ident_keys}"
-			)
+			raise ValueError(f"Ident {ident} does not match class '{_class}' constructor arguments {ident_keys}")
 		ident = dict(zip(ident_keys, ident_values))
 
 	_hash.update(ident)
@@ -176,9 +236,9 @@ class classproperty:  # pylint: disable=invalid-name,too-few-public-methods
 
 class BaseObject:
 	sub_classes = {}
-	ident_separator = ';'
+	ident_separator = ";"
 	foreign_id_attributes = []
-	backend_method_prefix = ''
+	backend_method_prefix = ""
 	_is_generated_default = False
 
 	@classproperty
@@ -206,7 +266,7 @@ class BaseObject:
 	def getIdentAttributes(self):  # pylint: disable=invalid-name
 		return get_ident_attributes(self.__class__)
 
-	def getIdent(self, returnType='unicode'):  # pylint: disable=invalid-name
+	def getIdent(self, returnType="unicode"):  # pylint: disable=invalid-name
 		returnType = forceUnicodeLower(returnType)
 		ident_attributes = self.getIdentAttributes()
 
@@ -214,19 +274,19 @@ class BaseObject:
 			try:
 				value = getattr(self, attribute)
 				if value is None:
-					value = ''
+					value = ""
 
 				return value
 			except AttributeError:
-				return ''
+				return ""
 
 		ident_values = [forceUnicode(get_ident_value(attribute)) for attribute in ident_attributes]
 
-		if returnType == 'list':
+		if returnType == "list":
 			return ident_values
-		if returnType == 'tuple':
+		if returnType == "tuple":
 			return tuple(ident_values)
-		if returnType in ('dict', 'hash'):
+		if returnType in ("dict", "hash"):
 			return dict(zip(ident_attributes, ident_values))
 		return self.ident_separator.join(ident_values)
 
@@ -237,7 +297,7 @@ class BaseObject:
 		keepAttributes = set(forceUnicodeList(keepAttributes or []))
 		for attribute in self.getIdentAttributes():
 			keepAttributes.add(attribute)
-		keepAttributes.add('type')
+		keepAttributes.add("type")
 
 		for attribute in self.__dict__:
 			if attribute not in keepAttributes:
@@ -245,23 +305,17 @@ class BaseObject:
 
 	def update(self, updateObject, updateWithNoneValues=True):  # pylint: disable=invalid-name
 		if not issubclass(updateObject.__class__, self.__class__):
-			raise TypeError(
-				f"Cannot update instance of {self.__class__.__name__} with instance of {updateObject.__class__.__name__}"
-			)
+			raise TypeError(f"Cannot update instance of {self.__class__.__name__} with instance of {updateObject.__class__.__name__}")
 		object_hash = updateObject.toHash()
 
 		try:
-			del object_hash['type']
+			del object_hash["type"]
 		except KeyError:
 			# No key "type", everything fine.
 			pass
 
 		if not updateWithNoneValues:
-			to_delete = set(
-				key for (key, value)
-				in object_hash.items()
-				if value is None
-			)
+			to_delete = set(key for (key, value) in object_hash.items() if value is None)
 
 			for key in to_delete:
 				del object_hash[key]
@@ -279,7 +333,7 @@ class BaseObject:
 
 	def to_hash(self):  # pylint: disable=invalid-name
 		object_hash = dict(self.__dict__)
-		object_hash['type'] = self.getType()
+		object_hash["type"] = self.getType()
 		return object_hash
 
 	toHash = to_hash
@@ -288,6 +342,15 @@ class BaseObject:
 		return to_json(self)
 
 	toJson = to_json
+
+	def serialize(self):
+		_hash = {}
+		for key, val in self.toHash().items():
+			if isinstance(val, (datetime, date)):
+				val = val.isoformat()
+			_hash[key] = val
+		_hash["ident"] = self.getIdent()
+		return _hash
 
 	def __eq__(self, other):
 		if not isinstance(other, self.__class__):
@@ -301,10 +364,10 @@ class BaseObject:
 			try:
 				value = getattr(self, attribute)
 				if value is None:
-					value = ''
+					value = ""
 				return value
 			except AttributeError:
-				return ''
+				return ""
 
 		ident_values = tuple(get_ident_value(attribute) for attribute in self.getIdentAttributes())
 		return hash(ident_values)
@@ -336,11 +399,11 @@ class Entity(BaseObject):
 	@staticmethod
 	def fromHash(_hash):  # pylint: disable=invalid-name
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'Entity'
+			_hash["type"] = "Entity"
 
-		cls = eval(_hash['type'])  # pylint: disable=eval-used
+		cls = eval(_hash["type"])  # pylint: disable=eval-used
 		kwargs = {}
 		decode_ident(cls, _hash)
 		for varname in cls.__init__.__code__.co_varnames[1:]:
@@ -360,9 +423,7 @@ class Entity(BaseObject):
 				pass
 
 			if missing_args:
-				raise TypeError(
-					f"Missing required argument(s): {', '.join(repr(a) for a in missing_args)}"
-				) from err
+				raise TypeError(f"Missing required argument(s): {', '.join(repr(a) for a in missing_args)}") from err
 			raise err
 
 	def clone(self, identOnly=False):  # pylint: disable=invalid-name
@@ -371,7 +432,7 @@ class Entity(BaseObject):
 		if identOnly:
 			ident_attributes = self.getIdentAttributes()
 			for (attribute, value) in self.toHash().items():
-				if attribute != 'type' and attribute not in ident_attributes:
+				if attribute != "type" and attribute not in ident_attributes:
 					continue
 				_hash[attribute] = value
 		else:
@@ -379,17 +440,12 @@ class Entity(BaseObject):
 
 		return self.fromHash(_hash)
 
-	def serialize(self):
-		_hash = self.toHash()
-		_hash['ident'] = self.getIdent()
-		return _hash
-
 	@staticmethod
 	def from_json(jsonString):  # pylint: disable=invalid-name
-		return from_json(jsonString, 'Entity')
+		return from_json(jsonString, "Entity")
 
 
-BaseObject.sub_classes['Entity'] = Entity
+BaseObject.sub_classes["Entity"] = Entity
 
 
 class Relationship(BaseObject):
@@ -401,11 +457,11 @@ class Relationship(BaseObject):
 	@staticmethod
 	def fromHash(_hash):  # pylint: disable=invalid-name
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'Relationship'
+			_hash["type"] = "Relationship"
 
-		cls = eval(_hash['type'])  # pylint: disable=eval-used
+		cls = eval(_hash["type"])  # pylint: disable=eval-used
 		kwargs = {}
 		decode_ident(cls, _hash)
 		for varname in cls.__init__.__code__.co_varnames[1:]:
@@ -417,14 +473,12 @@ class Relationship(BaseObject):
 		try:
 			return cls(**kwargs)
 		except TypeError as err:
-			if '__init__() takes at least' in str(err):
+			if "__init__() takes at least" in str(err):
 				try:
 					args = mandatory_constructor_args(cls)
 					missing_args = [arg for arg in args if arg not in kwargs]
 					if missing_args:
-						raise TypeError(
-							f"Missing required argument(s): {', '.join(repr(a) for a in missing_args)}"
-						) from err
+						raise TypeError(f"Missing required argument(s): {', '.join(repr(a) for a in missing_args)}") from err
 				except NameError:
 					pass
 
@@ -435,7 +489,7 @@ class Relationship(BaseObject):
 		if identOnly:
 			ident_attributes = self.getIdentAttributes()
 			for (attribute, value) in self.toHash().items():
-				if attribute != 'type' and attribute not in ident_attributes:
+				if attribute != "type" and attribute not in ident_attributes:
 					continue
 				_hash[attribute] = value
 		else:
@@ -443,22 +497,21 @@ class Relationship(BaseObject):
 		return self.fromHash(_hash)
 
 	def serialize(self):
-		_hash = self.toHash()
-		_hash['type'] = self.getType()
-		_hash['ident'] = self.getIdent()
+		_hash = super().serialize()
+		_hash["type"] = self.getType()
 		return _hash
 
 	@staticmethod
 	def from_json(jsonString):  # pylint: disable=invalid-name
-		return from_json(jsonString, 'Relationship')
+		return from_json(jsonString, "Relationship")
 
 
-BaseObject.sub_classes['Relationship'] = Relationship
+BaseObject.sub_classes["Relationship"] = Relationship
 
 
 class Object(Entity):
 	sub_classes = {}
-	foreign_id_attributes = Entity.foreign_id_attributes + ['objectId']
+	foreign_id_attributes = Entity.foreign_id_attributes + ["objectId"]
 
 	def __init__(self, id, description=None, notes=None):  # pylint: disable=redefined-builtin,invalid-name
 		self.description = None
@@ -497,28 +550,33 @@ class Object(Entity):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'Object'
+			_hash["type"] = "Object"
 
 		return Entity.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'Object')
+		return from_json(jsonString, "Object")
 
 
-Entity.sub_classes['Object'] = Object
+Entity.sub_classes["Object"] = Object
 
 
 class Host(Object):
 	sub_classes = {}
-	foreign_id_attributes = Object.foreign_id_attributes + ['hostId']
-	backend_method_prefix = 'host'
+	foreign_id_attributes = Object.foreign_id_attributes + ["hostId"]
+	backend_method_prefix = "host"
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id, description=None, notes=None, hardwareAddress=None,  # pylint: disable=redefined-builtin
-		ipAddress=None, inventoryNumber=None
+		self,
+		id,
+		description=None,
+		notes=None,
+		hardwareAddress=None,  # pylint: disable=redefined-builtin
+		ipAddress=None,
+		inventoryNumber=None,
 	):
 		Object.__init__(self, id, description, notes)
 		self.hardwareAddress = None  # pylint: disable=invalid-name
@@ -554,10 +612,7 @@ class Host(Object):
 		try:
 			self.ipAddress = forceIPAddress(ipAddress)
 		except ValueError as err:
-			logger.error(
-				"Failed to set ip address '%s' for host %s: %s",
-				ipAddress, self.id, err
-			)
+			logger.error("Failed to set ip address '%s' for host %s: %s", ipAddress, self.id, err)
 			self.ipAddress = None
 
 	def getInventoryNumber(self):  # pylint: disable=invalid-name
@@ -569,33 +624,39 @@ class Host(Object):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'Host'
+			_hash["type"] = "Host"
 
 		return Object.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'Host')
+		return from_json(jsonString, "Host")
 
 
-Object.sub_classes['Host'] = Host
+Object.sub_classes["Host"] = Host
 
 
 class OpsiClient(Host):
 	sub_classes = {}
-	foreign_id_attributes = Host.foreign_id_attributes + ['clientId']
+	foreign_id_attributes = Host.foreign_id_attributes + ["clientId"]
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id, opsiHostKey=None, description=None, notes=None,  # pylint: disable=redefined-builtin
-		hardwareAddress=None, ipAddress=None, inventoryNumber=None,
-		oneTimePassword=None, created=None, lastSeen=None
+		self,
+		id,
+		opsiHostKey=None,
+		description=None,
+		notes=None,  # pylint: disable=redefined-builtin
+		hardwareAddress=None,
+		ipAddress=None,
+		inventoryNumber=None,
+		oneTimePassword=None,
+		created=None,
+		lastSeen=None,
 	):
 
-		Host.__init__(
-			self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber
-		)
+		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber)
 		self.opsiHostKey = None  # pylint: disable=invalid-name
 		self.created = None  # pylint: disable=invalid-name
 		self.lastSeen = None  # pylint: disable=invalid-name
@@ -646,37 +707,47 @@ class OpsiClient(Host):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'OpsiClient'
+			_hash["type"] = "OpsiClient"
 
 		return Host.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'OpsiClient')
+		return from_json(jsonString, "OpsiClient")
 
 
-Host.sub_classes['OpsiClient'] = OpsiClient
+Host.sub_classes["OpsiClient"] = OpsiClient
 
 
 class OpsiDepotserver(Host):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
 	sub_classes = {}
-	foreign_id_attributes = Host.foreign_id_attributes + ['depotId']
+	foreign_id_attributes = Host.foreign_id_attributes + ["depotId"]
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
-		self, id, opsiHostKey=None, depotLocalUrl=None,  # pylint: disable=redefined-builtin
-		depotRemoteUrl=None, depotWebdavUrl=None,
-		repositoryLocalUrl=None, repositoryRemoteUrl=None,
-		description=None, notes=None, hardwareAddress=None,
-		ipAddress=None, inventoryNumber=None, networkAddress=None,
-		maxBandwidth=None, isMasterDepot=None, masterDepotId=None,
-		workbenchLocalUrl=None, workbenchRemoteUrl=None
+		self,
+		id,
+		opsiHostKey=None,
+		depotLocalUrl=None,  # pylint: disable=redefined-builtin
+		depotRemoteUrl=None,
+		depotWebdavUrl=None,
+		repositoryLocalUrl=None,
+		repositoryRemoteUrl=None,
+		description=None,
+		notes=None,
+		hardwareAddress=None,
+		ipAddress=None,
+		inventoryNumber=None,
+		networkAddress=None,
+		maxBandwidth=None,
+		isMasterDepot=None,
+		masterDepotId=None,
+		workbenchLocalUrl=None,
+		workbenchRemoteUrl=None,
 	):
 
-		Host.__init__(
-			self, id, description, notes, hardwareAddress, ipAddress,
-			inventoryNumber)
+		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber)
 
 		self.opsiHostKey = None  # pylint: disable=invalid-name
 		self.depotLocalUrl = None  # pylint: disable=invalid-name
@@ -766,10 +837,7 @@ class OpsiDepotserver(Host):  # pylint: disable=too-many-instance-attributes,too
 		try:
 			self.networkAddress = forceNetworkAddress(networkAddress)
 		except ValueError as err:
-			logger.error(
-				"Failed to set network address '%s' for depot %s: %s",
-				networkAddress, self.id, err
-			)
+			logger.error("Failed to set network address '%s' for depot %s: %s", networkAddress, self.id, err)
 			self.networkAddress = None
 
 	def getMaxBandwidth(self):  # pylint: disable=invalid-name
@@ -805,14 +873,14 @@ class OpsiDepotserver(Host):  # pylint: disable=too-many-instance-attributes,too
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'OpsiDepotserver'
+			_hash["type"] = "OpsiDepotserver"
 		return Host.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'OpsiDepotserver')
+		return from_json(jsonString, "OpsiDepotserver")
 
 	def __str__(self):
 		additional_infos = [f"id='{self.id}'"]
@@ -824,29 +892,55 @@ class OpsiDepotserver(Host):  # pylint: disable=too-many-instance-attributes,too
 		return f"<{self.getType()}({', '.join(additional_infos)})>"
 
 
-Host.sub_classes['OpsiDepotserver'] = OpsiDepotserver
+Host.sub_classes["OpsiDepotserver"] = OpsiDepotserver
 
 
 class OpsiConfigserver(OpsiDepotserver):
 	sub_classes = {}
-	foreign_id_attributes = OpsiDepotserver.foreign_id_attributes + ['serverId']
+	foreign_id_attributes = OpsiDepotserver.foreign_id_attributes + ["serverId"]
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
-		self, id, opsiHostKey=None, depotLocalUrl=None,  # pylint: disable=redefined-builtin
-		depotRemoteUrl=None, depotWebdavUrl=None,
-		repositoryLocalUrl=None, repositoryRemoteUrl=None,
-		description=None, notes=None, hardwareAddress=None,
-		ipAddress=None, inventoryNumber=None, networkAddress=None,
-		maxBandwidth=None, isMasterDepot=None, masterDepotId=None,
-		workbenchLocalUrl=None, workbenchRemoteUrl=None
+		self,
+		id,
+		opsiHostKey=None,
+		depotLocalUrl=None,  # pylint: disable=redefined-builtin
+		depotRemoteUrl=None,
+		depotWebdavUrl=None,
+		repositoryLocalUrl=None,
+		repositoryRemoteUrl=None,
+		description=None,
+		notes=None,
+		hardwareAddress=None,
+		ipAddress=None,
+		inventoryNumber=None,
+		networkAddress=None,
+		maxBandwidth=None,
+		isMasterDepot=None,
+		masterDepotId=None,
+		workbenchLocalUrl=None,
+		workbenchRemoteUrl=None,
 	):
 		OpsiDepotserver.__init__(
-			self, id, opsiHostKey, depotLocalUrl,
-			depotRemoteUrl, depotWebdavUrl, repositoryLocalUrl,
-			repositoryRemoteUrl, description, notes, hardwareAddress,
-			ipAddress, inventoryNumber, networkAddress, maxBandwidth,
-			isMasterDepot, masterDepotId,
-			workbenchLocalUrl, workbenchRemoteUrl)
+			self,
+			id,
+			opsiHostKey,
+			depotLocalUrl,
+			depotRemoteUrl,
+			depotWebdavUrl,
+			repositoryLocalUrl,
+			repositoryRemoteUrl,
+			description,
+			notes,
+			hardwareAddress,
+			ipAddress,
+			inventoryNumber,
+			networkAddress,
+			maxBandwidth,
+			isMasterDepot,
+			masterDepotId,
+			workbenchLocalUrl,
+			workbenchRemoteUrl,
+		)
 
 	def setDefaults(self):
 		if self.isMasterDepot is None:
@@ -856,29 +950,34 @@ class OpsiConfigserver(OpsiDepotserver):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'OpsiConfigserver'
+			_hash["type"] = "OpsiConfigserver"
 
 		return OpsiDepotserver.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'OpsiConfigserver')
+		return from_json(jsonString, "OpsiConfigserver")
 
 
-OpsiDepotserver.sub_classes['OpsiConfigserver'] = OpsiConfigserver
-Host.sub_classes['OpsiConfigserver'] = OpsiConfigserver
+OpsiDepotserver.sub_classes["OpsiConfigserver"] = OpsiConfigserver
+Host.sub_classes["OpsiConfigserver"] = OpsiConfigserver
 
 
 class Config(Entity):
 	sub_classes = {}
-	foreign_id_attributes = Object.foreign_id_attributes + ['configId']
-	backend_method_prefix = 'config'
+	foreign_id_attributes = Object.foreign_id_attributes + ["configId"]
+	backend_method_prefix = "config"
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id, description=None, possibleValues=None,  # pylint: disable=redefined-builtin,invalid-name
-		defaultValues=None, editable=None, multiValue=None  # pylint: disable=invalid-name
+		self,
+		id,
+		description=None,
+		possibleValues=None,  # pylint: disable=redefined-builtin,invalid-name
+		defaultValues=None,
+		editable=None,
+		multiValue=None,  # pylint: disable=invalid-name
 	):
 		self.description = None
 		self.possibleValues = None  # pylint: disable=invalid-name
@@ -972,15 +1071,15 @@ class Config(Entity):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'Config'
+			_hash["type"] = "Config"
 
 		return Entity.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'Config')
+		return from_json(jsonString, "Config")
 
 	def __str__(self):
 		return (
@@ -990,20 +1089,23 @@ class Config(Entity):
 		)
 
 
-Entity.sub_classes['Config'] = Config
+Entity.sub_classes["Config"] = Config
 
 
 class UnicodeConfig(Config):
 	sub_classes = {}
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id, description='', possibleValues=None,  # pylint: disable=redefined-builtin
-		defaultValues=None, editable=None, multiValue=None
+		self,
+		id,
+		description="",
+		possibleValues=None,  # pylint: disable=redefined-builtin
+		defaultValues=None,
+		editable=None,
+		multiValue=None,
 	):
 
-		Config.__init__(
-			self, id, description, possibleValues, defaultValues, editable, multiValue
-		)
+		Config.__init__(self, id, description, possibleValues, defaultValues, editable, multiValue)
 		if possibleValues is not None:
 			self.setPossibleValues(possibleValues)
 		if defaultValues is not None:
@@ -1011,9 +1113,9 @@ class UnicodeConfig(Config):
 
 	def setDefaults(self):
 		if self.possibleValues is None:
-			self.possibleValues = ['']
+			self.possibleValues = [""]
 		if self.defaultValues is None:
-			self.defaultValues = ['']
+			self.defaultValues = [""]
 		Config.setDefaults(self)
 
 	def setPossibleValues(self, possibleValues):
@@ -1025,29 +1127,25 @@ class UnicodeConfig(Config):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'UnicodeConfig'
+			_hash["type"] = "UnicodeConfig"
 
 		return Config.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'UnicodeConfig')
+		return from_json(jsonString, "UnicodeConfig")
 
 
-Config.sub_classes['UnicodeConfig'] = UnicodeConfig
+Config.sub_classes["UnicodeConfig"] = UnicodeConfig
 
 
 class BoolConfig(Config):
 	sub_classes = {}
 
-	def __init__(
-		self, id, description=None, defaultValues=None  # pylint: disable=redefined-builtin
-	):
-		Config.__init__(
-			self, id, description, [True, False], defaultValues, False, False
-		)
+	def __init__(self, id, description=None, defaultValues=None):  # pylint: disable=redefined-builtin
+		Config.__init__(self, id, description, [True, False], defaultValues, False, False)
 
 	def setDefaults(self):
 		if self.defaultValues is None:
@@ -1066,29 +1164,26 @@ class BoolConfig(Config):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'BoolConfig'
+			_hash["type"] = "BoolConfig"
 
 		return Config.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'BoolConfig')
+		return from_json(jsonString, "BoolConfig")
 
 	def __str__(self):
-		return (
-			f"<{self.getType()}(id='{self.id}', description='{self.description}', "
-			f"defaultValues={self.defaultValues})>"
-		)
+		return f"<{self.getType()}(id='{self.id}', description='{self.description}', " f"defaultValues={self.defaultValues})>"
 
 
-Config.sub_classes['BoolConfig'] = BoolConfig
+Config.sub_classes["BoolConfig"] = BoolConfig
 
 
 class ConfigState(Relationship):
 	sub_classes = {}
-	backend_method_prefix = 'configState'
+	backend_method_prefix = "configState"
 
 	def __init__(self, configId, objectId, values=None):  # pylint: disable=invalid-name
 		self.values = None
@@ -1119,43 +1214,53 @@ class ConfigState(Relationship):
 		return self.values
 
 	def setValues(self, values):  # pylint: disable=invalid-name
-		self.values = sorted(
-			forceList(values),
-			key=lambda x: (x is None, x)
-		)
+		self.values = sorted(forceList(values), key=lambda x: (x is None, x))
 
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'ConfigState'
+			_hash["type"] = "ConfigState"
 
 		return Relationship.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'ConfigState')
+		return from_json(jsonString, "ConfigState")
 
 	def __str__(self):
 		return f"<{self.getType()}(configId='{self.configId}', objectId='{self.objectId}', values={self.values})>"
 
 
-Relationship.sub_classes['ConfigState'] = ConfigState
+Relationship.sub_classes["ConfigState"] = ConfigState
 
 
 class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
 	sub_classes = {}
-	foreign_id_attributes = Object.foreign_id_attributes + ['productId']
-	backend_method_prefix = 'product'
+	foreign_id_attributes = Object.foreign_id_attributes + ["productId"]
+	backend_method_prefix = "product"
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-instance-attributes,too-many-public-methods,too-many-locals,too-many-branches
-		self, id, productVersion, packageVersion, name=None,  # pylint: disable=redefined-builtin,invalid-name
-		licenseRequired=None, setupScript=None, uninstallScript=None,  # pylint: disable=invalid-name
-		updateScript=None, alwaysScript=None, onceScript=None,  # pylint: disable=invalid-name
-		customScript=None, userLoginScript=None, priority=None,  # pylint: disable=invalid-name
-		description=None, advice=None, changelog=None,  # pylint: disable=invalid-name
-		productClassIds=None, windowsSoftwareIds=None  # pylint: disable=invalid-name
+		self,
+		id,
+		productVersion,
+		packageVersion,
+		name=None,  # pylint: disable=redefined-builtin,invalid-name
+		licenseRequired=None,
+		setupScript=None,
+		uninstallScript=None,  # pylint: disable=invalid-name
+		updateScript=None,
+		alwaysScript=None,
+		onceScript=None,  # pylint: disable=invalid-name
+		customScript=None,
+		userLoginScript=None,
+		priority=None,  # pylint: disable=invalid-name
+		description=None,
+		advice=None,
+		changelog=None,  # pylint: disable=invalid-name
+		productClassIds=None,
+		windowsSoftwareIds=None,  # pylint: disable=invalid-name
 	):
 		self.name = None
 		self.licenseRequired = None  # pylint: disable=invalid-name
@@ -1357,15 +1462,15 @@ class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'Product'
+			_hash["type"] = "Product"
 
 		return Entity.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'Product')
+		return from_json(jsonString, "Product")
 
 	def __str__(self):
 		return (
@@ -1374,26 +1479,54 @@ class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-
 		)
 
 
-Entity.sub_classes['Product'] = Product
+Entity.sub_classes["Product"] = Product
 
 
 class LocalbootProduct(Product):
 	sub_classes = {}
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
-		self, id, productVersion, packageVersion, name=None,  # pylint: disable=redefined-builtin
-		licenseRequired=None, setupScript=None, uninstallScript=None,
-		updateScript=None, alwaysScript=None, onceScript=None,
-		customScript=None, userLoginScript=None, priority=None,
-		description=None, advice=None, changelog=None,
-		productClassIds=None, windowsSoftwareIds=None
+		self,
+		id,
+		productVersion,
+		packageVersion,
+		name=None,  # pylint: disable=redefined-builtin
+		licenseRequired=None,
+		setupScript=None,
+		uninstallScript=None,
+		updateScript=None,
+		alwaysScript=None,
+		onceScript=None,
+		customScript=None,
+		userLoginScript=None,
+		priority=None,
+		description=None,
+		advice=None,
+		changelog=None,
+		productClassIds=None,
+		windowsSoftwareIds=None,
 	):
 
 		Product.__init__(
-			self, id, productVersion, packageVersion, name,
-			licenseRequired, setupScript, uninstallScript, updateScript,
-			alwaysScript, onceScript, customScript, userLoginScript, priority,
-			description, advice, changelog, productClassIds, windowsSoftwareIds
+			self,
+			id,
+			productVersion,
+			packageVersion,
+			name,
+			licenseRequired,
+			setupScript,
+			uninstallScript,
+			updateScript,
+			alwaysScript,
+			onceScript,
+			customScript,
+			userLoginScript,
+			priority,
+			description,
+			advice,
+			changelog,
+			productClassIds,
+			windowsSoftwareIds,
 		)
 
 	def setDefaults(self):
@@ -1402,37 +1535,65 @@ class LocalbootProduct(Product):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'LocalbootProduct'
+			_hash["type"] = "LocalbootProduct"
 
 		return Product.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'LocalbootProduct')
+		return from_json(jsonString, "LocalbootProduct")
 
 
-Product.sub_classes['LocalbootProduct'] = LocalbootProduct
+Product.sub_classes["LocalbootProduct"] = LocalbootProduct
 
 
 class NetbootProduct(Product):
 	sub_classes = {}
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
-		self, id, productVersion, packageVersion, name=None,  # pylint: disable=redefined-builtin
-		licenseRequired=None, setupScript=None, uninstallScript=None,
-		updateScript=None, alwaysScript=None, onceScript=None,
-		customScript=None, priority=None, description=None,
-		advice=None, changelog=None, productClassIds=None,
-		windowsSoftwareIds=None, pxeConfigTemplate=''
+		self,
+		id,
+		productVersion,
+		packageVersion,
+		name=None,  # pylint: disable=redefined-builtin
+		licenseRequired=None,
+		setupScript=None,
+		uninstallScript=None,
+		updateScript=None,
+		alwaysScript=None,
+		onceScript=None,
+		customScript=None,
+		priority=None,
+		description=None,
+		advice=None,
+		changelog=None,
+		productClassIds=None,
+		windowsSoftwareIds=None,
+		pxeConfigTemplate="",
 	):
 
 		Product.__init__(
-			self, id, productVersion, packageVersion, name,
-			licenseRequired, setupScript, uninstallScript, updateScript,
-			alwaysScript, onceScript, customScript, None, priority,
-			description, advice, changelog, productClassIds, windowsSoftwareIds
+			self,
+			id,
+			productVersion,
+			packageVersion,
+			name,
+			licenseRequired,
+			setupScript,
+			uninstallScript,
+			updateScript,
+			alwaysScript,
+			onceScript,
+			customScript,
+			None,
+			priority,
+			description,
+			advice,
+			changelog,
+			productClassIds,
+			windowsSoftwareIds,
 		)
 		self.setPxeConfigTemplate(pxeConfigTemplate)
 
@@ -1451,28 +1612,35 @@ class NetbootProduct(Product):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'NetbootProduct'
+			_hash["type"] = "NetbootProduct"
 
 		return Product.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'NetbootProduct')
+		return from_json(jsonString, "NetbootProduct")
 
 
-Product.sub_classes['NetbootProduct'] = NetbootProduct
+Product.sub_classes["NetbootProduct"] = NetbootProduct
 
 
 class ProductProperty(Entity):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
 	sub_classes = {}
-	backend_method_prefix = 'productProperty'
+	backend_method_prefix = "productProperty"
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, productId, productVersion, packageVersion, propertyId,  # pylint: disable=invalid-name
-		description=None, possibleValues=None, defaultValues=None,  # pylint: disable=invalid-name
-		editable=None, multiValue=None  # pylint: disable=invalid-name
+		self,
+		productId,
+		productVersion,
+		packageVersion,
+		propertyId,  # pylint: disable=invalid-name
+		description=None,
+		possibleValues=None,
+		defaultValues=None,  # pylint: disable=invalid-name
+		editable=None,
+		multiValue=None,  # pylint: disable=invalid-name
 	):
 		self.description = None
 		self.possibleValues = None  # pylint: disable=invalid-name
@@ -1587,15 +1755,15 @@ class ProductProperty(Entity):  # pylint: disable=too-many-instance-attributes,t
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'ProductProperty'
+			_hash["type"] = "ProductProperty"
 
 		return Entity.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'ProductProperty')
+		return from_json(jsonString, "ProductProperty")
 
 	def __str__(self):
 		def getAttributes():  # pylint: disable=invalid-name
@@ -1604,7 +1772,7 @@ class ProductProperty(Entity):  # pylint: disable=too-many-instance-attributes,t
 			yield f"packageVersion='{self.packageVersion}'"
 			yield f"propertyId='{self.propertyId}'"
 
-			for attribute in ('description', 'defaultValues', 'possibleValues'):
+			for attribute in ("description", "defaultValues", "possibleValues"):
 				try:
 					value = getattr(self, attribute)
 					if value:
@@ -1612,7 +1780,7 @@ class ProductProperty(Entity):  # pylint: disable=too-many-instance-attributes,t
 				except AttributeError:
 					pass
 
-			for attribute in ('editable', 'multiValue'):
+			for attribute in ("editable", "multiValue"):
 				try:
 					value = getattr(self, attribute)
 					if value is not None:
@@ -1623,22 +1791,27 @@ class ProductProperty(Entity):  # pylint: disable=too-many-instance-attributes,t
 		return f"<{self.__class__.__name__}({', '.join(getAttributes())})>"
 
 
-Entity.sub_classes['ProductProperty'] = ProductProperty
+Entity.sub_classes["ProductProperty"] = ProductProperty
 
 
 class UnicodeProductProperty(ProductProperty):
 	sub_classes = {}
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, productId, productVersion, packageVersion, propertyId,
-		description=None, possibleValues=None, defaultValues=None,
-		editable=None, multiValue=None
+		self,
+		productId,
+		productVersion,
+		packageVersion,
+		propertyId,
+		description=None,
+		possibleValues=None,
+		defaultValues=None,
+		editable=None,
+		multiValue=None,
 	):
 
 		ProductProperty.__init__(
-			self, productId, productVersion,
-			packageVersion, propertyId, description, possibleValues,
-			defaultValues, editable, multiValue
+			self, productId, productVersion, packageVersion, propertyId, description, possibleValues, defaultValues, editable, multiValue
 		)
 
 		self.possibleValues = None
@@ -1650,9 +1823,9 @@ class UnicodeProductProperty(ProductProperty):
 
 	def setDefaults(self):
 		if self.possibleValues is None:
-			self.possibleValues = ['']
+			self.possibleValues = [""]
 		if self.defaultValues is None:
-			self.defaultValues = ['']
+			self.defaultValues = [""]
 		ProductProperty.setDefaults(self)
 
 	def setPossibleValues(self, possibleValues):
@@ -1664,32 +1837,29 @@ class UnicodeProductProperty(ProductProperty):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'UnicodeProductProperty'
+			_hash["type"] = "UnicodeProductProperty"
 
 		return ProductProperty.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'UnicodeProductProperty')
+		return from_json(jsonString, "UnicodeProductProperty")
 
 
-ProductProperty.sub_classes['UnicodeProductProperty'] = UnicodeProductProperty
+ProductProperty.sub_classes["UnicodeProductProperty"] = UnicodeProductProperty
 
 
 class BoolProductProperty(ProductProperty):
 	sub_classes = {}
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, productId, productVersion, packageVersion, propertyId,
-		description=None, defaultValues=None
+		self, productId, productVersion, packageVersion, propertyId, description=None, defaultValues=None
 	):
 
 		ProductProperty.__init__(
-			self, productId, productVersion,
-			packageVersion, propertyId, description, [True, False],
-			defaultValues, False, False
+			self, productId, productVersion, packageVersion, propertyId, description, [True, False], defaultValues, False, False
 		)
 
 		if self.defaultValues is not None and len(self.defaultValues) > 1:
@@ -1715,15 +1885,15 @@ class BoolProductProperty(ProductProperty):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'BoolProductProperty'
+			_hash["type"] = "BoolProductProperty"
 
 		return ProductProperty.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'BoolProductProperty')
+		return from_json(jsonString, "BoolProductProperty")
 
 	def __str__(self):
 		def getAttributes():  # pylint: disable=invalid-name
@@ -1732,7 +1902,7 @@ class BoolProductProperty(ProductProperty):
 			yield f"packageVersion='{self.packageVersion}'"
 			yield f"propertyId='{self.propertyId}'"
 
-			for attribute in ('description', 'defaultValues'):
+			for attribute in ("description", "defaultValues"):
 				try:
 					value = getattr(self, attribute)
 					if value:
@@ -1743,18 +1913,25 @@ class BoolProductProperty(ProductProperty):
 		return f"<{self.__class__.__name__}({', '.join(getAttributes())})>"
 
 
-ProductProperty.sub_classes['BoolProductProperty'] = BoolProductProperty
+ProductProperty.sub_classes["BoolProductProperty"] = BoolProductProperty
 
 
 class ProductDependency(Relationship):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
 	sub_classes = {}
-	backend_method_prefix = 'productDependency'
+	backend_method_prefix = "productDependency"
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, productId, productVersion, packageVersion,  # pylint: disable=invalid-name
-		productAction, requiredProductId, requiredProductVersion=None,  # pylint: disable=invalid-name
-		requiredPackageVersion=None, requiredAction=None,  # pylint: disable=invalid-name
-		requiredInstallationStatus=None, requirementType=None  # pylint: disable=invalid-name
+		self,
+		productId,
+		productVersion,
+		packageVersion,  # pylint: disable=invalid-name
+		productAction,
+		requiredProductId,
+		requiredProductVersion=None,  # pylint: disable=invalid-name
+		requiredPackageVersion=None,
+		requiredAction=None,  # pylint: disable=invalid-name
+		requiredInstallationStatus=None,
+		requirementType=None,  # pylint: disable=invalid-name
 	):
 		self.requiredProductVersion = None  # pylint: disable=invalid-name
 		self.requiredPackageVersion = None  # pylint: disable=invalid-name
@@ -1844,15 +2021,15 @@ class ProductDependency(Relationship):  # pylint: disable=too-many-instance-attr
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'ProductDependency'
+			_hash["type"] = "ProductDependency"
 
 		return Relationship.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'ProductDependency')
+		return from_json(jsonString, "ProductDependency")
 
 	def __str__(self):
 		return (
@@ -1862,16 +2039,21 @@ class ProductDependency(Relationship):  # pylint: disable=too-many-instance-attr
 		)
 
 
-Relationship.sub_classes['ProductDependency'] = ProductDependency
+Relationship.sub_classes["ProductDependency"] = ProductDependency
 
 
 class ProductOnDepot(Relationship):
 	sub_classes = {}
-	backend_method_prefix = 'productOnDepot'
+	backend_method_prefix = "productOnDepot"
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, productId, productType, productVersion, packageVersion,  # pylint: disable=invalid-name
-		depotId, locked=None  # pylint: disable=invalid-name
+		self,
+		productId,
+		productType,
+		productVersion,
+		packageVersion,  # pylint: disable=invalid-name
+		depotId,
+		locked=None,  # pylint: disable=invalid-name
 	):
 		self.locked = None
 		self.setProductId(productId)
@@ -1930,30 +2112,39 @@ class ProductOnDepot(Relationship):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'ProductOnDepot'
+			_hash["type"] = "ProductOnDepot"
 
 		return Relationship.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'ProductOnDepot')
+		return from_json(jsonString, "ProductOnDepot")
 
 
-Relationship.sub_classes['ProductOnDepot'] = ProductOnDepot
+Relationship.sub_classes["ProductOnDepot"] = ProductOnDepot
 
 
 class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
 	sub_classes = {}
-	backend_method_prefix = 'productOnClient'
+	backend_method_prefix = "productOnClient"
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, productId, productType, clientId,  # pylint: disable=invalid-name
-		targetConfiguration=None, installationStatus=None,  # pylint: disable=invalid-name
-		actionRequest=None, lastAction=None, actionProgress=None,  # pylint: disable=invalid-name
-		actionResult=None, productVersion=None, packageVersion=None,  # pylint: disable=invalid-name
-		modificationTime=None, actionSequence=None  # pylint: disable=invalid-name
+		self,
+		productId,
+		productType,
+		clientId,  # pylint: disable=invalid-name
+		targetConfiguration=None,
+		installationStatus=None,  # pylint: disable=invalid-name
+		actionRequest=None,
+		lastAction=None,
+		actionProgress=None,  # pylint: disable=invalid-name
+		actionResult=None,
+		productVersion=None,
+		packageVersion=None,  # pylint: disable=invalid-name
+		modificationTime=None,
+		actionSequence=None,  # pylint: disable=invalid-name
 	):
 		self.targetConfiguration = None  # pylint: disable=invalid-name
 		self.installationStatus = None  # pylint: disable=invalid-name
@@ -1993,9 +2184,9 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 	def setDefaults(self):
 		Relationship.setDefaults(self)
 		if self.installationStatus is None:
-			self.setInstallationStatus('not_installed')
+			self.setInstallationStatus("not_installed")
 		if self.actionRequest is None:
-			self.setActionRequest('none')
+			self.setActionRequest("none")
 		if self.modificationTime is None:
 			self.setModificationTime(timestamp())
 
@@ -2088,15 +2279,15 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'ProductOnClient'
+			_hash["type"] = "ProductOnClient"
 
 		return Relationship.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'ProductOnClient')
+		return from_json(jsonString, "ProductOnClient")
 
 	def __str__(self):
 		return (
@@ -2105,12 +2296,12 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 		)
 
 
-Relationship.sub_classes['ProductOnClient'] = ProductOnClient
+Relationship.sub_classes["ProductOnClient"] = ProductOnClient
 
 
 class ProductPropertyState(Relationship):
 	sub_classes = {}
-	backend_method_prefix = 'productPropertyState'
+	backend_method_prefix = "productPropertyState"
 
 	def __init__(self, productId, propertyId, objectId, values=None):  # pylint: disable=invalid-name
 		self.values = None
@@ -2154,15 +2345,15 @@ class ProductPropertyState(Relationship):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'ProductPropertyState'
+			_hash["type"] = "ProductPropertyState"
 
 		return Relationship.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'ProductPropertyState')
+		return from_json(jsonString, "ProductPropertyState")
 
 	def __str__(self):
 		def get_attributes():
@@ -2176,17 +2367,15 @@ class ProductPropertyState(Relationship):
 		return f"<{self.getType()}({', '.join(get_attributes())})>"
 
 
-Relationship.sub_classes['ProductPropertyState'] = ProductPropertyState
+Relationship.sub_classes["ProductPropertyState"] = ProductPropertyState
 
 
 class Group(Object):
 	sub_classes = {}
-	foreign_id_attributes = Object.foreign_id_attributes + ['groupId']
-	backend_method_prefix = 'group'
+	foreign_id_attributes = Object.foreign_id_attributes + ["groupId"]
+	backend_method_prefix = "group"
 
-	def __init__(
-		self, id, description=None, notes=None, parentGroupId=None  # pylint: disable=redefined-builtin
-	):
+	def __init__(self, id, description=None, notes=None, parentGroupId=None):  # pylint: disable=redefined-builtin
 		Object.__init__(self, id, description, notes)
 		self.parentGroupId = None  # pylint: disable=invalid-name
 		self.setId(id)
@@ -2212,29 +2401,27 @@ class Group(Object):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'Group'
+			_hash["type"] = "Group"
 
 		return Object.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'Group')
+		return from_json(jsonString, "Group")
 
 	def __str__(self):
 		return f"<{self.getType()}(id='{self.id}', parentGroupId='{self.parentGroupId}'>"
 
 
-Object.sub_classes['Group'] = Group
+Object.sub_classes["Group"] = Group
 
 
 class HostGroup(Group):
 	sub_classes = {}
 
-	def __init__(
-		self, id, description=None, notes=None, parentGroupId=None  # pylint: disable=redefined-builtin
-	):
+	def __init__(self, id, description=None, notes=None, parentGroupId=None):  # pylint: disable=redefined-builtin
 		Group.__init__(self, id, description, notes, parentGroupId)
 
 	def setDefaults(self):
@@ -2243,26 +2430,24 @@ class HostGroup(Group):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'HostGroup'
+			_hash["type"] = "HostGroup"
 
 		return Group.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'HostGroup')
+		return from_json(jsonString, "HostGroup")
 
 
-Group.sub_classes['HostGroup'] = HostGroup
+Group.sub_classes["HostGroup"] = HostGroup
 
 
 class ProductGroup(Group):
 	sub_classes = {}
 
-	def __init__(
-		self, id, description=None, notes=None, parentGroupId=None  # pylint: disable=redefined-builtin
-	):
+	def __init__(self, id, description=None, notes=None, parentGroupId=None):  # pylint: disable=redefined-builtin
 		Group.__init__(self, id, description, notes, parentGroupId)
 
 	def setDefaults(self):
@@ -2271,23 +2456,23 @@ class ProductGroup(Group):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'ProductGroup'
+			_hash["type"] = "ProductGroup"
 
 		return Group.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'ProductGroup')
+		return from_json(jsonString, "ProductGroup")
 
 
-Group.sub_classes['ProductGroup'] = ProductGroup
+Group.sub_classes["ProductGroup"] = ProductGroup
 
 
 class ObjectToGroup(Relationship):
 	sub_classes = {}
-	backend_method_prefix = 'objectToGroup'
+	backend_method_prefix = "objectToGroup"
 
 	def __init__(self, groupType, groupId, objectId):  # pylint: disable=invalid-name
 		self.setGroupType(groupType)
@@ -2318,29 +2503,34 @@ class ObjectToGroup(Relationship):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'ObjectToGroup'
+			_hash["type"] = "ObjectToGroup"
 
 		return Relationship.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'ObjectToGroup')
+		return from_json(jsonString, "ObjectToGroup")
 
 
-Relationship.sub_classes['ObjectToGroup'] = ObjectToGroup
+Relationship.sub_classes["ObjectToGroup"] = ObjectToGroup
 
 
 class LicenseContract(Entity):
 	sub_classes = {}
-	foreign_id_attributes = Entity.foreign_id_attributes + ['licenseContractId']
-	backend_method_prefix = 'licenseContract'
+	foreign_id_attributes = Entity.foreign_id_attributes + ["licenseContractId"]
+	backend_method_prefix = "licenseContract"
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id, description=None, notes=None, partner=None,  # pylint: disable=redefined-builtin,invalid-name
-		conclusionDate=None, notificationDate=None,  # pylint: disable=invalid-name
-		expirationDate=None  # pylint: disable=invalid-name
+		self,
+		id,
+		description=None,
+		notes=None,
+		partner=None,  # pylint: disable=redefined-builtin,invalid-name
+		conclusionDate=None,
+		notificationDate=None,  # pylint: disable=invalid-name
+		expirationDate=None,  # pylint: disable=invalid-name
 	):
 		self.description = None
 		self.notes = None
@@ -2374,9 +2564,9 @@ class LicenseContract(Entity):
 		if self.conclusionDate is None:
 			self.setConclusionDate(timestamp())
 		if self.notificationDate is None:
-			self.setNotificationDate('0000-00-00 00:00:00')
+			self.setNotificationDate("0000-00-00 00:00:00")
 		if self.expirationDate is None:
-			self.setExpirationDate('0000-00-00 00:00:00')
+			self.setExpirationDate("0000-00-00 00:00:00")
 
 	def getId(self):  # pylint: disable=invalid-name
 		return self.id
@@ -2423,15 +2613,15 @@ class LicenseContract(Entity):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'LicenseContract'
+			_hash["type"] = "LicenseContract"
 
 		return Entity.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'LicenseContract')
+		return from_json(jsonString, "LicenseContract")
 
 	def __str__(self):
 		infos = [f"id='{self.id}'"]
@@ -2450,17 +2640,21 @@ class LicenseContract(Entity):
 		return f"<{self.getType()}({', '.join(infos)})>"
 
 
-Entity.sub_classes['LicenseContract'] = LicenseContract
+Entity.sub_classes["LicenseContract"] = LicenseContract
 
 
 class SoftwareLicense(Entity):
 	sub_classes = {}
-	foreign_id_attributes = Entity.foreign_id_attributes + ['softwareLicenseId']
-	backend_method_prefix = 'softwareLicense'
+	foreign_id_attributes = Entity.foreign_id_attributes + ["softwareLicenseId"]
+	backend_method_prefix = "softwareLicense"
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id, licenseContractId, maxInstallations=None,  # pylint: disable=redefined-builtin,invalid-name
-		boundToHost=None, expirationDate=None  # pylint: disable=invalid-name
+		self,
+		id,
+		licenseContractId,
+		maxInstallations=None,  # pylint: disable=redefined-builtin,invalid-name
+		boundToHost=None,
+		expirationDate=None,  # pylint: disable=invalid-name
 	):
 		self.maxInstallations = None  # pylint: disable=invalid-name
 		self.boundToHost = None  # pylint: disable=invalid-name
@@ -2480,7 +2674,7 @@ class SoftwareLicense(Entity):
 		if self.maxInstallations is None:
 			self.setMaxInstallations(1)
 		if self.expirationDate is None:
-			self.setExpirationDate('0000-00-00 00:00:00')
+			self.setExpirationDate("0000-00-00 00:00:00")
 
 	def getId(self):  # pylint: disable=invalid-name
 		return self.id
@@ -2515,21 +2709,18 @@ class SoftwareLicense(Entity):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'SoftwareLicense'
+			_hash["type"] = "SoftwareLicense"
 
 		return Entity.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'SoftwareLicense')
+		return from_json(jsonString, "SoftwareLicense")
 
 	def __str__(self):
-		infos = [
-			f"id='{self.id}'",
-			f"licenseContractId='{self.licenseContractId}'"
-		]
+		infos = [f"id='{self.id}'", f"licenseContractId='{self.licenseContractId}'"]
 		if self.maxInstallations:
 			infos.append(f"maxInstallations={self.maxInstallations}")
 		if self.boundToHost:
@@ -2540,20 +2731,17 @@ class SoftwareLicense(Entity):
 		return f"<{self.getType()}({', '.join(infos)})>"
 
 
-Entity.sub_classes['LicenseContract'] = LicenseContract
+Entity.sub_classes["LicenseContract"] = LicenseContract
 
 
 class RetailSoftwareLicense(SoftwareLicense):
 	sub_classes = {}
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id, licenseContractId, maxInstallations=None,  # pylint: disable=redefined-builtin
-		boundToHost=None, expirationDate=None
+		self, id, licenseContractId, maxInstallations=None, boundToHost=None, expirationDate=None  # pylint: disable=redefined-builtin
 	):
 
-		SoftwareLicense.__init__(
-			self, id, licenseContractId, maxInstallations, boundToHost, expirationDate
-		)
+		SoftwareLicense.__init__(self, id, licenseContractId, maxInstallations, boundToHost, expirationDate)
 
 	def setDefaults(self):
 		SoftwareLicense.setDefaults(self)
@@ -2561,30 +2749,27 @@ class RetailSoftwareLicense(SoftwareLicense):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'RetailSoftwareLicense'
+			_hash["type"] = "RetailSoftwareLicense"
 
 		return SoftwareLicense.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'RetailSoftwareLicense')
+		return from_json(jsonString, "RetailSoftwareLicense")
 
 
-SoftwareLicense.sub_classes['RetailSoftwareLicense'] = RetailSoftwareLicense
+SoftwareLicense.sub_classes["RetailSoftwareLicense"] = RetailSoftwareLicense
 
 
 class OEMSoftwareLicense(SoftwareLicense):
 	sub_classes = {}
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id, licenseContractId, maxInstallations=None,  # pylint: disable=redefined-builtin
-		boundToHost=None, expirationDate=None
+		self, id, licenseContractId, maxInstallations=None, boundToHost=None, expirationDate=None  # pylint: disable=redefined-builtin
 	):
-		SoftwareLicense.__init__(
-			self, id, licenseContractId, 1, boundToHost, expirationDate
-		)
+		SoftwareLicense.__init__(self, id, licenseContractId, 1, boundToHost, expirationDate)
 
 	def setDefaults(self):
 		SoftwareLicense.setDefaults(self)
@@ -2603,30 +2788,27 @@ class OEMSoftwareLicense(SoftwareLicense):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'OEMSoftwareLicense'
+			_hash["type"] = "OEMSoftwareLicense"
 
 		return SoftwareLicense.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'OEMSoftwareLicense')
+		return from_json(jsonString, "OEMSoftwareLicense")
 
 
-SoftwareLicense.sub_classes['OEMSoftwareLicense'] = OEMSoftwareLicense
+SoftwareLicense.sub_classes["OEMSoftwareLicense"] = OEMSoftwareLicense
 
 
 class VolumeSoftwareLicense(SoftwareLicense):
 	sub_classes = {}
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id, licenseContractId, maxInstallations=None,  # pylint: disable=redefined-builtin
-		boundToHost=None, expirationDate=None
+		self, id, licenseContractId, maxInstallations=None, boundToHost=None, expirationDate=None  # pylint: disable=redefined-builtin
 	):
-		SoftwareLicense.__init__(
-			self, id, licenseContractId, maxInstallations, boundToHost, expirationDate
-		)
+		SoftwareLicense.__init__(self, id, licenseContractId, maxInstallations, boundToHost, expirationDate)
 
 	def setDefaults(self):
 		SoftwareLicense.setDefaults(self)
@@ -2636,30 +2818,27 @@ class VolumeSoftwareLicense(SoftwareLicense):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'VolumeSoftwareLicense'
+			_hash["type"] = "VolumeSoftwareLicense"
 
 		return SoftwareLicense.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'VolumeSoftwareLicense')
+		return from_json(jsonString, "VolumeSoftwareLicense")
 
 
-SoftwareLicense.sub_classes['VolumeSoftwareLicense'] = VolumeSoftwareLicense
+SoftwareLicense.sub_classes["VolumeSoftwareLicense"] = VolumeSoftwareLicense
 
 
 class ConcurrentSoftwareLicense(SoftwareLicense):
 	sub_classes = {}
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id, licenseContractId, maxInstallations=None,  # pylint: disable=redefined-builtin
-		boundToHost=None, expirationDate=None
+		self, id, licenseContractId, maxInstallations=None, boundToHost=None, expirationDate=None  # pylint: disable=redefined-builtin
 	):
-		SoftwareLicense.__init__(
-			self, id, licenseContractId, maxInstallations, boundToHost, expirationDate
-		)
+		SoftwareLicense.__init__(self, id, licenseContractId, maxInstallations, boundToHost, expirationDate)
 
 	def setDefaults(self):
 		SoftwareLicense.setDefaults(self)
@@ -2667,28 +2846,26 @@ class ConcurrentSoftwareLicense(SoftwareLicense):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'ConcurrentSoftwareLicense'
+			_hash["type"] = "ConcurrentSoftwareLicense"
 
 		return SoftwareLicense.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'ConcurrentSoftwareLicense')
+		return from_json(jsonString, "ConcurrentSoftwareLicense")
 
 
-SoftwareLicense.sub_classes['ConcurrentSoftwareLicense'] = ConcurrentSoftwareLicense
+SoftwareLicense.sub_classes["ConcurrentSoftwareLicense"] = ConcurrentSoftwareLicense
 
 
 class LicensePool(Entity):
 	sub_classes = {}
-	foreign_id_attributes = Entity.foreign_id_attributes + ['licensePoolId']
-	backend_method_prefix = 'licensePool'
+	foreign_id_attributes = Entity.foreign_id_attributes + ["licensePoolId"]
+	backend_method_prefix = "licensePool"
 
-	def __init__(
-		self, id, description=None, productIds=None  # pylint: disable=redefined-builtin,invalid-name
-	):
+	def __init__(self, id, description=None, productIds=None):  # pylint: disable=redefined-builtin,invalid-name
 		self.description = None
 		self.productIds = None  # pylint: disable=invalid-name
 		self.setId(id)
@@ -2727,15 +2904,15 @@ class LicensePool(Entity):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'LicensePool'
+			_hash["type"] = "LicensePool"
 
 		return Entity.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'LicensePool')
+		return from_json(jsonString, "LicensePool")
 
 	def __str__(self):
 		infos = [f"id='{self.id}'"]
@@ -2748,12 +2925,12 @@ class LicensePool(Entity):
 		return f"<{self.getType()}({', '.join(infos)})>"
 
 
-Entity.sub_classes['LicensePool'] = LicensePool
+Entity.sub_classes["LicensePool"] = LicensePool
 
 
 class AuditSoftwareToLicensePool(Relationship):
 	sub_classes = {}
-	backend_method_prefix = 'auditSoftwareToLicensePool'
+	backend_method_prefix = "auditSoftwareToLicensePool"
 
 	def __init__(  # pylint: disable=too-many-arguments
 		self, name, version, subVersion, language, architecture, licensePoolId  # pylint: disable=invalid-name
@@ -2779,7 +2956,7 @@ class AuditSoftwareToLicensePool(Relationship):
 
 	def setVersion(self, version):  # pylint: disable=invalid-name
 		if not version:
-			self.version = ''
+			self.version = ""
 		else:
 			self.version = forceUnicodeLower(version)
 
@@ -2788,7 +2965,7 @@ class AuditSoftwareToLicensePool(Relationship):
 
 	def setSubVersion(self, subVersion):  # pylint: disable=invalid-name
 		if not subVersion:
-			self.subVersion = ''  # pylint: disable=invalid-name
+			self.subVersion = ""  # pylint: disable=invalid-name
 		else:
 			self.subVersion = forceUnicodeLower(subVersion)
 
@@ -2797,7 +2974,7 @@ class AuditSoftwareToLicensePool(Relationship):
 
 	def setLanguage(self, language):  # pylint: disable=invalid-name
 		if not language:
-			self.language = ''
+			self.language = ""
 		else:
 			self.language = forceLanguageCode(language)
 
@@ -2806,7 +2983,7 @@ class AuditSoftwareToLicensePool(Relationship):
 
 	def setArchitecture(self, architecture):  # pylint: disable=invalid-name
 		if not architecture:
-			self.architecture = ''
+			self.architecture = ""
 		else:
 			self.architecture = forceArchitecture(architecture)
 
@@ -2816,15 +2993,15 @@ class AuditSoftwareToLicensePool(Relationship):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'AuditSoftwareToLicensePool'
+			_hash["type"] = "AuditSoftwareToLicensePool"
 
 		return Relationship.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'AuditSoftwareToLicensePool')
+		return from_json(jsonString, "AuditSoftwareToLicensePool")
 
 	def __str__(self):
 		infos = [f"name={self.name}"]
@@ -2843,12 +3020,12 @@ class AuditSoftwareToLicensePool(Relationship):
 		return f"<{self.getType()}({', '.join(infos)})>"
 
 
-Relationship.sub_classes['AuditSoftwareToLicensePool'] = AuditSoftwareToLicensePool
+Relationship.sub_classes["AuditSoftwareToLicensePool"] = AuditSoftwareToLicensePool
 
 
 class SoftwareLicenseToLicensePool(Relationship):
 	sub_classes = {}
-	backend_method_prefix = 'softwareLicenseToLicensePool'
+	backend_method_prefix = "softwareLicenseToLicensePool"
 
 	def __init__(self, softwareLicenseId, licensePoolId, licenseKey=None):  # pylint: disable=invalid-name
 		self.licenseKey = None  # pylint: disable=invalid-name
@@ -2862,7 +3039,7 @@ class SoftwareLicenseToLicensePool(Relationship):
 		Relationship.setDefaults(self)
 
 		if self.licenseKey is None:
-			self.setLicenseKey('')
+			self.setLicenseKey("")
 
 	def getSoftwareLicenseId(self):  # pylint: disable=invalid-name
 		return self.softwareLicenseId
@@ -2885,27 +3062,31 @@ class SoftwareLicenseToLicensePool(Relationship):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'SoftwareLicenseToLicensePool'
+			_hash["type"] = "SoftwareLicenseToLicensePool"
 
 		return Relationship.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'SoftwareLicenseToLicensePool')
+		return from_json(jsonString, "SoftwareLicenseToLicensePool")
 
 
-Relationship.sub_classes['SoftwareLicenseToLicensePool'] = SoftwareLicenseToLicensePool
+Relationship.sub_classes["SoftwareLicenseToLicensePool"] = SoftwareLicenseToLicensePool
 
 
 class LicenseOnClient(Relationship):
 	sub_classes = {}
-	backend_method_prefix = 'licenseOnClient'
+	backend_method_prefix = "licenseOnClient"
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, softwareLicenseId, licensePoolId, clientId,  # pylint: disable=invalid-name
-		licenseKey=None, notes=None  # pylint: disable=invalid-name
+		self,
+		softwareLicenseId,
+		licensePoolId,
+		clientId,  # pylint: disable=invalid-name
+		licenseKey=None,
+		notes=None,  # pylint: disable=invalid-name
 	):
 		self.licenseKey = None  # pylint: disable=invalid-name
 		self.notes = None
@@ -2922,9 +3103,9 @@ class LicenseOnClient(Relationship):
 		Relationship.setDefaults(self)
 
 		if self.licenseKey is None:
-			self.setLicenseKey('')
+			self.setLicenseKey("")
 		if self.notes is None:
-			self.setNotes('')
+			self.setNotes("")
 
 	def getSoftwareLicenseId(self):  # pylint: disable=invalid-name
 		return self.softwareLicenseId
@@ -2959,29 +3140,36 @@ class LicenseOnClient(Relationship):
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'LicenseOnClient'
+			_hash["type"] = "LicenseOnClient"
 
 		return Relationship.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'LicenseOnClient')
+		return from_json(jsonString, "LicenseOnClient")
 
 
-Relationship.sub_classes['LicenseOnClient'] = LicenseOnClient
+Relationship.sub_classes["LicenseOnClient"] = LicenseOnClient
 
 
 class AuditSoftware(Entity):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
 	sub_classes = {}
 	foreign_id_attributes = Entity.foreign_id_attributes
-	backend_method_prefix = 'auditSoftware'
+	backend_method_prefix = "auditSoftware"
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, name, version, subVersion, language, architecture,  # pylint: disable=invalid-name
-		windowsSoftwareId=None, windowsDisplayName=None,  # pylint: disable=invalid-name
-		windowsDisplayVersion=None, installSize=None  # pylint: disable=invalid-name
+		self,
+		name,
+		version,
+		subVersion,
+		language,
+		architecture,  # pylint: disable=invalid-name
+		windowsSoftwareId=None,
+		windowsDisplayName=None,  # pylint: disable=invalid-name
+		windowsDisplayVersion=None,
+		installSize=None,  # pylint: disable=invalid-name
 	):
 		self.windowsSoftwareId = None  # pylint: disable=invalid-name
 		self.windowsDisplayName = None  # pylint: disable=invalid-name
@@ -3027,7 +3215,7 @@ class AuditSoftware(Entity):  # pylint: disable=too-many-instance-attributes,too
 
 	def setLanguage(self, language):  # pylint: disable=invalid-name
 		if not language:
-			self.language = ''
+			self.language = ""
 		else:
 			self.language = forceLanguageCode(language)
 
@@ -3036,7 +3224,7 @@ class AuditSoftware(Entity):  # pylint: disable=too-many-instance-attributes,too
 
 	def setArchitecture(self, architecture):  # pylint: disable=invalid-name
 		if not architecture:
-			self.architecture = ''
+			self.architecture = ""
 		else:
 			self.architecture = forceArchitecture(architecture)
 
@@ -3070,29 +3258,40 @@ class AuditSoftware(Entity):  # pylint: disable=too-many-instance-attributes,too
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'AuditSoftware'
+			_hash["type"] = "AuditSoftware"
 
 		return Entity.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'AuditSoftware')
+		return from_json(jsonString, "AuditSoftware")
 
 
-Entity.sub_classes['AuditSoftware'] = AuditSoftware
+Entity.sub_classes["AuditSoftware"] = AuditSoftware
 
 
 class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
 	sub_classes = {}
-	backend_method_prefix = 'auditSoftwareOnClient'
+	backend_method_prefix = "auditSoftwareOnClient"
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, name, version, subVersion, language, architecture,  # pylint: disable=invalid-name
-		clientId, uninstallString=None, binaryName=None,  # pylint: disable=invalid-name
-		firstseen=None, lastseen=None, state=None,  # pylint: disable=invalid-name
-		usageFrequency=None, lastUsed=None, licenseKey=None  # pylint: disable=invalid-name
+		self,
+		name,
+		version,
+		subVersion,
+		language,
+		architecture,  # pylint: disable=invalid-name
+		clientId,
+		uninstallString=None,
+		binaryName=None,  # pylint: disable=invalid-name
+		firstseen=None,
+		lastseen=None,
+		state=None,  # pylint: disable=invalid-name
+		usageFrequency=None,
+		lastUsed=None,
+		licenseKey=None,  # pylint: disable=invalid-name
 	):
 		self.uninstallString = None  # pylint: disable=invalid-name
 		self.binaryName = None  # pylint: disable=invalid-name
@@ -3142,7 +3341,7 @@ class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-
 		if self.usageFrequency is None:
 			self.setUsageFrequency(-1)
 		if self.lastUsed is None:
-			self.setLastUsed('0000-00-00 00:00:00')
+			self.setLastUsed("0000-00-00 00:00:00")
 
 	def setName(self, name):  # pylint: disable=invalid-name
 		self.name = forceUnicode(name)
@@ -3164,7 +3363,7 @@ class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-
 
 	def setLanguage(self, language):  # pylint: disable=invalid-name
 		if not language:
-			self.language = ''
+			self.language = ""
 		else:
 			self.language = forceLanguageCode(language)
 
@@ -3173,7 +3372,7 @@ class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-
 
 	def setArchitecture(self, architecture):  # pylint: disable=invalid-name
 		if not architecture:
-			self.architecture = ''
+			self.architecture = ""
 		else:
 			self.architecture = forceArchitecture(architecture)
 
@@ -3237,24 +3436,24 @@ class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-
 	@staticmethod
 	def fromHash(_hash):
 		try:
-			_hash['type']
+			_hash["type"]
 		except KeyError:
-			_hash['type'] = 'AuditSoftwareOnClient'
+			_hash["type"] = "AuditSoftwareOnClient"
 
 		return Relationship.fromHash(_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'AuditSoftwareOnClient')
+		return from_json(jsonString, "AuditSoftwareOnClient")
 
 
-Relationship.sub_classes['AuditSoftwareOnClient'] = AuditSoftwareOnClient
+Relationship.sub_classes["AuditSoftwareOnClient"] = AuditSoftwareOnClient
 
 
 class AuditHardware(Entity):
 	sub_classes = {}
 	foreign_id_attributes = Entity.foreign_id_attributes
-	backend_method_prefix = 'auditHardware'
+	backend_method_prefix = "auditHardware"
 	hardware_attributes = {}
 
 	def __init__(self, hardwareClass, **kwargs):  # pylint: disable=too-many-branches,too-many-statements,invalid-name
@@ -3279,26 +3478,25 @@ class AuditHardware(Entity):
 				if value is None:
 					continue
 
-				if attr_type.startswith('varchar'):
+				if attr_type.startswith("varchar"):
 					kwargs[attribute] = forceUnicode(value).strip()
 					try:
-						size = int(attr_type.split('(')[1].split(')')[0].strip())
+						size = int(attr_type.split("(")[1].split(")")[0].strip())
 
 						if len(kwargs[attribute]) > size:
 							logger.warning(
-								"Truncating value of attribute %s of hardware class %s to length %d",
-								attribute, hardwareClass, size
+								"Truncating value of attribute %s of hardware class %s to length %d", attribute, hardwareClass, size
 							)
 							kwargs[attribute] = kwargs[attribute][:size].strip()
 					except (ValueError, IndexError):
 						pass
-				elif 'int' in attr_type:
+				elif "int" in attr_type:
 					try:
 						kwargs[attribute] = forceInt(value)
 					except Exception as err:  # pylint: disable=broad-except
 						logger.trace(err)
 						kwargs[attribute] = None
-				elif attr_type == 'double':
+				elif attr_type == "double":
 					try:
 						kwargs[attribute] = forceFloat(value)
 					except Exception as err:  # pylint: disable=broad-except
@@ -3352,11 +3550,11 @@ class AuditHardware(Entity):
 	def setHardwareConfig(hardwareConfig):  # pylint: disable=invalid-name
 		hardware_attributes = {}
 		for config in hardwareConfig:
-			hw_class = config['Class']['Opsi']
+			hw_class = config["Class"]["Opsi"]
 			hardware_attributes[hw_class] = {}
-			for value in config['Values']:
-				if value["Scope"] == 'g':
-					hardware_attributes[hw_class][value['Opsi']] = value["Type"]
+			for value in config["Values"]:
+				if value["Scope"] == "g":
+					hardware_attributes[hw_class][value["Opsi"]] = value["Type"]
 		AuditHardware.hardware_attributes = hardware_attributes
 
 	def setDefaults(self):
@@ -3371,25 +3569,18 @@ class AuditHardware(Entity):
 	def getIdentAttributes(self):
 		attributes = list(self.hardware_attributes.get(self.hardwareClass, {}).keys())
 		attributes.sort()
-		attributes.insert(0, 'hardwareClass')
+		attributes.insert(0, "hardwareClass")
 		return tuple(attributes)
-
-	def serialize(self):
-		return self.toHash()
 
 	@staticmethod
 	def fromHash(_hash):
-		init_hash = {
-			key: value
-			for key, value in _hash.items()
-			if key != 'type'
-		}
+		init_hash = {key: value for key, value in _hash.items() if key != "type"}
 
 		return AuditHardware(**init_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'AuditHardware')
+		return from_json(jsonString, "AuditHardware")
 
 	def __str__(self):
 		infos = []
@@ -3429,17 +3620,16 @@ class AuditHardware(Entity):
 		return f"<{self.__class__.__name__}({', '.join(infos)})>"
 
 
-Entity.sub_classes['AuditHardware'] = AuditHardware
+Entity.sub_classes["AuditHardware"] = AuditHardware
 
 
 class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-attributes
 	sub_classes = {}
-	backend_method_prefix = 'auditHardwareOnHost'
+	backend_method_prefix = "auditHardwareOnHost"
 	hardware_attributes = {}
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-branches,too-many-statements
-		self, hardwareClass, hostId, firstseen=None, lastseen=None,  # pylint: disable=invalid-name
-		state=None, **kwargs
+		self, hardwareClass, hostId, firstseen=None, lastseen=None, state=None, **kwargs  # pylint: disable=invalid-name
 	):
 		self.firstseen = None
 		self.lastseen = None
@@ -3465,23 +3655,25 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 				if value is None:
 					continue
 
-				if attr_type.startswith('varchar'):
+				if attr_type.startswith("varchar"):
 					kwargs[attribute] = forceUnicode(value).strip()
 					try:
-						size = int(attr_type.split('(')[1].split(')')[0].strip())
+						size = int(attr_type.split("(")[1].split(")")[0].strip())
 
 						if len(kwargs[attribute]) > size:
-							logger.warning('Truncating value of attribute %s of hardware class %s to length %d', attribute, hardwareClass, size)
+							logger.warning(
+								"Truncating value of attribute %s of hardware class %s to length %d", attribute, hardwareClass, size
+							)
 							kwargs[attribute] = kwargs[attribute][:size].strip()
 					except (ValueError, IndexError):
 						pass
-				elif 'int' in attr_type:
+				elif "int" in attr_type:
 					try:
 						kwargs[attribute] = forceInt(value)
 					except Exception as err:  # pylint: disable=broad-except
 						logger.trace(err)
 						kwargs[attribute] = None
-				elif attr_type == 'double':
+				elif attr_type == "double":
 					try:
 						kwargs[attribute] = forceFloat(value)
 					except Exception as err:  # pylint: disable=broad-except
@@ -3532,10 +3724,10 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 	def setHardwareConfig(hardwareConfig):  # pylint: disable=invalid-name
 		hardware_attributes = {}
 		for config in hardwareConfig:
-			hw_class = config['Class']['Opsi']
+			hw_class = config["Class"]["Opsi"]
 			hardware_attributes[hw_class] = {}
-			for value in config['Values']:
-				hardware_attributes[hw_class][value['Opsi']] = value["Type"]
+			for value in config["Values"]:
+				hardware_attributes[hw_class][value["Opsi"]] = value["Type"]
 		AuditHardwareOnHost.hardware_attributes = hardware_attributes
 
 	def setDefaults(self):
@@ -3578,14 +3770,14 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 		self.state = forceAuditState(state)
 
 	def toAuditHardware(self):  # pylint: disable=invalid-name
-		audit_hardware_hash = {'type': 'AuditHardware'}
+		audit_hardware_hash = {"type": "AuditHardware"}
 		attributes = set(AuditHardware.hardware_attributes.get(self.getHardwareClass(), {}).keys())
 
 		for (attribute, value) in self.toHash():
-			if attribute == 'type':
+			if attribute == "type":
 				continue
 
-			if attribute == 'hardwareClass':
+			if attribute == "hardwareClass":
 				audit_hardware_hash[attribute] = value
 				continue
 
@@ -3597,26 +3789,19 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 	def getIdentAttributes(self):
 		attributes = list(self.hardware_attributes.get(self.hardwareClass, {}).keys())
 		attributes.sort()
-		attributes.insert(0, 'hostId')
-		attributes.insert(0, 'hardwareClass')
+		attributes.insert(0, "hostId")
+		attributes.insert(0, "hardwareClass")
 		return tuple(attributes)
-
-	def serialize(self):
-		return self.toHash()
 
 	@staticmethod
 	def fromHash(_hash):
-		init_hash = {
-			key: value
-			for key, value in _hash.items()
-			if key != 'type'
-		}
+		init_hash = {key: value for key, value in _hash.items() if key != "type"}
 
 		return AuditHardwareOnHost(**init_hash)
 
 	@staticmethod
 	def from_json(jsonString):
-		return from_json(jsonString, 'AuditHardwareOnHost')
+		return from_json(jsonString, "AuditHardwareOnHost")
 
 	def __str__(self):
 		additional = [f"hostId='{self.hostId}'"]
@@ -3632,8 +3817,6 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 		return f"<{self.getType()}({', '.join(additional)})>"
 
 
-Relationship.sub_classes['AuditHardwareOnHost'] = AuditHardwareOnHost
+Relationship.sub_classes["AuditHardwareOnHost"] = AuditHardwareOnHost
 
-OBJECT_CLASSES = {
-	name: cls for (name, cls) in globals().items() if isinstance(cls, type) and issubclass(cls, BaseObject)
-}
+OBJECT_CLASSES = {name: cls for (name, cls) in globals().items() if isinstance(cls, type) and issubclass(cls, BaseObject)}
