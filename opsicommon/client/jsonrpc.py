@@ -406,7 +406,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				headers["Accept-Encoding"] = "gzip"
 				data = gzip.compress(data)
 
-		timeout = self._rpc_timeouts.get(method, self._read_timeout)
+		timeout = (self._connect_timeout, self._rpc_timeouts.get(method, self._read_timeout))
 
 		logger.info(
 			"JSONRPC request to %s: ip_version=%s, id=%d, method=%s, Content-Type=%s, Content-Encoding=%s, timeout=%d",
