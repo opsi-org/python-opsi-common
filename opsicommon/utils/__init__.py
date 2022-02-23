@@ -7,11 +7,13 @@ General utility functions.
 """
 
 import os
+import json
 import time
 import types
 import secrets
-import json
+import subprocess
 from datetime import datetime, date
+from typing import Any, Dict
 import requests
 
 from opsicommon.logging import logger
@@ -134,7 +136,7 @@ def timestamp(secs=0, date_only=False):
 
 
 class Singleton(type):
-	_instances = {}
+	_instances: Dict[type, Any] = {}
 
 	def __call__(cls, *args, **kwargs):
 		if cls not in cls._instances:
@@ -199,3 +201,23 @@ def prepare_proxy_environment(hostname, proxy_url="system", no_proxy_addresses=N
 		os.environ.get("no_proxy"),
 	)
 	return session
+
+
+class PopenFrozen(subprocess.Popen):
+	def __init__(self, *args, **kwargs):
+		if kwargs.get("env") is None:
+			kwargs["env"] = os.environ.copy()
+		lp_orig = kwargs["env"].get("LD_LIBRARY_PATH_ORIG")
+		if lp_orig is not None:
+			# Restore the original, unmodified value
+			kwargs["env"]["LD_LIBRARY_PATH"] = lp_orig
+		else:
+			# This happens when LD_LIBRARY_PATH was not set.
+			# Remove the env var as a last resort
+			kwargs["env"].pop("LD_LIBRARY_PATH", None)
+
+		super().__init__(*args, **kwargs)
+
+
+def monkeypatch_subprocess_for_frozen():
+	subprocess.Popen = PopenFrozen
