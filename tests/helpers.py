@@ -7,6 +7,7 @@ Helpers for testing opsi.
 """
 
 import io
+import os
 from contextlib import contextmanager
 
 from opsicommon.logging import logging_config
@@ -21,3 +22,14 @@ def log_stream(new_level, format=None):  # pylint: disable=redefined-builtin
 	finally:
 		# somehow revert to previous values? Impossible as logging_config deletes all stream handlers
 		pass
+
+
+@contextmanager
+def environment(**env_vars):
+	env_bak = os.environ.copy()
+	try:
+		os.environ.clear()
+		os.environ.update(env_vars)
+		yield
+	finally:
+		os.environ = env_bak

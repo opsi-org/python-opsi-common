@@ -6,25 +6,41 @@
 This file is part of opsi - https://www.opsi.org
 """
 
+import os
 import datetime
+import subprocess
 import pytest
+
+import psutil  # type: ignore[import]
 
 from opsicommon.objects import Product, LocalbootProduct
 from opsicommon.utils import (
-	serialize, deserialize, combine_versions, to_json, from_json,
-	generate_opsi_host_key, timestamp, Singleton
+	Singleton,
+	serialize,
+	deserialize,
+	combine_versions,
+	to_json,
+	from_json,
+	generate_opsi_host_key,
+	timestamp,
+	monkeypatch_subprocess_for_frozen,
 )
 
+from .helpers import environment
 
-@pytest.mark.parametrize("obj,json_exc", (
-	(Product("test-prod", "2.0", "3", windowsSoftwareIds=["123", "abc"]), None),
-	({"ident": ["product", "LocalbootProduct", "client1.dom.tld"]}, None),
-	("string", None),
-	(Exception("test"), TypeError),
-	(123, None),
-	(None, None),
-	([1, "b", {"x": "y"}], None)
-))
+
+@pytest.mark.parametrize(
+	"obj,json_exc",
+	(
+		(Product("test-prod", "2.0", "3", windowsSoftwareIds=["123", "abc"]), None),
+		({"ident": ["product", "LocalbootProduct", "client1.dom.tld"]}, None),
+		("string", None),
+		(Exception("test"), TypeError),
+		(123, None),
+		(None, None),
+		([1, "b", {"x": "y"}], None),
+	),
+)
 def test_serialize_deserialize(obj, json_exc):
 	assert obj == deserialize(serialize(obj))
 	if json_exc:
@@ -53,10 +69,9 @@ def test_object_fom_json():
 	assert isinstance(res, LocalbootProduct)
 
 
-@pytest.mark.parametrize("prod, expected", (
-	(Product("test-prod", "2.0", "3"), "2.0-3"),
-	(Product("test-prod", "44k123", "yx1"), "44k123-yx1")
-))
+@pytest.mark.parametrize(
+	"prod, expected", ((Product("test-prod", "2.0", "3"), "2.0-3"), (Product("test-prod", "44k123", "yx1"), "44k123-yx1"))
+)
 def test_combine_versions(prod, expected):
 	assert combine_versions(prod) == expected
 
@@ -79,3 +94,23 @@ def test_singleton():
 		pass
 
 	assert id(TestSingleton()) == id(TestSingleton())
+
+
+@pytest.mark.linux
+def test_monkeypatch_subprocess_for_frozen():
+	monkeypatch_subprocess_for_frozen()
+	ld_library_path_orig = "/orig_path"
+	ld_library_path = "/path"
+	with environment(LD_LIBRARY_PATH_ORIG=ld_library_path_orig, LD_LIBRARY_PATH=ld_library_path):
+		assert os.environ.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
+		assert os.environ.get("LD_LIBRARY_PATH") == ld_library_path
+		with subprocess.Popen(["sleep", "1"]) as proc:
+			ps_proc = psutil.Process(proc.pid)
+			proc_env = ps_proc.environ()
+			assert proc_env.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
+			assert proc_env.get("LD_LIBRARY_PATH") == ld_library_path_orig
+			assert os.environ.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
+			assert os.environ.get("LD_LIBRARY_PATH") == ld_library_path
+			proc.wait()
+		assert os.environ.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
+		assert os.environ.get("LD_LIBRARY_PATH") == ld_library_path
