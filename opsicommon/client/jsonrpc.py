@@ -409,7 +409,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		timeout = (self._connect_timeout, self._rpc_timeouts.get(method, self._read_timeout))
 
 		logger.info(
-			"JSONRPC request to %s: ip_version=%s, id=%d, method=%s, Content-Type=%s, Content-Encoding=%s, timeout=%d",
+			"JSONRPC request to %s: ip_version=%s, id=%r, method=%s, Content-Type=%s, Content-Encoding=%s, timeout=%r",
 			self.base_url,
 			self._ip_version,
 			rpc_id,
