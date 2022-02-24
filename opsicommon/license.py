@@ -13,7 +13,7 @@ import zlib
 import glob
 import json
 import uuid
-from typing import Union, Optional, Generator, Any, List, Dict, Set, Callable
+from typing import Tuple, Union, Optional, Generator, Any, List, Dict, Set, Callable
 import struct
 import base64
 import codecs
@@ -32,10 +32,10 @@ try:
 except (ImportError, OSError):
 	# pyright: reportMissingImports=false
 	# python3-pycryptodome installs into Cryptodome
-	from Cryptodome.Hash import MD5, SHA3_512
-	from Cryptodome.PublicKey import RSA
-	from Cryptodome.Util.number import bytes_to_long
-	from Cryptodome.Signature import pss
+	from Cryptodome.Hash import MD5, SHA3_512  # type: ignore[import,no-redef]
+	from Cryptodome.PublicKey import RSA  # type: ignore[import,no-redef]
+	from Cryptodome.Util.number import bytes_to_long  # type: ignore[import,no-redef]
+	from Cryptodome.Signature import pss  # type: ignore[import,no-redef]
 
 
 OPSI_LICENCE_ID_REGEX = re.compile(r"^[a-zA-Z0-9\-_]{10,}$")
@@ -97,7 +97,7 @@ def _hexstr2bytes(value) -> bytes:
 	return value
 
 
-def generate_key_pair(bits: int = 2048, return_pem: int = False) -> List[str]:
+def generate_key_pair(bits: int = 2048, return_pem: int = False) -> Union[Tuple[RSA.RsaKey, RSA.RsaKey], Tuple[str, str]]:
 	key = RSA.generate(bits=bits)
 	if not return_pem:
 		return key, key.publickey()
@@ -287,7 +287,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 		return f"{zlib.crc32(self._hash_base(with_signature)):x}"
 
 	def get_hash(self, digest: bool = False, hex_digest: bool = False):
-		_hash = None
+		_hash: Union[MD5.MD5Hash, SHA3_512.SHA3_512_Hash]
 		if self.schema_version == 1:
 			_hash = MD5.new(self.additional_data.encode("utf-8"))
 		else:
@@ -309,7 +309,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 		self._checksum = checksum
 
 		if len(self._cached_state) >= MAX_STATE_CACHE_VALUES:
-			self._cached_state.popitem(last=False)
+			self._cached_state.popitem()
 
 		cache_key = f"{test_revoked}{at_date}"
 		if cache_key not in self._cached_state:
@@ -324,7 +324,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 		try:
 			if self.schema_version == 1:
 				h_int = int.from_bytes(_hash.digest(), "big")
-				s_int = public_key._encrypt(int(self.signature.hex()))  # pylint: disable=protected-access
+				s_int = public_key._encrypt(int(self.signature.hex()))  # type: ignore[attr-defined] # pylint: disable=protected-access
 				if h_int != s_int:
 					return OPSI_LICENSE_STATE_INVALID_SIGNATURE
 			else:
@@ -373,12 +373,12 @@ class OpsiLicenseFile:
 			kwargs = dict(ini.items(section=section, raw=True))
 			kwargs["id"] = section
 			for key in ("customer_name", "customer_address", "customer_unit", "note"):
-				kwargs[key] = ast.literal_eval(f'"{kwargs.get(key)}"') or None
-			kwargs["revoked_ids"] = [x.strip() for x in kwargs.get("revoked_ids", "").split(",") if x]
+				kwargs[key] = ast.literal_eval(f'"{kwargs.get(key)}"') or None  # type: ignore[assignment]
+			kwargs["revoked_ids"] = [x.strip() for x in kwargs.get("revoked_ids", "").split(",") if x]  # type: ignore[assignment]
 			for key, val in kwargs.items():
 				if val == "":
-					kwargs[key] = None
-			self.add_license(OpsiLicense(**kwargs))
+					kwargs[key] = None  # type: ignore[assignment]
+			self.add_license(OpsiLicense(**kwargs))  # type: ignore[arg-type]
 
 	def read(self) -> None:
 		with open(self.filename, "r", encoding="utf-8") as file:
@@ -399,7 +399,7 @@ class OpsiLicenseFile:
 				if value in (None, ""):
 					value = ""
 				elif field.name == "revoked_ids":
-					value = ",".join(value)
+					value = ",".join(value)  # type: ignore[arg-type]
 				elif field.name in ("customer_name", "customer_address", "customer_unit", "note"):
 					value = repr(value)[1:-1]
 				data = f"{data}{field.name} = {value}\n"
@@ -424,7 +424,7 @@ class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 	def add_license(self, opsi_license: OpsiLicense) -> None:
 		self._licenses[opsi_license.id] = opsi_license
 
-	def _read_raw_data(self) -> None:
+	def _read_raw_data(self) -> Dict[str, str]:
 		data = {}
 		with codecs.open(self.filename, "r", "utf-8") as file:
 			for line in file:
@@ -453,7 +453,7 @@ class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 		for attribute in sorted(data):
 			value = data[attribute]
 			if attribute != "signature":
-				common_lic["additional_data"] += f"{attribute} = {value}\r\n"
+				common_lic["additional_data"] = f"{common_lic['additional_data']}{attribute} = {value}\r\n"
 
 			if attribute == "signature":
 				common_lic["signature"] = value
@@ -461,7 +461,7 @@ class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 				common_lic["customer_name"] = value
 			elif attribute == "expires":
 				if value == "never":
-					value = OPSI_LICENSE_DATE_UNLIMITED
+					value = OPSI_LICENSE_DATE_UNLIMITED  # type: ignore[assignment]
 				common_lic["valid_until"] = value
 			else:
 				module_id = attribute.lower()
@@ -479,7 +479,7 @@ class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 			kwargs["id"] = f"legacy-{module_id}"
 			kwargs["module_id"] = module_id
 			kwargs["client_number"] = client_number
-			self.add_license(OpsiLicense(**kwargs))
+			self.add_license(OpsiLicense(**kwargs))  # type: ignore[arg-type]
 
 
 class OpsiLicensePool:
@@ -491,13 +491,13 @@ class OpsiLicensePool:
 		client_limit_warning_percent: int = 95,
 		client_limit_warning_absolute: int = 5,
 	) -> None:
-		self.license_file_path: str = license_file_path
-		self.modules_file_path: str = modules_file_path
+		self.license_file_path: Optional[str] = license_file_path
+		self.modules_file_path: Optional[str] = modules_file_path
 		self.client_limit_warning_percent: int = client_limit_warning_percent
 		self.client_limit_warning_absolute: int = client_limit_warning_absolute
-		self._client_info: Union[dict, Callable] = client_info
+		self._client_info: Optional[Union[dict, Callable]] = client_info
 		self._licenses: Dict[str, OpsiLicense] = {}
-		self._file_modification_dates: Dict[str, int] = {}
+		self._file_modification_dates: Dict[str, float] = {}
 
 	@property
 	def license_files(self) -> List[str]:
@@ -584,7 +584,7 @@ class OpsiLicensePool:
 		)
 		return f"{data:x}"
 
-	def get_relevant_dates(self) -> Set[date]:
+	def get_relevant_dates(self) -> List[date]:
 		dates = set()
 		for lic in self.get_licenses():
 			if lic.get_state() != OPSI_LICENSE_STATE_INVALID_SIGNATURE:
@@ -599,7 +599,7 @@ class OpsiLicensePool:
 			at_date = date.today()
 
 		client_numbers = self.client_numbers
-		modules = {}
+		modules: Dict[str, Dict[str, Any]] = {}
 		for module_id in OPSI_MODULE_IDS:
 			if module_id in ("treeview", "vista"):
 				modules[module_id] = {"available": True, "state": OPSI_MODULE_STATE_FREE, "license_ids": [], "client_number": 999999999}
@@ -653,7 +653,7 @@ class OpsiLicensePool:
 						value = value.strip()
 						if attribute != "customer":
 							try:
-								value = int(value)
+								value = int(value)  # type: ignore[assignment]
 							except ValueError:
 								pass
 						modules[attribute] = value
