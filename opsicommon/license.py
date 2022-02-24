@@ -105,26 +105,28 @@ def generate_key_pair(bits: int = 2048, return_pem: int = False) -> Union[Tuple[
 
 
 @lru_cache(maxsize=None)
-def get_signature_public_key(schema_version: int) -> RSA.RsaKey:
-	if schema_version < 2:
-		data = base64.decodebytes(
-			b"AAAAB3NzaC1yc2EAAAADAQABAAABAQCAD/I79Jd0eKwwfuVwh5B2z+S8aV0C5suItJa18RrYip+d4P0ogzqoCfOoVWtDo"
-			b"jY96FDYv+2d73LsoOckHCnuh55GA0mtuVMWdXNZIE8Avt/RzbEoYGo/H0weuga7I8PuQNC/nyS8w3W8TH4pt+ZCjZZoX8"
-			b"S+IizWCYwfqYoYTMLgB0i+6TCAfJj3mNgCrDZkQ24+rOFS4a8RrjamEz/b81noWl9IntllK1hySkR+LbulfTGALHgHkDU"
-			b"lk0OSu+zBPw/hcDSOMiDQvvHfmR4quGyLPbQ2FOVm1TzE0bQPR+Bhx4V8Eo2kNYstG2eJELrz7J1TJI0rCjpB+FQjYPsP"
-		)
+def get_signature_public_key_schema_version_1() -> RSA.RsaKey:
+	data = base64.decodebytes(
+		b"AAAAB3NzaC1yc2EAAAADAQABAAABAQCAD/I79Jd0eKwwfuVwh5B2z+S8aV0C5suItJa18RrYip+d4P0ogzqoCfOoVWtDo"
+		b"jY96FDYv+2d73LsoOckHCnuh55GA0mtuVMWdXNZIE8Avt/RzbEoYGo/H0weuga7I8PuQNC/nyS8w3W8TH4pt+ZCjZZoX8"
+		b"S+IizWCYwfqYoYTMLgB0i+6TCAfJj3mNgCrDZkQ24+rOFS4a8RrjamEz/b81noWl9IntllK1hySkR+LbulfTGALHgHkDU"
+		b"lk0OSu+zBPw/hcDSOMiDQvvHfmR4quGyLPbQ2FOVm1TzE0bQPR+Bhx4V8Eo2kNYstG2eJELrz7J1TJI0rCjpB+FQjYPsP"
+	)
 
-		# Key type can be found in 4:11.
-		rest = data[11:]
-		count = 0
-		tmp = []
-		for _ in range(2):
-			length = struct.unpack(">L", rest[count : count + 4])[0]
-			tmp.append(bytes_to_long(rest[count + 4 : count + 4 + length]))
-			count += 4 + length
+	# Key type can be found in 4:11.
+	rest = data[11:]
+	count = 0
+	tmp = []
+	for _ in range(2):
+		length = struct.unpack(">L", rest[count : count + 4])[0]
+		tmp.append(bytes_to_long(rest[count + 4 : count + 4 + length]))
+		count += 4 + length
 
-		return RSA.construct((tmp[1], tmp[0]))
+	return RSA.construct((tmp[1], tmp[0]))
 
+
+@lru_cache(maxsize=None)
+def get_signature_public_key_schema_version_2() -> RSA.RsaKey:
 	return RSA.import_key(
 		"-----BEGIN PUBLIC KEY-----\n"
 		"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqTWmFj6m6O3gO676GStL\n"
@@ -136,6 +138,12 @@ def get_signature_public_key(schema_version: int) -> RSA.RsaKey:
 		"8QIDAQAB\n"
 		"-----END PUBLIC KEY-----\n"
 	)
+
+
+def get_signature_public_key(schema_version: int) -> RSA.RsaKey:
+	if schema_version < 2:
+		return get_signature_public_key_schema_version_1()
+	return get_signature_public_key_schema_version_2()
 
 
 MAX_STATE_CACHE_VALUES = 64
@@ -338,7 +346,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 			):
 				if lic.type != OPSI_LICENSE_TYPE_CORE and lic.module_id == self.module_id:
 					return OPSI_LICENSE_STATE_REPLACED_BY_NON_CORE
-		if test_revoked and self._license_pool and self.id in self._license_pool.get_revoked_license_ids():
+		if test_revoked and self._license_pool and self.id in self._license_pool.get_revoked_license_ids(at_date=at_date):
 			return OPSI_LICENSE_STATE_REVOKED
 		if (self.valid_from - at_date).days > 0:
 			return OPSI_LICENSE_STATE_NOT_YET_VALID
