@@ -407,8 +407,9 @@ class OpsiLicenseFile:
 		return data
 
 	def write(self) -> None:
+		data = self.write_string()
 		with codecs.open(self.filename, "w", "utf-8") as file:
-			file.write(self.write_string())
+			file.write(data)
 
 
 class OpsiModulesFile:  # pylint: disable=too-few-public-methods
