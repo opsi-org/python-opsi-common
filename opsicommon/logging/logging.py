@@ -6,27 +6,31 @@
 logging
 """
 
+import codecs
+import contextvars
+import logging
 import os
 import sys
-import codecs
-import traceback
-import logging
-from logging.handlers import RotatingFileHandler
 import tempfile
+import traceback
 import warnings
-import contextvars
-from urllib.parse import quote
 from contextlib import contextmanager
-from typing import Dict, Any, IO
+from logging.handlers import RotatingFileHandler
+from typing import IO, Any, Dict
+from urllib.parse import quote
+
 import colorlog
 
 from .constants import (
-	DEFAULT_COLORED_FORMAT, DEFAULT_FORMAT, DATETIME_FORMAT,
-	LOG_COLORS, SECRET_REPLACEMENT_STRING
+	DATETIME_FORMAT,
+	DEFAULT_COLORED_FORMAT,
+	DEFAULT_FORMAT,
+	LOG_COLORS,
+	SECRET_REPLACEMENT_STRING,
 )
 
 logger = logging.getLogger()
-context = contextvars.ContextVar('context', default={})
+context = contextvars.ContextVar("context", default={})
 
 
 def secret(self, msg: str, *args, **kwargs):
@@ -105,7 +109,9 @@ logging.Logger.comment = essential
 logging.Logger.devel = essential
 
 
-def logrecord_init(self, name, level, pathname, lineno, msg, args, exc_info, func=None, sinfo=None, **kwargs):  # pylint: disable=too-many-arguments
+def logrecord_init(
+	self, name, level, pathname, lineno, msg, args, exc_info, func=None, sinfo=None, **kwargs
+):  # pylint: disable=too-many-arguments
 	"""
 	New Constructor for LogRecord.
 
@@ -188,6 +194,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 	This class implements a filter which modifies allows to store context
 	for a single thread/task.
 	"""
+
 	def __init__(self, filter_dict: Dict = None):
 		"""
 		ContextFilter Constructor
@@ -275,6 +282,7 @@ class ContextSecretFormatter(logging.Formatter):
 	2. It can replace secret strings specified to a SecretFilter by a
 		replacement string, thus censor passwords etc.
 	"""
+
 	def __init__(self, orig_formatter: logging.Formatter):  # pylint: disable=super-init-not-called
 		"""
 		ContextSecretFormatter constructor
@@ -361,6 +369,7 @@ class SecretFilter(metaclass=Singleton):
 	This class implements functionality of maintaining a collection
 	of secrets which can be used by the ContextSecretFormatter.
 	"""
+
 	def __init__(self, min_length: int = 6):
 		"""
 		SecretFilter constructor.
@@ -445,11 +454,13 @@ class ObservableHandler(logging.StreamHandler, metaclass=Singleton):
 	def attach_observer(self, observer):
 		if observer not in self._observers:
 			self._observers.append(observer)
+
 	attachObserver = attach_observer
 
 	def detach_observer(self, observer):
 		if observer in self._observers:
 			self._observers.remove(observer)
+
 	detachObserver = detach_observer
 
 	def emit(self, record):
@@ -475,7 +486,7 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches
 	file_rotate_max_bytes: int = 0,
 	file_rotate_backup_count: int = 0,
 	remove_handlers: bool = False,
-	stderr_file: IO = sys.stderr
+	stderr_file: IO = sys.stderr,
 ):
 	"""
 	Initialize logging.
@@ -528,21 +539,13 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches
 			remove_all_handlers(handler_name="opsi_file_handler")
 		handler = None
 		if file_rotate_max_bytes and file_rotate_max_bytes > 0:
-			handler = RotatingFileHandler(
-				log_file,
-				encoding="utf-8",
-				maxBytes=file_rotate_max_bytes,
-				backupCount=file_rotate_backup_count
-			)
+			handler = RotatingFileHandler(log_file, encoding="utf-8", maxBytes=file_rotate_max_bytes, backupCount=file_rotate_backup_count)
 		else:
 			handler = logging.FileHandler(log_file, encoding="utf-8")
 		handler.name = "opsi_file_handler"
 		logging.root.addHandler(handler)
 	if file_level is not None:
-		for handler in (
-			get_all_handlers(logging.FileHandler) +
-			get_all_handlers(RotatingFileHandler)
-		):
+		for handler in get_all_handlers(logging.FileHandler) + get_all_handlers(RotatingFileHandler):
 			handler.setLevel(file_level)
 	if stderr_level is not None:
 		if remove_handlers:
@@ -566,25 +569,18 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches
 	logging.root.setLevel(min_value)
 
 	if stderr_format and stderr_format.find("(log_color)") != -1 and not stderr_file.isatty():
-		stderr_format = stderr_format.replace('%(log_color)s', '').replace('%(reset)s', '')
+		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")
 	set_format(file_format, stderr_format)
 
 
 def init_logging(
-	stderr_level: int = None,
-	stderr_format: str = None,
-	log_file: str = None,
-	file_level: int = None,
-	file_format: str = None
+	stderr_level: int = None, stderr_format: str = None, log_file: str = None, file_level: int = None, file_format: str = None
 ):
 	return logging_config(stderr_level, stderr_format, log_file, file_level, file_format, True)
 
 
 def set_format(
-	file_format: str = DEFAULT_FORMAT,
-	stderr_format: str = DEFAULT_COLORED_FORMAT,
-	datefmt: str = DATETIME_FORMAT,
-	log_colors: Dict = None
+	file_format: str = DEFAULT_FORMAT, stderr_format: str = DEFAULT_COLORED_FORMAT, datefmt: str = DATETIME_FORMAT, log_colors: Dict = None
 ):
 	"""
 	Assigns ContextSecretFormatter to all Handlers.
@@ -712,13 +708,13 @@ def set_filter_from_string(filter_string: str):
 
 def get_all_loggers():
 	"""
-	Gets list of all loggers.
+		Gets list of all loggers.
 
-	This method requests all Logger instances registered at
-	logging.Logger.manager.loggerDict and returns them as a list.
-not
-	:returns: List containing all loggers (including root)
-	:rtype: List
+		This method requests all Logger instances registered at
+		logging.Logger.manager.loggerDict and returns them as a list.
+	not
+		:returns: List containing all loggers (including root)
+		:rtype: List
 	"""
 	return [logging.root] + list(logging.Logger.manager.loggerDict.values())
 
@@ -741,8 +737,10 @@ def get_all_handlers(handler_type: type = None, handler_name: str = None):
 		if not isinstance(_logger, logging.PlaceHolder):
 			for _handler in _logger.handlers:
 				if (
-					(not handler_type or type(_handler) == handler_type) and  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
-					(not handler_name or _handler.name == handler_name)
+					not handler_type
+					or type(_handler) == handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
+				) and (
+					not handler_name or _handler.name == handler_name
 				):
 					handlers.append(_handler)
 	return handlers
@@ -762,8 +760,10 @@ def remove_all_handlers(handler_type: type = None, handler_name: str = None):
 		if not isinstance(_logger, logging.PlaceHolder):
 			for _handler in _logger.handlers:
 				if (
-					(not handler_type or type(_handler) == handler_type) and  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
-					(not handler_name or _handler.name == handler_name)
+					not handler_type
+					or type(_handler) == handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
+				) and (
+					not handler_name or _handler.name == handler_name
 				):
 					_logger.removeHandler(_handler)
 
@@ -796,6 +796,7 @@ def init_warnings_capture():
 		for entry in traceback.format_stack():
 			for _line in entry.split("\n"):
 				logger.debug(_line)
+
 	warnings.showwarning = _log_warning
 
 

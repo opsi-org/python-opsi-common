@@ -13,17 +13,17 @@ DEFAULT_FORMAT = "[%(opsilevel)d] [%(asctime)s.%(msecs)03d] [%(contextstring)-15
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 LOG_COLORS = {
-	'SECRET': 'thin_yellow',
-	'TRACE': 'thin_white',
-	'DEBUG': 'white',
-	'INFO': 'bold_white',
-	'NOTICE': 'bold_green',
-	'WARNING': 'bold_yellow',
-	'ERROR': 'red',
-	'CRITICAL': 'bold_red',
-	'ESSENTIAL': 'bold_cyan'
+	"SECRET": "thin_yellow",
+	"TRACE": "thin_white",
+	"DEBUG": "white",
+	"INFO": "bold_white",
+	"NOTICE": "bold_green",
+	"WARNING": "bold_yellow",
+	"ERROR": "red",
+	"CRITICAL": "bold_red",
+	"ESSENTIAL": "bold_cyan",
 }
-SECRET_REPLACEMENT_STRING = '***secret***'
+SECRET_REPLACEMENT_STRING = "***secret***"
 
 logging.NOTSET = 0
 logging.SECRET = 10
@@ -42,31 +42,31 @@ logging.COMMENT = logging.ESSENTIAL
 logging.NONE = 100
 
 LEVEL_TO_NAME = {
-	logging.SECRET: 'SECRET',
-	logging.TRACE: 'TRACE',
-	logging.DEBUG: 'DEBUG',
-	logging.INFO: 'INFO',
-	logging.NOTICE: 'NOTICE',
-	logging.WARNING: 'WARNING',
-	logging.ERROR: 'ERROR',
-	logging.CRITICAL: 'CRITICAL',
-	logging.ESSENTIAL: 'ESSENTIAL',
-	logging.NONE: 'NONE'
+	logging.SECRET: "SECRET",
+	logging.TRACE: "TRACE",
+	logging.DEBUG: "DEBUG",
+	logging.INFO: "INFO",
+	logging.NOTICE: "NOTICE",
+	logging.WARNING: "WARNING",
+	logging.ERROR: "ERROR",
+	logging.CRITICAL: "CRITICAL",
+	logging.ESSENTIAL: "ESSENTIAL",
+	logging.NONE: "NONE",
 }
 logging.level_to_name = LEVEL_TO_NAME
 logging._levelToName = LEVEL_TO_NAME  # pylint: disable=protected-access
 
 NAME_TO_LEVEL = {
-	'SECRET': logging.SECRET,
-	'TRACE': logging.TRACE,
-	'DEBUG': logging.DEBUG,
-	'INFO': logging.INFO,
-	'NOTICE': logging.NOTICE,
-	'WARNING': logging.WARNING,
-	'ERROR': logging.ERROR,
-	'CRITICAL': logging.CRITICAL,
-	'ESSENTIAL': logging.ESSENTIAL,
-	'NONE': logging.NONE
+	"SECRET": logging.SECRET,
+	"TRACE": logging.TRACE,
+	"DEBUG": logging.DEBUG,
+	"INFO": logging.INFO,
+	"NOTICE": logging.NOTICE,
+	"WARNING": logging.WARNING,
+	"ERROR": logging.ERROR,
+	"CRITICAL": logging.CRITICAL,
+	"ESSENTIAL": logging.ESSENTIAL,
+	"NONE": logging.NONE,
 }
 logging.name_to_level = NAME_TO_LEVEL
 logging._nameToLevel = NAME_TO_LEVEL  # pylint: disable=protected-access
@@ -81,7 +81,7 @@ LEVEL_TO_OPSI_LEVEL = {
 	logging.ERROR: 3,
 	logging.CRITICAL: 2,
 	logging.ESSENTIAL: 1,
-	logging.NONE: 0
+	logging.NONE: 0,
 }
 logging.level_to_opsi_level = LEVEL_TO_OPSI_LEVEL
 logging._levelToOpsiLevel = LEVEL_TO_OPSI_LEVEL  # pylint: disable=protected-access
@@ -96,7 +96,7 @@ OPSI_LEVEL_TO_LEVEL = {
 	3: logging.ERROR,
 	2: logging.CRITICAL,
 	1: logging.ESSENTIAL,
-	0: logging.NONE
+	0: logging.NONE,
 }
 logging.opsi_level_to_level = OPSI_LEVEL_TO_LEVEL
 logging._opsiLevelToLevel = OPSI_LEVEL_TO_LEVEL  # pylint: disable=protected-access

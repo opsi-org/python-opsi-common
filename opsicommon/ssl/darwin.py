@@ -7,8 +7,8 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import os
-import tempfile
 import subprocess
+import tempfile
 
 from OpenSSL import crypto
 
@@ -24,18 +24,21 @@ def install_ca(ca_cert: crypto.X509):
 	pem_file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, ca_cert))
 	pem_file.close()
 	try:
-		subprocess.check_call([
-			"security", "add-trusted-cert", "-d", "-r", "trustRoot", "-k", "/Library/Keychains/System.keychain", pem_file.name
-		], shell=False)
+		subprocess.check_call(
+			["security", "add-trusted-cert", "-d", "-r", "trustRoot", "-k", "/Library/Keychains/System.keychain", pem_file.name],
+			shell=False,
+		)
 	finally:
 		os.remove(pem_file.name)
 
 
 def load_ca(subject_name: str) -> crypto.X509:
 	try:
-		pem = subprocess.check_output([
-			"security", "find-certificate", "-p", "-c", subject_name, "/Library/Keychains/System.keychain"
-		], shell=False, stderr=subprocess.STDOUT)
+		pem = subprocess.check_output(
+			["security", "find-certificate", "-p", "-c", subject_name, "/Library/Keychains/System.keychain"],
+			shell=False,
+			stderr=subprocess.STDOUT,
+		)
 	except subprocess.CalledProcessError as err:
 		if "could not be found" in err.output.decode():
 			pem = ""
@@ -59,10 +62,7 @@ def remove_ca(subject_name: str) -> bool:
 		sha1_hash = ca_cert.digest("sha1").decode("ascii").replace(":", "")
 		if removed_sha1_hash and sha1_hash == removed_sha1_hash:
 			raise RuntimeError(f"Failed to remove certficate {removed_sha1_hash}")
-		subprocess.check_call(
-			["security", "delete-certificate", "-Z", sha1_hash, "/Library/Keychains/System.keychain", "-t"],
-			shell=False
-		)
+		subprocess.check_call(["security", "delete-certificate", "-Z", sha1_hash, "/Library/Keychains/System.keychain", "-t"], shell=False)
 		removed_sha1_hash = sha1_hash
 		ca_cert = load_ca(subject_name)
 	return True

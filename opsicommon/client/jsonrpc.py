@@ -6,23 +6,24 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-import re
-import os
-import time
-import types
-import socket
-import threading
-import warnings
-from typing import Callable
-from urllib.parse import urlparse, quote, unquote
 import gzip
 import ipaddress
-import urllib3
-from urllib3.util.retry import Retry
+import os
+import re
+import socket
+import threading
+import time
+import types
+import warnings
+from typing import Callable
+from urllib.parse import quote, unquote, urlparse
+
+import msgpack  # type: ignore[import]
 import requests
+import urllib3
 from requests.adapters import HTTPAdapter
 from requests.exceptions import SSLError
-import msgpack  # type: ignore[import]
+from urllib3.util.retry import Retry
 
 try:
 	# pyright: reportMissingModuleSource=false
@@ -32,17 +33,18 @@ except ModuleNotFoundError:
 		import ujson as json  # type: ignore[import,no-redef]
 	except ModuleNotFoundError:
 		import json  # type: ignore[no-redef]
+
 import lz4.frame  # type: ignore[import,no-redef]
 
 from opsicommon import __version__
-from opsicommon.logging import logger, secret_filter
 from opsicommon.exceptions import (
-	OpsiRpcError,
-	OpsiServiceVerificationError,
 	BackendAuthenticationError,
 	BackendPermissionDeniedError,
+	OpsiRpcError,
+	OpsiServiceVerificationError,
 )
-from opsicommon.utils import serialize, deserialize, prepare_proxy_environment
+from opsicommon.logging import logger, secret_filter
+from opsicommon.utils import deserialize, prepare_proxy_environment, serialize
 
 warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
 

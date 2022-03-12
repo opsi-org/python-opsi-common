@@ -9,17 +9,32 @@ OPSI Exceptions.
 from typing import List
 
 __all__ = (
-	"BackendAuthenticationError", "BackendBadValueError",
-	"BackendConfigurationError", "BackendError", "BackendIOError",
-	"BackendMissingDataError", "BackendModuleDisabledError",
-	"BackendPermissionDeniedError", "BackendReferentialIntegrityError",
-	"BackendTemporaryError", "BackendUnableToConnectError",
+	"BackendAuthenticationError",
+	"BackendBadValueError",
+	"BackendConfigurationError",
+	"BackendError",
+	"BackendIOError",
+	"BackendMissingDataError",
+	"BackendModuleDisabledError",
+	"BackendPermissionDeniedError",
+	"BackendReferentialIntegrityError",
+	"BackendTemporaryError",
+	"BackendUnableToConnectError",
 	"BackendUnaccomplishableError",
-	"CanceledException", "LicenseConfigurationError", "LicenseMissingError",
-	"OpsiAuthenticationError", "OpsiBackupBackendNotFound",
-	"OpsiBackupFileError", "OpsiBackupFileNotFound", "OpsiBadRpcError",
-	"OpsiConnectionError", "OpsiError", "OpsiProductOrderingError",
-	"OpsiRpcError", "OpsiServiceVerificationError", "OpsiTimeoutError",
+	"CanceledException",
+	"LicenseConfigurationError",
+	"LicenseMissingError",
+	"OpsiAuthenticationError",
+	"OpsiBackupBackendNotFound",
+	"OpsiBackupFileError",
+	"OpsiBackupFileNotFound",
+	"OpsiBadRpcError",
+	"OpsiConnectionError",
+	"OpsiError",
+	"OpsiProductOrderingError",
+	"OpsiRpcError",
+	"OpsiServiceVerificationError",
+	"OpsiTimeoutError",
 	"RepositoryError",
 )
 
@@ -41,7 +56,7 @@ class OpsiError(Exception):
 	def __repr__(self) -> str:
 		if self.message:
 			return f'<{self.__class__.__name__}("{self.message}")>'
-		return f'<{self.__class__.__name__}>'
+		return f"<{self.__class__.__name__}>"
 
 
 class OpsiBackupFileError(OpsiError):
@@ -83,7 +98,7 @@ class OpsiTimeoutError(OpsiError):
 class OpsiProductOrderingError(OpsiError):
 	ExceptionShortDescription = "A condition for ordering cannot be fulfilled"
 
-	def __init__(self, message: str = '', problematicRequirements: List[str] = None):
+	def __init__(self, message: str = "", problematicRequirements: List[str] = None):
 		super().__init__(message)
 		self.problematicRequirements = problematicRequirements or []  # pylint: disable=invalid-name
 
@@ -99,26 +114,30 @@ class OpsiProductOrderingError(OpsiError):
 			if self.problematicRequirements:
 				return f'<{self.__class__.__name__}("{self.message}", {self.problematicRequirements})>'
 			return f'<{self.__class__.__name__}("{self.message}")>'
-		return f'<{self.__class__.__name__}>'
+		return f"<{self.__class__.__name__}>"
 
 
 class BackendError(OpsiError):
 	"""Exception raised if there is an error in the backend."""
+
 	ExceptionShortDescription = "Backend error"
 
 
 class BackendIOError(OpsiError):
 	"""Exception raised if there is a read or write error in the backend."""
+
 	ExceptionShortDescription = "Backend I/O error"
 
 
 class BackendUnableToConnectError(BackendIOError):
 	"""Exception raised if no connection can be established in the backend."""
+
 	ExceptionShortDescription = "Backend I/O error"
 
 
 class BackendConfigurationError(OpsiError):
 	"""Exception raised if a configuration error occurs in the backend."""
+
 	ExceptionShortDescription = "Backend configuration error"
 
 
@@ -127,51 +146,61 @@ class BackendReferentialIntegrityError(OpsiError):
 	Exception raised if there is a referential integration
 	error occurs in the backend.
 	"""
+
 	ExceptionShortDescription = "Backend referential integrity error"
 
 
 class BackendBadValueError(OpsiError):
 	"""Exception raised if an invalid value is found."""
+
 	ExceptionShortDescription = "Backend bad value error"
 
 
 class BackendMissingDataError(OpsiError):
 	"""Exception raised if expected data not found."""
+
 	ExceptionShortDescription = "Backend missing data error"
 
 
 class BackendAuthenticationError(OpsiAuthenticationError):
 	"""Exception raised if authentication failes."""
+
 	ExceptionShortDescription = "Backend authentication error"
 
 
 class BackendPermissionDeniedError(OpsiError):
 	"""Exception raised if a permission is denied."""
+
 	ExceptionShortDescription = "Backend permission denied error"
 
 
 class BackendTemporaryError(OpsiError):
 	"""Exception raised if a temporary error occurs."""
+
 	ExceptionShortDescription = "Backend temporary error"
 
 
 class BackendUnaccomplishableError(OpsiError):
 	"""Exception raised if an unaccomplishable situation appears."""
+
 	ExceptionShortDescription = "Backend unaccomplishable error"
 
 
 class BackendModuleDisabledError(OpsiError):
 	"""Exception raised if a needed module is disabled."""
+
 	ExceptionShortDescription = "Backend module disabled error"
 
 
 class LicenseConfigurationError(OpsiError):
 	"""Exception raised if a configuration error occurs in the license data base."""
+
 	ExceptionShortDescription = "License configuration error"
 
 
 class LicenseMissingError(OpsiError):
-	""" Exception raised if a license is requested but cannot be found. """
+	"""Exception raised if a license is requested but cannot be found."""
+
 	ExceptionShortDescription = "License missing error"
 
 

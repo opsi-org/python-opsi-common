@@ -19,61 +19,116 @@ import types
 
 from opsicommon.logging import logger
 
-if os.name != 'nt':
+if os.name != "nt":
 	WindowsError = RuntimeError
 
 __all__ = (
-	'args', 'forceActionProgress', 'forceActionRequest',
-	'forceActionRequestList', 'forceActionResult', 'forceArchitecture',
-	'forceArchitectureList', 'forceAuditState', 'forceBool', 'forceBoolList',
-	'forceConfigId', 'forceDict', 'forceDictList', 'forceDomain',
-	'forceEmailAddress', 'forceFilename', 'forceFloat', 'forceFqdn',
-	'forceGroupId', 'forceGroupIdList', 'forceGroupType', 'forceGroupTypeList',
-	'forceHardwareAddress', 'forceHardwareDeviceId', 'forceHardwareVendorId',
-	'forceHostAddress', 'forceHostId', 'forceHostIdList', 'forceHostname',
-	'forceIPAddress', 'forceInstallationStatus', 'forceInt', 'forceIntList',
-	'forceIpAddress', 'forceLanguageCode', 'forceLanguageCodeList',
-	'forceLicenseContractId', 'forceLicenseContractIdList', 'forceLicensePoolId',
-	'forceLicensePoolIdList', 'forceList', 'forceNetmask',
-	'forceNetworkAddress', 'forceObjectClass', 'forceObjectClassList',
-	'forceObjectId', 'forceObjectIdList', 'forceOct', 'forceOpsiHostKey',
-	'forceOpsiTimestamp', 'forcePackageCustomName', 'forcePackageVersion',
-	'forcePackageVersionList', 'forceProductId', 'forceProductIdList',
-	'forceProductPriority', 'forceProductPropertyId',
-	'forceProductPropertyType', 'forceProductTargetConfiguration',
-	'forceProductType', 'forceProductVersion', 'forceProductVersionList',
-	'forceRequirementType', 'forceSoftwareLicenseId',
-	'forceSoftwareLicenseIdList', 'forceTime', 'forceUnicode',
-	'forceUnicodeList', 'forceUnicodeLower', 'forceUnicodeLowerList',
-	'forceUnicodeUpper', 'forceUniqueList', 'forceUnsignedInt', 'forceUrl'
+	"args",
+	"forceActionProgress",
+	"forceActionRequest",
+	"forceActionRequestList",
+	"forceActionResult",
+	"forceArchitecture",
+	"forceArchitectureList",
+	"forceAuditState",
+	"forceBool",
+	"forceBoolList",
+	"forceConfigId",
+	"forceDict",
+	"forceDictList",
+	"forceDomain",
+	"forceEmailAddress",
+	"forceFilename",
+	"forceFloat",
+	"forceFqdn",
+	"forceGroupId",
+	"forceGroupIdList",
+	"forceGroupType",
+	"forceGroupTypeList",
+	"forceHardwareAddress",
+	"forceHardwareDeviceId",
+	"forceHardwareVendorId",
+	"forceHostAddress",
+	"forceHostId",
+	"forceHostIdList",
+	"forceHostname",
+	"forceIPAddress",
+	"forceInstallationStatus",
+	"forceInt",
+	"forceIntList",
+	"forceIpAddress",
+	"forceLanguageCode",
+	"forceLanguageCodeList",
+	"forceLicenseContractId",
+	"forceLicenseContractIdList",
+	"forceLicensePoolId",
+	"forceLicensePoolIdList",
+	"forceList",
+	"forceNetmask",
+	"forceNetworkAddress",
+	"forceObjectClass",
+	"forceObjectClassList",
+	"forceObjectId",
+	"forceObjectIdList",
+	"forceOct",
+	"forceOpsiHostKey",
+	"forceOpsiTimestamp",
+	"forcePackageCustomName",
+	"forcePackageVersion",
+	"forcePackageVersionList",
+	"forceProductId",
+	"forceProductIdList",
+	"forceProductPriority",
+	"forceProductPropertyId",
+	"forceProductPropertyType",
+	"forceProductTargetConfiguration",
+	"forceProductType",
+	"forceProductVersion",
+	"forceProductVersionList",
+	"forceRequirementType",
+	"forceSoftwareLicenseId",
+	"forceSoftwareLicenseIdList",
+	"forceTime",
+	"forceUnicode",
+	"forceUnicodeList",
+	"forceUnicodeLower",
+	"forceUnicodeLowerList",
+	"forceUnicodeUpper",
+	"forceUniqueList",
+	"forceUnsignedInt",
+	"forceUrl",
 )
 
 encoding = sys.getfilesystemencoding()
 
-_HARDWARE_ID_REGEX = re.compile(r'^[a-fA-F0-9]{4}$')
-_OPSI_TIMESTAMP_REGEX = re.compile(r'^(\d{4})-?(\d{2})-?(\d{2})\s?(\d{2}):?(\d{2}):?(\d{2})\.?\d*$')
-_OPSI_DATE_REGEX = re.compile(r'^(\d{4})-?(\d{2})-?(\d{2})$')
-_FQDN_REGEX = re.compile(r'^[a-z0-9][a-z0-9\-]{,63}\.((\w+\-+)|(\w+\.))*\w{1,63}\.\w{2,16}\.?$')
-_HARDWARE_ADDRESS_REGEX = re.compile(r'^([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})$')  # pylint: disable=line-too-long
-_NETMASK_REGEX = re.compile(r'^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')  # pylint: disable=line-too-long
-_URL_REGEX = re.compile(r'^[a-z0-9]+:\/\/[/a-zA-Z0-9@:%._\+~#?&=\[\]]+')
-_OPSI_HOST_KEY_REGEX = re.compile(r'^[0-9a-f]{32}$')
-_PRODUCT_VERSION_REGEX = re.compile(r'^[a-zA-Z0-9.]{1,32}$')
-_PACKAGE_VERSION_REGEX = re.compile(r'^[a-zA-Z0-9.]{1,16}$')
-_PRODUCT_ID_REGEX = re.compile(r'^[a-z0-9-_\.]{1,128}$')
-_PACKAGE_CUSTOM_NAME_REGEX = re.compile(r'^[a-zA-Z0-9]+$')
-_PRODUCT_PROPERTY_ID_REGEX = re.compile(r'^\S+$')
-_CONFIG_ID_REGEX = re.compile(r'^\S+$')
-_GROUP_ID_REGEX = re.compile(r'^[a-z0-9][a-z0-9-_. ]*$')
-_OBJECT_ID_REGEX = re.compile(r'^[a-z0-9][a-z0-9-_. ]*$')
-_EMAIL_REGEX = re.compile(r'^(([A-Za-z0-9]+_+)|([A-Za-z0-9]+\-+)|([A-Za-z0-9]+\.+)|([A-Za-z0-9]+\++))*[A-Za-z0-9]+@((\w+\-+)|(\w+\.))*\w*')
-_DOMAIN_REGEX = re.compile(r'^((\w+\-+)|(\w+\.))*\w{1,63}\.\w{2,16}\.?$')
-_HOSTNAME_REGEX = re.compile(r'^[a-z0-9][a-z0-9\-]*$')
-_LICENSE_CONTRACT_ID_REGEX = re.compile(r'^[a-z0-9][a-z0-9-_. :]*$')
-_SOFTWARE_LICENSE_ID_REGEX = re.compile(r'^[a-z0-9][a-z0-9-_. :]*$')
-_LICENSE_POOL_ID_REGEX = re.compile(r'^[a-z0-9][a-z0-9-_. :]*$')
-_LANGUAGE_CODE_REGEX = re.compile(r'^([a-z]{2,3})[-_]?([a-z]{4})?[-_]?([a-z]{2})?$')
-_ARCHITECTURE_REGEX = re.compile(r'^(x86|x64)$')
+_HARDWARE_ID_REGEX = re.compile(r"^[a-fA-F0-9]{4}$")
+_OPSI_TIMESTAMP_REGEX = re.compile(r"^(\d{4})-?(\d{2})-?(\d{2})\s?(\d{2}):?(\d{2}):?(\d{2})\.?\d*$")
+_OPSI_DATE_REGEX = re.compile(r"^(\d{4})-?(\d{2})-?(\d{2})$")
+_FQDN_REGEX = re.compile(r"^[a-z0-9][a-z0-9\-]{,63}\.((\w+\-+)|(\w+\.))*\w{1,63}\.\w{2,16}\.?$")
+_HARDWARE_ADDRESS_REGEX = re.compile(
+	r"^([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})$"
+)  # pylint: disable=line-too-long
+_NETMASK_REGEX = re.compile(
+	r"^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+)  # pylint: disable=line-too-long
+_URL_REGEX = re.compile(r"^[a-z0-9]+:\/\/[/a-zA-Z0-9@:%._\+~#?&=\[\]]+")
+_OPSI_HOST_KEY_REGEX = re.compile(r"^[0-9a-f]{32}$")
+_PRODUCT_VERSION_REGEX = re.compile(r"^[a-zA-Z0-9.]{1,32}$")
+_PACKAGE_VERSION_REGEX = re.compile(r"^[a-zA-Z0-9.]{1,16}$")
+_PRODUCT_ID_REGEX = re.compile(r"^[a-z0-9-_\.]{1,128}$")
+_PACKAGE_CUSTOM_NAME_REGEX = re.compile(r"^[a-zA-Z0-9]+$")
+_PRODUCT_PROPERTY_ID_REGEX = re.compile(r"^\S+$")
+_CONFIG_ID_REGEX = re.compile(r"^\S+$")
+_GROUP_ID_REGEX = re.compile(r"^[a-z0-9][a-z0-9-_. ]*$")
+_OBJECT_ID_REGEX = re.compile(r"^[a-z0-9][a-z0-9-_. ]*$")
+_EMAIL_REGEX = re.compile(r"^(([A-Za-z0-9]+_+)|([A-Za-z0-9]+\-+)|([A-Za-z0-9]+\.+)|([A-Za-z0-9]+\++))*[A-Za-z0-9]+@((\w+\-+)|(\w+\.))*\w*")
+_DOMAIN_REGEX = re.compile(r"^((\w+\-+)|(\w+\.))*\w{1,63}\.\w{2,16}\.?$")
+_HOSTNAME_REGEX = re.compile(r"^[a-z0-9][a-z0-9\-]*$")
+_LICENSE_CONTRACT_ID_REGEX = re.compile(r"^[a-z0-9][a-z0-9-_. :]*$")
+_SOFTWARE_LICENSE_ID_REGEX = re.compile(r"^[a-z0-9][a-z0-9-_. :]*$")
+_LICENSE_POOL_ID_REGEX = re.compile(r"^[a-z0-9][a-z0-9-_. :]*$")
+_LANGUAGE_CODE_REGEX = re.compile(r"^([a-z]{2,3})[-_]?([a-z]{4})?[-_]?([a-z]{2})?$")
+_ARCHITECTURE_REGEX = re.compile(r"^(x86|x64)$")
 
 
 def forceList(var):  # pylint: disable=invalid-name
@@ -86,7 +141,7 @@ def forceList(var):  # pylint: disable=invalid-name
 def forceUnicode(var):  # pylint: disable=too-many-return-statements,invalid-name
 	if isinstance(var, str):
 		return var
-	if os.name == 'nt' and isinstance(var, WindowsError):
+	if os.name == "nt" and isinstance(var, WindowsError):
 		try:
 			return f"[Error {var.args[0]}] {var.args[1]}"
 		except Exception:  # pylint: disable=broad-except
@@ -101,7 +156,7 @@ def forceUnicode(var):  # pylint: disable=too-many-return-statements,invalid-nam
 		var = var.__repr__()
 		if isinstance(var, str):
 			return var
-		return str(var, 'utf-8', 'replace')
+		return str(var, "utf-8", "replace")
 	except Exception:  # pylint: disable=broad-except
 		pass
 
@@ -134,9 +189,9 @@ def forceBool(var):  # pylint: disable=invalid-name
 	if isinstance(var, str):
 		if len(var) <= 5:  # longest word is 5 characters ("false")
 			low_value = var.lower()
-			if low_value in ('true', 'yes', 'on', '1'):
+			if low_value in ("true", "yes", "on", "1"):
 				return True
-			if low_value in ('false', 'no', 'off', '0'):
+			if low_value in ("false", "no", "off", "0"):
 				return False
 
 	return bool(var)
@@ -171,13 +226,13 @@ def forceOct(var):  # pylint: disable=invalid-name
 		return var
 
 	try:
-		oct_value = ''
+		oct_value = ""
 		for idx, val in enumerate(forceUnicode(var)):
 			val = forceInt(val)
 			if val > 7:
 				raise ValueError(f"{val} is too big")
-			if idx == 0 and val != '0':
-				oct_value += '0'
+			if idx == 0 and val != "0":
+				oct_value += "0"
 			oct_value += str(val)
 
 		oct_value = int(oct_value, 8)
@@ -213,7 +268,7 @@ def forceTime(var):  # pylint: disable=invalid-name
 	if isinstance(var, time.struct_time):
 		return var
 	if isinstance(var, datetime.datetime):
-		var = time.mktime(var.timetuple()) + var.microsecond / 1E6
+		var = time.mktime(var.timetuple()) + var.microsecond / 1e6
 
 	if isinstance(var, (int, float)):
 		return time.localtime(var)
@@ -244,9 +299,9 @@ def forceOpsiTimestamp(var):  # pylint: disable=invalid-name
 	If a conversion is not possible a `ValueError` will be raised.
 	"""
 	if not var:
-		return '0000-00-00 00:00:00'
+		return "0000-00-00 00:00:00"
 	if isinstance(var, datetime.datetime):
-		return forceUnicode(var.strftime('%Y-%m-%d %H:%M:%S'))
+		return forceUnicode(var.strftime("%Y-%m-%d %H:%M:%S"))
 
 	var = forceUnicode(var)
 	match = re.search(_OPSI_TIMESTAMP_REGEX, var)
@@ -255,17 +310,14 @@ def forceOpsiTimestamp(var):  # pylint: disable=invalid-name
 		if not match:
 			raise ValueError(f"Bad opsi timestamp: {var}")
 		return f"{match.group(1)}-{match.group(2)}-{match.group(3)} 00:00:00"
-	return (
-		f"{match.group(1)}-{match.group(2)}-{match.group(3)}"
-		f" {match.group(4)}:{match.group(5)}:{match.group(6)}"
-	)
+	return f"{match.group(1)}-{match.group(2)}-{match.group(3)}" f" {match.group(4)}:{match.group(5)}:{match.group(6)}"
 
 
 def forceFqdn(var):  # pylint: disable=invalid-name
 	var = forceObjectId(var)
 	if not _FQDN_REGEX.search(var):
 		raise ValueError(f"Bad fqdn: '{var}'")
-	if var.endswith('.'):
+	if var.endswith("."):
 		var = var[:-1]
 	return var
 
@@ -286,10 +338,7 @@ def forceHardwareAddress(var):  # pylint: disable=invalid-name
 	if not match:
 		raise ValueError(f"Invalid hardware address: {var}")
 
-	return (
-		f"{match.group(1)}:{match.group(2)}:{match.group(3)}:"
-		f"{match.group(4)}:{match.group(5)}:{match.group(6)}"
-	).lower()
+	return (f"{match.group(1)}:{match.group(2)}:{match.group(3)}:" f"{match.group(4)}:{match.group(5)}:{match.group(6)}").lower()
 
 
 def forceIPAddress(var):  # pylint: disable=invalid-name
@@ -393,10 +442,10 @@ def forcePackageCustomName(var):  # pylint: disable=invalid-name
 
 def forceProductType(var):  # pylint: disable=invalid-name
 	lower_var = forceUnicodeLower(var)
-	if lower_var in ('localboot', 'localbootproduct'):
-		return 'LocalbootProduct'
-	if lower_var in ('netboot', 'netbootproduct'):
-		return 'NetbootProduct'
+	if lower_var in ("localboot", "localbootproduct"):
+		return "LocalbootProduct"
+	if lower_var in ("netboot", "netbootproduct"):
+		return "NetbootProduct"
 	raise ValueError(f"Unknown product type: '{var}'")
 
 
@@ -416,10 +465,10 @@ def forceConfigId(var):  # pylint: disable=invalid-name
 
 def forceProductPropertyType(var):  # pylint: disable=invalid-name
 	value = forceUnicodeLower(var)
-	if value in ('unicode', 'unicodeproductproperty'):
-		return 'UnicodeProductProperty'
-	if value in ('bool', 'boolproductproperty'):
-		return 'BoolProductProperty'
+	if value in ("unicode", "unicodeproductproperty"):
+		return "UnicodeProductProperty"
+	if value in ("bool", "boolproductproperty"):
+		return "BoolProductProperty"
 	raise ValueError(f"Unknown product property type: '{var}'")
 
 
@@ -438,14 +487,14 @@ def forceFilename(var):  # pylint: disable=invalid-name
 
 def forceProductTargetConfiguration(var):  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
-	if var and var not in ('installed', 'always', 'forbidden', 'undefined'):
+	if var and var not in ("installed", "always", "forbidden", "undefined"):
 		raise ValueError(f"Bad product target configuration: '{var}'")
 	return var
 
 
 def forceInstallationStatus(var):  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
-	if var and var not in ('installed', 'not_installed', 'unknown'):
+	if var and var not in ("installed", "not_installed", "unknown"):
 		raise ValueError(f"Bad installation status: '{var}'")
 	return var
 
@@ -453,9 +502,9 @@ def forceInstallationStatus(var):  # pylint: disable=invalid-name
 def forceActionRequest(var):  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if var:
-		if var == 'undefined':
+		if var == "undefined":
 			var = None
-		elif var not in ('setup', 'uninstall', 'update', 'always', 'once', 'custom', 'none'):
+		elif var not in ("setup", "uninstall", "update", "always", "once", "custom", "none"):
 			raise ValueError(f"Bad action request: '{var}'")
 	return var
 
@@ -472,7 +521,7 @@ def forceActionResult(var):  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not var:
 		return None
-	if var not in ('failed', 'successful', 'none'):
+	if var not in ("failed", "successful", "none"):
 		raise ValueError(f"Bad action result: '{var}'")
 	return var
 
@@ -481,7 +530,7 @@ def forceRequirementType(var):  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not var:
 		return None
-	if var not in ('before', 'after'):
+	if var not in ("before", "after"):
 		raise ValueError(f"Bad requirement type: '{var}'")
 	return var
 
@@ -491,8 +540,9 @@ def forceObjectClass(var, objectClass):  # pylint: disable=invalid-name
 		return var
 
 	exception = None
-	if isinstance(var, str) and var.lstrip().startswith('{'):
+	if isinstance(var, str) and var.lstrip().startswith("{"):
 		from opsicommon.utils import from_json  # pylint: disable=import-outside-toplevel
+
 		try:
 			var = from_json(var)
 		except Exception as err:  # pylint: disable=broad-except
@@ -500,12 +550,13 @@ def forceObjectClass(var, objectClass):  # pylint: disable=invalid-name
 			logger.debug("Failed to get object from json %s: %s", var, err)
 
 	if isinstance(var, dict):
-		if 'type' not in var:
+		if "type" not in var:
 			raise ValueError(f"Key 'type' missing in hash {var}")
 
 		import opsicommon.objects  # pylint: disable=import-outside-toplevel,unused-import
+
 		try:
-			_class = getattr(opsicommon.objects, var['type'])
+			_class = getattr(opsicommon.objects, var["type"])
 			if issubclass(_class, objectClass):
 				var = _class.fromHash(var)
 		except AttributeError as err:
@@ -537,10 +588,10 @@ def forceGroupId(var):  # pylint: disable=invalid-name
 def forceGroupType(var):  # pylint: disable=invalid-name
 	lower_value = forceUnicodeLower(var)
 
-	if lower_value == 'hostgroup':
-		return 'HostGroup'
-	if lower_value == 'productgroup':
-		return 'ProductGroup'
+	if lower_value == "hostgroup":
+		return "HostGroup"
+	if lower_value == "productgroup":
+		return "ProductGroup"
 	raise ValueError(f"Unknown group type: '{var}'")
 
 

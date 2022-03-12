@@ -9,17 +9,15 @@ system
 import os
 import sys
 from collections import namedtuple
-import psutil
+
+import psutil  # type: ignore[import]
 
 from opsicommon.logging import logger
 
-Session = namedtuple('Session', ["id", "type", "username", "terminal", "login_pid", "started"])
+Session = namedtuple("Session", ["id", "type", "username", "terminal", "login_pid", "started"])
 
 if sys.platform == "linux":
-	from .linux import (
-		get_user_sessions,
-		run_process_in_session
-	)
+	from .linux import get_user_sessions, run_process_in_session
 
 
 def ensure_not_already_running(process_name: str = None):

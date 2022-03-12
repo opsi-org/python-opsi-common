@@ -6,36 +6,37 @@
 License handling
 """
 
-import re
-import os
 import ast
-import zlib
-import glob
-import json
-import uuid
-from typing import Tuple, Union, Optional, Generator, Any, List, Dict, Set, Callable
-import struct
 import base64
 import codecs
 import configparser
+import glob
+import json
+import os
+import re
+import struct
+import uuid
+import zlib
 from collections import OrderedDict
-from functools import lru_cache
 from datetime import date, timedelta
+from functools import lru_cache
+from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, Union
+
 import attr
 
 try:
 	# PyCryptodome from pypi installs into Crypto
 	from Crypto.Hash import MD5, SHA3_512
 	from Crypto.PublicKey import RSA
-	from Crypto.Util.number import bytes_to_long
 	from Crypto.Signature import pss
+	from Crypto.Util.number import bytes_to_long
 except (ImportError, OSError):
 	# pyright: reportMissingImports=false
 	# python3-pycryptodome installs into Cryptodome
 	from Cryptodome.Hash import MD5, SHA3_512  # type: ignore[import,no-redef]
 	from Cryptodome.PublicKey import RSA  # type: ignore[import,no-redef]
-	from Cryptodome.Util.number import bytes_to_long  # type: ignore[import,no-redef]
 	from Cryptodome.Signature import pss  # type: ignore[import,no-redef]
+	from Cryptodome.Util.number import bytes_to_long  # type: ignore[import,no-redef]
 
 
 OPSI_LICENCE_ID_REGEX = re.compile(r"^[a-zA-Z0-9\-_]{10,}$")

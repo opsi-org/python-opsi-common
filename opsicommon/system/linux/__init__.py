@@ -6,16 +6,18 @@
 This file is part of opsi - https://www.opsi.org
 """
 
+import functools
+import getpass
+import grp
 import os
 import pwd
-import grp
-import getpass
 import subprocess
-import functools
 from typing import List
-import psutil
+
+import psutil  # type: ignore[import]
 
 from opsicommon.logging import logger
+
 from .. import Session
 
 
@@ -39,14 +41,7 @@ def get_user_sessions(username: str = None, session_type: str = None):
 			_type = "pts"
 		if session_type is not None and session_type != _type:
 			continue
-		yield Session(
-			id=terminal,
-			type=_type,
-			username=user.name,
-			started=user.started,
-			login_pid=user.pid,
-			terminal=terminal
-		)
+		yield Session(id=terminal, type=_type, username=user.name, started=user.started, login_pid=user.pid, terminal=terminal)
 
 
 def run_process_in_session(command: List[str], session_id: str, shell: bool = False, impersonate: bool = False):
@@ -75,13 +70,7 @@ def run_process_in_session(command: List[str], session_id: str, shell: bool = Fa
 		preexec_fn = functools.partial(drop_privileges, session.username)
 
 	return subprocess.Popen(  # pylint: disable=subprocess-popen-preexec-fn
-		args=command,
-		preexec_fn=preexec_fn,
-		stdin=subprocess.PIPE,
-		stdout=subprocess.PIPE,
-		stderr=subprocess.PIPE,
-		shell=shell,
-		env=env
+		args=command, preexec_fn=preexec_fn, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=shell, env=env
 	)
 
 

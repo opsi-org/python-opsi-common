@@ -6,18 +6,18 @@
 General utility functions.
 """
 
-import os
 import json
-import time
-import types
+import os
 import secrets
 import subprocess
-from datetime import datetime, date
+import time
+import types
+from datetime import date, datetime
 from typing import Any, Dict
+
 import requests
 
 from opsicommon.logging import logger
-
 
 OBJECT_CLASSES = None
 BaseObject = None  # pylint: disable=invalid-name
@@ -42,10 +42,14 @@ def deserialize(obj, prevent_object_creation=False):  # pylint: disable=invalid-
 
 	global OBJECT_CLASSES  # pylint: disable=global-statement,invalid-name,global-variable-not-assigned
 	if OBJECT_CLASSES is None:
-		from opsicommon.objects import OBJECT_CLASSES  # pylint: disable=redefined-outer-name,import-outside-toplevel
+		from opsicommon.objects import (  # pylint: disable=redefined-outer-name,import-outside-toplevel
+			OBJECT_CLASSES,
+		)
 	global BaseObject  # pylint: disable=global-statement,invalid-name,global-variable-not-assigned
 	if BaseObject is None:
-		from opsicommon.objects import BaseObject  # pylint: disable=redefined-outer-name,import-outside-toplevel
+		from opsicommon.objects import (  # pylint: disable=redefined-outer-name,import-outside-toplevel
+			BaseObject,
+		)
 
 	if isinstance(obj, dict):
 		if (

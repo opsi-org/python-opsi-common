@@ -10,10 +10,16 @@ import random
 from typing import Tuple, Union
 
 from OpenSSL.crypto import (
-	FILETYPE_PEM, TYPE_RSA,
-	dump_privatekey, dump_certificate,
-	X509, PKey, X509Name, X509Extension
+	FILETYPE_PEM,
+	TYPE_RSA,
+	X509,
+	PKey,
+	X509Extension,
+	X509Name,
+	dump_certificate,
+	dump_privatekey,
 )
+
 from opsicommon.logging import logger
 
 PRIVATE_KEY_CIPHER = "DES3"
@@ -21,30 +27,19 @@ PRIVATE_KEY_CIPHER = "DES3"
 
 def as_pem(cert_or_key: Union[X509, PKey], passphrase=None):
 	if isinstance(cert_or_key, X509):
-		return dump_certificate(
-			FILETYPE_PEM,
-			cert_or_key
-		).decode("ascii")
+		return dump_certificate(FILETYPE_PEM, cert_or_key).decode("ascii")
 	if isinstance(cert_or_key, PKey):
 		return dump_privatekey(
 			FILETYPE_PEM,
 			cert_or_key,
 			cipher=None if passphrase is None else PRIVATE_KEY_CIPHER,
-			passphrase=None if passphrase is None else passphrase.encode("utf-8")
+			passphrase=None if passphrase is None else passphrase.encode("utf-8"),
 		).decode("ascii")
 	raise TypeError(f"Invalid type: {cert_or_key}")
 
 
 def create_x590_name(subject: dict = None) -> X509Name:
-	subj = {
-		"C": "DE",
-		"ST": "RP",
-		"L": "MAINZ",
-		"O": "uib",
-		"OU": "opsi",
-		"CN": "opsi",
-		"emailAddress": "info@opsi.org"
-	}
+	subj = {"C": "DE", "ST": "RP", "L": "MAINZ", "O": "uib", "OU": "opsi", "CN": "opsi", "emailAddress": "info@opsi.org"}
 	subj.update(subject or {})
 
 	x509_name = X509Name(X509().get_subject())
@@ -59,11 +54,7 @@ def create_x590_name(subject: dict = None) -> X509Name:
 	return x509_name
 
 
-def create_ca(
-	subject: dict,
-	valid_days: int,
-	key: PKey = None
-) -> Tuple[X509, PKey]:
+def create_ca(subject: dict, valid_days: int, key: PKey = None) -> Tuple[X509, PKey]:
 	common_name = subject.get("commonName", subject.get("CN"))
 	if not common_name:
 		raise ValueError("commonName missing in subject")
@@ -88,23 +79,16 @@ def create_ca(
 
 	ca_cert.set_issuer(ca_subject)
 	ca_cert.set_subject(ca_subject)
-	ca_cert.add_extensions([
-		X509Extension(b"subjectKeyIdentifier", False, b"hash", subject=ca_cert),
-		X509Extension(b"basicConstraints", True, b"CA:TRUE")
-	])
-	ca_cert.sign(key, 'sha256')
+	ca_cert.add_extensions(
+		[X509Extension(b"subjectKeyIdentifier", False, b"hash", subject=ca_cert), X509Extension(b"basicConstraints", True, b"CA:TRUE")]
+	)
+	ca_cert.sign(key, "sha256")
 
 	return (ca_cert, key)
 
 
 def create_server_cert(  # pylint: disable=too-many-arguments
-	subject: dict,
-	valid_days: int,
-	ip_addresses: set,
-	hostnames: set,
-	ca_key: X509,
-	ca_cert: PKey,
-	key: PKey = None
+	subject: dict, valid_days: int, ip_addresses: set, hostnames: set, ca_key: X509, ca_cert: PKey, key: PKey = None
 ) -> Tuple[X509, PKey]:
 	common_name = subject.get("commonName", subject.get("CN"))
 	if not common_name:
@@ -141,16 +125,16 @@ def create_server_cert(  # pylint: disable=too-many-arguments
 	cert.set_issuer(ca_cert.get_subject())
 	cert.set_subject(srv_subject)
 
-	cert.add_extensions([
-		X509Extension(b"subjectKeyIdentifier", False, b"hash", subject=ca_cert),
-		X509Extension(b"basicConstraints", True, b"CA:FALSE"),
-		X509Extension(b"keyUsage", True, b"nonRepudiation, digitalSignature, keyEncipherment"),
-		X509Extension(b"extendedKeyUsage", False, b"serverAuth, clientAuth, codeSigning, emailProtection")
-	])
+	cert.add_extensions(
+		[
+			X509Extension(b"subjectKeyIdentifier", False, b"hash", subject=ca_cert),
+			X509Extension(b"basicConstraints", True, b"CA:FALSE"),
+			X509Extension(b"keyUsage", True, b"nonRepudiation, digitalSignature, keyEncipherment"),
+			X509Extension(b"extendedKeyUsage", False, b"serverAuth, clientAuth, codeSigning, emailProtection"),
+		]
+	)
 	if alt_names:
-		cert.add_extensions([
-			X509Extension(b"subjectAltName", False, alt_names.encode("utf-8"))
-		])
+		cert.add_extensions([X509Extension(b"subjectAltName", False, alt_names.encode("utf-8"))])
 	cert.set_pubkey(key)
 	cert.sign(ca_key, "sha256")
 

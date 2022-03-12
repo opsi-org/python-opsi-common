@@ -11,11 +11,11 @@ As an example this contains classes for hosts, products, configurations.
 # pylint: disable=too-many-lines
 
 import inspect
+from datetime import date, datetime
 from typing import List
-from datetime import datetime, date
 
-from opsicommon.logging import logger
 from opsicommon.exceptions import BackendBadValueError, BackendConfigurationError
+from opsicommon.logging import logger
 from opsicommon.types import (
 	forceActionProgress,
 	forceActionRequest,
@@ -60,7 +60,13 @@ from opsicommon.types import (
 	forceUnsignedInt,
 	forceUrl,
 )
-from opsicommon.utils import combine_versions, from_json, to_json, generate_opsi_host_key, timestamp
+from opsicommon.utils import (
+	combine_versions,
+	from_json,
+	generate_opsi_host_key,
+	timestamp,
+	to_json,
+)
 
 __all__ = (
 	"AuditHardware",

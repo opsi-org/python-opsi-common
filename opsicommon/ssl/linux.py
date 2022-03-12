@@ -39,10 +39,7 @@ def install_ca(ca_cert: crypto.X509):
 
 	logger.info("Installing CA '%s' into system store", ca_cert.get_subject().CN)
 
-	cert_file = os.path.join(
-		system_cert_path,
-		f"{ca_cert.get_subject().CN.replace(' ', '_')}.crt"
-	)
+	cert_file = os.path.join(system_cert_path, f"{ca_cert.get_subject().CN.replace(' ', '_')}.crt")
 	with open(cert_file, "wb") as file:
 		file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, ca_cert))
 
@@ -83,10 +80,7 @@ def remove_ca(subject_name: str) -> bool:
 						continue
 
 	if not removed:
-		logger.info(
-			"CA '%s' not found in '%s', nothing to remove",
-			subject_name, system_cert_path
-		)
+		logger.info("CA '%s' not found in '%s', nothing to remove", subject_name, system_cert_path)
 		return False
 
 	output = subprocess.check_output([cmd], shell=False)

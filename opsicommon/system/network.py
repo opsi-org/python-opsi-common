@@ -6,9 +6,10 @@
 system.network
 """
 
-import socket
 import ipaddress
-import psutil
+import socket
+
+import psutil  # type: ignore[import]
 
 from opsicommon.logging import logger
 
@@ -26,17 +27,12 @@ def get_ip_addresses():
 
 			ip_address = None
 			try:
-				ip_address = ipaddress.ip_address(snic.address.split('%')[0])
+				ip_address = ipaddress.ip_address(snic.address.split("%")[0])
 			except ValueError:
 				logger.warning("Unrecognised ip address: %r", snic.address)
 				continue
 
-			yield {
-				"family": family,
-				"interface": interface,
-				"address": snic.address,
-				"ip_address": ip_address
-			}
+			yield {"family": family, "interface": interface, "address": snic.address, "ip_address": ip_address}
 
 
 def get_fqdn():
@@ -44,7 +40,7 @@ def get_fqdn():
 
 
 def get_domain():
-	return '.'.join(get_fqdn().split('.')[1:])
+	return ".".join(get_fqdn().split(".")[1:])
 
 
 def get_hostnames():

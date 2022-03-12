@@ -6,15 +6,16 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-from contextlib import contextmanager
 # pyright: reportMissingImports=false
 import ctypes
+from contextlib import contextmanager
+
 import win32crypt  # pylint: disable=import-error
 from OpenSSL import crypto
 
 from opsicommon.logging import logger
 
-crypt32 = ctypes.WinDLL('crypt32.dll')
+crypt32 = ctypes.WinDLL("crypt32.dll")
 
 __all__ = ["install_ca", "load_ca", "remove_ca"]
 
@@ -33,7 +34,7 @@ X509_ASN_ENCODING = 0x00000001
 X509_NDR_ENCODING = 0x00000002
 PKCS_7_ASN_ENCODING = 0x00010000
 PKCS_7_NDR_ENCODING = 0x00020000
-PKCS_7_OR_X509_ASN_ENCODING = (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
+PKCS_7_OR_X509_ASN_ENCODING = PKCS_7_ASN_ENCODING | X509_ASN_ENCODING
 
 # Add certificate/CRL, encoded, context or element disposition values.
 CERT_STORE_ADD_NEW = 1
@@ -69,13 +70,7 @@ def _open_cert_store(store_name: str, ctype: bool = False, force_close: bool = T
 	if ctype:
 		_open = crypt32.CertOpenStore
 
-	store = _open(
-		CERT_STORE_PROV_SYSTEM,
-		0,
-		None,
-		CERT_SYSTEM_STORE_LOCAL_MACHINE | CERT_STORE_OPEN_EXISTING_FLAG,
-		store_name
-	)
+	store = _open(CERT_STORE_PROV_SYSTEM, 0, None, CERT_SYSTEM_STORE_LOCAL_MACHINE | CERT_STORE_OPEN_EXISTING_FLAG, store_name)
 	try:
 		yield store
 	finally:
@@ -93,9 +88,7 @@ def install_ca(ca_cert: crypto.X509):
 
 	with _open_cert_store(store_name) as store:
 		store.CertAddEncodedCertificateToStore(
-			X509_ASN_ENCODING,
-			crypto.dump_certificate(crypto.FILETYPE_ASN1, ca_cert),
-			CERT_STORE_ADD_REPLACE_EXISTING
+			X509_ASN_ENCODING, crypto.dump_certificate(crypto.FILETYPE_ASN1, ca_cert), CERT_STORE_ADD_REPLACE_EXISTING
 		)
 
 
@@ -125,22 +118,15 @@ def remove_ca(subject_name: str) -> bool:
 				0,
 				CERT_FIND_SUBJECT_STR,  # Searches for a certificate that contains the specified subject name string
 				subject_name,
-				None
+				None,
 			)
 			if p_cert_ctx == 0:
 				break
 
-			cbsize = crypt32.CertGetNameStringW(
-				p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, None, 0
-			)
+			cbsize = crypt32.CertGetNameStringW(p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, None, 0)
 			buf = ctypes.create_unicode_buffer(cbsize)
-			cbsize = crypt32.CertGetNameStringW(
-				p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, buf, cbsize
-			)
-			logger.info(
-				"Removing CA '%s' (%s) from '%s' store",
-				subject_name, buf.value, store_name
-			)
+			cbsize = crypt32.CertGetNameStringW(p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, buf, cbsize)
+			logger.info("Removing CA '%s' (%s) from '%s' store", subject_name, buf.value, store_name)
 			crypt32.CertDeleteCertificateFromStore(p_cert_ctx)
 			crypt32.CertFreeCertificateContext(p_cert_ctx)
 			removed += 1
@@ -149,10 +135,7 @@ def remove_ca(subject_name: str) -> bool:
 
 	if not removed:
 		# Cert not found
-		logger.info(
-			"CA '%s' not found in store '%s', nothing to remove",
-			subject_name, store_name
-		)
+		logger.info("CA '%s' not found in store '%s', nothing to remove", subject_name, store_name)
 		return False
 
 	return True

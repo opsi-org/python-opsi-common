@@ -6,22 +6,23 @@
 Helpers for testing.
 """
 
-import os
-import ssl
+import datetime
+import email
 import gzip
 import json
-import time
-import email
+import os
 import shutil
-import datetime
-import threading
 import socket
+import ssl
+import threading
+import time
 import urllib
 from contextlib import closing, contextmanager
 from http import HTTPStatus
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-import lz4
-import msgpack
+
+import lz4  # type: ignore[import]
+import msgpack  # type: ignore[import]
 
 
 class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
@@ -71,10 +72,10 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		file = None
 		if os.path.isdir(path):
 			parts = urllib.parse.urlsplit(self.path)
-			if not parts.path.endswith('/'):
+			if not parts.path.endswith("/"):
 				# redirect browser - doing basically what apache does
 				self.send_response(HTTPStatus.MOVED_PERMANENTLY)
-				new_parts = (parts[0], parts[1], parts[2] + '/', parts[3], parts[4])
+				new_parts = (parts[0], parts[1], parts[2] + "/", parts[3], parts[4])
 				new_url = urllib.parse.urlunsplit(new_parts)
 				self.send_header("Location", new_url)
 				self.end_headers()
@@ -96,7 +97,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self.send_error(HTTPStatus.NOT_FOUND, "File not found")
 			return None
 		try:
-			file = open(path, 'rb')  # pylint: disable=consider-using-with
+			file = open(path, "rb")  # pylint: disable=consider-using-with
 		except OSError:
 			self.send_error(HTTPStatus.NOT_FOUND, "File not found")
 			return None
@@ -104,11 +105,10 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		try:
 			fst = os.fstat(file.fileno())
 			# Use browser cache if possible
-			if ("If-Modified-Since" in self.headers and "If-None-Match" not in self.headers):
+			if "If-Modified-Since" in self.headers and "If-None-Match" not in self.headers:
 				# compare If-Modified-Since and time of last file modification
 				try:
-					ims = email.utils.parsedate_to_datetime(
-						self.headers["If-Modified-Since"])
+					ims = email.utils.parsedate_to_datetime(self.headers["If-Modified-Since"])
 				except (TypeError, IndexError, OverflowError, ValueError):
 					# ignore ill-formed values
 					pass
@@ -119,8 +119,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 						ims = ims.replace(tzinfo=datetime.timezone.utc)
 					if ims.tzinfo is datetime.timezone.utc:
 						# compare to UTC datetime of last modification
-						last_modif = datetime.datetime.fromtimestamp(
-							fst.st_mtime, datetime.timezone.utc)
+						last_modif = datetime.datetime.fromtimestamp(fst.st_mtime, datetime.timezone.utc)
 						# remove microseconds, like in If-Modified-Since
 						last_modif = last_modif.replace(microsecond=0)
 
@@ -152,23 +151,22 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			raise
 
 	def do_POST(self):  # pylint: disable=invalid-name
-		length = int(self.headers['Content-Length'])
+		length = int(self.headers["Content-Length"])
 		request = self.rfile.read(length)
 
-		if self.headers['Content-Encoding'] == "lz4":
+		if self.headers["Content-Encoding"] == "lz4":
 			request = lz4.frame.decompress(request)
-		elif self.headers['Content-Encoding'] == "gzip":
+		elif self.headers["Content-Encoding"] == "gzip":
 			request = gzip.decompress(request)
 
-		if "json" in self.headers.get('Content-Type', ''):
+		if "json" in self.headers.get("Content-Type", ""):
 			request = json.loads(request)
-		elif "msgpack" in self.headers.get('Content-Type', ''):
+		elif "msgpack" in self.headers.get("Content-Type", ""):
 			request = msgpack.loads(request)
 
-		self._log({
-			"method": "POST", "client_address": self.client_address,
-			"path": self.path, "headers": dict(self.headers), "request": request
-		})
+		self._log(
+			{"method": "POST", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers), "request": request}
+		)
 		response = None
 		if self.server.response_body:
 			response = self.server.response_body
@@ -185,10 +183,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self.wfile.write(response)
 
 	def do_GET(self):  # pylint: disable=invalid-name
-		self._log({
-			"method": "GET", "client_address": self.client_address,
-			"path": self.path, "headers": dict(self.headers)
-		})
+		self._log({"method": "GET", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
 		if self.server.serve_directory:
 			file = self.send_head()
 			if file:
@@ -205,8 +200,8 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 					file.close()
 			return None
 
-		if self.headers['X-Response-Status']:
-			val = self.headers['X-Response-Status'].split(" ", 1)
+		if self.headers["X-Response-Status"]:
+			val = self.headers["X-Response-Status"].split(" ", 1)
 			self.send_response(int(val[0]), val[1])
 		elif self.server.response_status:
 			self.send_response(self.server.response_status[0], self.server.response_status[1])
@@ -225,14 +220,11 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 
 	def do_PUT(self):  # pylint: disable=invalid-name
 		"""Serve a PUT request."""
-		self._log({
-			"method": "PUT", "client_address": self.client_address,
-			"path": self.path, "headers": dict(self.headers)
-		})
+		self._log({"method": "PUT", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
 		if self.server.serve_directory:
 			path = self.translate_path(self.path)
-			length = int(self.headers['Content-Length'])
-			with open(path, 'wb') as file:
+			length = int(self.headers["Content-Length"])
+			with open(path, "wb") as file:
 				file.write(self.rfile.read(length))
 			self.send_response(201, "Created")
 			self.end_headers()
@@ -242,10 +234,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 
 	def do_MKCOL(self):  # pylint: disable=invalid-name
 		"""Serve a MKCOL request."""
-		self._log({
-			"method": "MKCOL", "client_address": self.client_address,
-			"path": self.path, "headers": dict(self.headers)
-		})
+		self._log({"method": "MKCOL", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
 		if self.server.serve_directory:
 			path = self.translate_path(self.path)
 			os.makedirs(path)
@@ -257,10 +246,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 
 	def do_DELETE(self):  # pylint: disable=invalid-name
 		"""Serve a DELETE request."""
-		self._log({
-			"method": "DELETE", "client_address": self.client_address,
-			"path": self.path, "headers": dict(self.headers)
-		})
+		self._log({"method": "DELETE", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
 		if self.server.serve_directory:
 			path = self.translate_path(self.path)
 			if os.path.exists(path):
@@ -278,10 +264,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 
 	def do_HEAD(self):  # pylint: disable=invalid-name
 		"""Serve a HEAD request."""
-		self._log({
-			"method": "HEAD", "client_address": self.client_address,
-			"path": self.path, "headers": dict(self.headers)
-		})
+		self._log({"method": "HEAD", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
 		if self.server.serve_directory:
 			super().do_HEAD()
 		else:
@@ -300,7 +283,7 @@ class HTTPTestServer(threading.Thread):  # pylint: disable=too-many-instance-att
 		response_status=None,
 		response_body=None,
 		response_delay=None,
-		serve_directory=None
+		serve_directory=None,
 	):
 		super().__init__()
 		self.log_file = str(log_file) if log_file else None
@@ -314,7 +297,7 @@ class HTTPTestServer(threading.Thread):  # pylint: disable=too-many-instance-att
 		self.serve_directory = str(serve_directory) if serve_directory else None
 		# Auto select free port
 		with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-			sock.bind(('', 0))
+			sock.bind(("", 0))
 			sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 			self.port = sock.getsockname()[1]
 		self.server = None
@@ -356,12 +339,11 @@ def http_test_server(  # pylint: disable=too-many-arguments
 	response_status=None,
 	response_body=None,
 	response_delay=None,
-	serve_directory=None
+	serve_directory=None,
 ):
 	timeout = 5
 	server = HTTPTestServer(
-		log_file, ip_version, server_key, server_cert,
-		response_headers, response_status, response_body, response_delay, serve_directory
+		log_file, ip_version, server_key, server_cert, response_headers, response_status, response_body, response_delay, serve_directory
 	)
 	server.daemon = True
 	server.start()
