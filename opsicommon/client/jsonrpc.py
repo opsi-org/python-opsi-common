@@ -106,6 +106,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._http_pool_maxsize = 10
 		self._http_max_retries = 1
 		self._session_lifetime = 150  # In seconds
+		self.create_objects = True
 		self.server_name = None
 		self.base_url = None
 
@@ -167,6 +168,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			elif option == "sessionlifetime":
 				if value:
 					self._session_lifetime = int(value)
+			elif option == "createobjects":
+				self.create_objects = bool(value)
 			else:
 				if self.__class__.__name__ != "JSONRPCBackend":
 					logger.warning("Invalid argument '%s'", option)
@@ -472,7 +475,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		if error_cls:
 			raise error_cls(f"{error_msg} (error on server)")
 
-		data = deserialize(data.get("result"), prevent_object_creation=method.endswith("_getHashes"))
+		data = deserialize(data.get("result"), prevent_object_creation=method.endswith("_getHashes") if self.create_objects else True)
 
 		return data
 
