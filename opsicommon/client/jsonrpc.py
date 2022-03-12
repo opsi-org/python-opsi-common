@@ -157,15 +157,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 					else:
 						logger.error("Invalid ip version '%s', using %s", value, self._ip_version)
 			elif option == "serialization":
-				if value not in (None, ""):
-					if value in ("auto", "json", "msgpack"):
-						self._serialization = value
-					else:
-						logger.error(
-							"Invalid serialization '%s', using %s",
-							value,
-							self._serialization,
-						)
+				self.serialization = value
 			elif option == "sessionlifetime":
 				if value:
 					self._session_lifetime = int(value)
@@ -252,6 +244,23 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		if urllib3.util.connection.HAS_IPV6:
 			return socket.AF_UNSPEC
 		return socket.AF_INET
+
+	@property
+	def serialization(self) -> str:
+		return self._serialization
+
+	@serialization.setter
+	def serialization(self, serialization: str):
+		if serialization in (None, ""):
+			return
+		if serialization in ("auto", "json", "msgpack"):
+			self._serialization = serialization
+		else:
+			logger.error(
+				"Invalid serialization %r, using %r",
+				serialization,
+				self._serialization,
+			)
 
 	@property
 	def hostname(self):
