@@ -107,6 +107,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._http_max_retries = 1
 		self._session_lifetime = 150  # In seconds
 		self.create_objects = True
+		self.raw_responses = False
 		self.server_name = None
 		self.base_url = None
 
@@ -170,6 +171,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 					self._session_lifetime = int(value)
 			elif option == "createobjects":
 				self.create_objects = bool(value)
+			elif option == "rawresponses":
+				self.raw_responses = bool(value)
 			else:
 				if self.__class__.__name__ != "JSONRPCBackend":
 					logger.warning("Invalid argument '%s'", option)
@@ -462,6 +465,9 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				error_cls = BackendAuthenticationError
 			if response.status_code == 403:
 				error_cls = BackendPermissionDeniedError
+
+		if self.raw_responses:
+			return data
 
 		if data.get("error"):
 			logger.debug("JSONRPC-response contains error")
