@@ -460,11 +460,6 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			logger.trace("Decompressing data with lz4")
 			data = lz4.frame.decompress(data)
 
-		if content_type == "application/msgpack":
-			data = msgpack.loads(data)
-		else:
-			data = json.loads(data)
-
 		error_cls = None
 		error_msg = None
 		if response.status_code != 200:
@@ -476,7 +471,14 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				error_cls = BackendPermissionDeniedError
 
 		if self.raw_responses:
+			if error_cls:
+				raise error_cls(f"{error_msg} (error on server)")
 			return data
+
+		if content_type == "application/msgpack":
+			data = msgpack.loads(data)
+		else:
+			data = json.loads(data)
 
 		if data.get("error"):
 			logger.debug("JSONRPC-response contains error")
