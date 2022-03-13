@@ -15,6 +15,7 @@ import threading
 import time
 import types
 import warnings
+from ast import Attribute
 from typing import Callable
 from urllib.parse import quote, unquote, urlparse
 
@@ -439,6 +440,11 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		try:
 			response = self._session.post(self.base_url, headers=headers, data=data, stream=True, timeout=timeout)
 		except SSLError as err:
+			try:
+				if err.args[0].reason.args[0].errno == 8:
+					raise err
+			except (AttributeError, IndexError):
+				pass
 			raise OpsiServiceVerificationError(str(err)) from err
 
 		content_type = response.headers.get("Content-Type", "")
