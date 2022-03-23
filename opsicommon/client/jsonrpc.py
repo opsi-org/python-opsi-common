@@ -481,10 +481,15 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				raise error_cls(f"{error_msg} (error on server)")
 			return data
 
-		if content_type == "application/msgpack":
-			data = msgpack.loads(data)
-		else:
-			data = json.loads(data)
+		try:
+			if content_type == "application/msgpack":
+				data = msgpack.loads(data)
+			else:
+				data = json.loads(data)
+		except Exception:  # pylint: disable=broad-except
+			if error_cls:
+				raise error_cls(f"{error_msg} (error on server)") from None
+			raise
 
 		if data.get("error"):
 			logger.debug("JSONRPC-response contains error")
