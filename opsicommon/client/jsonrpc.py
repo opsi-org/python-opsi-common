@@ -15,7 +15,6 @@ import threading
 import time
 import types
 import warnings
-from ast import Attribute
 from typing import Callable
 from urllib.parse import quote, unquote, urlparse
 
@@ -111,6 +110,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self.raw_responses = False
 		self.server_name = None
 		self.base_url = None
+		self.no_proxy_addresses = list(set(self.no_proxy_addresses + [socket.getfqdn()]))
 
 		session_id = None
 		for option, value in kwargs.items():
