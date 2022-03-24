@@ -136,7 +136,9 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 				self.send_response(HTTPStatus.OK)
 			self.send_header("Content-type", ctype)
 			if range_:
-				start_byte, end_byte = [int(b) for b in range_.split("=")[1].split("-")]
+				start_byte, end_byte = range_.split("=")[1].split("-")
+				start_byte = int(start_byte or 0)
+				end_byte = int(end_byte or fst[6])
 				if end_byte >= fst[6]:
 					end_byte = fst[6] - 1
 				self.send_header("Content-Length", str(end_byte - start_byte + 1))
@@ -191,7 +193,10 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 					range_ = self.headers.get("Range")
 					if range_:
 						#  Range: bytes=0-2047
-						start_byte, end_byte = [int(b) for b in range_.split("=")[1].split("-")]
+						fst = os.fstat(file.fileno())
+						start_byte, end_byte = range_.split("=")[1].split("-")
+						start_byte = int(start_byte or 0)
+						end_byte = int(end_byte or fst[6])
 						file.seek(start_byte)
 						self.wfile.write(file.read(end_byte - start_byte + 1))
 					else:
