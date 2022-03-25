@@ -55,6 +55,7 @@ def deserialize(obj, prevent_object_creation=False):  # pylint: disable=invalid-
 		if (
 			not prevent_object_creation
 			and "type" in obj
+			and isinstance(obj["type"], str)
 			and obj["type"] in OBJECT_CLASSES
 			and issubclass(OBJECT_CLASSES[obj["type"]], BaseObject)
 		):
