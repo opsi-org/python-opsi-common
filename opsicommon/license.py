@@ -716,12 +716,20 @@ def set_default_opsi_license_pool(pool: OpsiLicensePool) -> None:
 
 
 def get_default_opsi_license_pool(
-	license_file_path: str = None, modules_file_path: str = None, client_info: Union[dict, Callable] = None
+	license_file_path: str = None,
+	modules_file_path: str = None,
+	client_info: Union[dict, Callable] = None,
+	client_limit_warning_percent: int = None,
+	client_limit_warning_absolute: int = None
 ) -> OpsiLicensePool:
 	global _default_opsi_license_pool  # pylint: disable=invalid-name,global-statement
 	if not _default_opsi_license_pool:
 		_default_opsi_license_pool = OpsiLicensePool(
-			license_file_path=license_file_path, modules_file_path=modules_file_path, client_info=client_info
+			license_file_path=license_file_path,
+			modules_file_path=modules_file_path,
+			client_info=client_info,
+			client_limit_warning_percent=client_limit_warning_percent,
+			client_limit_warning_absolute=client_limit_warning_absolute
 		)
 		_default_opsi_license_pool.load()
 	return _default_opsi_license_pool
