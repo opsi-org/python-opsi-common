@@ -562,9 +562,9 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches
 	if observable_handler not in get_all_handlers(ObservableHandler):
 		logging.root.addHandler(observable_handler)
 
-	min_value = 0
+	min_value = logging.NONE
 	for handler in get_all_handlers():
-		if handler.level != 0 and handler.level < min_value:
+		if handler.level != logging.NOTSET and handler.level < min_value:
 			min_value = handler.level
 	logging.root.setLevel(min_value)
 
@@ -737,10 +737,12 @@ def get_all_handlers(handler_type: type = None, handler_name: str = None):
 		if not isinstance(_logger, logging.PlaceHolder):
 			for _handler in _logger.handlers:
 				if (
-					not handler_type
-					or type(_handler) == handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
-				) and (
-					not handler_name or _handler.name == handler_name
+					(not isinstance(_handler, logging.NullHandler))
+					and (
+						not handler_type
+						or type(_handler) == handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
+					)
+					and (not handler_name or _handler.name == handler_name)
 				):
 					handlers.append(_handler)
 	return handlers
