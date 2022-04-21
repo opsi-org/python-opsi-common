@@ -14,7 +14,6 @@ import subprocess
 import time
 import types
 from datetime import date, datetime
-from sqlite3 import InternalError
 from typing import Any, Dict
 
 import requests
@@ -46,12 +45,12 @@ def deserialize(obj, prevent_object_creation=False):  # pylint: disable=invalid-
 	global OBJECT_CLASSES  # pylint: disable=global-statement,invalid-name,global-variable-not-assigned
 	if OBJECT_CLASSES is None:
 		from opsicommon.objects import (  # pylint: disable=redefined-outer-name,import-outside-toplevel
-		    OBJECT_CLASSES,
+			OBJECT_CLASSES,
 		)
 	global BaseObject  # pylint: disable=global-statement,invalid-name,global-variable-not-assigned
 	if BaseObject is None:
 		from opsicommon.objects import (  # pylint: disable=redefined-outer-name,import-outside-toplevel
-		    BaseObject,
+			BaseObject,
 		)
 
 	if isinstance(obj, dict):
