@@ -6,24 +6,25 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-import os
 import datetime
+import os
 import subprocess
-import pytest
 
 import psutil  # type: ignore[import]
+import pytest
 
-from opsicommon.objects import Product, LocalbootProduct
+from opsicommon.objects import LocalbootProduct, Product
 from opsicommon.utils import (
 	Singleton,
-	serialize,
-	deserialize,
 	combine_versions,
-	to_json,
+	deserialize,
 	from_json,
+	frozen_lru_cache,
 	generate_opsi_host_key,
-	timestamp,
 	monkeypatch_subprocess_for_frozen,
+	serialize,
+	timestamp,
+	to_json,
 )
 
 from .helpers import environment
@@ -114,3 +115,21 @@ def test_monkeypatch_subprocess_for_frozen():
 			proc.wait()
 		assert os.environ.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
 		assert os.environ.get("LD_LIBRARY_PATH") == ld_library_path
+
+
+def test_frozen_lru_cache():
+	@frozen_lru_cache
+	def testfunc(mydict: dict):
+		return {key: value + 1 for key, value in mydict.items()}
+
+	@frozen_lru_cache(1)
+	def testfunc_parameterized(mydict: dict):
+		return {key: value + 1 for key, value in mydict.items()}
+
+	for func in (testfunc, testfunc_parameterized):
+		result = func({"a": 0, "b": 42})
+		assert result["a"] == 1 and result["b"] == 43
+		result = func({"a": 10, "b": 10})
+		assert result["a"] == 11 and result["b"] == 11
+		result = func({"a": 0, "b": 42})
+		assert result["a"] == 1 and result["b"] == 43
