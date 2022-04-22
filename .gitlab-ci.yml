@@ -8,7 +8,7 @@ test:pytest-darwin:
   #when: manual
   stage: test
   tags:
-    - macos
+    - macos_catalina
   script:
     # /etc/sudoers
     # runner ALL=(ALL) NOPASSWD: ALL
