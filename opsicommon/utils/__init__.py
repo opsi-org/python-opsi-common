@@ -17,7 +17,6 @@ from datetime import date, datetime
 from typing import Any, Dict
 
 import requests
-from frozendict import frozendict
 
 from opsicommon.logging import logger
 
@@ -235,16 +234,37 @@ def frozen_lru_cache(*decorator_args):
 	This decorator is intended to be used as drop-in replacement for functools.lru_cache.
 	It mitigates the weakness of not being able to handle dictionary type arguments by freezing them.
 	"""
+	if len(decorator_args) == 1 and callable(decorator_args[0]):
+		# No arguments, this is the decorator
+		cache = functools.lru_cache()
+	else:
+		cache = functools.lru_cache(*decorator_args)
 
 	def inner(func):
+		def deserialise(value):
+			try:
+				return json.loads(value)
+			except Exception:  # pylint: disable=broad-except
+				return value
+
 		def func_with_serialized_params(*args, **kwargs):
-			_args = tuple([frozendict(arg) if isinstance(arg, dict) else arg for arg in args])
-			_kwargs = {k: frozendict(v) if isinstance(v, dict) else v for k, v in kwargs.items()}
+			_args = tuple([deserialise(arg) for arg in args])
+			_kwargs = {k: deserialise(v) for k, v in kwargs.items()}
 			return func(*_args, **_kwargs)
 
-		return func_with_serialized_params
+		cached_function = cache(func_with_serialized_params)
+
+		@functools.wraps(func)
+		def lru_decorator(*args, **kwargs):
+			_args = tuple([json.dumps(arg, sort_keys=True) if type(arg) in (list, dict) else arg for arg in args])
+			_kwargs = {k: json.dumps(v, sort_keys=True) if type(v) in (list, dict) else v for k, v in kwargs.items()}
+			return cached_function(*_args, **_kwargs)
+
+		lru_decorator.cache_info = cached_function.cache_info
+		lru_decorator.cache_clear = cached_function.cache_clear
+		return lru_decorator
 
 	if len(decorator_args) == 1 and callable(decorator_args[0]):
 		# No arguments, this is the decorator
-		return functools.lru_cache()(inner)(decorator_args[0])
-	return (functools.lru_cache(*decorator_args))(inner)
+		return inner(decorator_args[0])
+	return inner
