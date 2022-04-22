@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "python-opsi-common"
-version = "4.2.0.282"
+version = "4.2.0.283"
 description = "The opsi python common library"
 homepage = "https://www.opsi.org"
 license = "AGPL-3.0"
@@ -26,6 +26,7 @@ pycryptodome = "^3.10"
 pyopenssl = "^22.0"
 pywin32 = {platform = "win32", version = "^303"}
 requests = "^2.26"
+frozendict = "^2.3.2"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0"

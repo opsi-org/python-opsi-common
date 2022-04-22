@@ -6,6 +6,7 @@
 General utility functions.
 """
 
+import functools
 import json
 import os
 import secrets
@@ -16,6 +17,7 @@ from datetime import date, datetime
 from typing import Any, Dict
 
 import requests
+from frozendict import frozendict
 
 from opsicommon.logging import logger
 
@@ -226,3 +228,23 @@ class PopenFrozen(subprocess.Popen):
 
 def monkeypatch_subprocess_for_frozen():
 	subprocess.Popen = PopenFrozen
+
+
+def frozen_lru_cache(*decorator_args):
+	"""
+	This decorator is intended to be used as drop-in replacement for functools.lru_cache.
+	It mitigates the weakness of not being able to handle dictionary type arguments by freezing them.
+	"""
+
+	def inner(func):
+		def func_with_serialized_params(*args, **kwargs):
+			_args = tuple([frozendict(arg) if isinstance(arg, dict) else arg for arg in args])
+			_kwargs = {k: frozendict(v) if isinstance(v, dict) else v for k, v in kwargs.items()}
+			return func(*_args, **_kwargs)
+
+		return func_with_serialized_params
+
+	if len(decorator_args) == 1 and callable(decorator_args[0]):
+		# No arguments, this is the decorator
+		return functools.lru_cache()(inner)(decorator_args[0])
+	return (functools.lru_cache(*decorator_args))(inner)
