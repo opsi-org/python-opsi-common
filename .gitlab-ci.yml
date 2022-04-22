@@ -11,8 +11,8 @@ test:pytest-darwin:
     - macos_catalina
   script:
     - poetry install
-    - sudo poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_darwin1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
-    - sudo poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_darwin2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
+    - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_darwin1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
+    - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_darwin2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
     - poetry run opsi-dev-tool -l info --testreport-merge testreport_darwin1.xml testreport_darwin2.xml testreport_darwin.xml
     - mv .coverage coverage_darwin
   artifacts:
