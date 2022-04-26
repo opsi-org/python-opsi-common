@@ -626,6 +626,7 @@ def log_context(new_context: Dict):
 	:param new_context: new context to set for the section.
 	:type new_context: dict
 	"""
+	token = None
 	try:
 		token = set_context(new_context)
 		yield
