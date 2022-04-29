@@ -55,6 +55,7 @@ _DEFAULT_HTTPS_PORT = 4447
 
 logger = get_logger("opsicommon.general")
 
+
 def no_export(func: Callable) -> Callable:
 	setattr(func, "no_export", True)
 	return func

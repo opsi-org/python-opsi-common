@@ -479,7 +479,7 @@ last_stderr_format = None  # pylint: disable=invalid-name
 last_file_format = None  # pylint: disable=invalid-name
 
 
-def logging_config(  # pylint: disable=too-many-arguments,too-many-branches
+def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-statements
 	stderr_level: int = None,
 	stderr_format: str = None,
 	log_file: str = None,

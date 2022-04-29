@@ -250,7 +250,7 @@ def frozen_lru_cache(*decorator_args):
 				return value
 
 		def func_with_serialized_params(*args, **kwargs):
-			_args = tuple([deserialise(arg) for arg in args])
+			_args = tuple([deserialise(arg) for arg in args])  # pylint: disable=consider-using-generator
 			_kwargs = {k: deserialise(v) for k, v in kwargs.items()}
 			return func(*_args, **_kwargs)
 
@@ -258,7 +258,7 @@ def frozen_lru_cache(*decorator_args):
 
 		@functools.wraps(func)
 		def lru_decorator(*args, **kwargs):
-			_args = tuple([json.dumps(arg, sort_keys=True) if type(arg) in (list, dict) else arg for arg in args])
+			_args = tuple([json.dumps(arg, sort_keys=True) if type(arg) in (list, dict) else arg for arg in args])  # pylint: disable=consider-using-generator
 			_kwargs = {k: json.dumps(v, sort_keys=True) if type(v) in (list, dict) else v for k, v in kwargs.items()}
 			return cached_function(*_args, **_kwargs)
 
