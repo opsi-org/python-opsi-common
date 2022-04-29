@@ -10,6 +10,7 @@ import codecs
 import contextvars
 import logging
 import os
+import re
 import sys
 import tempfile
 import traceback
@@ -572,16 +573,16 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 	logging.root.setLevel(min_value)
 
 	if logger_levels:
-		loggers = {logger_.name: logger_ for logger_ in get_all_loggers() if hasattr(logger_, "name")}
-		for logger_name, level in logger_levels.items():
+		loggers = {logger_.name: logger_ for logger_ in list(logging.Logger.manager.loggerDict.values()) if hasattr(logger_, "name")}
+		for logger_re, level in logger_levels.items():
+			logger_re = re.compile(logger_re)
 			if level is None:
 				continue
-			logger_ = loggers.get(logger_name)
-			if not logger_:
-				continue
-			if level < 10:
-				level = logging.opsi_level_to_level[level]
-			logger_.setLevel(level)
+			for logger_name, logger_ in loggers.items():
+				if logger_re.match(logger_name):
+					if level < 10:
+						level = logging.opsi_level_to_level[level]
+					logger_.setLevel(level)
 
 	if stderr_format and stderr_format.find("(log_color)") != -1 and not stderr_file.isatty():
 		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")

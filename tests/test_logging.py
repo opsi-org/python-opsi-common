@@ -471,6 +471,10 @@ def test_sub_logger():  # pylint: disable=redefined-outer-name
 		sub_logger.error("sub_logger_4")
 		sub_logger.warning("sub_logger_5")
 
+		logging_config(logger_levels={"s.*": LOG_WARNING})
+
+		sub_logger.warning("sub_logger_6")
+
 		stream.seek(0)
 		log = stream.read()
 		assert "root_logger_1" in log
@@ -480,3 +484,4 @@ def test_sub_logger():  # pylint: disable=redefined-outer-name
 		assert "root_logger_3" in log
 		assert "sub_logger_4" in log
 		assert "sub_logger_5" not in log
+		assert "sub_logger_6" in log
