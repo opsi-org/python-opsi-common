@@ -30,12 +30,9 @@ from .constants import (
 	SECRET_REPLACEMENT_STRING,
 )
 
-logger = logging.getLogger()
+orig_getLogger = logging.getLogger
+logger = orig_getLogger()
 context = contextvars.ContextVar("context", default={})
-
-
-def get_logger(name: str = None) -> logging.Logger:
-	return logging.getLogger(name)
 
 
 def secret(self, msg: str, *args, **kwargs):
@@ -575,9 +572,7 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 
 	if logger_levels:
 		loggers = {logger_.name: logger_ for logger_ in list(logging.Logger.manager.loggerDict.values()) if hasattr(logger_, "name")}
-		# Sort by regex length so the closest match will be applied at last
-		for logger_re in sorted(logger_levels, key=len):
-			level = logger_levels[logger_re]
+		for logger_re, level in logger_levels.items():
 			logger_re = re.compile(logger_re)
 			if level is None:
 				continue
@@ -671,11 +666,14 @@ def set_context(new_context: Dict) -> contextvars.Token:
 	return None
 
 
+def add_context_filter_to_logger(_logger: logging.Logger):
+	if not isinstance(_logger, logging.PlaceHolder) and context_filter not in _logger.filters:
+		_logger.addFilter(context_filter)
+
+
 def add_context_filter_to_loggers():
 	for _logger in get_all_loggers():
-		if not isinstance(_logger, logging.PlaceHolder):
-			if context_filter not in _logger.filters:
-				_logger.addFilter(context_filter)
+		add_context_filter_to_logger(_logger)
 
 
 def set_filter(filter_dict: Dict):
@@ -826,4 +824,12 @@ init_warnings_capture()
 observable_handler = ObservableHandler()
 secret_filter = SecretFilter()
 context_filter = ContextFilter()
+
+
+def get_logger(name: str = None) -> logging.Logger:
+	_logger = orig_getLogger(name)
+	add_context_filter_to_logger(_logger)
+	return _logger
+
+logging.getLogger = get_logger
 logging_config(stderr_level=logging.WARNING)
