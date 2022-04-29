@@ -831,5 +831,6 @@ def get_logger(name: str = None) -> logging.Logger:
 	add_context_filter_to_logger(_logger)
 	return _logger
 
+
 logging.getLogger = get_logger
 logging_config(stderr_level=logging.WARNING)
