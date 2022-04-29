@@ -338,6 +338,7 @@ class ContextSecretFormatter(logging.Formatter):
 		:returns: The formatted log string.
 		:rytpe: str
 		"""
+		record.contextstring = ""
 		if hasattr(record, "context") and isinstance(record.context, dict):
 			record.contextstring = ",".join([str(v) for k, v in record.context.items() if self.logger_name_in_context_string or k != "logger"])
 
