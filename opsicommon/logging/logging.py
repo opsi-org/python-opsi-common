@@ -574,7 +574,9 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 
 	if logger_levels:
 		loggers = {logger_.name: logger_ for logger_ in list(logging.Logger.manager.loggerDict.values()) if hasattr(logger_, "name")}
-		for logger_re, level in logger_levels.items():
+		# Sort by regex length so the closest match will be applied at last
+		for logger_re in sorted(logger_levels, key=len):
+			level = logger_levels[logger_re]
 			logger_re = re.compile(logger_re)
 			if level is None:
 				continue
