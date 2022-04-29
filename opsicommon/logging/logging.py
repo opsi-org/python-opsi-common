@@ -287,6 +287,7 @@ class ContextSecretFormatter(logging.Formatter):
 	2. It can replace secret strings specified to a SecretFilter by a
 		replacement string, thus censor passwords etc.
 	"""
+	logger_name_in_context_string = False
 
 	def __init__(self, orig_formatter: logging.Formatter):  # pylint: disable=super-init-not-called
 		"""
@@ -337,7 +338,7 @@ class ContextSecretFormatter(logging.Formatter):
 		:rytpe: str
 		"""
 		if hasattr(record, "context") and isinstance(record.context, dict):
-			record.contextstring = ",".join([str(v) for k, v in record.context.items() if k != "logger"])
+			record.contextstring = ",".join([str(v) for k, v in record.context.items() if self.logger_name_in_context_string or k != "logger"])
 
 		msg = self.orig_formatter.format(record)
 		if not self.secret_filter_enabled:

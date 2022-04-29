@@ -13,7 +13,7 @@ from contextlib import contextmanager
 import win32crypt  # pylint: disable=import-error
 from OpenSSL import crypto
 
-from opsicommon.logging import logger
+from opsicommon.logging import get_logger
 
 crypt32 = ctypes.WinDLL("crypt32.dll")
 
@@ -62,6 +62,8 @@ CERT_NAME_FRIENDLY_DISPLAY_TYPE = 5
 # - TrustedPublisher: Certificate store for directly trusted publishers.
 
 # The default is My.
+
+logger = get_logger("opsicommon.general")
 
 
 @contextmanager

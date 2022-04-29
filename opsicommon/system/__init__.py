@@ -12,12 +12,15 @@ from collections import namedtuple
 
 import psutil  # type: ignore[import]
 
-from opsicommon.logging import logger
+from opsicommon.logging import get_logger
 
 Session = namedtuple("Session", ["id", "type", "username", "terminal", "login_pid", "started"])
 
 if sys.platform == "linux":
 	from .linux import get_user_sessions, run_process_in_session
+
+
+logger = get_logger("opsicommon.general")
 
 
 def ensure_not_already_running(process_name: str = None):

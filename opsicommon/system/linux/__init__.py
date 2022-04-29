@@ -16,9 +16,11 @@ from typing import List
 
 import psutil  # type: ignore[import]
 
-from opsicommon.logging import logger
+from opsicommon.logging import get_logger
 
 from .. import Session
+
+logger = get_logger("opsicommon.general")
 
 
 def get_user_sessions(username: str = None, session_type: str = None):

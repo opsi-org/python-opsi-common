@@ -15,7 +15,7 @@ from datetime import date, datetime
 from typing import List
 
 from opsicommon.exceptions import BackendBadValueError, BackendConfigurationError
-from opsicommon.logging import logger
+from opsicommon.logging import get_logger
 from opsicommon.types import (
 	forceActionProgress,
 	forceActionRequest,
@@ -118,6 +118,9 @@ __all__ = (
 	"objects_differ",
 	"OBJECT_CLASSES",
 )
+
+
+logger = get_logger("opsicommon.general")
 
 _MANDATORY_CONSTRUCTOR_ARGS_CACHE = {}
 

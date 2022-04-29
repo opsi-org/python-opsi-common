@@ -11,7 +11,9 @@ import socket
 
 import psutil  # type: ignore[import]
 
-from opsicommon.logging import logger
+from opsicommon.logging import get_logger
+
+logger = get_logger("opsicommon.general")
 
 
 def get_ip_addresses():

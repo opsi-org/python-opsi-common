@@ -12,9 +12,12 @@ import tempfile
 
 from OpenSSL import crypto
 
-from opsicommon.logging import logger
+from opsicommon.logging import get_logger
 
 __all__ = ["install_ca", "load_ca", "remove_ca"]
+
+
+logger = get_logger("opsicommon.general")
 
 
 def install_ca(ca_cert: crypto.X509):

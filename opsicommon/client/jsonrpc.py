@@ -43,7 +43,7 @@ from opsicommon.exceptions import (
 	OpsiRpcError,
 	OpsiServiceVerificationError,
 )
-from opsicommon.logging import logger, secret_filter
+from opsicommon.logging import get_logger, secret_filter
 from opsicommon.utils import deserialize, prepare_proxy_environment, serialize
 
 warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
@@ -53,6 +53,7 @@ _LZ4_COMPRESSION = "lz4"
 _DEFAULT_HTTP_PORT = 4444
 _DEFAULT_HTTPS_PORT = 4447
 
+logger = get_logger("opsicommon.general")
 
 def no_export(func: Callable) -> Callable:
 	setattr(func, "no_export", True)

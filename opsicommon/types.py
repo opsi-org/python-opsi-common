@@ -17,7 +17,7 @@ import sys
 import time
 import types
 
-from opsicommon.logging import logger
+from opsicommon.logging import get_logger
 
 if os.name != "nt":
 	WindowsError = RuntimeError
@@ -99,6 +99,7 @@ __all__ = (
 	"forceUrl",
 )
 
+logger = get_logger("opsicommon.general")
 encoding = sys.getfilesystemencoding()
 
 _HARDWARE_ID_REGEX = re.compile(r"^[a-fA-F0-9]{4}$")

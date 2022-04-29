@@ -20,9 +20,11 @@ from OpenSSL.crypto import (
 	dump_privatekey,
 )
 
-from opsicommon.logging import logger
+from opsicommon.logging import get_logger
 
 PRIVATE_KEY_CIPHER = "DES3"
+
+logger = get_logger("opsicommon.general")
 
 
 def as_pem(cert_or_key: Union[X509, PKey], passphrase=None):

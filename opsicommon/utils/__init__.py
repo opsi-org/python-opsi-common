@@ -18,10 +18,12 @@ from typing import Any, Dict
 
 import requests
 
-from opsicommon.logging import logger
+from opsicommon.logging import get_logger
 
 OBJECT_CLASSES = None
 BaseObject = None  # pylint: disable=invalid-name
+
+logger = get_logger("opsicommon.general")
 
 
 def deserialize(obj, prevent_object_creation=False):  # pylint: disable=invalid-name
