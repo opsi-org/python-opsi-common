@@ -42,6 +42,7 @@ from .logging import (
 	context_filter,
 	get_all_handlers,
 	get_all_loggers,
+	get_logger,
 	handle_log_exception,
 	init_logging,
 	init_warnings_capture,

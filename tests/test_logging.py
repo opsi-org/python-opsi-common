@@ -6,28 +6,45 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-import os
-import re
-import time
+import asyncio
 import codecs
 import logging
-import warnings
-import threading
-import asyncio
+import os
 import random
+import re
 import tempfile
+import threading
+import time
+import warnings
 
-import requests
 import pytest
+import requests
 
 from opsicommon.logging import (
-	logger, handle_log_exception, secret_filter, observable_handler,
-	ContextSecretFormatter, context_filter, log_context, set_format,
-	init_logging, print_logger_info, set_filter, set_context,
-	set_filter_from_string, logging_config, init_warnings_capture
+	ContextSecretFormatter,
+	context_filter,
+	get_logger,
+	handle_log_exception,
+	init_logging,
+	init_warnings_capture,
+	log_context,
+	logger,
+	logging_config,
+	observable_handler,
+	print_logger_info,
+	secret_filter,
+	set_context,
+	set_filter,
+	set_filter_from_string,
+	set_format,
 )
 from opsicommon.logging.constants import (
-	LOG_SECRET, LOG_WARNING, LOG_ERROR, LOG_DEBUG, LOG_TRACE, LOG_INFO
+	LOG_DEBUG,
+	LOG_ERROR,
+	LOG_INFO,
+	LOG_SECRET,
+	LOG_TRACE,
+	LOG_WARNING,
 )
 
 from .helpers import log_stream
@@ -40,10 +57,7 @@ def test_levels():  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_SECRET, format="%(message)s") as stream:
 		expected = ""
 		print_logger_info()
-		for level in (
-			"secret", "confidential", "trace", "debug2", "debug",
-			"info", "notice", "warning", "error", "critical", "comment"
-		):
+		for level in ("secret", "confidential", "trace", "debug2", "debug", "info", "notice", "warning", "error", "critical", "comment"):
 			func = getattr(logger, level)
 			msg = f"logline {level}"
 			func(msg)
@@ -161,11 +175,11 @@ def test_context():  # pylint: disable=redefined-outer-name
 		)
 
 		logger.info("before setting context")
-		with log_context({'whoami': "first-context"}):
+		with log_context({"whoami": "first-context"}):
 			logger.warning("lorem ipsum")
-		with log_context({'whoami': "second-context"}):
+		with log_context({"whoami": "second-context"}):
 			logger.error("dolor sit amet")
-			assert context_filter.get_context() == {'whoami': "second-context"}
+			assert context_filter.get_context() == {"logger": "root", "whoami": "second-context"}
 		stream.seek(0)
 		log = stream.read()
 		assert "first-context" in log
@@ -178,7 +192,7 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 		logger.info("common_work")
 		time.sleep(0.2)
 
-	class Main():  # pylint: disable=too-few-public-methods
+	class Main:  # pylint: disable=too-few-public-methods
 		def run(self):  # pylint: disable=no-self-use
 			AsyncMain().start()
 			for _ in range(5):  # perform 5 iterations
@@ -205,7 +219,7 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 			loop.close()
 
 		async def handle_client(self, client: str):  # pylint: disable=no-self-use
-			with log_context({'whoami': "handler for " + str(client)}):
+			with log_context({"whoami": "handler for " + str(client)}):
 				logger.essential("handling client %s", client)
 				seconds = random.random() * 1
 				await asyncio.sleep(seconds)
@@ -226,11 +240,11 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 			logger.essential("initializing client: %s", client)
 
 		def run(self):
-			with log_context({'whoami': "module " + str(self.client)}):
+			with log_context({"whoami": "module " + str(self.client)}):
 				logger.essential("MyModule.run")
 				common_work()
 
-	with log_context({'whoami': "MAIN"}):
+	with log_context({"whoami": "MAIN"}):
 		with log_stream(LOG_INFO, format="%(contextstring)s %(message)s") as stream:
 			main = Main()
 			try:
@@ -250,7 +264,7 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 
 
 def test_observable_handler():  # pylint: disable=redefined-outer-name
-	class LogObserver():  # pylint: disable=too-few-public-methods
+	class LogObserver:  # pylint: disable=too-few-public-methods
 		def __init__(self):
 			self.messages = []
 
@@ -274,7 +288,7 @@ def test_observable_handler():  # pylint: disable=redefined-outer-name
 
 def test_simple_colored():  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_WARNING, format=MY_FORMAT) as stream:
-		with log_context({'firstcontext': 'asdf', 'secondcontext': 'jkl'}):
+		with log_context({"firstcontext": "asdf", "secondcontext": "jkl"}):
 			logger.error("test message")
 		stream.seek(0)
 		log = stream.read()
@@ -283,7 +297,7 @@ def test_simple_colored():  # pylint: disable=redefined-outer-name
 
 def test_simple_plain():  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_WARNING, format=OTHER_FORMAT) as stream:
-		with log_context({'firstcontext': 'asdf', 'secondcontext': 'jkl'}):
+		with log_context({"firstcontext": "asdf", "secondcontext": "jkl"}):
 			logger.error("test message")
 		stream.seek(0)
 		log = stream.read()
@@ -292,7 +306,7 @@ def test_simple_plain():  # pylint: disable=redefined-outer-name
 
 def test_set_context():  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_WARNING, format=MY_FORMAT) as stream:
-		set_context({'firstcontext': 'asdf', 'secondcontext': 'jkl'})
+		set_context({"firstcontext": "asdf", "secondcontext": "jkl"})
 		logger.error("test message")
 		stream.seek(0)
 		log = stream.read()
@@ -300,7 +314,7 @@ def test_set_context():  # pylint: disable=redefined-outer-name
 		stream.seek(0)
 		stream.truncate()
 
-		set_context({'firstcontext': 'asdf'})
+		set_context({"firstcontext": "asdf"})
 		logger.error("test message")
 		stream.seek(0)
 		log = stream.read()
@@ -433,3 +447,36 @@ def test_log_warnings():
 		log = stream.read()
 		print(log)
 		assert "test warning should be logged" in log
+
+
+def test_sub_logger():  # pylint: disable=redefined-outer-name
+	sub_logger = get_logger("sub")
+
+	with log_stream(LOG_WARNING, format="%(message)s") as stream:
+		logger.warning("root_logger_1")
+		sub_logger.warning("sub_logger_1")
+
+		set_filter({"logger": ["root"]})
+
+		logger.warning("root_logger_2")
+		sub_logger.warning("sub_logger_2")
+
+		set_filter({"logger": ["root", "sub"]})
+
+		logger.warning("root_logger_3")
+		sub_logger.warning("sub_logger_3")
+
+		logging_config(logger_levels={"sub": LOG_ERROR})
+
+		sub_logger.error("sub_logger_4")
+		sub_logger.warning("sub_logger_5")
+
+		stream.seek(0)
+		log = stream.read()
+		assert "root_logger_1" in log
+		assert "sub_logger_1" in log
+		assert "root_logger_2" in log
+		assert "sub_logger_2" not in log
+		assert "root_logger_3" in log
+		assert "sub_logger_4" in log
+		assert "sub_logger_5" not in log

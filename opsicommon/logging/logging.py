@@ -33,6 +33,10 @@ logger = logging.getLogger()
 context = contextvars.ContextVar("context", default={})
 
 
+def get_logger(name: str = None) -> logging.Logger:
+	return logging.getLogger(name)
+
+
 def secret(self, msg: str, *args, **kwargs):
 	"""
 	Logging with level SECRET.
@@ -263,6 +267,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		"""
 		if not hasattr(record, "context"):
 			record.context = context.get()
+			record.context["logger"] = record.name
 		for (filter_key, filter_values) in self.filter_dict.items():
 			record_value = record.context.get(filter_key)
 			# Filter out record if key not present or value not in filter values
@@ -331,12 +336,8 @@ class ContextSecretFormatter(logging.Formatter):
 		:returns: The formatted log string.
 		:rytpe: str
 		"""
-		record.contextstring = ""
-		if hasattr(record, "context"):
-			current_context = record.context
-			if isinstance(current_context, dict):
-				values = current_context.values()
-				record.contextstring = ",".join([str(x) for x in values])
+		if hasattr(record, "context") and isinstance(record.context, dict):
+			record.contextstring = ",".join([str(v) for k, v in record.context.items() if k != "logger"])
 
 		msg = self.orig_formatter.format(record)
 		if not self.secret_filter_enabled:
@@ -487,6 +488,7 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches
 	file_rotate_backup_count: int = 0,
 	remove_handlers: bool = False,
 	stderr_file: IO = sys.stderr,
+	logger_levels: dict = None
 ):
 	"""
 	Initialize logging.
@@ -567,6 +569,18 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches
 		if handler.level != logging.NOTSET and handler.level < min_value:
 			min_value = handler.level
 	logging.root.setLevel(min_value)
+
+	if logger_levels:
+		loggers = {logger_.name: logger_ for logger_ in get_all_loggers() if hasattr(logger_, "name")}
+		for logger_name, level in logger_levels.items():
+			if level is None:
+				continue
+			logger_ = loggers.get(logger_name)
+			if not logger_:
+				continue
+			if level < 10:
+				level = logging.opsi_level_to_level[level]
+			logger_.setLevel(level)
 
 	if stderr_format and stderr_format.find("(log_color)") != -1 and not stderr_file.isatty():
 		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")
