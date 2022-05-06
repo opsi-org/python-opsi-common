@@ -17,7 +17,7 @@ import traceback
 import warnings
 from contextlib import contextmanager
 from logging.handlers import RotatingFileHandler
-from typing import IO, Any, Dict
+from typing import IO, Any, Dict, List, Set, Union
 from urllib.parse import quote
 
 import colorlog
@@ -26,89 +26,100 @@ from .constants import (
 	DATETIME_FORMAT,
 	DEFAULT_COLORED_FORMAT,
 	DEFAULT_FORMAT,
+	ESSENTIAL,
 	LOG_COLORS,
+	NONE,
+	NOTICE,
+	OPSI_LEVEL_TO_LEVEL,
+	SECRET,
 	SECRET_REPLACEMENT_STRING,
+	TRACE,
 )
 
+context: contextvars.ContextVar[Dict[str, Any]] = contextvars.ContextVar("context", default={})
+
+
+class OPSILogger(logging.Logger):
+	def __init__(self, name: str, level: Union[int, str] = logging.NOTSET) -> None:
+		super().__init__(name, level)
+
+	def secret(self, msg: str, *args: Any, **kwargs: Any) -> None:
+		"""
+		Logging with level SECRET.
+
+		This method calls a log with level SECRET.
+
+		:param msg: Message to log (may contain %-style placeholders).
+		:type msg: str
+		:param *args: Arguments to fill %-style placeholders with.
+		:param **kwargs: Additional keyword-arguments.
+		"""
+		if self.isEnabledFor(SECRET):
+			self._log(SECRET, msg, args, **kwargs)
+
+	confidential = secret
+
+	def trace(self, msg: str, *args: Any, **kwargs: Any) -> None:
+		"""
+		Logging with level TRACE.
+
+		This method calls a log with level TRACE.
+
+		:param msg: Message to log (may contain %-style placeholders).
+		:type msg: str
+		:param *args: Arguments to fill %-style placeholders with.
+		:param **kwargs: Additional keyword-arguments.
+		"""
+		if self.isEnabledFor(TRACE):
+			self._log(TRACE, msg, args, **kwargs)
+
+	debug2 = trace
+
+	def notice(self, msg: str, *args: Any, **kwargs: Any) -> None:
+		"""
+		Logging with level NOTICE.
+
+		This method calls a log with level NOTICE.
+
+		:param msg: Message to log (may contain %-style placeholders).
+		:type msg: str
+		:param *args: Arguments to fill %-style placeholders with.
+		:param **kwargs: Additional keyword-arguments.
+		"""
+		if self.isEnabledFor(NOTICE):
+			self._log(NOTICE, msg, args, **kwargs)
+
+	def essential(self, msg: str, *args: Any, **kwargs: Any) -> None:
+		"""
+		Logging with level ESSENTIAL.
+
+		This method calls a log with level ESSENTIAL.
+
+		:param msg: Message to log (may contain %-style placeholders).
+		:type msg: str
+		:param *args: Arguments to fill %-style placeholders with.
+		:param **kwargs: Additional keyword-arguments.
+		"""
+		if self.isEnabledFor(ESSENTIAL):
+			self._log(ESSENTIAL, msg, args, **kwargs)
+
+	comment = essential
+	devel = essential
+
+
+logging.Logger.secret = OPSILogger.secret  # type: ignore[attr-defined]
+logging.Logger.confidential = OPSILogger.confidential  # type: ignore[attr-defined]
+logging.Logger.trace = OPSILogger.trace  # type: ignore[attr-defined]
+logging.Logger.debug2 = OPSILogger.debug2  # type: ignore[attr-defined]
+logging.Logger.notice = OPSILogger.notice  # type: ignore[attr-defined]
+logging.Logger.essential = OPSILogger.essential  # type: ignore[attr-defined]
+logging.Logger.comment = OPSILogger.comment  # type: ignore[attr-defined]
+logging.Logger.devel = OPSILogger.devel  # type: ignore[attr-defined]
+
+
+logging.setLoggerClass(OPSILogger)
 orig_getLogger = logging.getLogger
 logger = orig_getLogger()
-context = contextvars.ContextVar("context", default={})
-
-
-def secret(self, msg: str, *args, **kwargs):
-	"""
-	Logging with level SECRET.
-
-	This method calls a log with level logging.SECRET.
-
-	:param msg: Message to log (may contain %-style placeholders).
-	:type msg: str
-	:param *args: Arguments to fill %-style placeholders with.
-	:param **kwargs: Additional keyword-arguments.
-	"""
-	if self.isEnabledFor(logging.SECRET):
-		self._log(logging.SECRET, msg, args, **kwargs)  # pylint: disable=protected-access
-
-
-logging.Logger.secret = secret
-logging.Logger.confidential = secret
-
-
-def trace(self, msg, *args, **kwargs):
-	"""
-	Logging with level TRACE.
-
-	This method calls a log with level logging.TRACE.
-
-	:param msg: Message to log (may contain %-style placeholders).
-	:type msg: str
-	:param *args: Arguments to fill %-style placeholders with.
-	:param **kwargs: Additional keyword-arguments.
-	"""
-	if self.isEnabledFor(logging.TRACE):
-		self._log(logging.TRACE, msg, args, **kwargs)  # pylint: disable=protected-access
-
-
-logging.Logger.trace = trace
-logging.Logger.debug2 = trace
-
-
-def notice(self, msg, *args, **kwargs):
-	"""
-	Logging with level NOTICE.
-
-	This method calls a log with level logging.NOTICE.
-
-	:param msg: Message to log (may contain %-style placeholders).
-	:type msg: str
-	:param *args: Arguments to fill %-style placeholders with.
-	:param **kwargs: Additional keyword-arguments.
-	"""
-	if self.isEnabledFor(logging.NOTICE):
-		self._log(logging.NOTICE, msg, args, **kwargs)  # pylint: disable=protected-access
-
-
-logging.Logger.notice = notice
-
-
-def essential(self, msg, *args, **kwargs):
-	"""
-	Logging with level ESSENTIAL.
-
-	This method calls a log with level logging.ESSENTIAL.
-
-	:param msg: Message to log (may contain %-style placeholders).
-	:type msg: str
-	:param *args: Arguments to fill %-style placeholders with.
-	:param **kwargs: Additional keyword-arguments.
-	"""
-	if self.isEnabledFor(logging.ESSENTIAL):
-		self._log(logging.ESSENTIAL, msg, args, **kwargs)  # pylint: disable=protected-access
-
-
-logging.Logger.essential = essential
-logging.Logger.comment = essential
-logging.Logger.devel = essential
 
 
 def logrecord_init(
@@ -133,10 +144,12 @@ def logrecord_init(
 	"""
 	self.__init_orig__(name, level, pathname, lineno, msg, args, exc_info, func=func, sinfo=sinfo, **kwargs)
 	self.opsilevel = logging.level_to_opsi_level.get(level, level)
+	self.context = {}
+	self.contextstring = ""
 
 
-logging.LogRecord.__init_orig__ = logging.LogRecord.__init__
-logging.LogRecord.__init__ = logrecord_init
+logging.LogRecord.__init_orig__ = logging.LogRecord.__init__  # type: ignore[attr-defined]
+logging.LogRecord.__init__ = logrecord_init  # type: ignore[assignment]
 
 
 def handle_log_exception(exc: Exception, record: logging.LogRecord = None, stderr: bool = True, temp_file: bool = False, log: bool = False):
@@ -181,7 +194,7 @@ def handle_log_exception(exc: Exception, record: logging.LogRecord = None, stder
 
 
 class Singleton(type):
-	_instances = {}
+	_instances: Dict[type, Any] = {}
 
 	def __call__(cls, *args, **kwargs):
 		if cls not in cls._instances:
@@ -197,7 +210,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 	for a single thread/task.
 	"""
 
-	def __init__(self, filter_dict: Dict = None):
+	def __init__(self, filter_dict: Dict[str, Any] = None):
 		"""
 		ContextFilter Constructor
 
@@ -209,7 +222,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		:type filter_dict: Dict
 		"""
 		super().__init__()
-		self.filter_dict = {}
+		self.filter_dict: Dict[str, Any] = {}
 		self.set_filter(filter_dict)
 
 	def get_context(self) -> Dict:  # pylint: disable=no-self-use
@@ -224,7 +237,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		"""
 		return context.get()
 
-	def set_filter(self, filter_dict: Dict = None):
+	def set_filter(self, filter_dict: Dict[str, Any] = None):
 		"""
 		Sets a new filter dictionary.
 
@@ -263,11 +276,11 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		:returns: True, if the record conforms to the filter rules.
 		:rtype: bool
 		"""
-		if not hasattr(record, "context"):
-			record.context = context.get()
-			record.context["logger"] = record.name
+		if not getattr(record, "context", None):
+			record.context = context.get()  # type: ignore[attr-defined]
+			record.context["logger"] = record.name  # type: ignore[attr-defined]
 		for (filter_key, filter_values) in self.filter_dict.items():
-			record_value = record.context.get(filter_key)
+			record_value = record.context.get(filter_key)  # type: ignore[attr-defined]
 			# Filter out record if key not present or value not in filter values
 			if record_value in (None, "") or record_value not in filter_values:
 				return False
@@ -335,9 +348,12 @@ class ContextSecretFormatter(logging.Formatter):
 		:returns: The formatted log string.
 		:rytpe: str
 		"""
-		record.contextstring = ""
-		if hasattr(record, "context") and isinstance(record.context, dict):
-			record.contextstring = ",".join([str(v) for k, v in record.context.items() if self.logger_name_in_context_string or k != "logger"])
+
+		context_ = getattr(record, "context", None)
+		if context_:
+			record.contextstring = ",".join([  # type: ignore[attr-defined]
+				str(v) for k, v in context_.items() if self.logger_name_in_context_string or k != "logger"
+			])
 
 		msg = self.orig_formatter.format(record)
 		if not self.secret_filter_enabled:
@@ -382,7 +398,7 @@ class SecretFilter(metaclass=Singleton):
 		:type min_length: int
 		"""
 		self._min_length = min_length
-		self.secrets = set()
+		self.secrets: Set[str] = set()
 
 	def _initialize_handlers(self):  # pylint: disable=no-self-use
 		"""
@@ -529,9 +545,9 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 		last_file_format = file_format
 
 	if stderr_level is not None and stderr_level < 10:
-		stderr_level = logging.opsi_level_to_level[stderr_level]
+		stderr_level = OPSI_LEVEL_TO_LEVEL[stderr_level]
 	if file_level is not None and file_level < 10:
-		file_level = logging.opsi_level_to_level[file_level]
+		file_level = OPSI_LEVEL_TO_LEVEL[file_level]
 
 	if log_file:
 		if remove_handlers:
@@ -539,39 +555,45 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 			remove_all_handlers(handler_type=RotatingFileHandler)
 		else:
 			remove_all_handlers(handler_name="opsi_file_handler")
-		handler = None
+
+		handler: logging.FileHandler
 		if file_rotate_max_bytes and file_rotate_max_bytes > 0:
 			handler = RotatingFileHandler(log_file, encoding="utf-8", maxBytes=file_rotate_max_bytes, backupCount=file_rotate_backup_count)
 		else:
 			handler = logging.FileHandler(log_file, encoding="utf-8")
 		handler.name = "opsi_file_handler"
 		logging.root.addHandler(handler)
+
 	if file_level is not None:
 		for handler in get_all_handlers(logging.FileHandler) + get_all_handlers(RotatingFileHandler):
 			handler.setLevel(file_level)
+
 	if stderr_level is not None:
 		if remove_handlers:
 			remove_all_handlers(handler_type=logging.StreamHandler)
 		else:
 			remove_all_handlers(handler_name="opsi_stderr_handler")
 		if stderr_level != 0:
-			handler = logging.StreamHandler(stream=stderr_file)
-			handler.name = "opsi_stderr_handler"
-			logging.root.addHandler(handler)
+			shandler = logging.StreamHandler(stream=stderr_file)
+			shandler.name = "opsi_stderr_handler"
+			logging.root.addHandler(shandler)
 		for handler in get_all_handlers(logging.StreamHandler):
 			handler.setLevel(stderr_level)
 
 	if observable_handler not in get_all_handlers(ObservableHandler):
 		logging.root.addHandler(observable_handler)
 
-	min_value = logging.NONE
+	min_value = NONE
 	for handler in get_all_handlers():
 		if handler.level != logging.NOTSET and handler.level < min_value:
 			min_value = handler.level
 	logging.root.setLevel(min_value)
 
 	if logger_levels:
-		loggers = {logger_.name: logger_ for logger_ in list(logging.Logger.manager.loggerDict.values()) if hasattr(logger_, "name")}
+		loggers = {
+			logger_.name: logger_ for logger_ in  # type: ignore[union-attr]
+			list(logging.Logger.manager.loggerDict.values()) if hasattr(logger_, "name")
+		}
 		for logger_re, level in logger_levels.items():
 			logger_re = re.compile(logger_re)
 			if level is None:
@@ -579,8 +601,8 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 			for logger_name, logger_ in loggers.items():
 				if logger_re.match(logger_name):
 					if level < 10:
-						level = logging.opsi_level_to_level[level]
-					logger_.setLevel(level)
+						level = OPSI_LEVEL_TO_LEVEL[level]
+					logger_.setLevel(level)  # type: ignore[union-attr]
 
 	if stderr_format and stderr_format.find("(log_color)") != -1 and not stderr_file.isatty():
 		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")
@@ -616,13 +638,13 @@ def set_format(
 	for handler_type in (logging.StreamHandler, logging.FileHandler, RotatingFileHandler):
 		for handler in get_all_handlers(handler_type):
 			fmt = stderr_format if handler_type is logging.StreamHandler else file_format
-			formatter = None
+			formatter: logging.Formatter
 			if fmt.find("(log_color)") >= 0:
 				formatter = colorlog.ColoredFormatter(fmt, datefmt=datefmt, log_colors=log_colors or LOG_COLORS)
 			else:
 				formatter = logging.Formatter(fmt, datefmt=datefmt)
 			csformatter = ContextSecretFormatter(formatter)
-			if handler.level == logging.SECRET:
+			if handler.level == SECRET:
 				csformatter.disable_filter()
 			else:
 				csformatter.enable_filter()
@@ -676,7 +698,7 @@ def add_context_filter_to_loggers():
 		add_context_filter_to_logger(_logger)
 
 
-def set_filter(filter_dict: Dict):
+def set_filter(filter_dict: Dict[str, Any]):
 	"""
 	Sets a new filter dictionary.
 
@@ -692,7 +714,7 @@ def set_filter(filter_dict: Dict):
 	context_filter.set_filter(filter_dict)
 
 
-def set_filter_from_string(filter_string: str):
+def set_filter_from_string(filter_string: Union[str, List[str]]):
 	"""
 	Parses string and sets filter dictionary.
 
@@ -707,14 +729,16 @@ def set_filter_from_string(filter_string: str):
 	:param filter_string: String to parse for a filter statement.
 	:type filter_string: str
 	"""
-	filter_dict = {}
+	filter_dict: Dict[str, Any] = {}
 	if filter_string is None:
 		set_filter(None)
 		return
+
 	if isinstance(filter_string, str):
 		filter_string = filter_string.split(";")
-	if not isinstance(filter_string, list):
+	elif not isinstance(filter_string, list):
 		raise ValueError("filter_string must be either string or list")
+
 	for part in filter_string:
 		entry = part.split("=")
 		if len(entry) == 2:
@@ -826,10 +850,10 @@ secret_filter = SecretFilter()
 context_filter = ContextFilter()
 
 
-def get_logger(name: str = None) -> logging.Logger:
+def get_logger(name: str = None) -> OPSILogger:
 	_logger = orig_getLogger(name)
 	add_context_filter_to_logger(_logger)
-	return _logger
+	return _logger  # type: ignore[return-value]
 
 
 logging.getLogger = get_logger
