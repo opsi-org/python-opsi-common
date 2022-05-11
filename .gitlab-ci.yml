@@ -2,9 +2,10 @@ image: docker.uib.gmbh/opsi/dev/pybuilder:uib-python-3.10
 
 stages:
   - test
+  - doc
   - publish
 
-test:pytest-darwin:
+pytest-darwin:
   #when: manual
   stage: test
   tags:
@@ -23,7 +24,7 @@ test:pytest-darwin:
       - coverage_darwin
     expire_in: 3 days
 
-test:pytest-windows:
+pytest-windows:
   #when: manual
   stage: test
   tags:
@@ -42,7 +43,7 @@ test:pytest-windows:
       - coverage_windows
     expire_in: 3 days
 
-test:pytest-linux:
+pytest-linux:
   #when: manual
   stage: test
   script:
@@ -59,7 +60,7 @@ test:pytest-linux:
       - coverage_linux
     expire_in: 3 days
 
-test:pylint-pytest:
+pylint-pytest:
   #when: manual
   stage: test
   needs:
@@ -93,7 +94,24 @@ test:pylint-pytest:
       junit: testreport.xml
 
 
-publish:uibpypi:
+apidoc:
+  stage: doc
+  when: manual
+  before_script:
+    - 'which ssh-agent || (apt update && apt -y install openssh-client)'
+    - 'which rsync || (apt update && apt -y install rsync)'
+    - mkdir -p ~/.ssh
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$BLOG_PUBLISH_PRIVATE_KEY")
+  script:
+    - poetry lock --no-update
+    - poetry install
+    - poetry run poetry run opsi-dev-cli apidoc makehtml --output python-opsi-common
+    - ssh -o StrictHostKeyChecking=no "root@docker1.ext.uib.gmbh" "mkdir -p /var/lib/docker/volumes/docs_nginx_data/_data/python-docs"
+    - rsync -e "ssh -o StrictHostKeyChecking=no" --delete -azv python-opsi-common "root@docker1.ext.uib.gmbh:/var/lib/docker/volumes/docs_nginx_data/_data/python-docs/"
+
+
+uibpypi:
   stage: publish
   script:
     - poetry install

@@ -32,7 +32,7 @@ from .constants import (
 
 orig_getLogger = logging.getLogger
 logger = orig_getLogger()
-context = contextvars.ContextVar("context", default={})
+context: contextvars.ContextVar = contextvars.ContextVar("context", default={})
 
 
 def secret(self, msg: str, *args, **kwargs):

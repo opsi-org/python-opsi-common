@@ -15,7 +15,7 @@ import threading
 import time
 import types
 import warnings
-from typing import Callable
+from typing import Any, Callable, Dict, List, Optional, Union
 from urllib.parse import quote, unquote, urlparse
 
 import msgpack  # type: ignore[import]
@@ -27,7 +27,7 @@ from urllib3.util.retry import Retry
 
 try:
 	# pyright: reportMissingModuleSource=false
-	import orjson as json  # pylint: disable=import-error
+	import orjson as json  # type: ignore[import] # pylint: disable=import-error
 except ModuleNotFoundError:
 	try:
 		import ujson as json  # type: ignore[import,no-redef]
@@ -83,22 +83,37 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	}
 	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]
 
-	def __init__(self, address, **kwargs):  # pylint: disable=too-many-branches,too-many-statements
+	def _allowed_gai_family(self) -> int:
+		"""This function is designed to work in the context of
+		getaddrinfo, where family=socket.AF_UNSPEC is the default and
+		will perform a DNS search for both IPv6 and IPv4 records."""
+		# https://github.com/urllib3/urllib3/blob/main/src/urllib3/util/connection.py
+
+		logger.debug("Using ip version %s", self._ip_version)
+		if self._ip_version == "4":
+			return socket.AF_INET
+		if self._ip_version == "6":
+			return socket.AF_INET6
+		if urllib3.util.connection.HAS_IPV6:
+			return socket.AF_UNSPEC
+		return socket.AF_INET
+
+	def __init__(self, address: str, **kwargs) -> None:  # pylint: disable=too-many-branches,too-many-statements
 		"""
 		JSONRPC client
 		"""
 
 		self._application = f"opsi-jsonrpc-client/{__version__}"
-		self._compression = False
+		self._compression: Union[bool, str] = False
 		self._connect_on_init = True
 		self._create_methods = True
 		self._connected = False
-		self._interface = None
+		self._interface: Optional[List[Dict[str, Any]]] = None
 		self._rpc_id = 0
 		self._rpc_id_lock = threading.Lock()
 		self._ca_cert_file = None
 		self._verify_server_cert = False
-		self._proxy_url = "system"  # Use system proxy by default
+		self._proxy_url: Optional[str] = "system"  # Use system proxy by default
 		self._username = None
 		self._password = None
 		self._serialization = "auto"
@@ -110,7 +125,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._session_lifetime = 150  # In seconds
 		self.create_objects = True
 		self.raw_responses = False
-		self.server_name = None
+		self.server_name: Optional[str] = None
 		self.base_url = None
 		self.no_proxy_addresses = list(set(self.no_proxy_addresses + [socket.getfqdn()]))
 
@@ -179,7 +194,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		self._session = requests.Session()
 		if self._username or self._password:
-			self._session.auth = (
+			self._session.auth = (  # type: ignore # session.auth should be Tuple of str, but that is a problem with weird locales
 				(self._username or "").encode("utf-8"),
 				(self._password or "").encode("utf-8"),
 			)
@@ -191,7 +206,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		)
 		if session_id:
 			if "=" in session_id:
-				logger.confidential("Using session id passed: %s", session_id)
+				logger.confidential("Using session id passed: %s", session_id)  # type: ignore # confidential is monkeypatched into logger
 				cookie_name, cookie_value = session_id.split("=", 1)
 				self._session.cookies.set(cookie_name, quote(cookie_value))
 			else:
@@ -218,42 +233,27 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._session.mount("https://", self._http_adapter)
 
 		try:
-			address = ipaddress.ip_address(self.hostname)
-			if isinstance(address, ipaddress.IPv6Address) and self._ip_version != "6":
+			my_address = ipaddress.ip_address(self.hostname)
+			if isinstance(my_address, ipaddress.IPv6Address) and self._ip_version != "6":
 				logger.info("%s is an ipv6 address, forcing ipv6", self.hostname)
-				self._ip_version = 6
-			elif isinstance(address, ipaddress.IPv4Address) and self._ip_version != "4":
+				self._ip_version = "6"
+			elif isinstance(my_address, ipaddress.IPv4Address) and self._ip_version != "4":
 				logger.info("%s is an ipv4 address, forcing ipv4", self.hostname)
-				self._ip_version = 4
+				self._ip_version = "4"
 		except ValueError:
 			pass
 
-		urllib3.util.connection.allowed_gai_family = self._allowed_gai_family
+		setattr(urllib3.util.connection, "allowed_gai_family", self._allowed_gai_family)
 
 		if self._connect_on_init:
 			self.connect()
-
-	def _allowed_gai_family(self):
-		"""This function is designed to work in the context of
-		getaddrinfo, where family=socket.AF_UNSPEC is the default and
-		will perform a DNS search for both IPv6 and IPv4 records."""
-		# https://github.com/urllib3/urllib3/blob/main/src/urllib3/util/connection.py
-
-		logger.debug("Using ip version %s", self._ip_version)
-		if self._ip_version == "4":
-			return socket.AF_INET
-		if self._ip_version == "6":
-			return socket.AF_INET6
-		if urllib3.util.connection.HAS_IPV6:
-			return socket.AF_UNSPEC
-		return socket.AF_INET
 
 	@property
 	def serialization(self) -> str:
 		return self._serialization
 
 	@serialization.setter
-	def serialization(self, serialization: str):
+	def serialization(self, serialization: str) -> None:
 		if serialization in (None, ""):
 			return
 		if serialization in ("auto", "json", "msgpack"):
@@ -266,26 +266,27 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			)
 
 	@property
-	def hostname(self):
+	def hostname(self) -> Optional[bytes]:
 		return urlparse(self.base_url).hostname
 
 	@property
-	def session(self):
+	def session(self) -> requests.Session:
 		if not self._connected:
 			self.connect()
 		return self._session
 
 	@property
-	def session_id(self):
+	def session_id(self) -> Optional[str]:
 		if not self._session.cookies or not self._session.cookies._cookies:  # pylint: disable=protected-access
 			return None
 		for tmp1 in self._session.cookies._cookies.values():  # pylint: disable=protected-access
 			for tmp2 in tmp1.values():
 				for cookie in tmp2.values():
 					return f"{cookie.name}={unquote(cookie.value)}"
+		return None
 
 	@property
-	def server_version(self):
+	def server_version(self) -> Optional[List[int]]:
 		if self.server_name:
 			match = re.search(r"^opsi\D+(\d+\.\d+\.\d+\.\d+)", self.server_name)
 			if match:
@@ -295,24 +296,24 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	serverVersion = server_version
 
 	@property
-	def serverName(self):  # pylint: disable=invalid-name
+	def serverName(self) -> Optional[str]:  # pylint: disable=invalid-name
 		return self.server_name
 
 	@property
-	def interface(self):
+	def interface(self) -> Optional[List[Dict[str, Any]]]:
 		if not self._interface and self._create_methods:
 			self.connect()
 		return self._interface
 
-	def backend_getInterface(self):  # pylint: disable=invalid-name
+	def backend_getInterface(self) -> Optional[List[Dict[str, Any]]]:  # pylint: disable=invalid-name
 		return self.interface
 
 	@no_export
-	def getInterface(self):  # pylint: disable=invalid-name
+	def getInterface(self) -> Optional[List[Dict[str, Any]]]:  # pylint: disable=invalid-name
 		return self.interface
 
 	@no_export
-	def set_compression(self, compression):
+	def set_compression(self, compression: Union[bool, str]) -> None:
 		if isinstance(compression, bool):
 			self._compression = compression
 		else:
@@ -329,7 +330,9 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	setCompression = set_compression
 
 	@no_export
-	def get(self, path, headers=None):
+	def get(self, path: str, headers: Optional[Dict[str, str]] = None):
+		if not self.base_url:
+			raise ValueError("No url provided for jsonrpcclient.")
 		url = self.base_url
 		if path.startswith("/"):
 			url = f"{'/'.join(url.split('/')[:3])}{path}"
@@ -340,7 +343,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		response.raise_for_status()
 		return response
 
-	def _set_address(self, address):
+	def _set_address(self, address: str) -> None:
 		if "://" not in address:
 			address = f"https://{address}"
 		url = urlparse(address)
@@ -370,7 +373,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			self._password = url.password
 
 	@no_export
-	def execute_rpc(self, method, params=None):  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+	def execute_rpc(self, method: str, params: Optional[Union[List, Dict[str, Any]]] = None) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		params = params or []
 
 		rpc_id = 0
@@ -380,7 +383,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		headers = {"Accept-Encoding": "deflate, gzip, lz4"}
 
-		data = {
+		data_dict = {
 			"jsonrpc": "2.0",
 			"id": rpc_id,
 			"method": method,
@@ -396,10 +399,10 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		if serialization == "msgpack":
 			headers["Accept"] = headers["Content-Type"] = "application/msgpack"
-			data = msgpack.dumps(data)
+			data = msgpack.dumps(data_dict)
 		else:
 			headers["Accept"] = headers["Content-Type"] = "application/json"
-			data = json.dumps(data)
+			data = json.dumps(data_dict)
 
 		if not isinstance(data, bytes):
 			data = data.encode("utf-8")
@@ -410,18 +413,18 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				# Auto choose by server version
 				# Do not compress if opsi server version < 4.2
 				# opsiconfd 4.2.0.96 (uvicorn)
-				compression = None
+				compression = "uncompressed"
 				serv = self.server_version
 				if serv and (serv[0] > 4 or (serv[0] == 4 and serv[1] > 1)):
 					compression = _LZ4_COMPRESSION
 
 			if compression == _LZ4_COMPRESSION:
-				logger.trace("Compressing data with lz4")
+				logger.trace("Compressing data with lz4")  # type: ignore # trace is monkeypatched into logger
 				headers["Content-Encoding"] = "lz4"
 				headers["Accept-Encoding"] = "lz4"
 				data = lz4.frame.compress(data, compression_level=0, block_linked=True)
 			elif compression == _GZIP_COMPRESSION:
-				logger.trace("Compressing data with gzip")
+				logger.trace("Compressing data with gzip")  # type: ignore # trace is monkeypatched into logger
 				headers["Content-Encoding"] = "gzip"
 				headers["Accept-Encoding"] = "gzip"
 				data = gzip.compress(data)
@@ -439,6 +442,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			timeout,
 		)
 		start_time = time.time()
+		if not self.base_url:
+			raise ValueError("No url provided for jsonrpcclient.")
 		try:
 			response = self._session.post(self.base_url, headers=headers, data=data, stream=True, timeout=timeout)
 		except SSLError as err:
@@ -509,7 +514,9 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		return data
 
-	def _create_instance_methods(self):
+	def _create_instance_methods(self) -> None:
+		if not self._interface:
+			raise ValueError("No interface specification present fo _create_instance_methods.")
 		for method in self._interface:
 			try:
 				method_name = method["name"]
@@ -528,8 +535,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				keywords = method["keywords"]
 				defaults = method["defaults"]
 
-				arg_string = []
-				call_string = []
+				arg_list = []
+				call_list = []
 				for i, argument in enumerate(args):
 					if argument == "self":
 						continue
@@ -538,25 +545,25 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 						default = defaults[len(defaults) - len(args) + i]
 						if isinstance(default, str):
 							default = "{0!r}".format(default).replace('"', "'")  # pylint: disable=consider-using-f-string
-						arg_string.append(f"{argument}={default}")
+						arg_list.append(f"{argument}={default}")
 					else:
-						arg_string.append(argument)
-					call_string.append(argument)
+						arg_list.append(argument)
+					call_list.append(argument)
 
 				if varargs:
 					for vararg in varargs:
-						arg_string.append(f"*{vararg}")
-						call_string.append(vararg)
+						arg_list.append(f"*{vararg}")
+						call_list.append(vararg)
 
 				if keywords:
-					arg_string.append(f"**{keywords}")
-					call_string.append(keywords)
+					arg_list.append(f"**{keywords}")
+					call_list.append(keywords)
 
-				arg_string = ", ".join(arg_string)
-				call_string = ", ".join(call_string)
+				arg_string = ", ".join(arg_list)
+				call_string = ", ".join(call_list)
 
-				logger.trace("%s: arg string is: %s", method_name, arg_string)
-				logger.trace("%s: call string is: %s", method_name, call_string)
+				logger.trace("%s: arg string is: %s", method_name, arg_string)  # type: ignore # trace is monkeypatched into logger
+				logger.trace("%s: call string is: %s", method_name, call_string)  # type: ignore # trace is monkeypatched into logger
 				exec(  # pylint: disable=exec-used
 					f'def {method_name}(self, {arg_string}): return self.execute_rpc("{method_name}", [{call_string}])'
 				)
@@ -565,7 +572,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				logger.critical("Failed to create instance method '%s': %s", method, err)
 
 	@no_export
-	def connect(self):
+	def connect(self) -> None:
 		logger.info("Connecting to service %s", self.base_url)
 		if self._create_methods:
 			self._interface = self.execute_rpc("backend_getInterface")
@@ -575,7 +582,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._connected = True
 
 	@no_export
-	def disconnect(self):
+	def disconnect(self) -> None:
 		if self._connected:
 			try:
 				self.execute_rpc("backend_exit")
