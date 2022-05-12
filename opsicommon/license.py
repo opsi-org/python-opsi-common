@@ -84,13 +84,13 @@ OPSI_MODULE_IDS = (
 )
 
 
-def _str2date(value) -> date:
+def _str2date(value: str) -> date:
 	if isinstance(value, str):
 		return date.fromisoformat(value)
 	return value
 
 
-def _hexstr2bytes(value) -> bytes:
+def _hexstr2bytes(value: str) -> bytes:
 	if isinstance(value, str):
 		if len(value) % 2:
 			value = "0" + value
@@ -497,13 +497,13 @@ class OpsiLicensePool:
 		license_file_path: str = None,
 		modules_file_path: str = None,
 		client_info: Union[dict, Callable] = None,
-		client_limit_warning_percent: int = 95,
-		client_limit_warning_absolute: int = 5,
+		client_limit_warning_percent: Optional[int] = 95,
+		client_limit_warning_absolute: Optional[int] = 5,
 	) -> None:
 		self.license_file_path: Optional[str] = license_file_path
 		self.modules_file_path: Optional[str] = modules_file_path
-		self.client_limit_warning_percent: int = client_limit_warning_percent
-		self.client_limit_warning_absolute: int = client_limit_warning_absolute
+		self.client_limit_warning_percent: Optional[int] = client_limit_warning_percent
+		self.client_limit_warning_absolute: Optional[int] = client_limit_warning_absolute
 		self._client_info: Optional[Union[dict, Callable]] = client_info
 		self._licenses: Dict[str, OpsiLicense] = {}
 		self._file_modification_dates: Dict[str, float] = {}
@@ -719,8 +719,8 @@ def get_default_opsi_license_pool(
 	license_file_path: str = None,
 	modules_file_path: str = None,
 	client_info: Union[dict, Callable] = None,
-	client_limit_warning_percent: int = None,
-	client_limit_warning_absolute: int = None
+	client_limit_warning_percent: Optional[int] = None,
+	client_limit_warning_absolute: Optional[int] = None
 ) -> OpsiLicensePool:
 	global _default_opsi_license_pool  # pylint: disable=invalid-name,global-statement
 	if not _default_opsi_license_pool:

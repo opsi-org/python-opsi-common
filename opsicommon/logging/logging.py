@@ -43,14 +43,13 @@ class OPSILogger(logging.Logger):
 	def __init__(self, name: str, level: Union[int, str] = logging.NOTSET) -> None:
 		super().__init__(name, level)
 
-	def secret(self, msg: str, *args: Any, **kwargs: Any) -> None:
+	def secret(self, msg: Any, *args: Any, **kwargs: Any) -> None:
 		"""
 		Logging with level SECRET.
 
 		This method calls a log with level SECRET.
 
 		:param msg: Message to log (may contain %-style placeholders).
-		:type msg: str
 		:param *args: Arguments to fill %-style placeholders with.
 		:param **kwargs: Additional keyword-arguments.
 		"""
@@ -59,14 +58,13 @@ class OPSILogger(logging.Logger):
 
 	confidential = secret
 
-	def trace(self, msg: str, *args: Any, **kwargs: Any) -> None:
+	def trace(self, msg: Any, *args: Any, **kwargs: Any) -> None:
 		"""
 		Logging with level TRACE.
 
 		This method calls a log with level TRACE.
 
 		:param msg: Message to log (may contain %-style placeholders).
-		:type msg: str
 		:param *args: Arguments to fill %-style placeholders with.
 		:param **kwargs: Additional keyword-arguments.
 		"""
@@ -75,28 +73,26 @@ class OPSILogger(logging.Logger):
 
 	debug2 = trace
 
-	def notice(self, msg: str, *args: Any, **kwargs: Any) -> None:
+	def notice(self, msg: Any, *args: Any, **kwargs: Any) -> None:
 		"""
 		Logging with level NOTICE.
 
 		This method calls a log with level NOTICE.
 
 		:param msg: Message to log (may contain %-style placeholders).
-		:type msg: str
 		:param *args: Arguments to fill %-style placeholders with.
 		:param **kwargs: Additional keyword-arguments.
 		"""
 		if self.isEnabledFor(NOTICE):
 			self._log(NOTICE, msg, args, **kwargs)
 
-	def essential(self, msg: str, *args: Any, **kwargs: Any) -> None:
+	def essential(self, msg: Any, *args: Any, **kwargs: Any) -> None:
 		"""
 		Logging with level ESSENTIAL.
 
 		This method calls a log with level ESSENTIAL.
 
 		:param msg: Message to log (may contain %-style placeholders).
-		:type msg: str
 		:param *args: Arguments to fill %-style placeholders with.
 		:param **kwargs: Additional keyword-arguments.
 		"""

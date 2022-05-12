@@ -16,6 +16,7 @@ import re
 import sys
 import time
 import types
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from opsicommon.logging import get_logger
 
@@ -132,14 +133,14 @@ _LANGUAGE_CODE_REGEX = re.compile(r"^([a-z]{2,3})[-_]?([a-z]{4})?[-_]?([a-z]{2})
 _ARCHITECTURE_REGEX = re.compile(r"^(x86|x64)$")
 
 
-def forceList(var):  # pylint: disable=invalid-name
+def forceList(var: Any) -> List[Any]:  # pylint: disable=invalid-name
 	if not isinstance(var, (set, list, tuple, types.GeneratorType)):
 		return [var]
 
 	return list(var)
 
 
-def forceUnicode(var):  # pylint: disable=too-many-return-statements,invalid-name
+def forceUnicode(var: Any) -> str:  # pylint: disable=too-many-return-statements,invalid-name
 	if isinstance(var, str):
 		return var
 	if os.name == "nt" and isinstance(var, WindowsError):
@@ -164,27 +165,27 @@ def forceUnicode(var):  # pylint: disable=too-many-return-statements,invalid-nam
 	return str(var)
 
 
-def forceUnicodeLower(var):  # pylint: disable=invalid-name
+def forceUnicodeLower(var: Any) -> str:  # pylint: disable=invalid-name
 	return forceUnicode(var).lower()
 
 
-def forceUnicodeUpper(var):  # pylint: disable=invalid-name
+def forceUnicodeUpper(var: Any) -> str:  # pylint: disable=invalid-name
 	return forceUnicode(var).upper()
 
 
-def forceUnicodeList(var):  # pylint: disable=invalid-name
+def forceUnicodeList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceUnicode(element) for element in forceList(var)]
 
 
-def forceDictList(var):  # pylint: disable=invalid-name
+def forceDictList(var: Any) -> List[Dict]:  # pylint: disable=invalid-name
 	return [forceDict(element) for element in forceList(var)]
 
 
-def forceUnicodeLowerList(var):  # pylint: disable=invalid-name
+def forceUnicodeLowerList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceUnicodeLower(element) for element in forceList(var)]
 
 
-def forceBool(var):  # pylint: disable=invalid-name
+def forceBool(var: Any) -> bool:  # pylint: disable=invalid-name
 	if isinstance(var, bool):
 		return var
 	if isinstance(var, str):
@@ -198,11 +199,11 @@ def forceBool(var):  # pylint: disable=invalid-name
 	return bool(var)
 
 
-def forceBoolList(var):  # pylint: disable=invalid-name
+def forceBoolList(var: Any) -> List[bool]:  # pylint: disable=invalid-name
 	return [forceBool(element) for element in forceList(var)]
 
 
-def forceInt(var):  # pylint: disable=invalid-name
+def forceInt(var: Any) -> int:  # pylint: disable=invalid-name
 	if isinstance(var, int):
 		return var
 	try:
@@ -211,38 +212,38 @@ def forceInt(var):  # pylint: disable=invalid-name
 		raise ValueError(f"Bad int value '{var}': {err}") from err
 
 
-def forceIntList(var):  # pylint: disable=invalid-name
+def forceIntList(var: Any) -> List[int]:  # pylint: disable=invalid-name
 	return [forceInt(element) for element in forceList(var)]
 
 
-def forceUnsignedInt(var):  # pylint: disable=invalid-name
+def forceUnsignedInt(var: Any) -> int:  # pylint: disable=invalid-name
 	var = forceInt(var)
 	if var < 0:
 		var = -1 * var
 	return var
 
 
-def forceOct(var):  # pylint: disable=invalid-name
+def forceOct(var: Any) -> int:  # pylint: disable=invalid-name
 	if isinstance(var, int):
 		return var
 
 	try:
 		oct_value = ""
-		for idx, val in enumerate(forceUnicode(var)):
-			val = forceInt(val)
+		for idx, val_str in enumerate(forceUnicode(var)):
+			val = forceInt(val_str)
 			if val > 7:
 				raise ValueError(f"{val} is too big")
 			if idx == 0 and val != "0":
 				oct_value += "0"
 			oct_value += str(val)
 
-		oct_value = int(oct_value, 8)
-		return oct_value
+		oct_value_int = int(oct_value, 8)
+		return oct_value_int
 	except Exception as err:  # pylint: disable=broad-except
 		raise ValueError(f"Bad oct value {var}: {err}") from err
 
 
-def forceFloat(var):  # pylint: disable=invalid-name
+def forceFloat(var: Any) -> float:  # pylint: disable=invalid-name
 	if isinstance(var, float):
 		return var
 
@@ -252,7 +253,7 @@ def forceFloat(var):  # pylint: disable=invalid-name
 		raise ValueError(f"Bad float value '{var}': {err}") from err
 
 
-def forceDict(var):  # pylint: disable=invalid-name
+def forceDict(var: Any) -> Dict:  # pylint: disable=invalid-name
 	if var is None:
 		return {}
 	if isinstance(var, dict):
@@ -260,7 +261,7 @@ def forceDict(var):  # pylint: disable=invalid-name
 	raise ValueError(f"Not a dict '{var}'")
 
 
-def forceTime(var):  # pylint: disable=invalid-name
+def forceTime(var: Any) -> Union[time.struct_time, datetime.datetime]:  # pylint: disable=invalid-name
 	"""
 	Convert `var` to a time.struct_time.
 
@@ -277,21 +278,21 @@ def forceTime(var):  # pylint: disable=invalid-name
 	raise ValueError(f"Not a time {var}")
 
 
-def forceHardwareVendorId(var):  # pylint: disable=invalid-name
+def forceHardwareVendorId(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeUpper(var)
 	if not re.search(_HARDWARE_ID_REGEX, var):
 		raise ValueError(f"Bad hardware vendor id '{var}'")
 	return var
 
 
-def forceHardwareDeviceId(var):  # pylint: disable=invalid-name
+def forceHardwareDeviceId(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeUpper(var)
 	if not re.search(_HARDWARE_ID_REGEX, var):
 		raise ValueError(f"Bad hardware device id '{var}'")
 	return var
 
 
-def forceOpsiTimestamp(var):  # pylint: disable=invalid-name
+def forceOpsiTimestamp(var: Any) -> str:  # pylint: disable=invalid-name
 	"""
 	Make `var` an opsi-compatible timestamp.
 
@@ -314,7 +315,7 @@ def forceOpsiTimestamp(var):  # pylint: disable=invalid-name
 	return f"{match.group(1)}-{match.group(2)}-{match.group(3)}" f" {match.group(4)}:{match.group(5)}:{match.group(6)}"
 
 
-def forceFqdn(var):  # pylint: disable=invalid-name
+def forceFqdn(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceObjectId(var)
 	if not _FQDN_REGEX.search(var):
 		raise ValueError(f"Bad fqdn: '{var}'")
@@ -326,11 +327,11 @@ def forceFqdn(var):  # pylint: disable=invalid-name
 forceHostId = forceFqdn
 
 
-def forceHostIdList(var):  # pylint: disable=invalid-name
+def forceHostIdList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceHostId(element) for element in forceList(var)]
 
 
-def forceHardwareAddress(var):  # pylint: disable=invalid-name
+def forceHardwareAddress(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not var:
 		return var
@@ -342,7 +343,7 @@ def forceHardwareAddress(var):  # pylint: disable=invalid-name
 	return (f"{match.group(1)}:{match.group(2)}:{match.group(3)}:" f"{match.group(4)}:{match.group(5)}:{match.group(6)}").lower()
 
 
-def forceIPAddress(var):  # pylint: disable=invalid-name
+def forceIPAddress(var: Any) -> str:  # pylint: disable=invalid-name
 	if not isinstance(var, (ipaddress.IPv4Address, ipaddress.IPv6Address, str)):
 		raise ValueError(f"Invalid ip address: '{var}'")
 	var = ipaddress.ip_address(var)
@@ -354,7 +355,7 @@ def forceIPAddress(var):  # pylint: disable=invalid-name
 forceIpAddress = forceIPAddress
 
 
-def forceHostAddress(var):  # pylint: disable=invalid-name
+def forceHostAddress(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	try:
 		try:
@@ -369,20 +370,20 @@ def forceHostAddress(var):  # pylint: disable=invalid-name
 	return var
 
 
-def forceNetmask(var):  # pylint: disable=invalid-name
+def forceNetmask(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not re.search(_NETMASK_REGEX, var):
 		raise ValueError(f"Invalid netmask: '{var}'")
 	return var
 
 
-def forceNetworkAddress(var):  # pylint: disable=invalid-name
+def forceNetworkAddress(var: Any) -> str:  # pylint: disable=invalid-name
 	if not isinstance(var, (ipaddress.IPv4Network, ipaddress.IPv6Network, str)):
 		raise ValueError(f"Invalid network address: '{var}'")
 	return ipaddress.ip_network(var).compressed
 
 
-def forceUrl(var):  # pylint: disable=invalid-name
+def forceUrl(var: Any) -> str:  # pylint: disable=invalid-name
 	"""
 	Forces ``var`` to be an valid URL.
 
@@ -394,54 +395,54 @@ def forceUrl(var):  # pylint: disable=invalid-name
 	return var
 
 
-def forceOpsiHostKey(var):  # pylint: disable=invalid-name
+def forceOpsiHostKey(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not re.search(_OPSI_HOST_KEY_REGEX, var):
 		raise ValueError(f"Bad opsi host key: {var}")
 	return var
 
 
-def forceProductVersion(var):  # pylint: disable=invalid-name
+def forceProductVersion(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicode(var)
 	if not _PRODUCT_VERSION_REGEX.search(var):
 		raise ValueError(f"Bad product version: '{var}'")
 	return var
 
 
-def forceProductVersionList(var):  # pylint: disable=invalid-name
+def forceProductVersionList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceProductVersion(element) for element in forceList(var)]
 
 
-def forcePackageVersion(var):  # pylint: disable=invalid-name
+def forcePackageVersion(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicode(var)
 	if not _PACKAGE_VERSION_REGEX.search(var):
 		raise ValueError(f"Bad package version: '{var}'")
 	return var
 
 
-def forcePackageVersionList(var):  # pylint: disable=invalid-name
+def forcePackageVersionList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forcePackageVersion(element) for element in forceList(var)]
 
 
-def forceProductId(var):  # pylint: disable=invalid-name
+def forceProductId(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceObjectId(var)
 	if not _PRODUCT_ID_REGEX.search(var):
 		raise ValueError(f"Bad product id: '{var}'")
 	return var
 
 
-def forceProductIdList(var):  # pylint: disable=invalid-name
+def forceProductIdList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceProductId(element) for element in forceList(var)]
 
 
-def forcePackageCustomName(var):  # pylint: disable=invalid-name
+def forcePackageCustomName(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not _PACKAGE_CUSTOM_NAME_REGEX.search(var):
 		raise ValueError(f"Bad package custom name: '{var}'")
 	return var
 
 
-def forceProductType(var):  # pylint: disable=invalid-name
+def forceProductType(var: Any) -> str:  # pylint: disable=invalid-name
 	lower_var = forceUnicodeLower(var)
 	if lower_var in ("localboot", "localbootproduct"):
 		return "LocalbootProduct"
@@ -450,21 +451,21 @@ def forceProductType(var):  # pylint: disable=invalid-name
 	raise ValueError(f"Unknown product type: '{var}'")
 
 
-def forceProductPropertyId(var):  # pylint: disable=invalid-name
+def forceProductPropertyId(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not _PRODUCT_PROPERTY_ID_REGEX.search(var):
 		raise ValueError(f"Bad product property id: '{var}'")
 	return var
 
 
-def forceConfigId(var):  # pylint: disable=invalid-name
+def forceConfigId(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not _CONFIG_ID_REGEX.search(var):
 		raise ValueError(f"Bad config id: '{var}'")
 	return var
 
 
-def forceProductPropertyType(var):  # pylint: disable=invalid-name
+def forceProductPropertyType(var: Any) -> str:  # pylint: disable=invalid-name
 	value = forceUnicodeLower(var)
 	if value in ("unicode", "unicodeproductproperty"):
 		return "UnicodeProductProperty"
@@ -473,7 +474,7 @@ def forceProductPropertyType(var):  # pylint: disable=invalid-name
 	raise ValueError(f"Unknown product property type: '{var}'")
 
 
-def forceProductPriority(var):  # pylint: disable=invalid-name
+def forceProductPriority(var: Any) -> int:  # pylint: disable=invalid-name
 	var = forceInt(var)
 	if var < -100:
 		return -100
@@ -482,25 +483,25 @@ def forceProductPriority(var):  # pylint: disable=invalid-name
 	return var
 
 
-def forceFilename(var):  # pylint: disable=invalid-name
+def forceFilename(var: Any) -> str:  # pylint: disable=invalid-name
 	return forceUnicode(var)
 
 
-def forceProductTargetConfiguration(var):  # pylint: disable=invalid-name
+def forceProductTargetConfiguration(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if var and var not in ("installed", "always", "forbidden", "undefined"):
 		raise ValueError(f"Bad product target configuration: '{var}'")
 	return var
 
 
-def forceInstallationStatus(var):  # pylint: disable=invalid-name
+def forceInstallationStatus(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if var and var not in ("installed", "not_installed", "unknown"):
 		raise ValueError(f"Bad installation status: '{var}'")
 	return var
 
 
-def forceActionRequest(var):  # pylint: disable=invalid-name
+def forceActionRequest(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if var:
 		if var == "undefined":
@@ -510,15 +511,15 @@ def forceActionRequest(var):  # pylint: disable=invalid-name
 	return var
 
 
-def forceActionRequestList(var):  # pylint: disable=invalid-name
+def forceActionRequestList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceActionRequest(element) for element in forceList(var)]
 
 
-def forceActionProgress(var):  # pylint: disable=invalid-name
+def forceActionProgress(var: Any) -> str:  # pylint: disable=invalid-name
 	return forceUnicode(var)
 
 
-def forceActionResult(var):  # pylint: disable=invalid-name
+def forceActionResult(var: Any) -> Optional[str]:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not var:
 		return None
@@ -527,7 +528,7 @@ def forceActionResult(var):  # pylint: disable=invalid-name
 	return var
 
 
-def forceRequirementType(var):  # pylint: disable=invalid-name
+def forceRequirementType(var: Any) -> Optional[str]:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not var:
 		return None
@@ -536,7 +537,7 @@ def forceRequirementType(var):  # pylint: disable=invalid-name
 	return var
 
 
-def forceObjectClass(var, objectClass):  # pylint: disable=invalid-name
+def forceObjectClass(var: Any, objectClass: type) -> Any:  # pylint: disable=invalid-name
 	if isinstance(var, objectClass):
 		return var
 
@@ -575,18 +576,18 @@ def forceObjectClass(var, objectClass):  # pylint: disable=invalid-name
 	return var
 
 
-def forceObjectClassList(var, objectClass):  # pylint: disable=invalid-name
+def forceObjectClassList(var: Any, objectClass: type) -> List[Any]:  # pylint: disable=invalid-name
 	return [forceObjectClass(element, objectClass) for element in forceList(var)]
 
 
-def forceGroupId(var):  # pylint: disable=invalid-name
+def forceGroupId(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceObjectId(var)
 	if not _GROUP_ID_REGEX.search(var):
 		raise ValueError(f"Bad group id: '{var}'")
 	return var
 
 
-def forceGroupType(var):  # pylint: disable=invalid-name
+def forceGroupType(var: Any) -> str:  # pylint: disable=invalid-name
 	lower_value = forceUnicodeLower(var)
 
 	if lower_value == "hostgroup":
@@ -596,87 +597,87 @@ def forceGroupType(var):  # pylint: disable=invalid-name
 	raise ValueError(f"Unknown group type: '{var}'")
 
 
-def forceGroupTypeList(var):  # pylint: disable=invalid-name
+def forceGroupTypeList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceGroupType(element) for element in forceList(var)]
 
 
-def forceGroupIdList(var):  # pylint: disable=invalid-name
+def forceGroupIdList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceGroupId(element) for element in forceList(var)]
 
 
-def forceObjectId(var):  # pylint: disable=invalid-name
+def forceObjectId(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var).strip()
 	if not _OBJECT_ID_REGEX.search(var):
 		raise ValueError(f"Bad object id: '{var}'")
 	return var
 
 
-def forceObjectIdList(var):  # pylint: disable=invalid-name
+def forceObjectIdList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceObjectId(element) for element in forceList(var)]
 
 
-def forceEmailAddress(var):  # pylint: disable=invalid-name
+def forceEmailAddress(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not _EMAIL_REGEX.search(var):
 		raise ValueError(f"Bad email address: '{var}'")
 	return var
 
 
-def forceDomain(var):  # pylint: disable=invalid-name
+def forceDomain(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not _DOMAIN_REGEX.search(var):
 		raise ValueError(f"Bad domain: '{var}'")
 	return var
 
 
-def forceHostname(var):  # pylint: disable=invalid-name
+def forceHostname(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not _HOSTNAME_REGEX.search(var):
 		raise ValueError(f"Bad hostname: '{var}'")
 	return var
 
 
-def forceLicenseContractId(var):  # pylint: disable=invalid-name
+def forceLicenseContractId(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not _LICENSE_CONTRACT_ID_REGEX.search(var):
 		raise ValueError(f"Bad license contract id: '{var}'")
 	return var
 
 
-def forceLicenseContractIdList(var):  # pylint: disable=invalid-name
+def forceLicenseContractIdList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceLicenseContractId(element) for element in forceList(var)]
 
 
-def forceSoftwareLicenseId(var):  # pylint: disable=invalid-name
+def forceSoftwareLicenseId(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not _SOFTWARE_LICENSE_ID_REGEX.search(var):
 		raise ValueError(f"Bad software license id: '{var}'")
 	return var
 
 
-def forceSoftwareLicenseIdList(var):  # pylint: disable=invalid-name
+def forceSoftwareLicenseIdList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceSoftwareLicenseId(element) for element in forceList(var)]
 
 
-def forceLicensePoolId(var):  # pylint: disable=invalid-name
+def forceLicensePoolId(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not _LICENSE_POOL_ID_REGEX.search(var):
 		raise ValueError(f"Bad license pool id: '{var}'")
 	return var
 
 
-def forceLicensePoolIdList(var):  # pylint: disable=invalid-name
+def forceLicensePoolIdList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceLicensePoolId(element) for element in forceList(var)]
 
 
-def forceAuditState(var):  # pylint: disable=invalid-name
+def forceAuditState(var: Any) -> int:  # pylint: disable=invalid-name
 	var = forceInt(var)
 	if var not in (0, 1):
 		raise ValueError(f"Bad audit state value: {var}")
 	return var
 
 
-def forceLanguageCode(var):  # pylint: disable=invalid-name
+def forceLanguageCode(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	match = _LANGUAGE_CODE_REGEX.search(var)
 	if not match:
@@ -689,22 +690,22 @@ def forceLanguageCode(var):  # pylint: disable=invalid-name
 	return var
 
 
-def forceLanguageCodeList(var):  # pylint: disable=invalid-name
+def forceLanguageCodeList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceLanguageCode(element) for element in forceList(var)]
 
 
-def forceArchitecture(var):  # pylint: disable=invalid-name
+def forceArchitecture(var: Any) -> str:  # pylint: disable=invalid-name
 	var = forceUnicodeLower(var)
 	if not _ARCHITECTURE_REGEX.search(var):
 		raise ValueError(f"Bad architecture: '{var}'")
 	return var
 
 
-def forceArchitectureList(var):  # pylint: disable=invalid-name
+def forceArchitectureList(var: Any) -> List[str]:  # pylint: disable=invalid-name
 	return [forceArchitecture(element) for element in forceList(var)]
 
 
-def forceUniqueList(_list):  # pylint: disable=invalid-name
+def forceUniqueList(_list: List[Any]) -> List[Any]:  # pylint: disable=invalid-name
 	cleaned_list = []
 	for entry in _list:
 		if entry not in cleaned_list:
@@ -712,7 +713,7 @@ def forceUniqueList(_list):  # pylint: disable=invalid-name
 	return cleaned_list
 
 
-def args(*vars, **typeVars):  # pylint: disable=redefined-builtin
+def args(*vars, **typeVars) -> Callable:  # pylint: disable=redefined-builtin
 	"""Function to populate an object with passed on keyword args.
 	This is intended to be used as a decorator.
 	Classes using this decorator must explicitly inherit from object or a subclass of object.
@@ -735,7 +736,7 @@ def args(*vars, **typeVars):  # pylint: disable=redefined-builtin
 		class Foo:
 			pass
 	"""
-	vars = list(vars)
+	vars_list = list(vars)
 
 	def wrapper(cls):
 		def new(typ, *args, **kwargs):  # pylint: disable=redefined-builtin,redefined-outer-name
@@ -744,10 +745,10 @@ def args(*vars, **typeVars):  # pylint: disable=redefined-builtin
 			else:
 				obj = cls.__base__.__new__(typ, *args, **kwargs)
 
-			vars.extend(list(typeVars.keys()))
+			vars_list.extend(list(typeVars.keys()))
 			kwargs_cpy = kwargs.copy()
 
-			for var in vars:
+			for var in vars_list:
 				var_name = var.lstrip("_")
 				if var_name in kwargs_cpy:
 					if var in typeVars:

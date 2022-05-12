@@ -10,7 +10,7 @@ import os
 import subprocess
 
 import distro
-from OpenSSL import crypto
+from OpenSSL import crypto  # type: ignore[import]
 
 from opsicommon.logging import get_logger
 
