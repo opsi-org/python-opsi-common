@@ -117,7 +117,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self._username = None
 		self._password = None
 		self._serialization = "auto"
-		self._ip_version = "auto"
+		self._ip_version: Union[str, int] = "auto"
 		self._connect_timeout = 10
 		self._read_timeout = 300
 		self._http_pool_maxsize = 10
@@ -236,10 +236,10 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			my_address = ipaddress.ip_address(self.hostname)
 			if isinstance(my_address, ipaddress.IPv6Address) and self._ip_version != "6":
 				logger.info("%s is an ipv6 address, forcing ipv6", self.hostname)
-				self._ip_version = "6"
+				self._ip_version = 6
 			elif isinstance(my_address, ipaddress.IPv4Address) and self._ip_version != "4":
 				logger.info("%s is an ipv4 address, forcing ipv4", self.hostname)
-				self._ip_version = "4"
+				self._ip_version = 4
 		except ValueError:
 			pass
 
@@ -515,8 +515,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		return data
 
 	def _create_instance_methods(self) -> None:  # pylint: disable=too-many-locals
-		if not self._interface:
-			raise ValueError("No interface specification present fo _create_instance_methods.")
+		if self._interface is None:
+			raise ValueError("No interface specification present for _create_instance_methods.")
 		for method in self._interface:
 			try:
 				method_name = method["name"]
