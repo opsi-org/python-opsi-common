@@ -28,7 +28,6 @@ from opsicommon.logging import (
 	init_logging,
 	init_warnings_capture,
 	log_context,
-	logger,
 	logging_config,
 	observable_handler,
 	print_logger_info,
@@ -51,6 +50,8 @@ from .helpers import log_stream
 
 MY_FORMAT = "%(log_color)s[%(opsilevel)d] [%(asctime)s.%(msecs)03d]%(reset)s [%(contextstring)s] %(message)s"
 OTHER_FORMAT = "[%(opsilevel)d] [%(asctime)s.%(msecs)03d] [%(contextstring)s] %(message)s   (%(filename)s:%(lineno)d)"
+
+logger = get_logger()
 
 
 def test_levels():  # pylint: disable=redefined-outer-name

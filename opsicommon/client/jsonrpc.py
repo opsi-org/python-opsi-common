@@ -206,7 +206,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		)
 		if session_id:
 			if "=" in session_id:
-				logger.confidential("Using session id passed: %s", session_id)  # type: ignore # confidential is monkeypatched into logger
+				logger.confidential("Using session id passed: %s", session_id)
 				cookie_name, cookie_value = session_id.split("=", 1)
 				self._session.cookies.set(cookie_name, quote(cookie_value))
 			else:
@@ -277,9 +277,9 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 	@property
 	def session_id(self) -> Optional[str]:
-		if not self._session.cookies or not self._session.cookies._cookies:  # pylint: disable=protected-access
+		if not self._session.cookies or not self._session.cookies._cookies:  # type: ignore[attr-defined] # pylint: disable=protected-access
 			return None
-		for tmp1 in self._session.cookies._cookies.values():  # pylint: disable=protected-access
+		for tmp1 in self._session.cookies._cookies.values():  # type: ignore[attr-defined] # pylint: disable=protected-access
 			for tmp2 in tmp1.values():
 				for cookie in tmp2.values():
 					return f"{cookie.name}={unquote(cookie.value)}"
@@ -419,12 +419,12 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 					compression = _LZ4_COMPRESSION
 
 			if compression == _LZ4_COMPRESSION:
-				logger.trace("Compressing data with lz4")  # type: ignore # trace is monkeypatched into logger
+				logger.trace("Compressing data with lz4")
 				headers["Content-Encoding"] = "lz4"
 				headers["Accept-Encoding"] = "lz4"
 				data = lz4.frame.compress(data, compression_level=0, block_linked=True)
 			elif compression == _GZIP_COMPRESSION:
-				logger.trace("Compressing data with gzip")  # type: ignore # trace is monkeypatched into logger
+				logger.trace("Compressing data with gzip")
 				headers["Content-Encoding"] = "gzip"
 				headers["Accept-Encoding"] = "gzip"
 				data = gzip.compress(data)
@@ -514,7 +514,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		return data
 
-	def _create_instance_methods(self) -> None:
+	def _create_instance_methods(self) -> None:  # pylint: disable=too-many-locals
 		if not self._interface:
 			raise ValueError("No interface specification present fo _create_instance_methods.")
 		for method in self._interface:
@@ -562,8 +562,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				arg_string = ", ".join(arg_list)
 				call_string = ", ".join(call_list)
 
-				logger.trace("%s: arg string is: %s", method_name, arg_string)  # type: ignore # trace is monkeypatched into logger
-				logger.trace("%s: call string is: %s", method_name, call_string)  # type: ignore # trace is monkeypatched into logger
+				logger.trace("%s: arg string is: %s", method_name, arg_string)
+				logger.trace("%s: call string is: %s", method_name, call_string)
 				exec(  # pylint: disable=exec-used
 					f'def {method_name}(self, {arg_string}): return self.execute_rpc("{method_name}", [{call_string}])'
 				)

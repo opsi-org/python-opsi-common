@@ -10,7 +10,7 @@ import os
 import subprocess
 import tempfile
 
-from OpenSSL import crypto
+from OpenSSL import crypto  # type: ignore[import]
 
 from opsicommon.logging import get_logger
 
@@ -44,7 +44,7 @@ def load_ca(subject_name: str) -> crypto.X509:
 		)
 	except subprocess.CalledProcessError as err:
 		if "could not be found" in err.output.decode():
-			pem = ""
+			pem = None
 		else:
 			raise
 	if not pem or not pem.strip():

@@ -25,82 +25,6 @@ LOG_COLORS = {
 }
 SECRET_REPLACEMENT_STRING = "***secret***"
 
-logging.NOTSET = 0
-logging.SECRET = 10
-logging.CONFIDENTIAL = logging.SECRET
-logging.TRACE = 20
-logging.DEBUG2 = logging.TRACE
-logging.DEBUG = 30
-logging.INFO = 40
-logging.NOTICE = 50
-logging.WARNING = 60
-logging.WARN = logging.WARNING
-logging.ERROR = 70
-logging.CRITICAL = 80
-logging.ESSENTIAL = 90
-logging.COMMENT = logging.ESSENTIAL
-logging.NONE = 100
-
-LEVEL_TO_NAME = {
-	logging.SECRET: "SECRET",
-	logging.TRACE: "TRACE",
-	logging.DEBUG: "DEBUG",
-	logging.INFO: "INFO",
-	logging.NOTICE: "NOTICE",
-	logging.WARNING: "WARNING",
-	logging.ERROR: "ERROR",
-	logging.CRITICAL: "CRITICAL",
-	logging.ESSENTIAL: "ESSENTIAL",
-	logging.NONE: "NONE",
-}
-logging.level_to_name = LEVEL_TO_NAME
-logging._levelToName = LEVEL_TO_NAME  # pylint: disable=protected-access
-
-NAME_TO_LEVEL = {
-	"SECRET": logging.SECRET,
-	"TRACE": logging.TRACE,
-	"DEBUG": logging.DEBUG,
-	"INFO": logging.INFO,
-	"NOTICE": logging.NOTICE,
-	"WARNING": logging.WARNING,
-	"ERROR": logging.ERROR,
-	"CRITICAL": logging.CRITICAL,
-	"ESSENTIAL": logging.ESSENTIAL,
-	"NONE": logging.NONE,
-}
-logging.name_to_level = NAME_TO_LEVEL
-logging._nameToLevel = NAME_TO_LEVEL  # pylint: disable=protected-access
-
-LEVEL_TO_OPSI_LEVEL = {
-	logging.SECRET: 9,
-	logging.TRACE: 8,
-	logging.DEBUG: 7,
-	logging.INFO: 6,
-	logging.NOTICE: 5,
-	logging.WARNING: 4,
-	logging.ERROR: 3,
-	logging.CRITICAL: 2,
-	logging.ESSENTIAL: 1,
-	logging.NONE: 0,
-}
-logging.level_to_opsi_level = LEVEL_TO_OPSI_LEVEL
-logging._levelToOpsiLevel = LEVEL_TO_OPSI_LEVEL  # pylint: disable=protected-access
-
-OPSI_LEVEL_TO_LEVEL = {
-	9: logging.SECRET,
-	8: logging.TRACE,
-	7: logging.DEBUG,
-	6: logging.INFO,
-	5: logging.NOTICE,
-	4: logging.WARNING,
-	3: logging.ERROR,
-	2: logging.CRITICAL,
-	1: logging.ESSENTIAL,
-	0: logging.NONE,
-}
-logging.opsi_level_to_level = OPSI_LEVEL_TO_LEVEL
-logging._opsiLevelToLevel = OPSI_LEVEL_TO_LEVEL  # pylint: disable=protected-access
-
 LOG_SECRET = 9
 LOG_CONFIDENTIAL = 9
 LOG_TRACE = 8
@@ -116,3 +40,82 @@ LOG_ESSENTIAL = 1
 LOG_COMMENT = 1
 LOG_NONE = 0
 LOG_NOTSET = 0
+
+logging.NOTSET = 0
+SECRET = 10
+logging.SECRET = SECRET  # type: ignore[attr-defined]
+logging.CONFIDENTIAL = SECRET  # type: ignore[attr-defined]
+TRACE = 20
+logging.TRACE = TRACE  # type: ignore[attr-defined]
+logging.DEBUG2 = TRACE  # type: ignore[attr-defined]
+logging.DEBUG = 30
+logging.INFO = 40
+NOTICE = 50
+logging.NOTICE = NOTICE  # type: ignore[attr-defined]
+logging.WARNING = 60
+logging.WARN = logging.WARNING
+logging.ERROR = 70
+logging.CRITICAL = 80
+ESSENTIAL = 90
+logging.ESSENTIAL = ESSENTIAL  # type: ignore[attr-defined]
+logging.COMMENT = ESSENTIAL  # type: ignore[attr-defined]
+NONE = 100
+logging.NONE = NONE  # type: ignore[attr-defined]
+
+LEVEL_TO_NAME = {
+	logging.SECRET: "SECRET",  # type: ignore[attr-defined]
+	logging.TRACE: "TRACE",  # type: ignore[attr-defined]
+	logging.DEBUG: "DEBUG",
+	logging.INFO: "INFO",
+	logging.NOTICE: "NOTICE",  # type: ignore[attr-defined]
+	logging.WARNING: "WARNING",
+	logging.ERROR: "ERROR",
+	logging.CRITICAL: "CRITICAL",
+	logging.ESSENTIAL: "ESSENTIAL",  # type: ignore[attr-defined]
+	logging.NONE: "NONE",  # type: ignore[attr-defined]
+}
+logging._levelToName = logging.level_to_name = LEVEL_TO_NAME  # type: ignore[attr-defined] # pylint: disable=protected-access
+
+NAME_TO_LEVEL = {
+	"SECRET": logging.SECRET,  # type: ignore[attr-defined]
+	"TRACE": logging.TRACE,  # type: ignore[attr-defined]
+	"DEBUG": logging.DEBUG,
+	"INFO": logging.INFO,
+	"NOTICE": logging.NOTICE,  # type: ignore[attr-defined]
+	"WARNING": logging.WARNING,
+	"ERROR": logging.ERROR,
+	"CRITICAL": logging.CRITICAL,
+	"ESSENTIAL": logging.ESSENTIAL,  # type: ignore[attr-defined]
+	"NONE": logging.NONE,  # type: ignore[attr-defined]
+}
+logging._nameToLevel = logging.name_to_level = NAME_TO_LEVEL  # type: ignore[attr-defined] # pylint: disable=protected-access
+
+LEVEL_TO_OPSI_LEVEL = {
+	logging.SECRET: LOG_SECRET,  # type: ignore[attr-defined]
+	logging.TRACE: LOG_TRACE,  # type: ignore[attr-defined]
+	logging.DEBUG: LOG_DEBUG,
+	logging.INFO: LOG_INFO,
+	logging.NOTICE: LOG_NOTICE,  # type: ignore[attr-defined]
+	logging.WARNING: LOG_WARNING,
+	logging.ERROR: LOG_ERROR,
+	logging.CRITICAL: LOG_CRITICAL,
+	logging.ESSENTIAL: LOG_ESSENTIAL,  # type: ignore[attr-defined]
+	logging.NONE: LOG_NONE,  # type: ignore[attr-defined]
+}
+logging.level_to_opsi_level = LEVEL_TO_OPSI_LEVEL  # type: ignore[attr-defined]
+logging._levelToOpsiLevel = LEVEL_TO_OPSI_LEVEL  # type: ignore[attr-defined] # pylint: disable=protected-access
+
+OPSI_LEVEL_TO_LEVEL = {
+	LOG_SECRET: logging.SECRET,  # type: ignore[attr-defined]
+	LOG_TRACE: logging.TRACE,  # type: ignore[attr-defined]
+	LOG_DEBUG: logging.DEBUG,
+	LOG_INFO: logging.INFO,
+	LOG_NOTICE: logging.NOTICE,  # type: ignore[attr-defined]
+	LOG_WARNING: logging.WARNING,
+	LOG_ERROR: logging.ERROR,
+	LOG_CRITICAL: logging.CRITICAL,
+	LOG_ESSENTIAL: logging.ESSENTIAL,  # type: ignore[attr-defined]
+	LOG_NONE: logging.NONE,  # type: ignore[attr-defined]
+}
+logging.opsi_level_to_level = OPSI_LEVEL_TO_LEVEL  # type: ignore[attr-defined]
+logging._opsiLevelToLevel = OPSI_LEVEL_TO_LEVEL  # type: ignore[attr-defined] # pylint: disable=protected-access
