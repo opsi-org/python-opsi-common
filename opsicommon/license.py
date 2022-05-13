@@ -610,7 +610,7 @@ class OpsiLicensePool:
 		client_numbers = self.client_numbers
 		modules: Dict[str, Dict[str, Any]] = {}
 		for module_id in OPSI_MODULE_IDS:
-			if module_id in ("treeview", "vista"):
+			if module_id in ("treeview", "vista", "roaming_profiles"):
 				modules[module_id] = {"available": True, "state": OPSI_MODULE_STATE_FREE, "license_ids": [], "client_number": 999999999}
 			else:
 				modules[module_id] = {"available": False, "state": OPSI_MODULE_STATE_UNLICENSED, "license_ids": [], "client_number": 0}
