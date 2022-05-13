@@ -44,7 +44,7 @@ class OpsiError(Exception):
 
 	ExceptionShortDescription = "Opsi error"
 
-	def __init__(self, message: str = ""):
+	def __init__(self, message: str = "") -> None:
 		super().__init__(message)
 		self.message = str(message)
 
@@ -98,7 +98,7 @@ class OpsiTimeoutError(OpsiError):
 class OpsiProductOrderingError(OpsiError):
 	ExceptionShortDescription = "A condition for ordering cannot be fulfilled"
 
-	def __init__(self, message: str = "", problematicRequirements: List[str] = None):
+	def __init__(self, message: str = "", problematicRequirements: List[str] = None) -> None:
 		super().__init__(message)
 		self.problematicRequirements = problematicRequirements or []  # pylint: disable=invalid-name
 

@@ -10,12 +10,12 @@ This file is part of opsi - https://www.opsi.org
 import ctypes
 from contextlib import contextmanager
 
-import win32crypt  # pylint: disable=import-error
-from OpenSSL import crypto
+import win32crypt  # type: ignore[import] # pylint: disable=import-error
+from OpenSSL import crypto  # type: ignore[import]
 
 from opsicommon.logging import get_logger
 
-crypt32 = ctypes.WinDLL("crypt32.dll")
+crypt32 = ctypes.WinDLL("crypt32.dll")  # type: ignore[attr-defined]
 
 __all__ = ["install_ca", "load_ca", "remove_ca"]
 

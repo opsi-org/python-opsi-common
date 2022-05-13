@@ -9,7 +9,7 @@ ssl
 import random
 from typing import Tuple, Union
 
-from OpenSSL.crypto import (
+from OpenSSL.crypto import (  # type: ignore[import]
 	FILETYPE_PEM,
 	TYPE_RSA,
 	X509,
