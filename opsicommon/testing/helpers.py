@@ -182,6 +182,8 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self.send_header("Content-Length", str(len(response)))
 		self.send_header("Content-Type", "application/json")
 		self.end_headers()
+		if self.server.send_max_bytes:
+			response = response[:self.server.send_max_bytes]
 		self.wfile.write(response)
 
 	def do_GET(self):  # pylint: disable=invalid-name
@@ -191,6 +193,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			if file:
 				try:
 					range_ = self.headers.get("Range")
+					response = b""
 					if range_:
 						#  Range: bytes=0-2047
 						fst = os.fstat(file.fileno())
@@ -198,9 +201,14 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 						start_byte = int(start_byte or 0)
 						end_byte = int(end_byte or fst[6])
 						file.seek(start_byte)
-						self.wfile.write(file.read(end_byte - start_byte + 1))
+						response = file.read(end_byte - start_byte + 1)
 					else:
-						self.copyfile(file, self.wfile)
+						response = file.read()
+
+
+					if self.server.send_max_bytes:
+						response = response[:self.server.send_max_bytes]
+					self.wfile.write(response)
 				finally:
 					file.close()
 			return None
@@ -220,6 +228,8 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			response = "OK".encode("utf-8")
 		self.send_header("Content-Length", str(len(response)))
 		self.end_headers()
+		if self.server.send_max_bytes:
+			response = response[:self.server.send_max_bytes]
 		self.wfile.write(response)
 		return None
 
@@ -289,6 +299,7 @@ class HTTPTestServer(threading.Thread):  # pylint: disable=too-many-instance-att
 		response_body=None,
 		response_delay=None,
 		serve_directory=None,
+		send_max_bytes=None
 	):
 		super().__init__()
 		self.log_file = str(log_file) if log_file else None
@@ -300,6 +311,7 @@ class HTTPTestServer(threading.Thread):  # pylint: disable=too-many-instance-att
 		self.response_body = response_body if response_body else None
 		self.response_delay = response_delay if response_delay else None
 		self.serve_directory = str(serve_directory) if serve_directory else None
+		self.send_max_bytes = int(send_max_bytes) if send_max_bytes else None
 		# Auto select free port
 		with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
 			sock.bind(("", 0))
@@ -326,8 +338,12 @@ class HTTPTestServer(threading.Thread):  # pylint: disable=too-many-instance-att
 		self.server.response_body = self.response_body  # pylint: disable=attribute-defined-outside-init
 		self.server.response_delay = self.response_delay  # pylint: disable=attribute-defined-outside-init
 		self.server.serve_directory = self.serve_directory  # pylint: disable=attribute-defined-outside-init
+		self.server.send_max_bytes = self.send_max_bytes  # pylint: disable=attribute-defined-outside-init
 		# print("Server listening on port:" + str(self.port))
 		self.server.serve_forever()
+
+	def set_option(self, name, value):
+		setattr(self.server, name, value)
 
 	def stop(self):
 		if self.server:
@@ -345,10 +361,11 @@ def http_test_server(  # pylint: disable=too-many-arguments
 	response_body=None,
 	response_delay=None,
 	serve_directory=None,
+	send_max_bytes=None
 ):
 	timeout = 5
 	server = HTTPTestServer(
-		log_file, ip_version, server_key, server_cert, response_headers, response_status, response_body, response_delay, serve_directory
+		log_file, ip_version, server_key, server_cert, response_headers, response_status, response_body, response_delay, serve_directory, send_max_bytes
 	)
 	server.daemon = True
 	server.start()
