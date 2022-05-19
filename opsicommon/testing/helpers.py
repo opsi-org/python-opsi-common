@@ -186,7 +186,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			response = response[:self.server.send_max_bytes]
 		self.wfile.write(response)
 
-	def do_GET(self):  # pylint: disable=invalid-name
+	def do_GET(self):  # pylint: disable=invalid-name,too-many-branches
 		self._log({"method": "GET", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
 		if self.server.serve_directory:
 			file = self.send_head()
@@ -204,7 +204,6 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 						response = file.read(end_byte - start_byte + 1)
 					else:
 						response = file.read()
-
 
 					if self.server.send_max_bytes:
 						response = response[:self.server.send_max_bytes]
@@ -320,7 +319,7 @@ class HTTPTestServer(threading.Thread):  # pylint: disable=too-many-instance-att
 		self.server = None
 
 	def run(self):
-		class HTTPServer6(HTTPServer):
+		class HTTPServer6(HTTPServer):  # pylint: disable=too-many-instance-attributes
 			address_family = socket.AF_INET6
 
 		if self.ip_version == 6:
@@ -351,7 +350,7 @@ class HTTPTestServer(threading.Thread):  # pylint: disable=too-many-instance-att
 
 
 @contextmanager
-def http_test_server(  # pylint: disable=too-many-arguments
+def http_test_server(  # pylint: disable=too-many-arguments,too-many-locals
 	log_file=None,
 	ip_version=None,
 	server_key=None,
@@ -365,7 +364,9 @@ def http_test_server(  # pylint: disable=too-many-arguments
 ):
 	timeout = 5
 	server = HTTPTestServer(
-		log_file, ip_version, server_key, server_cert, response_headers, response_status, response_body, response_delay, serve_directory, send_max_bytes
+		log_file, ip_version, server_key, server_cert,
+		response_headers, response_status, response_body, response_delay,
+		serve_directory, send_max_bytes
 	)
 	server.daemon = True
 	server.start()
