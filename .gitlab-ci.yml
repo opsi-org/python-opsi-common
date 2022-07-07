@@ -91,7 +91,9 @@ pylint-pytest:
       - coverage.xml
     expire_in: 3 days
     reports:
-      cobertura: coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
       junit: testreport.xml
 
 
