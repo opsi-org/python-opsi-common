@@ -6,41 +6,43 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-import re
-import time
-import shutil
 import codecs
 import json
 import pathlib
+import re
+import shutil
+import time
 from datetime import date, timedelta
 from unittest import mock
+
 import pytest
 from Crypto.PublicKey import RSA
 
 from opsicommon.license import (
-	set_default_opsi_license_pool,
-	get_default_opsi_license_pool,
-	OPSI_MODULE_STATE_CLOSE_TO_LIMIT,
-	OPSI_MODULE_STATE_OVER_LIMIT,
-	OpsiLicenseFile,
-	generate_key_pair,
-	OpsiLicense,
-	OpsiModulesFile,
-	OpsiLicensePool,
-	OPSI_LICENSE_STATE_REPLACED_BY_NON_CORE,
-	OPSI_LICENSE_STATE_VALID,
-	OPSI_LICENSE_STATE_INVALID_SIGNATURE,
+	MAX_STATE_CACHE_VALUES,
+	OPSI_FREE_MODULE_IDS,
+	OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED,
+	OPSI_LICENSE_DATE_UNLIMITED,
 	OPSI_LICENSE_STATE_EXPIRED,
+	OPSI_LICENSE_STATE_INVALID_SIGNATURE,
 	OPSI_LICENSE_STATE_NOT_YET_VALID,
+	OPSI_LICENSE_STATE_REPLACED_BY_NON_CORE,
 	OPSI_LICENSE_STATE_REVOKED,
+	OPSI_LICENSE_STATE_VALID,
 	OPSI_LICENSE_TYPE_STANDARD,
+	OPSI_MODULE_IDS,
+	OPSI_MODULE_STATE_CLOSE_TO_LIMIT,
 	OPSI_MODULE_STATE_FREE,
 	OPSI_MODULE_STATE_LICENSED,
+	OPSI_MODULE_STATE_OVER_LIMIT,
 	OPSI_MODULE_STATE_UNLICENSED,
-	OPSI_MODULE_IDS,
-	OPSI_LICENSE_DATE_UNLIMITED,
-	OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED,
-	MAX_STATE_CACHE_VALUES,
+	OpsiLicense,
+	OpsiLicenseFile,
+	OpsiLicensePool,
+	OpsiModulesFile,
+	generate_key_pair,
+	get_default_opsi_license_pool,
+	set_default_opsi_license_pool,
 )
 
 LIC1 = {
@@ -399,7 +401,7 @@ def test_opsi_license_pool_relevant_dates():
 				assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_LICENSED
 			else:
 				assert not modules["scalability1"]["available"]
-				assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_UNLICENSED
+				assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_OVER_LIMIT
 
 
 def test_licensing_info_and_cache():
@@ -464,9 +466,9 @@ def test_licensing_info_and_cache():
 		(1000, 100, 100000, 100000, 5, 95, OPSI_MODULE_STATE_OVER_LIMIT, False, OPSI_MODULE_STATE_OVER_LIMIT, False),
 		(1000, 100, 1032, 110, -100000, -100000, OPSI_MODULE_STATE_OVER_LIMIT, False, OPSI_MODULE_STATE_OVER_LIMIT, False),
 		(1000, 100, 1032, 110, 100000, 100000, OPSI_MODULE_STATE_OVER_LIMIT, False, OPSI_MODULE_STATE_OVER_LIMIT, False),
-	),  # pylint: disable=too-many-arguments,too-many-locals
+	),
 )
-def test_license_state_client_number_warning_and_thresholds(
+def test_license_state_client_number_warning_and_thresholds(  # pylint: disable=too-many-arguments,too-many-locals
 	lic_scalability1,
 	lic_linux,
 	clients_total,
@@ -512,6 +514,42 @@ def test_license_state_client_number_warning_and_thresholds(
 		assert modules["linux_agent"]["client_number"] == lic_linux
 		assert modules["linux_agent"]["state"] == exp_state_linux
 		assert modules["linux_agent"]["available"] == exp_avail_linux
+
+
+def test_future_warning():
+	private_key, public_key = generate_key_pair(return_pem=False)
+
+	clients = 100
+
+	def client_info():
+		return {"macos": 0, "linux": 0, "windows": clients}
+
+	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
+		lic = dict(LIC1)
+		del lic["id"]
+		lic["module_id"] = "scalability1"
+		lic["type"] = OPSI_LICENSE_TYPE_STANDARD
+		lic["valid_from"] = "2000-01-01"
+		lic["valid_until"] = "2030-01-01"
+		lic["client_number"] = clients * 2
+		lic1 = OpsiLicense(**lic)
+		lic1.sign(private_key)
+
+		olp = OpsiLicensePool(client_info=client_info)
+		olp.add_license(lic1)
+
+		module_ids = sorted(list(OPSI_FREE_MODULE_IDS) + ["scalability1"])
+		assert olp.enabled_module_ids == module_ids
+
+		state = olp.get_modules(at_date=date.fromisoformat("2030-01-01"))["scalability1"]
+		assert state["client_number"] == lic["client_number"]
+		assert state["state"] == OPSI_MODULE_STATE_LICENSED
+		assert state["available"] is True
+
+		state = olp.get_modules(at_date=date.fromisoformat("2030-01-02"))["scalability1"]
+		assert state["client_number"] == 0
+		assert state["state"] == OPSI_MODULE_STATE_OVER_LIMIT
+		assert state["available"] is False
 
 
 def test_license_state():
@@ -572,7 +610,7 @@ def test_license_state_cache():
 			assert lic.get_state(at_date=date.today() + timedelta(days=num)) == OPSI_LICENSE_STATE_EXPIRED
 			assert len(lic._cached_state) == min(MAX_STATE_CACHE_VALUES, num)  # pylint: disable=protected-access
 
-		lic.clear_state_cache()
+		lic.clear_cache()
 		assert len(lic._cached_state) == 0  # pylint: disable=protected-access
 
 		today = date.today()

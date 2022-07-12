@@ -255,6 +255,8 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 
 	_cached_state: Dict[str, str] = attr.ib(default=OrderedDict())
 
+	_cached_signature_valid: Union[bool, None] = None
+
 	def set_license_pool(self, license_pool: "OpsiLicensePool") -> None:
 		self._license_pool = license_pool
 
@@ -263,6 +265,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 		del res["_license_pool"]
 		del res["_checksum"]
 		del res["_cached_state"]
+		del res["_cached_signature_valid"]
 		if with_state:
 			res["_state"] = self.get_state()
 		if serializable:
@@ -316,13 +319,14 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 			return _hash.digest()
 		return _hash
 
-	def clear_state_cache(self) -> None:
+	def clear_cache(self) -> None:
+		self._cached_signature_valid = None
 		self._cached_state = OrderedDict()
 
 	def get_state(self, test_revoked: bool = True, at_date: date = None) -> str:
 		checksum = self.get_checksum(with_signature=True)
 		if checksum != self._checksum:
-			self.clear_state_cache()
+			self.clear_cache()
 		self._checksum = checksum
 
 		if len(self._cached_state) >= MAX_STATE_CACHE_VALUES:
@@ -333,20 +337,28 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 			self._cached_state[cache_key] = self._get_state(test_revoked=test_revoked, at_date=at_date)
 		return self._cached_state[cache_key]
 
+	def is_signature_valid(self):
+		if self._cached_signature_valid is None:
+			_hash = self.get_hash()
+			public_key = get_signature_public_key(self.schema_version)
+			try:
+				if self.schema_version == 1:
+					h_int = int.from_bytes(_hash.digest(), "big")
+					s_int = public_key._encrypt(int(self.signature.hex()))  # type: ignore[attr-defined] # pylint: disable=protected-access
+					self._cached_signature_valid = h_int == s_int
+				else:
+					pss.new(public_key).verify(_hash, self.signature)
+					self._cached_signature_valid = True
+			except (ValueError, TypeError):
+				self._cached_signature_valid = False
+
+		return self._cached_signature_valid
+
 	def _get_state(self, test_revoked: bool = True, at_date: date = None) -> str:  # pylint: disable=too-many-return-statements
 		if not at_date:
 			at_date = date.today()
-		_hash = self.get_hash()
-		public_key = get_signature_public_key(self.schema_version)
-		try:
-			if self.schema_version == 1:
-				h_int = int.from_bytes(_hash.digest(), "big")
-				s_int = public_key._encrypt(int(self.signature.hex()))  # type: ignore[attr-defined] # pylint: disable=protected-access
-				if h_int != s_int:
-					return OPSI_LICENSE_STATE_INVALID_SIGNATURE
-			else:
-				pss.new(public_key).verify(_hash, self.signature)
-		except (ValueError, TypeError):
+
+		if not self.is_signature_valid():
 			return OPSI_LICENSE_STATE_INVALID_SIGNATURE
 
 		if self.type == OPSI_LICENSE_TYPE_CORE and self._license_pool:
@@ -549,6 +561,14 @@ class OpsiLicensePool:
 			client_numbers["all"] += client_numbers[client_type]
 		return client_numbers
 
+	@property
+	def enabled_module_ids(self) -> List[str]:
+		module_ids = set(OPSI_FREE_MODULE_IDS)
+		for lic in self._licenses.values():
+			if lic.is_signature_valid():
+				module_ids.add(lic.module_id)
+		return sorted(list(module_ids))
+
 	def get_licenses(  # pylint: disable=too-many-arguments
 		self,
 		exclude_ids: List[str] = None,
@@ -571,7 +591,7 @@ class OpsiLicensePool:
 
 	def clear_license_state_cache(self) -> None:
 		for lic in self._licenses.values():
-			lic.clear_state_cache()
+			lic.clear_cache()
 
 	def add_license(self, *opsi_license: OpsiLicense) -> None:
 		for lic in opsi_license:
@@ -615,6 +635,7 @@ class OpsiLicensePool:
 		if not at_date:
 			at_date = date.today()
 
+		enabled_module_ids = self.enabled_module_ids
 		client_numbers = self.client_numbers
 		modules: Dict[str, Dict[str, Any]] = {}
 		for module_id in OPSI_MODULE_IDS:
@@ -634,7 +655,8 @@ class OpsiLicensePool:
 			modules[lic.module_id]["client_number"] = min(modules[lic.module_id]["client_number"], OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED)
 
 		for module_id, info in modules.items():
-			if info["state"] != OPSI_MODULE_STATE_LICENSED:
+			if module_id not in enabled_module_ids:
+				info["state"] = OPSI_MODULE_STATE_UNLICENSED
 				continue
 
 			client_number = client_numbers["all"]
@@ -645,7 +667,9 @@ class OpsiLicensePool:
 			# elif module_id == "vpn":
 			# client_number = client_numbers["vpn"]
 
-			usage_percent = client_number * 100 / info["client_number"]
+			usage_percent = 100
+			if info["client_number"] > 0:
+				usage_percent = client_number * 100 / info["client_number"]
 			absolute_free = info["client_number"] - client_number
 			if client_number >= info["client_number"] + info["client_number"] ** 0.5:
 				info["state"] = OPSI_MODULE_STATE_OVER_LIMIT
