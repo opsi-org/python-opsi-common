@@ -155,7 +155,7 @@ def forceUnicode(var: Any) -> str:  # pylint: disable=too-many-return-statements
 		pass
 
 	try:
-		var = var.__repr__()
+		var = repr(var)
 		if isinstance(var, str):
 			return var
 		return str(var, "utf-8", "replace")
