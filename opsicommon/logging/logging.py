@@ -838,6 +838,8 @@ def init_warnings_capture():
 				logger.debug(_line)
 
 	warnings.showwarning = _log_warning
+	# warn filter: https://docs.python.org/3/library/warnings.html#the-warnings-filter
+	warnings.simplefilter("default")
 
 
 init_warnings_capture()
