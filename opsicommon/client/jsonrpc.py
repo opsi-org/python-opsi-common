@@ -266,8 +266,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			)
 
 	@property
-	def hostname(self) -> Optional[bytes]:
-		return urlparse(self.base_url).hostname
+	def hostname(self) -> str:
+		return str(urlparse(self.base_url).hostname or "localhost")
 
 	@property
 	def session(self) -> requests.Session:
