@@ -221,7 +221,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		self.filter_dict: Dict[str, Any] = {}
 		self.set_filter(filter_dict)
 
-	def get_context(self) -> Dict:  # pylint: disable=no-self-use
+	def get_context(self) -> Dict:
 		"""
 		Returns context of current thread/task.
 
@@ -396,7 +396,7 @@ class SecretFilter(metaclass=Singleton):
 		self._min_length = min_length
 		self.secrets: Set[str] = set()
 
-	def _initialize_handlers(self):  # pylint: disable=no-self-use
+	def _initialize_handlers(self):
 		"""
 		Assign ContextSecretFormatter to Handlers.
 
@@ -837,7 +837,7 @@ def init_warnings_capture(traceback_log_level: int = logging.INFO) -> None:
 			for _line in entry.split("\n"):
 				logger.log(traceback_log_level, _line)
 
-	warnings.showwarning = _log_warning
+	warnings.showwarning = _log_warning  # type: ignore[assignment]
 	# warn filter: https://docs.python.org/3/library/warnings.html#the-warnings-filter
 	warnings.simplefilter("default")
 	# Warning 'The distutils package is deprecated and slated for removal in Python 3.12.
