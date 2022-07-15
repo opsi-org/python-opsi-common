@@ -17,21 +17,21 @@ logger = get_logger("opsicommon.general")
 
 
 def get_ip_addresses():
-	for interface, snics in psutil.net_if_addrs().items():
+	for interface, snics in psutil.net_if_addrs().items():  # pylint: disable=dotted-import-in-loop
 		for snic in snics:
 			family = None
-			if snic.family == socket.AF_INET:
+			if snic.family == socket.AF_INET:  # pylint: disable=dotted-import-in-loop
 				family = "ipv4"
-			elif snic.family == socket.AF_INET6:
+			elif snic.family == socket.AF_INET6:  # pylint: disable=dotted-import-in-loop
 				family = "ipv6"
 			else:
 				continue
 
 			ip_address = None
-			try:
-				ip_address = ipaddress.ip_address(snic.address.split("%")[0])
+			try:  # pylint: disable=loop-try-except-usage
+				ip_address = ipaddress.ip_address(snic.address.split("%")[0])  # pylint: disable=dotted-import-in-loop
 			except ValueError:
-				logger.warning("Unrecognised ip address: %r", snic.address)
+				logger.warning("Unrecognised ip address: %r", snic.address)  # pylint: disable=loop-global-usage
 				continue
 
 			yield {"family": family, "interface": interface, "address": snic.address, "ip_address": ip_address}
@@ -49,11 +49,11 @@ def get_hostnames():
 	names = {"localhost"}
 	names.add(get_fqdn())
 	for addr in get_ip_addresses():
-		try:
-			(hostname, aliases, _addr) = socket.gethostbyaddr(addr["address"])
+		try:  # pylint: disable=loop-try-except-usage
+			(hostname, aliases, _addr) = socket.gethostbyaddr(addr["address"])  # pylint: disable=dotted-import-in-loop
 			names.add(hostname)
 			for alias in aliases:
 				names.add(alias)
-		except socket.error as err:
-			logger.info("No hostname for %s: %s", addr, err)
+		except socket.error as err:  # pylint: disable=dotted-import-in-loop
+			logger.info("No hostname for %s: %s", addr, err)  # pylint: disable=loop-global-usage
 	return names

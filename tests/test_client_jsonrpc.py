@@ -17,7 +17,7 @@ import pytest
 from opsicommon.logging import LOG_WARNING
 from opsicommon.client.jsonrpc import JSONRPCClient, BackendAuthenticationError, BackendPermissionDeniedError, OpsiRpcError
 from opsicommon.ssl import create_ca, create_server_cert, as_pem
-from opsicommon.testing.helpers import http_test_server, environment
+from opsicommon.testing.helpers import http_test_server, environment  # type: ignore[import]
 
 from .helpers import log_stream
 
@@ -53,7 +53,7 @@ def test_arguments():
 	assert getattr(client, "_http_max_retries") == 0
 
 	for serialization in ("invalid", "json", "msgpack", "auto"):
-		kwargs["serialization"] = serialization
+		kwargs["serialization"] = serialization  # pylint: disable=loop-invariant-statement
 		client = JSONRPCClient("localhost", **kwargs)
 		if serialization == "invalid":
 			serialization = "auto"
@@ -61,7 +61,7 @@ def test_arguments():
 		assert client.base_url == "https://localhost:4447/rpc"
 
 	for ip_version in ("8", "4", "6", "auto"):
-		kwargs["ip_version"] = ip_version
+		kwargs["ip_version"] = ip_version  # pylint: disable=loop-invariant-statement
 		client = JSONRPCClient("https://localhost/base/path", **kwargs)
 		if ip_version == "8":
 			ip_version = "auto"
@@ -69,7 +69,7 @@ def test_arguments():
 		assert client.base_url == "https://localhost:4447/base/path"
 
 	for compression in ("gzip", "lz4", "true", True, "false", False):
-		kwargs["compression"] = compression
+		kwargs["compression"] = compression  # pylint: disable=loop-invariant-statement
 		client = JSONRPCClient("http://localhost:123/base/path", **kwargs)
 		if compression == "true":
 			compression = True
@@ -129,10 +129,10 @@ def test_proxy(tmp_path):
 			):
 				JSONRPCClient(f"http://{host}:{server.port+1}", proxy_url=f"http://{proxy_host}:{server.port}", connect_timeout=2)
 
-				request = json.loads(log_file.read_text(encoding="utf-8"))
+				request = json.loads(log_file.read_text(encoding="utf-8"))  # pylint: disable=dotted-import-in-loop
 				# print(request)
 				assert request.get("path") == f"http://{host}:{server.port+1}/rpc"
-				os.remove(log_file)
+				os.remove(log_file)  # pylint: disable=dotted-import-in-loop
 
 		proxy_env = {
 			"http_proxy": f"http://localhost:{server.port}",
@@ -267,12 +267,12 @@ def test_compression_and_serialization(tmp_path):
 			response_headers={"Server": server_name}
 		) as server:
 			client = JSONRPCClient(
-				f"http://localhost:{server.port}", compression=compression, serialization=serialization
+				f"http://localhost:{server.port}", compression=compression, serialization=serialization  # pylint: disable=loop-invariant-statement
 			)
 			assert client.server_name == server_name
-			client.execute_rpc("method", ["param" * 100])
+			client.execute_rpc("method", ["param" * 100])  # pylint: disable=loop-invariant-statement
 
-		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
+		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])  # pylint: disable=dotted-import-in-loop
 		# print(request)
 		if compression is True:
 			compression = "lz4"
@@ -297,7 +297,7 @@ def test_pass_session_id(tmp_path):
 		assert client.session_id == session_id
 
 	for line in log_file.read_text(encoding="utf-8").strip().split("\n"):
-		request = json.loads(line)
+		request = json.loads(line)  # pylint: disable=dotted-import-in-loop
 		# print(request)
 		assert unquote(request["headers"].get("Cookie")) == session_id
 

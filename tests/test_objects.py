@@ -9,40 +9,62 @@ test_objects
 import json
 from contextlib import contextmanager
 from unittest import mock
+
 import pytest
 
 from opsicommon.objects import (
-	get_backend_method_prefix, get_foreign_id_attributes,
-	get_possible_class_attributes, mandatory_constructor_args,
-	decode_ident, objects_differ
+	decode_ident,
+	get_backend_method_prefix,
+	get_foreign_id_attributes,
+	get_possible_class_attributes,
+	mandatory_constructor_args,
+	objects_differ,
 )
 
-object_classes = []
+object_classes = []  # pylint: disable=use-tuple-over-list
 pre_globals = list(globals())
 from opsicommon.objects import (  # pylint: disable=wrong-import-position,unused-import
-	Host, OpsiClient, OpsiDepotserver, OpsiConfigserver,
-	Config, UnicodeConfig, BoolConfig, ConfigState,
-	Product, LocalbootProduct, NetbootProduct,
-	ProductProperty, UnicodeProductProperty, BoolProductProperty,
-	ProductDependency, ProductOnDepot, ProductOnClient,
-	ProductPropertyState,
-	Group, HostGroup, ProductGroup,
-	ObjectToGroup,
-	LicenseContract,
-	SoftwareLicense, RetailSoftwareLicense, OEMSoftwareLicense, VolumeSoftwareLicense, ConcurrentSoftwareLicense,
-	LicensePool,
-	AuditSoftwareToLicensePool,
-	SoftwareLicenseToLicensePool,
-	LicenseOnClient,
+	AuditHardware,
+	AuditHardwareOnHost,
 	AuditSoftware,
 	AuditSoftwareOnClient,
-	AuditHardware,
-	AuditHardwareOnHost
+	AuditSoftwareToLicensePool,
+	BoolConfig,
+	BoolProductProperty,
+	ConcurrentSoftwareLicense,
+	Config,
+	ConfigState,
+	Group,
+	Host,
+	HostGroup,
+	LicenseContract,
+	LicenseOnClient,
+	LicensePool,
+	LocalbootProduct,
+	NetbootProduct,
+	ObjectToGroup,
+	OEMSoftwareLicense,
+	OpsiClient,
+	OpsiConfigserver,
+	OpsiDepotserver,
+	Product,
+	ProductDependency,
+	ProductGroup,
+	ProductOnClient,
+	ProductOnDepot,
+	ProductProperty,
+	ProductPropertyState,
+	RetailSoftwareLicense,
+	SoftwareLicense,
+	SoftwareLicenseToLicensePool,
+	UnicodeConfig,
+	UnicodeProductProperty,
+	VolumeSoftwareLicense,
 )
 
-for _name, _obj in dict(globals()).items():
-	if _name not in pre_globals and _name != "pre_globals":
-		object_classes.append(_obj)
+object_classes = [
+	_obj for _name, _obj in dict(globals()).items() if _name not in pre_globals and _name != "pre_globals"
+]
 
 
 @contextmanager
@@ -52,7 +74,7 @@ def empty_mandatory_constructor_args_cache():
 
 
 def test_object_classes():
-	objs = [
+	objs = (
 		Host(
 			"test.dom.tld", "desc", "notes", "00:01:02:03:04:05", "172.16.1.1", "inv001"
 		),
@@ -173,7 +195,7 @@ def test_object_classes():
 		AuditHardwareOnHost(
 			"BASE_BOARD", "client.dom.tld"
 		)
-	]
+	)
 	for obj in objs:
 		assert str(obj)
 		assert obj.sub_classes is not None
@@ -202,7 +224,7 @@ def test_object_classes():
 		obj.__class__.fromHash(_dict)
 		del _dict["type"]
 		assert isinstance(obj.__class__.fromHash(_dict), obj.__class__)
-		assert isinstance(obj.__class__.from_json(json.dumps(_dict)), obj.__class__)
+		assert isinstance(obj.__class__.from_json(json.dumps(_dict)), obj.__class__)  # pylint: disable=dotted-import-in-loop
 
 		obj.update(obj.clone())
 		obj.emptyValues()

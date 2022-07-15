@@ -14,7 +14,7 @@ from OpenSSL import crypto  # type: ignore[import]
 
 from opsicommon.logging import get_logger
 
-__all__ = ["install_ca", "load_ca", "remove_ca"]
+__all__ = ("install_ca", "load_ca", "remove_ca")
 
 
 logger = get_logger("opsicommon.general")
@@ -22,7 +22,7 @@ logger = get_logger("opsicommon.general")
 
 def _get_cert_path_and_cmd():
 	dist = {distro.id()}
-	for name in (distro.like() or "").split(" "):
+	for name in (distro.like() or "").split(" "):  # pylint: disable=dotted-import-in-loop
 		if name:
 			dist.add(name)
 	if "centos" in dist or "rhel" in dist:
@@ -53,14 +53,14 @@ def install_ca(ca_cert: crypto.X509):
 def load_ca(subject_name: str) -> crypto.X509:
 	system_cert_path, _cmd = _get_cert_path_and_cmd()
 	if os.path.exists(system_cert_path):
-		for root, _dirs, files in os.walk(system_cert_path):
+		for root, _dirs, files in os.walk(system_cert_path):  # pylint: disable=dotted-import-in-loop
 			for entry in files:
-				with open(os.path.join(root, entry), "rb") as file:
-					try:
-						ca_cert = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())
+				with open(os.path.join(root, entry), "rb") as file:  # pylint: disable=dotted-import-in-loop
+					try:  # pylint: disable=loop-try-except-usage
+						ca_cert = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())  # pylint: disable=dotted-import-in-loop
 						if ca_cert.get_subject().CN == subject_name:
 							return ca_cert
-					except crypto.Error:
+					except crypto.Error:  # pylint: disable=dotted-import-in-loop
 						continue
 	return None
 
@@ -69,17 +69,17 @@ def remove_ca(subject_name: str) -> bool:
 	system_cert_path, cmd = _get_cert_path_and_cmd()
 	removed = 0
 	if os.path.exists(system_cert_path):
-		for root, _dirs, files in os.walk(system_cert_path):
+		for root, _dirs, files in os.walk(system_cert_path):  # pylint: disable=dotted-import-in-loop
 			for entry in files:
-				filename = os.path.join(root, entry)
+				filename = os.path.join(root, entry)  # pylint: disable=dotted-import-in-loop
 				with open(filename, "rb") as file:
-					try:
-						ca_cert = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())
+					try:  # pylint: disable=loop-try-except-usage
+						ca_cert = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())  # pylint: disable=dotted-import-in-loop
 						if ca_cert.get_subject().CN == subject_name:
-							logger.info("Removing CA '%s' (%s)", subject_name, filename)
-							os.remove(filename)
+							logger.info("Removing CA '%s' (%s)", subject_name, filename)  # pylint: disable=loop-global-usage
+							os.remove(filename)  # pylint: disable=dotted-import-in-loop
 							removed += 1
-					except crypto.Error:
+					except crypto.Error:  # pylint: disable=dotted-import-in-loop
 						continue
 
 	if not removed:

@@ -706,11 +706,7 @@ def forceArchitectureList(var: Any) -> List[str]:  # pylint: disable=invalid-nam
 
 
 def forceUniqueList(_list: List[Any]) -> List[Any]:  # pylint: disable=invalid-name
-	cleaned_list = []
-	for entry in _list:
-		if entry not in cleaned_list:
-			cleaned_list.append(entry)
-	return cleaned_list
+	return list(set(_list))
 
 
 def args(*vars, **typeVars) -> Callable:  # pylint: disable=redefined-builtin

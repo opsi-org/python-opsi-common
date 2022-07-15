@@ -81,7 +81,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		"depot_librsyncPatchFile": 24 * 3600,
 		"depot_getMD5Sum": 3600,
 	}
-	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]
+	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]  # pylint: disable=use-tuple-over-list
 
 	def _allowed_gai_family(self) -> int:
 		"""This function is designed to work in the context of
@@ -173,7 +173,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 					if str(value) in ("auto", "4", "6"):
 						self._ip_version = str(value)
 					else:
-						logger.error("Invalid ip version '%s', using %s", value, self._ip_version)
+						logger.error("Invalid ip version '%s', using %s", value, self._ip_version)  # pylint: disable=loop-global-usage
 			elif option == "serialization":
 				self.serialization = value
 			elif option == "sessionlifetime":
@@ -185,7 +185,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				self.raw_responses = bool(value)
 			else:
 				if self.__class__.__name__ != "JSONRPCBackend":
-					logger.warning("Invalid argument '%s'", option)
+					logger.warning("Invalid argument '%s'", option)  # pylint: disable=loop-global-usage
 
 		self._set_address(address)
 
@@ -518,7 +518,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		if self._interface is None:
 			raise ValueError("No interface specification present for _create_instance_methods.")
 		for method in self._interface:
-			try:
+			try:  # pylint: disable=loop-try-except-usage
 				method_name = method["name"]
 
 				if method_name in (
@@ -528,7 +528,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				):
 					continue
 
-				logger.debug("Creating instance method: %s", method_name)
+				logger.debug("Creating instance method: %s", method_name)  # pylint: disable=loop-global-usage
 
 				args = method["args"]
 				varargs = method["varargs"]
@@ -541,8 +541,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 					if argument == "self":
 						continue
 
-					if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):
-						default = defaults[len(defaults) - len(args) + i]
+					if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):  # pylint: disable=loop-invariant-statement
+						default = defaults[len(defaults) - len(args) + i]  # pylint: disable=loop-invariant-statement
 						if isinstance(default, str):
 							default = "{0!r}".format(default).replace('"', "'")  # pylint: disable=consider-using-f-string
 						arg_list.append(f"{argument}={default}")
@@ -562,15 +562,15 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				arg_string = ", ".join(arg_list)
 				call_string = ", ".join(call_list)
 
-				logger.trace("%s: arg string is: %s", method_name, arg_string)
-				logger.trace("%s: call string is: %s", method_name, call_string)
-				with warnings.catch_warnings():
+				logger.trace("%s: arg string is: %s", method_name, arg_string)  # pylint: disable=loop-global-usage
+				logger.trace("%s: call string is: %s", method_name, call_string)  # pylint: disable=loop-global-usage
+				with warnings.catch_warnings():  # pylint: disable=dotted-import-in-loop
 					exec(  # pylint: disable=exec-used
 						f'def {method_name}(self, {arg_string}): return self.execute_rpc("{method_name}", [{call_string}])'
 					)
-					setattr(self, method_name, types.MethodType(eval(method_name), self))  # pylint: disable=eval-used
+					setattr(self, method_name, types.MethodType(eval(method_name), self))  # pylint: disable=eval-used,dotted-import-in-loop
 			except Exception as err:  # pylint: disable=broad-except
-				logger.critical("Failed to create instance method '%s': %s", method, err)
+				logger.critical("Failed to create instance method '%s': %s", method, err)  # pylint: disable=loop-global-usage
 
 	@no_export
 	def connect(self) -> None:

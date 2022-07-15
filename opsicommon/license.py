@@ -127,7 +127,7 @@ def get_signature_public_key_schema_version_1() -> RSA.RsaKey:
 	count = 0
 	tmp = []
 	for _ in range(2):
-		length = struct.unpack(">L", rest[count : count + 4])[0]
+		length = struct.unpack(">L", rest[count : count + 4])[0]  # pylint: disable=dotted-import-in-loop
 		tmp.append(bytes_to_long(rest[count + 4 : count + 4 + length]))
 		count += 4 + length
 
@@ -175,7 +175,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	schema_version: int = attr.ib(default=2, converter=int)
 
 	@schema_version.validator
-	def validate_schema_version(self, attribute, value):  # pylint: disable=no-self-use
+	def validate_schema_version(self, attribute, value):
 		if not isinstance(value, int) or value <= 0:
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -211,7 +211,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	)
 
 	@service_id.validator
-	def validate_service_id(self, attribute, value):  # pylint: disable=no-self-use
+	def validate_service_id(self, attribute, value):
 		if value is not None and not re.match(r"^[a-z0-9\-\.]+$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -220,7 +220,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	client_number: int = attr.ib(converter=int, validator=attr.validators.instance_of(int))
 
 	@client_number.validator
-	def validate_client_number(self, attribute, value):  # pylint: disable=no-self-use
+	def validate_client_number(self, attribute, value):
 		if value <= 0:
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -233,12 +233,12 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	revoked_ids: List[str] = attr.ib(default=[])
 
 	@revoked_ids.validator
-	def validate_revoked_ids(self, attribute, value):  # pylint: disable=no-self-use
+	def validate_revoked_ids(self, attribute, value):
 		if not isinstance(value, list):
 			raise ValueError(f"Invalid value for {attribute}", value)
 		for val in value:
-			if not OPSI_LICENCE_ID_REGEX.match(val):
-				raise ValueError(f"Invalid value for {attribute}", val)
+			if not OPSI_LICENCE_ID_REGEX.match(val):  # pylint: disable=loop-global-usage
+				raise ValueError(f"Invalid value for {attribute}", val)  # pylint: disable=loop-invariant-statement
 
 	note: str = attr.ib(default=None)
 
@@ -300,7 +300,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 			value = data[attribute]
 			if isinstance(value, list):
 				value = ",".join(sorted(value))
-			string += f"{attribute}={json.dumps(value)}\n"
+			string += f"{attribute}={json.dumps(value)}\n"  # pylint: disable=dotted-import-in-loop
 		return string.encode("utf-8")
 
 	def get_checksum(self, with_signature: bool = True) -> str:
@@ -363,10 +363,10 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 
 		if self.type == OPSI_LICENSE_TYPE_CORE and self._license_pool:
 			for lic in self._license_pool.get_licenses(
-				exclude_ids=[self.id], valid_only=True, test_revoked=False, types=[OPSI_LICENSE_TYPE_STANDARD], at_date=at_date
+				exclude_ids=[self.id], valid_only=True, test_revoked=False, types=[OPSI_LICENSE_TYPE_STANDARD], at_date=at_date  # pylint: disable=loop-global-usage
 			):
-				if lic.type != OPSI_LICENSE_TYPE_CORE and lic.module_id == self.module_id:
-					return OPSI_LICENSE_STATE_REPLACED_BY_NON_CORE
+				if lic.type != OPSI_LICENSE_TYPE_CORE and lic.module_id == self.module_id:  # pylint: disable=loop-global-usage
+					return OPSI_LICENSE_STATE_REPLACED_BY_NON_CORE  # pylint: disable=loop-global-usage
 		if test_revoked and self._license_pool and self.id in self._license_pool.get_revoked_license_ids(at_date=at_date):
 			return OPSI_LICENSE_STATE_REVOKED
 		if (self.valid_from - at_date).days > 0:
@@ -402,7 +402,7 @@ class OpsiLicenseFile:
 			kwargs = dict(ini.items(section=section, raw=True))
 			kwargs["id"] = section
 			for key in ("customer_name", "customer_address", "customer_unit", "note"):
-				kwargs[key] = ast.literal_eval(f'"{kwargs.get(key)}"') or None  # type: ignore[assignment]
+				kwargs[key] = ast.literal_eval(f'"{kwargs.get(key)}"') or None  # type: ignore[assignment]  # pylint: disable=dotted-import-in-loop
 			kwargs["revoked_ids"] = [x.strip() for x in kwargs.get("revoked_ids", "").split(",") if x]  # type: ignore[assignment]
 			for key, val in kwargs.items():
 				if val == "":
@@ -421,7 +421,7 @@ class OpsiLicenseFile:
 		for license_id in sorted(self._licenses):
 			data = f"{data}[{license_id}]\n"
 			lic = self._licenses[license_id].to_dict(serializable=True)
-			for field in attr.fields(OpsiLicense):
+			for field in attr.fields(OpsiLicense):  # pylint: disable=dotted-import-in-loop
 				value = lic.get(field.name)
 				if field.name.startswith("_") or field.name == "id":
 					continue
@@ -482,29 +482,29 @@ class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 		for attribute in sorted(data):
 			value = data[attribute]
 			if attribute != "signature":
-				common_lic["additional_data"] = f"{common_lic['additional_data']}{attribute} = {value}\r\n"
+				common_lic["additional_data"] = f"{common_lic['additional_data']}{attribute} = {value}\r\n"  # pylint: disable=loop-invariant-statement
 
 			if attribute == "signature":
-				common_lic["signature"] = value
+				common_lic["signature"] = value  # pylint: disable=loop-invariant-statement
 			elif attribute == "customer":
-				common_lic["customer_name"] = value
+				common_lic["customer_name"] = value  # pylint: disable=loop-invariant-statement
 			elif attribute == "expires":
 				if value == "never":
-					value = OPSI_LICENSE_DATE_UNLIMITED  # type: ignore[assignment]
-				common_lic["valid_until"] = value
+					value = OPSI_LICENSE_DATE_UNLIMITED  # type: ignore[assignment]  # pylint: disable=loop-global-usage
+				common_lic["valid_until"] = value  # pylint: disable=loop-invariant-statement
 			else:
 				module_id = attribute.lower()
 				client_number = 0
-				try:
+				try:  # pylint: disable=loop-try-except-usage
 					client_number = int(value)
 				except ValueError:
 					if value == "yes":
-						client_number = OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
+						client_number = OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED  # pylint: disable=loop-global-usage
 				if client_number > 0:
 					modules[module_id] = client_number
 
 		for module_id, client_number in modules.items():
-			kwargs = dict(common_lic)
+			kwargs = dict(common_lic)  # pylint: disable=loop-invariant-statement
 			kwargs["id"] = f"legacy-{module_id}"
 			kwargs["module_id"] = module_id
 			kwargs["client_number"] = client_number
@@ -532,7 +532,7 @@ class OpsiLicensePool:
 	def license_files(self) -> List[str]:
 		license_files = []
 		if self.license_file_path and os.path.exists(self.license_file_path):
-			license_files = [self.license_file_path]
+			license_files = [self.license_file_path]  # pylint: disable=use-tuple-over-list
 			if os.path.isdir(self.license_file_path):
 				license_files = glob.glob(os.path.join(self.license_file_path, "*.opsilic"))
 		return license_files
@@ -558,7 +558,7 @@ class OpsiLicensePool:
 		for client_type in ("windows", "linux", "macos"):
 			if client_type not in client_numbers:
 				client_numbers[client_type] = 0
-			client_numbers["all"] += client_numbers[client_type]
+			client_numbers["all"] += client_numbers[client_type]  # pylint: disable=loop-invariant-statement
 		return client_numbers
 
 	@property
@@ -585,7 +585,7 @@ class OpsiLicensePool:
 				continue
 			if types and lic.type not in types:
 				continue
-			if valid_only and lic.get_state(test_revoked=test_revoked, at_date=at_date) != OPSI_LICENSE_STATE_VALID:
+			if valid_only and lic.get_state(test_revoked=test_revoked, at_date=at_date) != OPSI_LICENSE_STATE_VALID:  # pylint: disable=loop-global-usage
 				continue
 			yield lic
 
@@ -610,7 +610,7 @@ class OpsiLicensePool:
 			at_date = date.today()
 		revoked_ids = set()
 		for lic in self._licenses.values():
-			if lic.get_state(test_revoked=False, at_date=at_date) == OPSI_LICENSE_STATE_VALID:
+			if lic.get_state(test_revoked=False, at_date=at_date) == OPSI_LICENSE_STATE_VALID:  # pylint: disable=loop-global-usage
 				for revoked_id in lic.revoked_ids:
 					revoked_ids.add(revoked_id)
 		return revoked_ids
@@ -624,10 +624,10 @@ class OpsiLicensePool:
 	def get_relevant_dates(self) -> List[date]:
 		dates = set()
 		for lic in self.get_licenses():
-			if lic.get_state() != OPSI_LICENSE_STATE_INVALID_SIGNATURE:
-				if lic.valid_from != OPSI_LICENSE_DATE_UNLIMITED:
+			if lic.get_state() != OPSI_LICENSE_STATE_INVALID_SIGNATURE:  # pylint: disable=loop-global-usage
+				if lic.valid_from != OPSI_LICENSE_DATE_UNLIMITED:  # pylint: disable=loop-global-usage
 					dates.add(lic.valid_from)
-				if lic.valid_until != OPSI_LICENSE_DATE_UNLIMITED:
+				if lic.valid_until != OPSI_LICENSE_DATE_UNLIMITED:  # pylint: disable=loop-global-usage
 					dates.add(lic.valid_until + timedelta(days=1))
 		return sorted(dates)
 
@@ -638,32 +638,32 @@ class OpsiLicensePool:
 		enabled_module_ids = self.enabled_module_ids
 		client_numbers = self.client_numbers
 		modules: Dict[str, Dict[str, Any]] = {}
-		for module_id in OPSI_MODULE_IDS:
-			if module_id in OPSI_FREE_MODULE_IDS:
-				modules[module_id] = {"available": True, "state": OPSI_MODULE_STATE_FREE, "license_ids": [], "client_number": 999999999}
+		for module_id in OPSI_MODULE_IDS:  # pylint: disable=loop-global-usage
+			if module_id in OPSI_FREE_MODULE_IDS:  # pylint: disable=loop-global-usage
+				modules[module_id] = {"available": True, "state": OPSI_MODULE_STATE_FREE, "license_ids": [], "client_number": 999999999}  # pylint: disable=loop-global-usage,loop-invariant-statement
 			else:
-				modules[module_id] = {"available": False, "state": OPSI_MODULE_STATE_UNLICENSED, "license_ids": [], "client_number": 0}
+				modules[module_id] = {"available": False, "state": OPSI_MODULE_STATE_UNLICENSED, "license_ids": [], "client_number": 0}  # pylint: disable=loop-global-usage,loop-invariant-statement
 
 		for lic in self.get_licenses(valid_only=True, at_date=at_date):
 			if lic.module_id not in modules:
-				modules[lic.module_id] = {"client_number": 0, "license_ids": []}
+				modules[lic.module_id] = {"client_number": 0, "license_ids": []}  # pylint: disable=loop-invariant-statement
 			modules[lic.module_id]["available"] = True
-			modules[lic.module_id]["state"] = OPSI_MODULE_STATE_LICENSED
+			modules[lic.module_id]["state"] = OPSI_MODULE_STATE_LICENSED  # pylint: disable=loop-global-usage
 			modules[lic.module_id]["license_ids"].append(lic.id)
 			modules[lic.module_id]["license_ids"].sort()
 			modules[lic.module_id]["client_number"] += lic.client_number
-			modules[lic.module_id]["client_number"] = min(modules[lic.module_id]["client_number"], OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED)
+			modules[lic.module_id]["client_number"] = min(modules[lic.module_id]["client_number"], OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED)  # pylint: disable=loop-global-usage
 
 		for module_id, info in modules.items():
 			if module_id not in enabled_module_ids:
-				info["state"] = OPSI_MODULE_STATE_UNLICENSED
+				info["state"] = OPSI_MODULE_STATE_UNLICENSED  # pylint: disable=loop-global-usage
 				continue
 
-			client_number = client_numbers["all"]
+			client_number = client_numbers["all"]  # pylint: disable=loop-invariant-statement
 			if module_id == "linux_agent":
-				client_number = client_numbers["linux"]
+				client_number = client_numbers["linux"]  # pylint: disable=loop-invariant-statement
 			elif module_id == "macos_agent":
-				client_number = client_numbers["macos"]
+				client_number = client_numbers["macos"]  # pylint: disable=loop-invariant-statement
 			# elif module_id == "vpn":
 			# client_number = client_numbers["vpn"]
 
@@ -672,14 +672,14 @@ class OpsiLicensePool:
 				usage_percent = client_number * 100 / info["client_number"]
 			absolute_free = info["client_number"] - client_number
 			if client_number >= info["client_number"] + info["client_number"] ** 0.5:
-				info["state"] = OPSI_MODULE_STATE_OVER_LIMIT
+				info["state"] = OPSI_MODULE_STATE_OVER_LIMIT  # pylint: disable=loop-global-usage
 				info["available"] = False
 			elif absolute_free < 0 or usage_percent > 100:
-				info["state"] = OPSI_MODULE_STATE_OVER_LIMIT
+				info["state"] = OPSI_MODULE_STATE_OVER_LIMIT  # pylint: disable=loop-global-usage
 			elif (self.client_limit_warning_absolute and (absolute_free <= self.client_limit_warning_absolute)) or (
 				self.client_limit_warning_percent and (usage_percent >= self.client_limit_warning_percent)
 			):
-				info["state"] = OPSI_MODULE_STATE_CLOSE_TO_LIMIT
+				info["state"] = OPSI_MODULE_STATE_CLOSE_TO_LIMIT  # pylint: disable=loop-global-usage
 
 		return modules
 
@@ -693,7 +693,7 @@ class OpsiLicensePool:
 						attribute = attribute.strip()
 						value = value.strip()
 						if attribute != "customer":
-							try:
+							try:  # pylint: disable=loop-try-except-usage
 								value = int(value)  # type: ignore[assignment]
 							except ValueError:
 								pass
@@ -706,7 +706,7 @@ class OpsiLicensePool:
 			olf = OpsiLicenseFile(license_file)
 			olf.read()
 			self.add_license(*olf.licenses)
-			self._file_modification_dates[license_file] = os.path.getmtime(license_file)
+			self._file_modification_dates[license_file] = os.path.getmtime(license_file)  # pylint: disable=dotted-import-in-loop
 
 	def _read_modules_file(self) -> None:
 		modules_file = self.modules_file
@@ -727,7 +727,7 @@ class OpsiLicensePool:
 		for file in files:
 			if file not in self._file_modification_dates:
 				return True
-			if os.path.getmtime(file) != self._file_modification_dates[file]:
+			if os.path.getmtime(file) != self._file_modification_dates[file]:  # pylint: disable=dotted-import-in-loop
 				return True
 		return False
 

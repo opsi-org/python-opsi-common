@@ -272,8 +272,8 @@ def test_load_opsi_license_pool():
 	for lic in olp.licenses:
 		assert lic.module_id in module_ids
 		_prefix, module_id = lic.id.split("-", 1)
-		assert _prefix == "legacy"
-		assert module_id in module_ids
+		assert _prefix == "legacy"  # pylint: disable=loop-invariant-statement
+		assert module_id in module_ids  # pylint: disable=loop-invariant-statement
 
 
 def test_opsi_license_pool_modified(tmp_path):
@@ -378,7 +378,7 @@ def test_opsi_license_pool_relevant_dates():
 
 		for at_date in dates:
 			modules = olp.get_modules(at_date=at_date)
-			assert sorted(OPSI_MODULE_IDS) == sorted(modules)
+			assert sorted(OPSI_MODULE_IDS) == sorted(modules)  # pylint: disable=loop-invariant-statement
 
 			assert modules["treeview"]["available"]
 			assert modules["treeview"]["state"] == OPSI_MODULE_STATE_FREE
@@ -415,7 +415,7 @@ def test_licensing_info_and_cache():
 
 		timings = []
 		for num in range(3):
-			start = time.time()
+			start = time.time()  # pylint: disable=dotted-import-in-loop
 			info = {
 				"client_numbers": olp.client_numbers,
 				"available_modules": [module_id for module_id, info in olp.get_modules().items() if info["available"]],
@@ -426,8 +426,8 @@ def test_licensing_info_and_cache():
 			info["legacy_modules"] = olp.get_legacy_modules()
 			info["dates"] = {}
 			for at_date in olp.get_relevant_dates():
-				info["dates"][str(at_date)] = {"modules": olp.get_modules(at_date=at_date)}
-			timings.append(time.time() - start)
+				info["dates"][str(at_date)] = {"modules": olp.get_modules(at_date=at_date)}  # pylint: disable=loop-invariant-statement
+			timings.append(time.time() - start)  # pylint: disable=dotted-import-in-loop
 			if num == 1:
 				# Cached should be faster
 				assert timings[1] < timings[0]
@@ -619,11 +619,11 @@ def test_license_state_cache():
 		uncached_time_ns = time.perf_counter_ns() - start
 
 		for _ in range(20):
-			start = time.perf_counter_ns()
+			start = time.perf_counter_ns()  # pylint: disable=dotted-import-in-loop
 			lic.get_state(at_date=today)
 
 			# Cached state should be much faster
-			time_ns = time.perf_counter_ns() - start
+			time_ns = time.perf_counter_ns() - start  # pylint: disable=dotted-import-in-loop
 			assert time_ns * 2 < uncached_time_ns
 
 			# Cache should keep size

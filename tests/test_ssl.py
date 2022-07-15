@@ -6,19 +6,24 @@
 This file is part of opsi - https://www.opsi.org
 """
 
+import ipaddress
 import platform
 import subprocess
-import ipaddress
 from unittest import mock
+
 import pytest
+from OpenSSL.crypto import X509, PKey  # type: ignore[import]
 
-from OpenSSL.crypto import X509, PKey
 from opsicommon.ssl import (
-	create_x590_name, as_pem, create_ca, create_server_cert,
-	install_ca, load_ca, remove_ca
+	as_pem,
+	create_ca,
+	create_server_cert,
+	create_x590_name,
+	install_ca,
+	load_ca,
+	remove_ca,
 )
-
-from opsicommon.testing.helpers import http_test_server
+from opsicommon.testing.helpers import http_test_server  # type: ignore[import]
 
 
 @pytest.mark.linux
@@ -34,7 +39,9 @@ from opsicommon.testing.helpers import http_test_server
 	(None, None, "", "", RuntimeError)
 ))
 def test_get_cert_path_and_cmd(distro_id, distro_like, expected_path, expected_cmd, exc):
-	from opsicommon.ssl.linux import _get_cert_path_and_cmd  # pylint: disable=import-outside-toplevel
+	from opsicommon.ssl.linux import (  # pylint: disable=import-outside-toplevel
+		_get_cert_path_and_cmd,
+	)
 
 	with mock.patch('distro.id', lambda: distro_id), mock.patch('distro.like', lambda: distro_like):
 		if exc:
@@ -105,7 +112,7 @@ def test_create_server_cert():
 					cert_hns.add(alt_name.split(":", 1)[-1].strip())
 				elif alt_name.startswith(("IP:", "IP Address:")):
 					addr = alt_name.split(":", 1)[-1].strip()
-					addr = ipaddress.ip_address(addr)
+					addr = ipaddress.ip_address(addr)  # pylint: disable=dotted-import-in-loop
 					cert_ips.add(addr.compressed)
 			break
 

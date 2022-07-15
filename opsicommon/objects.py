@@ -10,8 +10,8 @@ As an example this contains classes for hosts, products, configurations.
 
 # pylint: disable=too-many-lines
 
-import inspect
 from datetime import date, datetime
+from inspect import getfullargspec
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple
 
 from opsicommon.exceptions import BackendBadValueError, BackendConfigurationError
@@ -245,7 +245,7 @@ class BaseObject:
 	def serialize(self):
 		_hash = {}
 		for key, val in self.toHash().items():
-			if isinstance(val, (datetime, date)):
+			if isinstance(val, (datetime, date)):  # pylint: disable=loop-invariant-statement
 				val = val.isoformat()
 			_hash[key] = val
 		_hash["ident"] = self.getIdent()
@@ -277,7 +277,7 @@ class BaseObject:
 	def __str__(self):
 		additional_attributes = []
 		for attr in self.getIdentAttributes():
-			try:
+			try:  # pylint: disable=loop-try-except-usage
 				value = getattr(self, attr)
 				additional_attributes.append(f"{attr}='{value}'")
 			except AttributeError:
@@ -292,7 +292,7 @@ class BaseObject:
 def mandatory_constructor_args(_class: BaseObject) -> List[str]:
 	cache_key = _class.__name__  # type: ignore[attr-defined]
 	if cache_key not in _MANDATORY_CONSTRUCTOR_ARGS_CACHE:
-		spec = inspect.getfullargspec(_class.__init__)  # type: ignore[misc]
+		spec = getfullargspec(_class.__init__)  # type: ignore[misc]
 		args = spec.args
 		defaults = spec.defaults
 		mandatory = None
@@ -318,9 +318,9 @@ def get_possible_class_attributes(_class: BaseObject) -> Set[str]:
 	"""
 	Returns the possible attributes of a class.
 	"""
-	attributes = inspect.getfullargspec(_class.__init__).args  # type: ignore[misc]
+	attributes = getfullargspec(_class.__init__).args  # type: ignore[misc]
 	for sub_class in _class.sub_classes.values():
-		attributes.extend(inspect.getfullargspec(sub_class.__init__).args)  # type: ignore[misc]
+		attributes.extend(getfullargspec(sub_class.__init__).args)  # type: ignore[misc]
 
 	attributes_set = set(attributes)
 	attributes_set.add("type")
@@ -344,7 +344,7 @@ def decode_ident(_class: BaseObject, _hash: Dict[str, Any]) -> Dict[str, Any]:
 	ident = _hash.pop("ident")
 	if not isinstance(ident, dict):
 		ident_keys = mandatory_constructor_args(_class)
-		ident_values = []
+		ident_values = []  # pylint: disable=use-tuple-over-list
 		if isinstance(ident, str):
 			ident_values = ident.split(_class.ident_separator)
 		elif isinstance(ident, (tuple, list)):
@@ -360,7 +360,7 @@ def decode_ident(_class: BaseObject, _hash: Dict[str, Any]) -> Dict[str, Any]:
 
 def objects_differ(obj1: Any, obj2: Any, exclude_attributes: List[str] = None) -> bool:  # pylint: disable=too-many-return-statements,too-many-branches
 	if exclude_attributes is None:
-		exclude_attributes = []
+		exclude_attributes = []  # pylint: disable=use-tuple-over-list
 	else:
 		exclude_attributes = forceUnicodeList(exclude_attributes)
 
@@ -413,16 +413,14 @@ class Entity(BaseObject):
 		cls = eval(_hash["type"])  # pylint: disable=eval-used
 		kwargs = {}
 		decode_ident(cls, _hash)
-		for varname in cls.__init__.__code__.co_varnames[1:]:
-			try:
+		for varname in cls.__init__.__code__.co_varnames[1:]:  # pylint: disable=use-dict-comprehension
+			if varname in _hash:
 				kwargs[varname] = _hash[varname]
-			except KeyError:
-				pass
 
 		try:
 			return cls(**kwargs)
 		except TypeError as err:
-			missing_args = []
+			missing_args = []  # pylint: disable=use-tuple-over-list
 			try:
 				args = mandatory_constructor_args(cls)
 				missing_args = [arg for arg in args if arg not in kwargs]
@@ -471,12 +469,9 @@ class Relationship(BaseObject):
 		cls = eval(_hash["type"])  # pylint: disable=eval-used
 		kwargs = {}
 		decode_ident(cls, _hash)
-		for varname in cls.__init__.__code__.co_varnames[1:]:
-			try:
+		for varname in cls.__init__.__code__.co_varnames[1:]:  # pylint: disable=use-dict-comprehension
+			if varname in _hash:
 				kwargs[varname] = _hash[varname]
-			except KeyError:
-				pass
-
 		try:
 			return cls(**kwargs)
 		except TypeError as err:
@@ -1782,20 +1777,14 @@ class ProductProperty(Entity):  # pylint: disable=too-many-instance-attributes,t
 			yield f"propertyId='{self.propertyId}'"
 
 			for attribute in ("description", "defaultValues", "possibleValues"):
-				try:
-					value = getattr(self, attribute)
-					if value:
-						yield f"{attribute}='{value}'"
-				except AttributeError:
-					pass
+				value = getattr(self, attribute, None)
+				if value:
+					yield f"{attribute}='{value}'"
 
 			for attribute in ("editable", "multiValue"):
-				try:
-					value = getattr(self, attribute)
-					if value is not None:
-						yield f"{attribute}='{value}'"
-				except AttributeError:
-					pass
+				value = getattr(self, attribute, None)
+				if value is not None:
+					yield f"{attribute}='{value}'"
 
 		return f"<{self.__class__.__name__}({', '.join(getAttributes())})>"
 
@@ -1912,12 +1901,9 @@ class BoolProductProperty(ProductProperty):
 			yield f"propertyId='{self.propertyId}'"
 
 			for attribute in ("description", "defaultValues"):
-				try:
-					value = getattr(self, attribute)
-					if value:
-						yield f"{attribute}='{value}'"
-				except AttributeError:
-					pass
+				value = getattr(self, attribute, None)
+				if value:
+					yield f"{attribute}='{value}'"
 
 		return f"<{self.__class__.__name__}({', '.join(getAttributes())})>"
 
@@ -3471,10 +3457,10 @@ class AuditHardware(Entity):
 		for attribute in attributes:
 			if attribute not in kwargs:
 				low_attr = attribute.lower()
-				try:
+				if low_attr in kwargs:
 					kwargs[attribute] = kwargs[low_attr]
 					del kwargs[low_attr]
-				except KeyError:
+				else:
 					kwargs[attribute] = None
 
 		if attributes:
@@ -3489,27 +3475,27 @@ class AuditHardware(Entity):
 
 				if attr_type.startswith("varchar"):
 					kwargs[attribute] = forceUnicode(value).strip()
-					try:
+					try:  # pylint: disable=loop-try-except-usage
 						size = int(attr_type.split("(")[1].split(")")[0].strip())
 
 						if len(kwargs[attribute]) > size:
-							logger.warning(
+							logger.warning(  # pylint: disable=loop-global-usage
 								"Truncating value of attribute %s of hardware class %s to length %d", attribute, hardwareClass, size
 							)
 							kwargs[attribute] = kwargs[attribute][:size].strip()
 					except (ValueError, IndexError):
 						pass
 				elif "int" in attr_type:
-					try:
+					try:  # pylint: disable=loop-try-except-usage
 						kwargs[attribute] = forceInt(value)
 					except Exception as err:  # pylint: disable=broad-except
-						logger.trace(err)
+						logger.trace(err)  # pylint: disable=loop-global-usage
 						kwargs[attribute] = None
 				elif attr_type == "double":
-					try:
+					try:  # pylint: disable=loop-try-except-usage
 						kwargs[attribute] = forceFloat(value)
 					except Exception as err:  # pylint: disable=broad-except
-						logger.trace(err)
+						logger.trace(err)  # pylint: disable=loop-global-usage
 						kwargs[attribute] = None
 				else:
 					raise BackendConfigurationError(
@@ -3563,7 +3549,7 @@ class AuditHardware(Entity):
 			hardware_attributes[hw_class] = {}
 			for value in config["Values"]:
 				if value["Scope"] == "g":
-					hardware_attributes[hw_class][value["Opsi"]] = value["Type"]
+					hardware_attributes[hw_class][value["Opsi"]] = value["Type"]  # pylint: disable=loop-invariant-statement
 		AuditHardware.hardware_attributes = hardware_attributes
 
 	def setDefaults(self) -> None:
@@ -3649,10 +3635,10 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 		for attribute in self.hardware_attributes.get(hardwareClass, {}):
 			if attribute not in kwargs:
 				lower_attribute = attribute.lower()
-				try:
+				if lower_attribute in kwargs:
 					kwargs[attribute] = kwargs[lower_attribute]
 					del kwargs[lower_attribute]
-				except KeyError:
+				else:
 					kwargs[attribute] = None
 
 		if self.hardware_attributes.get(hardwareClass):
@@ -3666,34 +3652,34 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 
 				if attr_type.startswith("varchar"):
 					kwargs[attribute] = forceUnicode(value).strip()
-					try:
+					try:  # pylint: disable=loop-try-except-usage
 						size = int(attr_type.split("(")[1].split(")")[0].strip())
 
 						if len(kwargs[attribute]) > size:
-							logger.warning(
+							logger.warning(  # pylint: disable=loop-global-usage
 								"Truncating value of attribute %s of hardware class %s to length %d", attribute, hardwareClass, size
 							)
 							kwargs[attribute] = kwargs[attribute][:size].strip()
 					except (ValueError, IndexError):
 						pass
 				elif "int" in attr_type:
-					try:
+					try:  # pylint: disable=loop-try-except-usage
 						kwargs[attribute] = forceInt(value)
 					except Exception as err:  # pylint: disable=broad-except
-						logger.trace(err)
+						logger.trace(err)  # pylint: disable=loop-global-usage
 						kwargs[attribute] = None
 				elif attr_type == "double":
-					try:
+					try:  # pylint: disable=loop-try-except-usage
 						kwargs[attribute] = forceFloat(value)
 					except Exception as err:  # pylint: disable=broad-except
-						logger.trace(err)
+						logger.trace(err)  # pylint: disable=loop-global-usage
 						kwargs[attribute] = None
 				else:
 					raise BackendConfigurationError(
 						f"Attribute '{attribute}' of hardware class '{hardwareClass}' has unknown type '{type}'"
 					)
 		else:
-			for (attribute, value) in kwargs.items():
+			for (attribute, value) in kwargs.items():  # pylint: disable=use-dict-comprehension
 				if isinstance(value, str):
 					kwargs[attribute] = forceUnicode(value).strip()
 
@@ -3736,7 +3722,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 			hw_class = config["Class"]["Opsi"]
 			hardware_attributes[hw_class] = {}
 			for value in config["Values"]:
-				hardware_attributes[hw_class][value["Opsi"]] = value["Type"]
+				hardware_attributes[hw_class][value["Opsi"]] = value["Type"]  # pylint: disable=loop-invariant-statement
 		AuditHardwareOnHost.hardware_attributes = hardware_attributes
 
 	def setDefaults(self) -> None:

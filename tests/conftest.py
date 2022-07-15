@@ -21,7 +21,7 @@ def emit(*args, **kwargs) -> None:  # pylint: disable=unused-argument
 	pass
 
 
-LogCaptureHandler.emit = emit  # type: ignore[attr-defined]
+LogCaptureHandler.emit = emit  # type: ignore[attr-defined,assignment]
 
 
 @pytest.hookimpl()
@@ -72,14 +72,14 @@ ADMIN_PERMISSIONS = admin_permissions()
 def pytest_runtest_setup(item):
 	supported_platforms = []
 	for marker in item.iter_markers():
-		if marker.name == "docker_linux" and not RUNNING_IN_DOCKER:
-			pytest.skip("Must run in docker")
+		if marker.name == "docker_linux" and not RUNNING_IN_DOCKER:  # pylint: disable=loop-global-usage
+			pytest.skip("Must run in docker")  # pylint: disable=dotted-import-in-loop
 			return
-		if marker.name == "not_in_docker" and RUNNING_IN_DOCKER:
-			pytest.skip("Cannot run in docker")
+		if marker.name == "not_in_docker" and RUNNING_IN_DOCKER:  # pylint: disable=loop-global-usage
+			pytest.skip("Cannot run in docker")  # pylint: disable=dotted-import-in-loop
 			return
-		if marker.name == "admin_permissions" and not ADMIN_PERMISSIONS:
-			pytest.skip("No admin permissions")
+		if marker.name == "admin_permissions" and not ADMIN_PERMISSIONS:  # pylint: disable=loop-global-usage
+			pytest.skip("No admin permissions")  # pylint: disable=dotted-import-in-loop
 			return
 		if marker.name in ("windows", "linux", "darwin", "posix"):
 			if marker.name == "posix":

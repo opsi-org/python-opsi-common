@@ -14,7 +14,7 @@ from OpenSSL import crypto  # type: ignore[import]
 
 from opsicommon.logging import get_logger
 
-__all__ = ["install_ca", "load_ca", "remove_ca"]
+__all__ = ("install_ca", "load_ca", "remove_ca")
 
 
 logger = get_logger("opsicommon.general")
@@ -61,11 +61,11 @@ def remove_ca(subject_name: str) -> bool:
 
 	removed_sha1_hash = None
 	while ca_cert:
-		logger.info("Removing CA '%s'", subject_name)
+		logger.info("Removing CA '%s'", subject_name)  # pylint: disable=loop-global-usage
 		sha1_hash = ca_cert.digest("sha1").decode("ascii").replace(":", "")
 		if removed_sha1_hash and sha1_hash == removed_sha1_hash:
 			raise RuntimeError(f"Failed to remove certficate {removed_sha1_hash}")
-		subprocess.check_call(["security", "delete-certificate", "-Z", sha1_hash, "/Library/Keychains/System.keychain", "-t"], shell=False)
+		subprocess.check_call(["security", "delete-certificate", "-Z", sha1_hash, "/Library/Keychains/System.keychain", "-t"], shell=False)  # pylint: disable=dotted-import-in-loop
 		removed_sha1_hash = sha1_hash
 		ca_cert = load_ca(subject_name)
 	return True

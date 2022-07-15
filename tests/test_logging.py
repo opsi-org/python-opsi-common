@@ -59,7 +59,7 @@ def test_levels():  # pylint: disable=redefined-outer-name
 		expected = ""
 		print_logger_info()
 		for level in ("secret", "confidential", "trace", "debug2", "debug", "info", "notice", "warning", "error", "critical", "comment"):
-			func = getattr(logger, level)
+			func = getattr(logger, level)  # pylint: disable=loop-global-usage
 			msg = f"logline {level}"
 			func(msg)
 			expected += f"{msg}\n"
@@ -194,7 +194,7 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 		time.sleep(0.2)
 
 	class Main:  # pylint: disable=too-few-public-methods
-		def run(self):  # pylint: disable=no-self-use
+		def run(self):
 			AsyncMain().start()
 			for _ in range(5):  # perform 5 iterations
 				threads = []
@@ -204,7 +204,7 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 					_thread.start()
 				for _thread in threads:
 					_thread.join()
-				time.sleep(1)
+				time.sleep(1)  # pylint: disable=dotted-import-in-loop
 
 	class AsyncMain(threading.Thread):
 		def __init__(self):
@@ -219,7 +219,7 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 			loop.run_until_complete(self.arun())
 			loop.close()
 
-		async def handle_client(self, client: str):  # pylint: disable=no-self-use
+		async def handle_client(self, client: str):
 			with log_context({"whoami": "handler for " + str(client)}):
 				logger.essential("handling client %s", client)
 				seconds = random.random() * 1
@@ -229,10 +229,10 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 		async def arun(self):
 			while not self._should_stop:
 				tasks = []
-				for i in range(2):
+				for i in range(2):  # pylint: disable=use-list-copy
 					tasks.append(self.handle_client(client=f"Client-{i}"))
-				await asyncio.gather(*tasks)
-				await asyncio.sleep(1)
+				await asyncio.gather(*tasks)  # pylint: disable=dotted-import-in-loop
+				await asyncio.sleep(1)  # pylint: disable=dotted-import-in-loop
 
 	class MyModule(threading.Thread):
 		def __init__(self, client: str):
@@ -252,7 +252,7 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 				main.run()
 			except KeyboardInterrupt:
 				pass
-			for _thread in threading.enumerate():
+			for _thread in threading.enumerate():  # pylint: disable=dotted-import-in-loop
 				if hasattr(_thread, "stop"):
 					_thread.stop()
 					_thread.join()
