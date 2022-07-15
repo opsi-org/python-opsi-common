@@ -830,12 +830,12 @@ def print_logger_info():
 				print(f"    - Formatter: {_handler.formatter}", file=sys.stderr)
 
 
-def init_warnings_capture():
+def init_warnings_capture(traceback_log_level: int = logging.INFO) -> None:
 	def _log_warning(message, category, filename, lineno, line=None, file=None):  # pylint: disable=unused-argument,too-many-arguments
 		logger.warning("Warning '%s' in file '%s', line %s", message, filename, lineno)
 		for entry in traceback.format_stack():
 			for _line in entry.split("\n"):
-				logger.debug(_line)
+				logger.log(traceback_log_level, _line)
 
 	warnings.showwarning = _log_warning
 	# warn filter: https://docs.python.org/3/library/warnings.html#the-warnings-filter
