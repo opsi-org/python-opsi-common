@@ -39,6 +39,7 @@ tan = "^22.2"
 types-requests = "^2.27"
 types-orjson = "^3.6"
 isort = "^5.10.1"
+perflint = "^0.7.3"
 
 [tool.black]
 line-length = 140
