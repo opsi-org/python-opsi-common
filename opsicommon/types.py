@@ -706,7 +706,8 @@ def forceArchitectureList(var: Any) -> List[str]:  # pylint: disable=invalid-nam
 
 
 def forceUniqueList(_list: List[Any]) -> List[Any]:  # pylint: disable=invalid-name
-	return list(set(_list))
+	# Keep list order!
+	return sorted(set(_list), key=_list.index)
 
 
 def args(*vars, **typeVars) -> Callable:  # pylint: disable=redefined-builtin
