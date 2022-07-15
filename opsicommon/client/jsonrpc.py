@@ -564,10 +564,11 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 				logger.trace("%s: arg string is: %s", method_name, arg_string)
 				logger.trace("%s: call string is: %s", method_name, call_string)
-				exec(  # pylint: disable=exec-used
-					f'def {method_name}(self, {arg_string}): return self.execute_rpc("{method_name}", [{call_string}])'
-				)
-				setattr(self, method_name, types.MethodType(eval(method_name), self))  # pylint: disable=eval-used
+				with warnings.catch_warnings():
+					exec(  # pylint: disable=exec-used
+						f'def {method_name}(self, {arg_string}): return self.execute_rpc("{method_name}", [{call_string}])'
+					)
+					setattr(self, method_name, types.MethodType(eval(method_name), self))  # pylint: disable=eval-used
 			except Exception as err:  # pylint: disable=broad-except
 				logger.critical("Failed to create instance method '%s': %s", method, err)
 
