@@ -328,7 +328,7 @@ class HTTPTestServer(threading.Thread):  # pylint: disable=too-many-instance-att
 			self.server = HTTPServer(("", self.port), HTTPTestServerRequestHandler)
 
 		if self.server_key and self.server_cert:
-			context = ssl.SSLContext()
+			context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 			context.load_cert_chain(keyfile=self.server_key, certfile=self.server_cert)
 			self.server.socket = context.wrap_socket(sock=self.server.socket, server_side=True)
 		self.server.log_file = self.log_file  # pylint: disable=attribute-defined-outside-init
