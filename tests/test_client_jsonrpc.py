@@ -6,18 +6,28 @@
 This file is part of opsi - https://www.opsi.org
 """
 
+import base64
+import json
 import os
 import time
-import json
-import base64
 from urllib.parse import unquote
-from requests.exceptions import ConnectionError as RConnectionError, ReadTimeout, HTTPError
-import pytest
 
+import pytest
+from requests.exceptions import ConnectionError as RConnectionError
+from requests.exceptions import HTTPError, ReadTimeout
+
+from opsicommon.client.jsonrpc import (
+	BackendAuthenticationError,
+	BackendPermissionDeniedError,
+	JSONRPCClient,
+	OpsiRpcError,
+)
 from opsicommon.logging import LOG_WARNING
-from opsicommon.client.jsonrpc import JSONRPCClient, BackendAuthenticationError, BackendPermissionDeniedError, OpsiRpcError
-from opsicommon.ssl import create_ca, create_server_cert, as_pem
-from opsicommon.testing.helpers import http_test_server, environment  # type: ignore[import]
+from opsicommon.ssl import as_pem, create_ca, create_server_cert
+from opsicommon.testing.helpers import (  # type: ignore[import]
+	environment,
+	http_test_server,
+)
 
 from .helpers import log_stream
 
@@ -442,3 +452,12 @@ def test_env_requests_ca_bundle(tmpdir):
 				stream.seek(0)
 				log = stream.read()
 				assert f"WARNING Environment variable REQUESTS_CA_BUNDLE is set to '{ca_bundle}'" in log
+
+
+def test_context_manager():
+	with http_test_server() as server:
+		with JSONRPCClient(f"http://localhost:{server.port}") as client:
+			response = client.get("/path")
+			assert response.status_code == 200
+			assert client._connected  # pylint: disable=protected-access
+		assert not client._connected  # pylint: disable=protected-access

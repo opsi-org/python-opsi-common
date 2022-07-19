@@ -15,7 +15,7 @@ import threading
 import time
 import types
 import warnings
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 from urllib.parse import quote, unquote, urlparse
 
 import msgpack  # type: ignore[import]
@@ -247,6 +247,17 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		if self._connect_on_init:
 			self.connect()
+
+	def __enter__(self):
+		return self
+
+	def __exit__(
+		self,
+		exc_type: Type[BaseException] | None,
+		exc_value: BaseException | None,
+		traceback: types.TracebackType | None
+	) -> None:
+		self.disconnect()
 
 	@property
 	def serialization(self) -> str:
