@@ -12,7 +12,18 @@ As an example this contains classes for hosts, products, configurations.
 
 from datetime import date, datetime
 from inspect import getfullargspec
-from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple
+from typing import (
+	Any,
+	Callable,
+	Dict,
+	Generator,
+	List,
+	Optional,
+	Set,
+	Tuple,
+	Type,
+	Union,
+)
 
 from opsicommon.exceptions import BackendBadValueError, BackendConfigurationError
 from opsicommon.logging import get_logger
@@ -141,35 +152,35 @@ class BaseObject:
 	_is_generated_default = False
 
 	@classproperty
-	def subClasses(cls):  # pylint: disable=invalid-name,no-self-argument
+	def subClasses(cls) -> Dict[str, type]:  # pylint: disable=invalid-name,no-self-argument
 		return cls.sub_classes
 
 	@classproperty
-	def identSeparator(cls):  # pylint: disable=invalid-name,no-self-argument
+	def identSeparator(cls) -> str:  # pylint: disable=invalid-name,no-self-argument
 		return cls.ident_separator
 
 	@classproperty
-	def foreignIdAttributes(cls):  # pylint: disable=invalid-name,no-self-argument
+	def foreignIdAttributes(cls) -> List[str]:  # pylint: disable=invalid-name,no-self-argument
 		return cls.foreign_id_attributes
 
 	@classproperty
-	def backendMethodPrefix(cls):  # pylint: disable=invalid-name,no-self-argument
+	def backendMethodPrefix(cls) -> str:  # pylint: disable=invalid-name,no-self-argument
 		return cls.backend_method_prefix
 
-	def getBackendMethodPrefix(self):  # pylint: disable=invalid-name
+	def getBackendMethodPrefix(self) -> str:  # pylint: disable=invalid-name
 		return self.backend_method_prefix
 
-	def getForeignIdAttributes(self):  # pylint: disable=invalid-name
+	def getForeignIdAttributes(self) -> List[str]:  # pylint: disable=invalid-name
 		return self.foreign_id_attributes
 
-	def getIdentAttributes(self):  # pylint: disable=invalid-name
+	def getIdentAttributes(self) -> Tuple[str]:  # pylint: disable=invalid-name
 		return get_ident_attributes(self.__class__)
 
-	def getIdent(self, returnType="unicode"):  # pylint: disable=invalid-name
+	def getIdent(self, returnType: str = "unicode") -> Union[List[str], Tuple[str], Dict[str, str], str]:  # pylint: disable=invalid-name
 		returnType = forceUnicodeLower(returnType)
 		ident_attributes = self.getIdentAttributes()
 
-		def get_ident_value(attribute):
+		def get_ident_value(attribute: str) -> str:
 			try:
 				value = getattr(self, attribute)
 				if value is None:
@@ -189,10 +200,10 @@ class BaseObject:
 			return dict(zip(ident_attributes, ident_values))
 		return self.ident_separator.join(ident_values)
 
-	def setDefaults(self):  # pylint: disable=invalid-name
+	def setDefaults(self) -> None:  # pylint: disable=invalid-name
 		pass
 
-	def emptyValues(self, keepAttributes=None):  # pylint: disable=invalid-name
+	def emptyValues(self, keepAttributes: Union[List[str], None] = None):  # pylint: disable=invalid-name
 		keepAttributes = set(forceUnicodeList(keepAttributes or []))
 		for attribute in self.getIdentAttributes():
 			keepAttributes.add(attribute)
@@ -202,7 +213,7 @@ class BaseObject:
 			if attribute not in keepAttributes:
 				self.__dict__[attribute] = None
 
-	def update(self, updateObject, updateWithNoneValues=True):  # pylint: disable=invalid-name
+	def update(self, updateObject: "BaseObject", updateWithNoneValues: bool = True):  # pylint: disable=invalid-name
 		if not issubclass(updateObject.__class__, self.__class__):
 			raise TypeError(f"Cannot update instance of {self.__class__.__name__} with instance of {updateObject.__class__.__name__}")
 		object_hash = updateObject.toHash()
@@ -221,28 +232,28 @@ class BaseObject:
 
 		self.__dict__.update(object_hash)
 
-	def getType(self):  # pylint: disable=invalid-name
+	def getType(self) -> str:  # pylint: disable=invalid-name
 		return self.__class__.__name__
 
-	def setGeneratedDefault(self, flag=True):  # pylint: disable=invalid-name
+	def setGeneratedDefault(self, flag: bool = True) -> None:  # pylint: disable=invalid-name
 		self._is_generated_default = forceBool(flag)
 
-	def isGeneratedDefault(self):  # pylint: disable=invalid-name
+	def isGeneratedDefault(self) -> bool:  # pylint: disable=invalid-name
 		return self._is_generated_default
 
-	def to_hash(self):  # pylint: disable=invalid-name
+	def to_hash(self) -> Dict[str, Any]:  # pylint: disable=invalid-name
 		object_hash = dict(self.__dict__)
 		object_hash["type"] = self.getType()
 		return object_hash
 
 	toHash = to_hash
 
-	def to_json(self):
+	def to_json(self) -> str:
 		return to_json(self)
 
 	toJson = to_json
 
-	def serialize(self):
+	def serialize(self) -> Dict[str, Any]:
 		_hash = {}
 		for key, val in self.toHash().items():
 			if isinstance(val, (datetime, date)):  # pylint: disable=loop-invariant-statement
@@ -251,15 +262,15 @@ class BaseObject:
 		_hash["ident"] = self.getIdent()
 		return _hash
 
-	def __eq__(self, other):
+	def __eq__(self, other: "BaseObject") -> bool:
 		if not isinstance(other, self.__class__):
 			return False
 		if self.isGeneratedDefault() or other.isGeneratedDefault():
 			return False
 		return self.getIdent() == other.getIdent()
 
-	def __hash__(self):
-		def get_ident_value(attribute):
+	def __hash__(self) -> str:
+		def get_ident_value(attribute: str) -> str:
 			try:
 				value = getattr(self, attribute)
 				if value is None:
@@ -271,10 +282,10 @@ class BaseObject:
 		ident_values = tuple(get_ident_value(attribute) for attribute in self.getIdentAttributes())
 		return hash(ident_values)
 
-	def __ne__(self, other):
+	def __ne__(self, other: "BaseObject") -> bool:
 		return not self.__eq__(other)
 
-	def __str__(self):
+	def __str__(self) -> str:
 		additional_attributes = []
 		for attr in self.getIdentAttributes():
 			try:  # pylint: disable=loop-try-except-usage
@@ -285,7 +296,7 @@ class BaseObject:
 
 		return f"<{self.getType()}({', '.join(additional_attributes)})>"
 
-	def __repr__(self):
+	def __repr__(self) -> str:
 		return self.__str__()
 
 
@@ -306,7 +317,7 @@ def mandatory_constructor_args(_class: BaseObject) -> List[str]:
 	return _MANDATORY_CONSTRUCTOR_ARGS_CACHE[cache_key]
 
 
-def get_ident_attributes(_class: BaseObject) -> Tuple[str, ...]:
+def get_ident_attributes(_class: Type[BaseObject]) -> Tuple[str]:
 	return tuple(mandatory_constructor_args(_class))
 
 

@@ -175,7 +175,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	schema_version: int = attr.ib(default=2, converter=int)
 
 	@schema_version.validator
-	def validate_schema_version(self, attribute, value):
+	def validate_schema_version(self, attribute: str, value: Any) -> None:
 		if not isinstance(value, int) or value <= 0:
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -184,21 +184,21 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	customer_id: str = attr.ib(default=None)
 
 	@customer_id.validator
-	def validate_customer_id(self, attribute, value):
+	def validate_customer_id(self, attribute: str, value: Any) -> None:
 		if self.schema_version > 1 and self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^[a-zA-Z0-9\-_]{5,}$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
 	customer_name: str = attr.ib()
 
 	@customer_name.validator
-	def validate_customer_name(self, attribute, value):
+	def validate_customer_name(self, attribute: str, value: Any) -> None:
 		if self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^\S.*\S$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
 	customer_address: str = attr.ib(default=None)
 
 	@customer_address.validator
-	def validate_customer_address(self, attribute, value):
+	def validate_customer_address(self, attribute: str, value: Any) -> None:
 		if self.schema_version > 1 and self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^\S.*\S$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -211,7 +211,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	)
 
 	@service_id.validator
-	def validate_service_id(self, attribute, value):
+	def validate_service_id(self, attribute: str, value: Any) -> None:
 		if value is not None and not re.match(r"^[a-z0-9\-\.]+$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -220,7 +220,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	client_number: int = attr.ib(converter=int, validator=attr.validators.instance_of(int))
 
 	@client_number.validator
-	def validate_client_number(self, attribute, value):
+	def validate_client_number(self, attribute: str, value: Any) -> None:
 		if value <= 0:
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -233,7 +233,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	revoked_ids: List[str] = attr.ib(default=[])
 
 	@revoked_ids.validator
-	def validate_revoked_ids(self, attribute, value):
+	def validate_revoked_ids(self, attribute: str, value: Any) -> None:
 		if not isinstance(value, list):
 			raise ValueError(f"Invalid value for {attribute}", value)
 		for val in value:
@@ -306,7 +306,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	def get_checksum(self, with_signature: bool = True) -> str:
 		return f"{zlib.crc32(self._hash_base(with_signature)):x}"
 
-	def get_hash(self, digest: bool = False, hex_digest: bool = False):
+	def get_hash(self, digest: bool = False, hex_digest: bool = False) -> Union[MD5.MD5Hash, SHA3_512.SHA3_512_Hash, str, bytes]:
 		_hash: Union[MD5.MD5Hash, SHA3_512.SHA3_512_Hash]
 		if self.schema_version == 1:
 			_hash = MD5.new(self.additional_data.encode("utf-8"))
@@ -337,17 +337,17 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 			self._cached_state[cache_key] = self._get_state(test_revoked=test_revoked, at_date=at_date)
 		return self._cached_state[cache_key]
 
-	def is_signature_valid(self):
+	def is_signature_valid(self) -> bool:
 		if self._cached_signature_valid is None:
 			_hash = self.get_hash()
 			public_key = get_signature_public_key(self.schema_version)
 			try:
 				if self.schema_version == 1:
-					h_int = int.from_bytes(_hash.digest(), "big")
+					h_int = int.from_bytes(_hash.digest(), "big")  # type: ignore[union-attr]
 					s_int = public_key._encrypt(int(self.signature.hex()))  # type: ignore[attr-defined] # pylint: disable=protected-access
 					self._cached_signature_valid = h_int == s_int
 				else:
-					pss.new(public_key).verify(_hash, self.signature)
+					pss.new(public_key).verify(_hash, self.signature)  # type: ignore[arg-type]
 					self._cached_signature_valid = True
 			except (ValueError, TypeError):
 				self._cached_signature_valid = False
@@ -380,7 +380,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 			raise NotImplementedError("Signing for schema_version < 2 not implemented")
 		if isinstance(private_key, str):
 			private_key = RSA.import_key(private_key.encode("ascii"))
-		self.signature = pss.new(private_key).sign(self.get_hash())
+		self.signature = pss.new(private_key).sign(self.get_hash())  # type: ignore[arg-type]
 
 
 class OpsiLicenseFile:

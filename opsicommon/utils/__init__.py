@@ -14,19 +14,23 @@ import subprocess
 import time
 import types
 from datetime import date, datetime
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Type, Union
 
 import requests
 
 from opsicommon.logging import get_logger
 
-OBJECT_CLASSES = None
-BaseObject = None  # pylint: disable=invalid-name
+if TYPE_CHECKING:
+	from opsicommon.objects import BaseObject as TBaseObject
+	from opsicommon.objects import Product, ProductOnClient, ProductOnDepot
+
+OBJECT_CLASSES: Dict[str, Type["TBaseObject"]] = {}
+BaseObject: Union[Type["TBaseObject"], None] = None  # pylint: disable=invalid-name
 
 logger = get_logger("opsicommon.general")
 
 
-def deserialize(obj, prevent_object_creation=False):  # pylint: disable=invalid-name
+def deserialize(obj: Any, prevent_object_creation: bool = False) -> Any:  # pylint: disable=invalid-name
 	"""
 	Deserialization of `obj`.
 
@@ -44,7 +48,7 @@ def deserialize(obj, prevent_object_creation=False):  # pylint: disable=invalid-
 		return [deserialize(element, prevent_object_creation=prevent_object_creation) for element in obj]
 
 	global OBJECT_CLASSES  # pylint: disable=global-statement,invalid-name,global-variable-not-assigned
-	if OBJECT_CLASSES is None:
+	if not OBJECT_CLASSES:
 		from opsicommon.objects import (  # pylint: disable=redefined-outer-name,import-outside-toplevel
 			OBJECT_CLASSES,
 		)
@@ -53,6 +57,9 @@ def deserialize(obj, prevent_object_creation=False):  # pylint: disable=invalid-
 		from opsicommon.objects import (  # pylint: disable=redefined-outer-name,import-outside-toplevel
 			BaseObject,
 		)
+
+	if BaseObject is None:
+		raise RuntimeError("Failed to import BaseObject")
 
 	if isinstance(obj, dict):
 		if (
@@ -63,7 +70,7 @@ def deserialize(obj, prevent_object_creation=False):  # pylint: disable=invalid-
 			and issubclass(OBJECT_CLASSES[obj["type"]], BaseObject)
 		):
 			try:
-				return OBJECT_CLASSES[obj["type"]].fromHash(obj)
+				return OBJECT_CLASSES[obj["type"]].fromHash(obj)  # type: ignore[attr-defined]
 			except Exception as err:  # pylint: disable=broad-except
 				logger.error(err, exc_info=True)
 				raise ValueError(f"Failed to create object from dict {obj}: {err}") from err
@@ -73,7 +80,7 @@ def deserialize(obj, prevent_object_creation=False):  # pylint: disable=invalid-
 	return obj
 
 
-def serialize(obj):
+def serialize(obj: Any) -> Any:
 	"""
 	Serialize `obj`.
 
@@ -98,7 +105,7 @@ def serialize(obj):
 	return obj
 
 
-def combine_versions(obj):
+def combine_versions(obj: Union["Product", "ProductOnClient", "ProductOnDepot"]) -> str:
 	"""
 	Returns the combination of product and package version.
 
@@ -109,7 +116,7 @@ def combine_versions(obj):
 	return f"{obj.productVersion}-{obj.packageVersion}"
 
 
-def from_json(obj, object_type=None, prevent_object_creation=False):
+def from_json(obj: Any, object_type: str = None, prevent_object_creation: bool = False) -> Any:
 	if isinstance(obj, bytes):
 		# Allow decoding errors (workaround for opsi-script bug)
 		obj = obj.decode("utf-8", "replace")
@@ -119,11 +126,11 @@ def from_json(obj, object_type=None, prevent_object_creation=False):
 	return deserialize(obj, prevent_object_creation=prevent_object_creation)
 
 
-def to_json(obj, ensure_ascii=False):
+def to_json(obj: Any, ensure_ascii: bool = False) -> str:
 	return json.dumps(serialize(obj), ensure_ascii=ensure_ascii)
 
 
-def generate_opsi_host_key():
+def generate_opsi_host_key() -> str:
 	"""
 	Generates an random opsi host key.
 
@@ -134,7 +141,7 @@ def generate_opsi_host_key():
 	return secrets.token_hex(16)
 
 
-def timestamp(secs=0, date_only=False):
+def timestamp(secs: float = 0.0, date_only: bool = False) -> str:
 	"""Returns a timestamp of the current system time format: YYYY-mm-dd[ HH:MM:SS]"""
 	if not secs:
 		secs = time.time()
@@ -144,15 +151,20 @@ def timestamp(secs=0, date_only=False):
 
 
 class Singleton(type):
-	_instances: Dict[type, Any] = {}
+	_instances: Dict[type, type] = {}
 
-	def __call__(cls, *args, **kwargs):
+	def __call__(cls: "Singleton", *args: Any, **kwargs: Any) -> type:
 		if cls not in cls._instances:
 			cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
 		return cls._instances[cls]
 
 
-def prepare_proxy_environment(hostname, proxy_url="system", no_proxy_addresses=None, session=None):  # pylint: disable=too-many-branches
+def prepare_proxy_environment(  # pylint: disable=too-many-branches
+	hostname: str,
+	proxy_url: str = "system",
+	no_proxy_addresses: Union[List[str], None] = None,
+	session: Union[requests.Session, None] = None
+) -> requests.Session:
 	"""
 	proxy_url can be:
 	* an explicid url like http://10.10.10.1:8080
@@ -161,7 +173,7 @@ def prepare_proxy_environment(hostname, proxy_url="system", no_proxy_addresses=N
 	If session is given its proxy settings are adapted. Else a new session is created and returned.
 	"""
 
-	def add_protocol(host, protocol="http"):
+	def add_protocol(host: str, protocol: str = "http") -> str:
 		if not host or "://" in host:
 			return host
 		logger.debug("Adding schema '%s://' to form proxy url from host '%s'", protocol, host)
@@ -212,7 +224,7 @@ def prepare_proxy_environment(hostname, proxy_url="system", no_proxy_addresses=N
 
 
 class PopenFrozen(subprocess.Popen):
-	def __init__(self, *args, **kwargs):
+	def __init__(self, *args: Any, **kwargs: Any) -> None:
 		if kwargs.get("env") is None:
 			kwargs["env"] = os.environ.copy()
 		lp_orig = kwargs["env"].get("LD_LIBRARY_PATH_ORIG")
@@ -227,11 +239,11 @@ class PopenFrozen(subprocess.Popen):
 		super().__init__(*args, **kwargs)
 
 
-def monkeypatch_subprocess_for_frozen():
-	subprocess.Popen = PopenFrozen
+def monkeypatch_subprocess_for_frozen() -> None:
+	subprocess.Popen = PopenFrozen  # type: ignore[misc]
 
 
-def frozen_lru_cache(*decorator_args):
+def frozen_lru_cache(*decorator_args: Any) -> Callable:
 	"""
 	This decorator is intended to be used as drop-in replacement for functools.lru_cache.
 	It mitigates the weakness of not being able to handle dictionary type arguments by freezing them.
@@ -242,14 +254,14 @@ def frozen_lru_cache(*decorator_args):
 	else:
 		cache = functools.lru_cache(*decorator_args)
 
-	def inner(func):
-		def deserialise(value):
+	def inner(func: Callable) -> Callable:
+		def deserialise(value: str) -> Any:
 			try:
 				return json.loads(value)
 			except Exception:  # pylint: disable=broad-except
 				return value
 
-		def func_with_serialized_params(*args, **kwargs):
+		def func_with_serialized_params(*args: Any, **kwargs: Any) -> Callable:
 			_args = tuple([deserialise(arg) for arg in args])  # pylint: disable=consider-using-generator
 			_kwargs = {k: deserialise(v) for k, v in kwargs.items()}
 			return func(*_args, **_kwargs)
@@ -257,13 +269,13 @@ def frozen_lru_cache(*decorator_args):
 		cached_function = cache(func_with_serialized_params)
 
 		@functools.wraps(func)
-		def lru_decorator(*args, **kwargs):
+		def lru_decorator(*args: Any, **kwargs: Any) -> Callable:
 			_args = tuple([json.dumps(arg, sort_keys=True) if type(arg) in (list, dict) else arg for arg in args])  # pylint: disable=consider-using-generator
 			_kwargs = {k: json.dumps(v, sort_keys=True) if type(v) in (list, dict) else v for k, v in kwargs.items()}
 			return cached_function(*_args, **_kwargs)
 
-		lru_decorator.cache_info = cached_function.cache_info
-		lru_decorator.cache_clear = cached_function.cache_clear
+		lru_decorator.cache_info = cached_function.cache_info  # type: ignore[attr-defined]
+		lru_decorator.cache_clear = cached_function.cache_clear  # type: ignore[attr-defined]
 		return lru_decorator
 
 	if len(decorator_args) == 1 and callable(decorator_args[0]):
