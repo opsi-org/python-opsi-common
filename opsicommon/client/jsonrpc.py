@@ -595,13 +595,12 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 	@no_export
 	def disconnect(self) -> None:
-		if self._connected:
-			try:
-				self.execute_rpc("backend_exit")
-			except Exception:  # pylint: disable=broad-except
-				pass
-			try:
-				self.session.close()
-			except Exception:  # pylint: disable=broad-except
-				pass
-			self._connected = False
+		try:
+			self.execute_rpc("backend_exit")
+		except Exception:  # pylint: disable=broad-except
+			pass
+		try:
+			self.session.close()
+		except Exception:  # pylint: disable=broad-except
+			pass
+		self._connected = False
