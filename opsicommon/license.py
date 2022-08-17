@@ -84,7 +84,7 @@ OPSI_MODULE_IDS = (
 )
 
 OPSI_OBSOLETE_MODULE_IDS = (
-	"dynamic_depot"
+	"dynamic_depot",
 	"treeview",
 	"vista",
 )
