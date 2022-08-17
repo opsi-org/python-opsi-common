@@ -456,7 +456,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		if not self.base_url:
 			raise ValueError("No url provided for jsonrpcclient.")
 		try:
-			response = self._session.post(self.base_url, headers=headers, data=data, stream=True, timeout=timeout)
+			response = self.session.post(self.base_url, headers=headers, data=data, stream=True, timeout=timeout)
 		except SSLError as err:
 			try:
 				if err.args[0].reason.args[0].errno == 8:
@@ -595,12 +595,13 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 	@no_export
 	def disconnect(self) -> None:
-		try:
-			self.execute_rpc("backend_exit")
-		except Exception:  # pylint: disable=broad-except
-			pass
-		try:
-			self.session.close()
-		except Exception:  # pylint: disable=broad-except
-			pass
-		self._connected = False
+		if self._connected:
+			try:
+				self.execute_rpc("backend_exit")
+			except Exception:  # pylint: disable=broad-except
+				pass
+			try:
+				self.session.close()
+			except Exception:  # pylint: disable=broad-except
+				pass
+			self._connected = False
