@@ -757,8 +757,8 @@ def get_default_opsi_license_pool(
 	license_file_path: str = None,
 	modules_file_path: str = None,
 	client_info: Union[dict, Callable] = None,
-	client_limit_warning_percent: Optional[int] = None,
-	client_limit_warning_absolute: Optional[int] = None
+	client_limit_warning_percent: Optional[int] = 95,
+	client_limit_warning_absolute: Optional[int] = 5,
 ) -> OpsiLicensePool:
 	global _default_opsi_license_pool  # pylint: disable=invalid-name,global-statement
 	if not _default_opsi_license_pool:
