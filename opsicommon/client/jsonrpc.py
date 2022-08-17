@@ -384,7 +384,13 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			self._password = url.password
 
 	@no_export
-	def execute_rpc(self, method: str, params: Optional[Union[List, Dict[str, Any]]] = None) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+	def execute_rpc(self, method: str, params: Optional[Union[List, Dict[str, Any]]] = None) -> Any:
+		if not self._connected:
+			self.connect()
+
+		return self._execute_rpc(method, params)
+
+	def _execute_rpc(self, method: str, params: Optional[Union[List, Dict[str, Any]]] = None) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		params = params or []
 
 		rpc_id = 0
@@ -456,7 +462,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		if not self.base_url:
 			raise ValueError("No url provided for jsonrpcclient.")
 		try:
-			response = self.session.post(self.base_url, headers=headers, data=data, stream=True, timeout=timeout)
+			response = self._session.post(self.base_url, headers=headers, data=data, stream=True, timeout=timeout)
 		except SSLError as err:
 			try:
 				if err.args[0].reason.args[0].errno == 8:
@@ -587,7 +593,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	def connect(self) -> None:
 		logger.info("Connecting to service %s", self.base_url)
 		if self._create_methods:
-			self._interface = self.execute_rpc("backend_getInterface")
+			self._interface = self._execute_rpc("backend_getInterface")
 			self._create_instance_methods()
 		self._http_adapter.max_retries = Retry.from_int(self._http_max_retries)
 		logger.debug("Connected to service %s", self.base_url)
