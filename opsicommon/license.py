@@ -83,6 +83,12 @@ OPSI_MODULE_IDS = (
 	"vpn",
 )
 
+OPSI_OBSOLETE_MODULE_IDS = (
+	"dynamic_depot"
+	"treeview",
+	"vista",
+)
+
 OPSI_FREE_MODULE_IDS = (
 	"dynamic_depot",
 	"install_by_shutdown",
