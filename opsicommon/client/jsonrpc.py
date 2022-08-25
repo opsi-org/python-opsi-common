@@ -252,10 +252,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		return self
 
 	def __exit__(
-		self,
-		exc_type: Type[BaseException] | None,
-		exc_value: BaseException | None,
-		traceback: types.TracebackType | None
+		self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], traceback: Optional[types.TracebackType]
 	) -> None:
 		self.disconnect()
 
