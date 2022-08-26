@@ -17,9 +17,11 @@ from urllib.parse import quote, unquote, urlparse
 
 import requests
 import urllib3.util.connection
+from requests.exceptions import ConnectionError, HTTPError, ReadTimeout, SSLError
 from urllib3.exceptions import InsecureRequestWarning
 
 from opsicommon import __version__
+from opsicommon.exceptions import OpsiConnectionError, OpsiServiceVerificationError
 from opsicommon.logging import get_logger, secret_filter
 from opsicommon.utils import prepare_proxy_environment
 
@@ -30,7 +32,7 @@ _DEFAULT_HTTPS_PORT = 4447
 logger = get_logger("opsicommon.general")
 
 
-class OPSIServiceClient:  # pylint: disable=too-many-instance-attributes
+class ServiceClient:  # pylint: disable=too-many-instance-attributes
 	rpc_timeouts = {
 		"depot_installPackage": 3600,
 		"depot_librsyncPatchFile": 24 * 3600,
@@ -50,7 +52,7 @@ class OPSIServiceClient:  # pylint: disable=too-many-instance-attributes
 		session_lifetime: int = 150,
 		proxy_url: str = "system",
 		ip_version: Union[str, int] = "auto",
-		user_agent: str = f"opsi-service-client/{__version__}",
+		user_agent: str = None,
 		connect_timeout: float = 10.0,
 	) -> None:
 		"""
@@ -73,7 +75,7 @@ class OPSIServiceClient:  # pylint: disable=too-many-instance-attributes
 			raise ValueError("Invalid session cookie, <name>=<value> is needed")
 		self._session_cookie = session_cookie or None
 
-		self._session_lifetime = int(session_lifetime)
+		self._session_lifetime = max(1, int(session_lifetime))
 		self._proxy_url = str(proxy_url) if proxy_url else None
 
 		ip_version = str(ip_version)
@@ -81,8 +83,8 @@ class OPSIServiceClient:  # pylint: disable=too-many-instance-attributes
 			raise ValueError(f"Invalid IP version: {ip_version!r}")
 		self._ip_version = ip_version
 
-		self._user_agent = str(user_agent)
-		self._connect_timeout = float(connect_timeout)
+		self._user_agent = f"opsi-service-client/{__version__}" if user_agent is None else str(user_agent)
+		self._connect_timeout = max(0.0, float(connect_timeout))
 
 		self._set_address(address)
 
@@ -153,6 +155,12 @@ class OPSIServiceClient:  # pylint: disable=too-many-instance-attributes
 
 	def _set_address(self, address: str) -> None:
 		if "://" not in address:
+			try:
+				ipa = ip_address(address)
+				if isinstance(ipa, IPv6Address):
+					address = f"[{ipa.compressed}]"
+			except ValueError:
+				pass
 			address = f"https://{address}"
 		url = urlparse(address)
 		if url.scheme != "https":
@@ -180,7 +188,13 @@ class OPSIServiceClient:  # pylint: disable=too-many-instance-attributes
 	def connect(self) -> None:
 		self.disconnect()
 
-		response = self._session.head(self.base_url, timeout=(self._connect_timeout, self._connect_timeout))
+		try:
+			response = self._session.head(self.base_url, timeout=(self._connect_timeout, self._connect_timeout))
+		except SSLError as err:
+			raise OpsiServiceVerificationError(str(err)) from err
+		except Exception as err:  # pylint: disable=broad-except
+			raise OpsiConnectionError(str(err)) from err
+
 		if "server" in response.headers:
 			self.server_name = response.headers["server"]
 			match = re.search(r"^opsi\D+(\d+\.\d+\.\d+\.\d+)", self.server_name)
