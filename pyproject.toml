@@ -26,6 +26,7 @@ pycryptodome = "^3.10"
 pyopenssl = "^22.0"
 pywin32 = {platform = "win32", version = "^303"}
 requests = "^2.26"
+websocket-client = "^1.4.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0"

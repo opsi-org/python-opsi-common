@@ -1074,6 +1074,19 @@ python-versions = "*"
 requests = "*"
 
 [[package]]
+name = "websocket-client"
+version = "1.4.0"
+description = "WebSocket client for Python with low level API options"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+test = ["websockets"]
+optional = ["wsaccel", "python-socks"]
+docs = ["sphinx-rtd-theme (>=0.5)", "Sphinx (>=3.4)"]
+
+[[package]]
 name = "wrapt"
 version = "1.14.1"
 description = "Module for decorators, wrappers and monkey patching."
@@ -1096,7 +1109,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "4a2701c7323e35e9f97e213e5c5c9417c2e2224a2e4961854bc24d7462b31ac7"
+content-hash = "9374f267c8854bdc2ad397387d38b2bbf47f927b71ec1d691be1fa1faea05ad2"
 
 [metadata.files]
 alabaster = [
@@ -1847,6 +1860,10 @@ urllib3 = [
 ]
 virustotal3 = [
     {file = "virustotal3-1.0.8.tar.gz", hash = "sha256:84354b7ac806dcc15908baf57561a76a1bdf10973538e3ae233363a7ad6c41bb"},
+]
+websocket-client = [
+    {file = "websocket-client-1.4.0.tar.gz", hash = "sha256:79d730c9776f4f112f33b10b78c8d209f23b5806d9a783e296b3813fc5add2f1"},
+    {file = "websocket_client-1.4.0-py3-none-any.whl", hash = "sha256:33ad3cf0aef4270b95d10a5a66b670a66be1f5ccf10ce390b3644f9eddfdca9d"},
 ]
 wrapt = [
     {file = "wrapt-1.14.1-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:1b376b3f4896e7930f1f772ac4b064ac12598d1c38d04907e696cc4d794b43d3"},

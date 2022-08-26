@@ -6,16 +6,23 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-import os
 import json
+import os
 import time
-import email
+from base64 import b64decode
+from email.utils import formatdate
+from pathlib import Path
+
 import requests
+import websocket  # type: ignore[import]
 
-from opsicommon.testing.helpers import environment, http_test_server
+from opsicommon.testing.helpers import (  # type: ignore[import]
+	environment,
+	http_test_server,
+)
 
 
-def test_environment():
+def test_environment() -> None:
 	assert "TEST_VAR1" not in os.environ
 	with environment({"TEST_VAR1": "VAL1"}):
 		assert os.environ.get("TEST_VAR1") == "VAL1"
@@ -25,7 +32,7 @@ def test_environment():
 	assert "TEST_VAR1" not in os.environ
 
 
-def test_test_http_server_log_file(tmp_path):
+def test_test_http_server_log_file(tmp_path: Path) -> None:
 	log_file = tmp_path / "server.log"
 	with http_test_server(log_file=log_file) as server:
 		res = requests.get(f"http://localhost:{server.port}/dir/file")
@@ -44,14 +51,8 @@ def test_test_http_server_log_file(tmp_path):
 	assert not log_file.exists()
 
 
-def test_test_http_server_headers():
-	with http_test_server(
-		response_headers={
-			"Server": "test/123",
-			"X-Server-Adress": "{server_address}",
-			"X-Host": "{host}"
-		}
-	) as server:
+def test_test_http_server_headers() -> None:
+	with http_test_server(response_headers={"Server": "test/123", "X-Server-Adress": "{server_address}", "X-Host": "{host}"}) as server:
 		res = requests.get(f"http://localhost:{server.port}")
 		assert res.status_code == 200
 		assert res.headers["Server"] == "test/123"
@@ -59,7 +60,7 @@ def test_test_http_server_headers():
 		assert res.headers["X-Host"].endswith(f":{server.port}")
 
 
-def test_test_http_server_response_delay():
+def test_test_http_server_response_delay() -> None:
 	with http_test_server(response_delay=2) as server:
 		start = time.time()
 		res = requests.get(f"http://localhost:{server.port}")
@@ -68,14 +69,14 @@ def test_test_http_server_response_delay():
 		assert 6 >= delay >= 2
 
 
-def test_test_http_server_post():
+def test_test_http_server_post() -> None:
 	with http_test_server() as server:
 		rpc = {"id": 1, "method": "test", "parms": [1, 2]}
 		res = requests.post(f"http://localhost:{server.port}", json=rpc)
 		assert res.status_code == 200
 
 
-def test_test_http_server_serve_files(tmp_path):
+def test_test_http_server_serve_files(tmp_path: Path) -> None:
 	test_dir = tmp_path / "dir1"
 	test_dir.mkdir()
 	test_file1 = test_dir / "file1"
@@ -111,7 +112,7 @@ def test_test_http_server_serve_files(tmp_path):
 		res = requests.get(f"http://127.0.0.1:{server.port}/404")
 		assert res.status_code == 404
 
-		date = email.utils.formatdate(timeval=time.time())
+		date = formatdate(timeval=time.time())
 		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", headers={"If-Modified-Since": date})
 		assert res.status_code == 304
 
@@ -132,3 +133,28 @@ def test_test_http_server_serve_files(tmp_path):
 
 		res = requests.request("MKCOL", f"http://127.0.0.1:{server.port}/newdir")
 		assert res.status_code == 201
+
+
+def test_http_server_websocket(tmp_path: Path) -> None:
+	log_file = tmp_path / "server.log"
+	with http_test_server(log_file=log_file, response_body=b"response") as server:
+		wsock = websocket.create_connection(f"ws://127.0.0.1:{server.port}/websocket/test")
+		wsock.send(b"test")
+		assert wsock.recv() == b"response"
+		wsock.close()
+	time.sleep(1)
+	reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+
+	assert reqs[0]["method"] == "GET"
+	assert reqs[0]["client_address"][0] == "127.0.0.1"
+	assert reqs[0]["path"] == "/websocket/test"
+	assert reqs[0]["headers"]["Host"].startswith("127.0.0.1:")
+	assert reqs[0]["headers"]["Connection"] == "Upgrade"
+	assert reqs[0]["headers"]["Sec-WebSocket-Key"]
+	assert reqs[0]["headers"]["Sec-WebSocket-Version"]
+
+	assert reqs[1]["method"] == "websocket"
+	assert reqs[1]["client_address"][0] == "127.0.0.1"
+	assert reqs[1]["path"] == "/websocket/test"
+	assert reqs[1]["headers"]["Host"].startswith("127.0.0.1:")
+	assert b64decode(reqs[1]["request"]) == b"test"
