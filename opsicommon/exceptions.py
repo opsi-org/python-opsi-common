@@ -71,12 +71,24 @@ class OpsiBackupBackendNotFound(OpsiBackupFileError):
 	ExceptionShortDescription = "Opsi backend not found in backup"
 
 
-class OpsiAuthenticationError(OpsiError):
+class OpsiServiceError(OpsiError):
+	ExceptionShortDescription = "Opsi service error"
+
+
+class OpsiAuthenticationError(OpsiServiceError):
 	ExceptionShortDescription = "Opsi authentication error"
 
 
-class OpsiServiceVerificationError(OpsiError):
+class OpsiServiceVerificationError(OpsiServiceError):
 	ExceptionShortDescription = "Opsi service verification error"
+
+
+class OpsiConnectionError(OpsiServiceError):
+	ExceptionShortDescription = "Opsi connection error"
+
+
+class OpsiTimeoutError(OpsiServiceError):
+	ExceptionShortDescription = "Opsi timeout error"
 
 
 class OpsiBadRpcError(OpsiError):
@@ -85,14 +97,6 @@ class OpsiBadRpcError(OpsiError):
 
 class OpsiRpcError(OpsiError):
 	ExceptionShortDescription = "Opsi rpc error"
-
-
-class OpsiConnectionError(OpsiError):
-	ExceptionShortDescription = "Opsi connection error"
-
-
-class OpsiTimeoutError(OpsiError):
-	ExceptionShortDescription = "Opsi timeout error"
 
 
 class OpsiProductOrderingError(OpsiError):

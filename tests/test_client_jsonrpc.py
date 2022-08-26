@@ -407,24 +407,6 @@ def test_interface_and_exit(tmp_path):
 	assert request["request"]["method"] == "backend_exit"
 
 
-def test_wget(tmpdir):  # pylint: disable=redefined-outer-name, unused-argument
-	ca_cert, ca_key = create_ca({"CN": "python-opsi-common test ca"}, 3)
-	kwargs = {
-		"subject": {"CN": "python-opsi-common test server cert"},
-		"valid_days": 3,
-		"ip_addresses": {"172.0.0.1", "::1"},
-		"hostnames": {"localhost", "ip6-localhost"},
-		"ca_key": ca_key,
-		"ca_cert": ca_cert
-	}
-	cert, key = create_server_cert(**kwargs)
-
-	server_cert = tmpdir / "server_cert.pem"
-	server_key = tmpdir / "server_key.pem"
-	server_cert.write_text(as_pem(cert), encoding="utf-8")
-	server_key.write_text(as_pem(key), encoding="utf-8")
-
-
 def test_env_requests_ca_bundle(tmpdir):
 	ca_cert, ca_key = create_ca({"CN": "python-opsi-common test ca"}, 3)
 	kwargs = {
