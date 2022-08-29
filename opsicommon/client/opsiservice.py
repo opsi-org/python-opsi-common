@@ -9,11 +9,16 @@ This file is part of opsi - https://www.opsi.org
 import os
 import re
 import socket
+import ssl
+import time
 import warnings
+from base64 import b64encode
 from enum import Enum
 from ipaddress import IPv4Address, IPv6Address, ip_address
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from queue import Queue
+from threading import Event, Lock, Thread
+from typing import Callable, Dict, Optional, Tuple, Union
 from urllib.parse import quote, unquote, urlparse
 
 import urllib3.util.connection
@@ -26,16 +31,20 @@ from requests import Session
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3.exceptions import InsecureRequestWarning
+from websocket import WebSocketApp  # type: ignore[import]
+from websocket._abnf import ABNF  # type: ignore[import]
+from websocket._app import SSLDispatcher  # type: ignore[import]
 
-from opsicommon import __version__
-from opsicommon.exceptions import (
+from .. import __version__
+from ..exceptions import (
 	OpsiConnectionError,
 	OpsiServiceError,
 	OpsiServiceVerificationError,
 	OpsiTimeoutError,
 )
-from opsicommon.logging import get_logger, secret_filter
-from opsicommon.utils import prepare_proxy_environment
+from ..logging import get_logger, secret_filter
+from ..messagebus import Message
+from ..utils import prepare_proxy_environment
 
 warnings.simplefilter("ignore", InsecureRequestWarning)
 
@@ -119,6 +128,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		self.server_name = ""
 		self.server_version = (0, 0, 0, 0)
 		self._connected = False
+		self._connect_lock = Lock()
 
 		self._username = username
 		self._password = password
@@ -135,7 +145,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 			raise ValueError("Invalid verification mode")
 		if verify in (ServiceVerificationModes.FETCH_CA, ServiceVerificationModes.FETCH_CA_TRUST_UIB) and not self._ca_cert_file:
 			raise ValueError("ca_cert_file required for selected verification mode")
-		self._verify = verify
+		if verify and isinstance(verify, ServiceVerificationModes):
+			self._verify: ServiceVerificationModes = verify
 
 		if session_cookie and "=" not in session_cookie:
 			raise ValueError("Invalid session cookie, <name>=<value> is needed")
@@ -152,6 +163,11 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		self._user_agent = f"opsi-service-client/{__version__}" if user_agent is None else str(user_agent)
 		self._connect_timeout = max(0.0, float(connect_timeout))
 
+		self.default_headers = {
+			"User-Agent": self._user_agent,
+			"X-opsi-session-lifetime": str(self._session_lifetime),
+		}
+
 		self._set_address(address)
 
 		ca_bundle = os.environ.get("REQUESTS_CA_BUNDLE", None)
@@ -167,12 +183,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 				(self._username or "").encode("utf-8"),
 				(self._password or "").encode("utf-8"),
 			)
-		self._session.headers.update(
-			{
-				"User-Agent": self._user_agent,
-				"X-opsi-session-lifetime": str(self._session_lifetime),
-			}
-		)
+
+		self._session.headers.update(self.default_headers)
 		if self._session_cookie:
 			logger.confidential("Using session cookie passed: %s", self._session_cookie)
 			cookie_name, cookie_value = self._session_cookie.split("=", 1)
@@ -203,6 +215,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 			pass
 
 		setattr(urllib3.util.connection, "allowed_gai_family", self._allowed_gai_family)
+
+		self.messagebus_connection = MessagebusConnection(self)
 
 	def _allowed_gai_family(self) -> int:
 		"""This function is designed to work in the context of
@@ -240,6 +254,26 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 			self._username = url.username
 		if url.password and not self._password:
 			self._password = url.password
+
+	@property
+	def verify(self) -> ServiceVerificationModes:
+		return self._verify
+
+	@property
+	def ca_cert_file(self) -> Optional[Path]:
+		return self._ca_cert_file
+
+	@property
+	def connected(self) -> bool:
+		return self._connected
+
+	@property
+	def username(self) -> Optional[str]:
+		return self._username
+
+	@property
+	def password(self) -> Optional[str]:
+		return self._password
 
 	@property
 	def session_coockie(self) -> Optional[str]:
@@ -286,41 +320,44 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		logger.info("CA cert file '%s' successfully updated", self._ca_cert_file)
 
 	def connect(self) -> None:
+		if self._connect_lock.locked():
+			return
 		self.disconnect()
+		with self._connect_lock:
+			ca_cert_file_exists = self._ca_cert_file and self._ca_cert_file.exists()
+			verify = self._session.verify
+			if (
+				self._verify in (ServiceVerificationModes.FETCH_CA, ServiceVerificationModes.FETCH_CA_TRUST_UIB)
+				and self._ca_cert_file
+				and (not ca_cert_file_exists or self._ca_cert_file.stat().st_size == 0)
+			):
+				logger.info("Service verification enabled, but CA cert file %r does not exist or is empty, skipping verification")
+				verify = False
 
-		ca_cert_file_exists = self._ca_cert_file and self._ca_cert_file.exists()
-		verify = self._session.verify
-		if (
-			self._verify in (ServiceVerificationModes.FETCH_CA, ServiceVerificationModes.FETCH_CA_TRUST_UIB)
-			and self._ca_cert_file
-			and (not ca_cert_file_exists or self._ca_cert_file.stat().st_size == 0)
-		):
-			logger.info("Service verification enabled, but CA cert file %r does not exist or is empty, skipping verification")
-			verify = False
+			if self._ca_cert_file and verify and not ca_cert_file_exists:
+				# Prevent OSError invalid path
+				verify = True
 
-		if self._ca_cert_file and verify and not ca_cert_file_exists:
-			# Prevent OSError invalid path
-			verify = True
+			try:
+				timeout = (self._connect_timeout, self._connect_timeout)
+				response = self._session.head(self.base_url, timeout=timeout, verify=verify)
+			except SSLError as err:
+				raise OpsiServiceVerificationError(str(err)) from err
+			except Exception as err:  # pylint: disable=broad-except
+				raise OpsiConnectionError(str(err)) from err
 
-		try:
-			timeout = (self._connect_timeout, self._connect_timeout)
-			response = self._session.head(self.base_url, timeout=timeout, verify=verify)
-		except SSLError as err:
-			raise OpsiServiceVerificationError(str(err)) from err
-		except Exception as err:  # pylint: disable=broad-except
-			raise OpsiConnectionError(str(err)) from err
+			self._connected = True
+			if "server" in response.headers:
+				self.server_name = response.headers["server"]
+				match = re.search(r"^opsi\D+(\d+\.\d+\.\d+\.\d+)", self.server_name)
+				if match:
+					self.server_version = tuple(int(v) for v in match.group(1).split("."))
 
-		self._connected = True
-		if "server" in response.headers:
-			self.server_name = response.headers["server"]
-			match = re.search(r"^opsi\D+(\d+\.\d+\.\d+\.\d+)", self.server_name)
-			if match:
-				tuple(int(v) for v in match.group(1).split("."))
-
-		if self._verify in (ServiceVerificationModes.FETCH_CA, ServiceVerificationModes.FETCH_CA_TRUST_UIB):
-			self.fetch_opsi_ca(skip_verify=not verify)
+			if self._verify in (ServiceVerificationModes.FETCH_CA, ServiceVerificationModes.FETCH_CA_TRUST_UIB):
+				self.fetch_opsi_ca(skip_verify=not verify)
 
 	def disconnect(self) -> None:
+		self.disconnect_messagebus()
 		if self._connected:
 			try:
 				# TODO: server version specific session deletion (backend_exit or /session/logout)
@@ -335,18 +372,174 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		if not self._connected:
 			self.connect()
 
+	def _get_url(self, path: str) -> str:
+		if not path.startswith("/"):
+			path = f"/{path}"
+		return f"{self.base_url}{path}"
+
 	def get(
 		self, path: str, headers: Optional[Dict[str, str]] = None, read_timeout: float = 60.0
 	) -> Tuple[int, str, CaseInsensitiveDict, bytes]:
 		self._assert_connected()
 		try:
-			if not path.startswith("/"):
-				path = f"/{path}"
-			response = self._session.get(
-				f"{self.base_url}{path}", headers=headers, timeout=(self._connect_timeout, read_timeout), stream=True
-			)
+
+			response = self._session.get(self._get_url(path), headers=headers, timeout=(self._connect_timeout, read_timeout), stream=True)
 		except Timeout as err:
 			raise OpsiTimeoutError(str(err)) from err
 		except Exception as err:  # pylint: disable=broad-except
 			raise OpsiConnectionError(str(err)) from err
 		return (response.status_code, response.reason, response.headers, response.content)
+
+	def connect_messagebus(self) -> None:
+		self._assert_connected()
+		self.messagebus_connection.connect()
+
+	def disconnect_messagebus(self) -> None:
+		self.messagebus_connection.disconnect()
+
+	@property
+	def messagebus_connected(self) -> bool:
+		return self.messagebus_connection.connected
+
+	def __del__(self) -> None:
+		self.disconnect()
+
+
+class Dispatcher(SSLDispatcher):
+	def timeout(self, seconds: float, callback: Callable) -> None:
+		time.sleep(seconds)
+		callback()
+
+
+class MessagebusConnection(Thread):  # pylint: disable=too-many-instance-attributes
+	_messagebus_path = "/messagebus/v1"
+
+	def __init__(self, opsi_service_client: ServiceClient) -> None:
+		super().__init__()
+		self.daemon = True
+		self._client = opsi_service_client
+		self._app: Optional[WebSocketApp] = None
+		self._should_be_connected = False
+		self._connected = False
+		self._connected_result = Event()
+		self._connect_exception: Optional[Exception] = None
+		self._message_queue_in: Queue[Message] = Queue()
+		self._send_lock = Lock()
+
+	@property
+	def connected(self) -> bool:
+		return self._connected
+
+	def _on_open(self, app: WebSocketApp) -> None:  # pylint: disable=unused-argument
+		logger.debug("Websocket opened")
+		self._connected = True
+		self._connect_exception = None
+		self._connected_result.set()
+
+	def _on_error(self, app: WebSocketApp, error: Exception) -> None:  # pylint: disable=unused-argument
+		logger.debug("Websocket error")
+		self._connected = False
+		self._connect_exception = error
+		self._connected_result.set()
+
+	def _on_close(self, app: WebSocketApp, close_status_code: int, close_message: str) -> None:  # pylint: disable=unused-argument
+		logger.debug("Websocket closed")
+		self._connected = False
+		self._connect_exception = None
+		self._connected_result.set()
+
+	def _on_message(self, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
+		logger.debug("Websocket message")
+		msg = Message.from_msgpack(message)
+		self._message_queue_in.put(msg)
+
+	def send_message(self, message: Message) -> None:
+		if not self._app:
+			raise RuntimeError("Messagebus not connected")
+		with self._send_lock:
+			self._app.send(message.to_msgpack(), ABNF.OPCODE_BINARY)
+
+	def connect(self, wait: bool = True) -> None:
+		self._connected_result.clear()
+		if not self.is_alive():
+			self.start()
+		self._should_be_connected = True
+		if wait:
+			self._connected_result.wait()
+			if self._connect_exception:
+				raise self._connect_exception
+
+	def disconnect(self, wait: bool = True) -> None:
+		if not self._connected:
+			return
+		self._should_be_connected = False
+		self._disconnect()
+		if wait:
+			self._connected_result.wait()
+
+	def _connect(self) -> None:
+		self._connected_result.clear()
+		self._disconnect()
+		self._connect_exception = None
+
+		sslopt: Dict[str, Union[str, ssl.VerifyMode]] = {}  # pylint: disable=no-member
+		if self._client.verify == ServiceVerificationModes.ACCEPT_ALL:
+			sslopt["cert_reqs"] = ssl.CERT_NONE
+		if self._client.ca_cert_file:
+			sslopt["ca_certs"] = str(self._client.ca_cert_file)
+
+		sslopt = {"cert_reqs": ssl.CERT_NONE}
+		http_proxy_host = None
+		http_proxy_port = None
+		http_proxy_auth = None
+		if os.environ.get("https_proxy"):
+			proxy_url = urlparse(os.environ["https_proxy"])
+			http_proxy_host = proxy_url.hostname
+			http_proxy_port = proxy_url.port or None
+			if proxy_url.username or proxy_url.password:
+				http_proxy_auth = (proxy_url.username, proxy_url.password)
+
+		url = self._client.base_url.replace("https://", "wss://") + self._messagebus_path
+		header = [f"{k}: {v}" for k, v in self._client.default_headers.items()]
+		if self._client.username is not None or self._client.password is not None:
+			basic_auth = b64encode(f"{self._client.username or ''}:{self._client.password or ''}".encode("utf-8")).decode("ascii")
+			header.append(f"Authorization: Basic {basic_auth}")
+
+		self._app = WebSocketApp(
+			url,
+			header=header,
+			on_open=self._on_open,
+			on_error=self._on_error,
+			on_close=self._on_close,
+			on_message=self._on_message,
+		)
+
+		self._app.run_forever(  # type: ignore[attr-defined]
+			sslopt=sslopt,
+			http_proxy_host=http_proxy_host,
+			http_proxy_port=http_proxy_port,
+			http_proxy_auth=http_proxy_auth,
+			http_no_proxy=os.environ.get("no_proxy"),
+			ping_interval=0,
+			reconnect=5,
+		)
+
+	def _disconnect(self) -> None:
+		if self._app and self._app.sock:
+			self._connected_result.clear()
+			try:
+				self._app.close()  # type: ignore[attr-defined]
+			except Exception as err:  # pylint: disable=broad-except
+				logger.error(err, exc_info=True)
+			self._connected = False
+			self._connected_result.set()
+
+	def run(self) -> None:
+		_sleep = time.sleep
+		try:
+			while True:
+				if self._should_be_connected and not self._connected:
+					self._connect()
+				_sleep(1)
+		except Exception as err:  # pylint: disable=broad-except
+			logger.error(err, exc_info=True)

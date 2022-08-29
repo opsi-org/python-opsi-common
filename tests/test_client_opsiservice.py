@@ -120,7 +120,7 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 	assert ServiceClient("::1", connect_timeout=-1)._connect_timeout == 0.0  # pylint: disable=protected-access
 
 
-def test_verify(tmpdir: Path) -> None:
+def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 	other_ca_cert, _ = create_ca(subject={"CN": "python-opsi-common test other ca"}, valid_days=3)
 
 	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3)
@@ -151,9 +151,13 @@ def test_verify(tmpdir: Path) -> None:
 		client = ServiceClient(f"https://localhost:{server.port}", verify="strict_check")
 		with pytest.raises(OpsiServiceVerificationError):
 			client.connect()
+		with pytest.raises(OpsiServiceVerificationError):
+			client.connect_messagebus()
 
 		client = ServiceClient(f"https://localhost:{server.port}", ca_cert_file=ca_cert_file, verify="strict_check")
 		client.connect()
+		client.connect_messagebus()
+		client.disconnect()
 
 		client = ServiceClient(f"https://localhost:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="strict_check")
 		with pytest.raises(OpsiServiceVerificationError):
@@ -162,18 +166,22 @@ def test_verify(tmpdir: Path) -> None:
 		# accept_all
 		client = ServiceClient(f"https://localhost:{server.port}", ca_cert_file=None, verify="accept_all")
 		client.connect()
+		client.disconnect()
 
 		client = ServiceClient(f"https://localhost:{server.port}", ca_cert_file=ca_cert_file, verify="accept_all")
 		client.connect()
+		client.disconnect()
 
 		client = ServiceClient(f"https://localhost:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="accept_all")
 		client.connect()
+		client.disconnect()
 
 		assert not opsi_ca_file_on_client.exists()
 
 		# fetch_ca
 		client = ServiceClient(f"https://localhost:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca")
 		client.connect()
+		client.disconnect()
 		assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert)
 
 		opsi_ca_file_on_client.write_text(as_pem(other_ca_cert), encoding="utf-8")
@@ -183,33 +191,63 @@ def test_verify(tmpdir: Path) -> None:
 
 		opsi_ca_file_on_client.write_text("", encoding="utf-8")
 		client.connect()
+		client.disconnect()
 		assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert)
 		assert client.get("/")[0] == 200
 
 		# fetch_ca_trust_uib
 		client = ServiceClient(f"https://localhost:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca_trust_uib")
 		client.connect()
+		client.disconnect()
 		assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + "\n" + UIB_OPSI_CA
 
 		opsi_ca_file_on_client.write_text("", encoding="utf-8")
 		client = ServiceClient(f"https://localhost:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca_trust_uib")
 		client.connect()
+		client.disconnect()
 		assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + "\n" + UIB_OPSI_CA
 
 
 def test_connect_disconnect() -> None:
-	with http_test_server(generate_cert=True) as server:
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.2.0.285 (uvicorn)"}) as server:
 		client = ServiceClient(f"https://localhost:{server.port}", verify="accept_all")
 		client.connect()
-		assert client._connected is True  # pylint: disable=protected-access
+		assert client.connected is True
+		assert client.server_name == "opsiconfd 4.2.0.285 (uvicorn)"
+		assert client.server_version == (4, 2, 0, 285)
 		client.disconnect()
-		assert client._connected is False  # pylint: disable=protected-access
+		assert client.connected is False
+		assert client.server_name == ""
+		assert client.server_version == (0, 0, 0, 0)
+
 		client.disconnect()
-		assert client._connected is False  # pylint: disable=protected-access
+		assert client.connected is False
+		assert client.server_name == ""
+		assert client.server_version == (0, 0, 0, 0)
+
 		client.get("/")
-		assert client._connected is True  # pylint: disable=protected-access
+		assert client.connected is True
+		assert client.server_name == "opsiconfd 4.2.0.285 (uvicorn)"
+		assert client.server_version == (4, 2, 0, 285)
+
 		client.disconnect()
-		assert client._connected is False  # pylint: disable=protected-access
+		assert client.connected is False
+		assert client.server_name == ""
+		assert client.server_version == (0, 0, 0, 0)
+
+		client.connect_messagebus()
+		assert client.messagebus_connected is True
+
+		client.disconnect()
+		assert client.messagebus_connected is False
+		assert client.connected is False
+
+		client.connect_messagebus()
+		assert client.messagebus_connected is True
+
+		client.disconnect()
+		assert client.messagebus_connected is False
+		assert client.connected is False
 
 
 def test_get() -> None:
@@ -241,3 +279,9 @@ def test_timeouts() -> None:
 		assert round(time.time() - start) == 2
 
 		assert client.get("/", read_timeout=4)[0] == 200
+
+
+def test_websocket() -> None:
+	with http_test_server(generate_cert=True, response_body=b"test") as server:
+		client = ServiceClient(f"https://user:pass@localhost:{server.port}", verify="accept_all")
+		client._open_websocket("/websocket/path")
