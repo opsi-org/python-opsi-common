@@ -93,6 +93,7 @@ OPSI_FREE_MODULE_IDS = (
 	"dynamic_depot",
 	"install_by_shutdown",
 	"roaming_profiles",
+	"swondemand",
 	"treeview",
 	"vista"
 )
