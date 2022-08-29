@@ -8,32 +8,34 @@ This file is part of opsi - https://www.opsi.org
 
 import os
 import re
-import socket
 import ssl
 import time
 import warnings
+from abc import ABC, abstractmethod
 from base64 import b64encode
+from contextlib import contextmanager
 from enum import Enum
-from ipaddress import IPv4Address, IPv6Address, ip_address
+from ipaddress import IPv6Address, ip_address
 from pathlib import Path
-from queue import Queue
 from threading import Event, Lock, Thread
-from typing import Callable, Dict, Optional, Tuple, Union
+from traceback import TracebackException
+from types import TracebackType
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
 from urllib.parse import quote, unquote, urlparse
 
-import urllib3.util.connection
 from OpenSSL.crypto import (  # type: ignore[import]
 	FILETYPE_PEM,
 	dump_certificate,
 	load_certificate,
 )
+from packaging import version
 from requests import Session
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3.exceptions import InsecureRequestWarning
 from websocket import WebSocketApp  # type: ignore[import]
 from websocket._abnf import ABNF  # type: ignore[import]
-from websocket._app import SSLDispatcher  # type: ignore[import]
+from websocket._app import Dispatcher, SSLDispatcher  # type: ignore[import]
 
 from .. import __version__
 from ..exceptions import (
@@ -43,11 +45,20 @@ from ..exceptions import (
 	OpsiTimeoutError,
 )
 from ..logging import get_logger, secret_filter
-from ..messagebus import Message
+from ..messagebus import (
+	JSONRPCRequestMessage,
+	JSONRPCResponseMessage,
+	Message,
+	MessageTypes,
+)
 from ..utils import prepare_proxy_environment
 
 warnings.simplefilter("ignore", InsecureRequestWarning)
 
+# Workaround websocket bug
+setattr(SSLDispatcher, 'timeout', Dispatcher.timeout)
+
+MESSAGBUS_MIN_VERSION = "4.2.1.0"
 _DEFAULT_HTTPS_PORT = 4447
 
 # It is possible to set multiple certificates as UIB_OPSI_CA
@@ -115,7 +126,6 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		session_cookie: str = None,
 		session_lifetime: int = 150,
 		proxy_url: str = "system",
-		ip_version: Union[str, int] = "auto",
 		user_agent: str = None,
 		connect_timeout: float = 10.0,
 	) -> None:
@@ -124,9 +134,12 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 			system = Use system proxy
 			None = Do not use a proxy
 		"""
+		self._messagebus = Messagebus(self)
+
 		self.base_url = "https://localhost:4447"
 		self.server_name = ""
 		self.server_version = (0, 0, 0, 0)
+		self._messagebus_available = False
 		self._connected = False
 		self._connect_lock = Lock()
 
@@ -154,11 +167,6 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 
 		self._session_lifetime = max(1, int(session_lifetime))
 		self._proxy_url = str(proxy_url) if proxy_url else None
-
-		ip_version = str(ip_version)
-		if ip_version not in ("4", "6", "auto"):
-			raise ValueError(f"Invalid IP version: {ip_version!r}")
-		self._ip_version = ip_version
 
 		self._user_agent = f"opsi-service-client/{__version__}" if user_agent is None else str(user_agent)
 		self._connect_timeout = max(0.0, float(connect_timeout))
@@ -202,36 +210,6 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 			self._session.verify = False
 		else:
 			self._session.verify = str(self._ca_cert_file) if self._ca_cert_file else True
-
-		try:
-			service_ip = ip_address(service_hostname)
-			if isinstance(service_ip, IPv6Address) and self._ip_version != "6":
-				logger.info("%s is an IPv6 address, forcing IPv6", service_ip.compressed)
-				self._ip_version = "6"
-			elif isinstance(service_ip, IPv4Address) and self._ip_version != "4":
-				logger.info("%s is an IPv4 address, forcing IPv4", service_ip.compressed)
-				self._ip_version = "4"
-		except ValueError:
-			pass
-
-		setattr(urllib3.util.connection, "allowed_gai_family", self._allowed_gai_family)
-
-		self.messagebus_connection = MessagebusConnection(self)
-
-	def _allowed_gai_family(self) -> int:
-		"""This function is designed to work in the context of
-		getaddrinfo, where family=socket.AF_UNSPEC is the default and
-		will perform a DNS search for both IPv6 and IPv4 records."""
-		# https://github.com/urllib3/urllib3/blob/main/src/urllib3/util/connection.py
-
-		logger.debug("Using ip version %s", self._ip_version)
-		if self._ip_version == "4":
-			return socket.AF_INET
-		if self._ip_version == "6":
-			return socket.AF_INET6
-		if urllib3.util.connection.HAS_IPV6:
-			return socket.AF_UNSPEC
-		return socket.AF_INET
 
 	def _set_address(self, address: str) -> None:
 		if "://" not in address:
@@ -349,9 +327,18 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 			self._connected = True
 			if "server" in response.headers:
 				self.server_name = response.headers["server"]
-				match = re.search(r"^opsi\D+(\d+\.\d+\.\d+\.\d+)", self.server_name)
+				match = re.search(r"^opsi\D+([\d\.]+)", self.server_name)
 				if match:
-					self.server_version = tuple(int(v) for v in match.group(1).split("."))
+					ver = [0, 0, 0, 0]
+					for idx, part in enumerate(match.group(1).split(".")):
+						if idx > 3:
+							break
+						try:  # pylint: disable=loop-try-except-usage
+							ver[idx] = int(part)
+						except ValueError:
+							pass
+					self.server_version = tuple(ver)  # type: ignore[assignment]
+					self._messagebus_available = version.parse(".".join([str(v) for v in ver])) >= version.parse(MESSAGBUS_MIN_VERSION)
 
 			if self._verify in (ServiceVerificationModes.FETCH_CA, ServiceVerificationModes.FETCH_CA_TRUST_UIB):
 				self.fetch_opsi_ca(skip_verify=not verify)
@@ -367,6 +354,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		self._connected = False
 		self.server_version = (0, 0, 0, 0)
 		self.server_name = ""
+		self._messagebus_available = False
 
 	def _assert_connected(self) -> None:
 		if not self._connected:
@@ -390,28 +378,71 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 			raise OpsiConnectionError(str(err)) from err
 		return (response.status_code, response.reason, response.headers, response.content)
 
-	def connect_messagebus(self) -> None:
+	@property
+	def messagebus(self) -> "Messagebus":
+		return self._messagebus
+
+	@property
+	def messagebus_available(self) -> bool:
 		self._assert_connected()
-		self.messagebus_connection.connect()
+		return self._messagebus_available
+
+	def _assert_messagebus_connected(self) -> None:
+		if not self.messagebus_available:
+			raise RuntimeError(f"Messagebus not available (connected to: {self.server_name})")
+		if not self._messagebus.connected:
+			self._messagebus.connect()
+
+	def connect_messagebus(self) -> "Messagebus":
+		self._assert_messagebus_connected()
+		return self._messagebus
 
 	def disconnect_messagebus(self) -> None:
-		self.messagebus_connection.disconnect()
+		self._messagebus.disconnect()
 
 	@property
 	def messagebus_connected(self) -> bool:
-		return self.messagebus_connection.connected
+		return self._messagebus.connected
 
-	def __del__(self) -> None:
+	def __enter__(self) -> "ServiceClient":
+		return self
+
+	def __exit__(self, exc_type: Exception, exc_value: TracebackException, traceback: TracebackType) -> None:
 		self.disconnect()
 
 
-class Dispatcher(SSLDispatcher):
-	def timeout(self, seconds: float, callback: Callable) -> None:
-		time.sleep(seconds)
-		callback()
+class MessagebusListener(ABC):  # pylint: disable=too-few-public-methods
+	def __init__(self, message_types: List[MessageTypes] = None) -> None:
+		self.message_types = message_types
+
+	@abstractmethod
+	def message_received(self, message: Message) -> None:
+		pass
+
+	@contextmanager
+	def register(self, messagebus: "Messagebus") -> Generator[None, None, None]:
+		try:
+			messagebus.register_message_listener(self)
+			yield
+		finally:
+			messagebus.unregister_message_listener(self)
 
 
-class MessagebusConnection(Thread):  # pylint: disable=too-many-instance-attributes
+class CallbackThread(Thread):
+	def __init__(self, callback: Callable, **kwargs: Any):
+		super().__init__()
+		self.daemon = True
+		self.callback = callback
+		self.kwargs = kwargs
+
+	def run(self) -> None:
+		try:
+			self.callback(**self.kwargs)
+		except Exception as err:  # pylint: disable=broad-except
+			logger.error("Error in %s: %s", self, err, exc_info=True)
+
+
+class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	_messagebus_path = "/messagebus/v1"
 
 	def __init__(self, opsi_service_client: ServiceClient) -> None:
@@ -423,8 +454,12 @@ class MessagebusConnection(Thread):  # pylint: disable=too-many-instance-attribu
 		self._connected = False
 		self._connected_result = Event()
 		self._connect_exception: Optional[Exception] = None
-		self._message_queue_in: Queue[Message] = Queue()
 		self._send_lock = Lock()
+		self._listener: List[MessagebusListener] = []
+		self._listener_lock = Lock()
+
+		# from websocket import enableTrace
+		# enableTrace(True)
 
 	@property
 	def connected(self) -> bool:
@@ -450,8 +485,61 @@ class MessagebusConnection(Thread):  # pylint: disable=too-many-instance-attribu
 
 	def _on_message(self, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket message")
-		msg = Message.from_msgpack(message)
-		self._message_queue_in.put(msg)
+		try:
+			msg = Message.from_msgpack(message)
+			for listener in self._listener:
+				if listener.message_types and msg.type not in listener.message_types:
+					continue
+				CallbackThread(listener.message_received, message=msg).start()
+		except Exception as err:  # pylint: disable=broad-except
+			logger.error("Failed to process websocket message: %s", err, exc_info=True)
+
+	def register_message_listener(self, listener: MessagebusListener) -> None:
+		with self._listener_lock:
+			if listener not in self._listener:
+				self._listener.append(listener)
+
+	def unregister_message_listener(self, listener: MessagebusListener) -> None:
+		with self._listener_lock:
+			if listener in self._listener:
+				self._listener.remove(listener)
+
+	def wait_for_jsonrpc_response_message(self, rpc_id: str, timeout: float = None) -> JSONRPCResponseMessage:
+		class JSONRPCResponseListener(MessagebusListener):
+			def __init__(self, rpc_id: str, timeout: float = None) -> None:
+				super().__init__([MessageTypes.JSONRPC_RESPONSE])
+				self.rpc_id = rpc_id
+				self.timeout = timeout
+				self.message_received_event = Event()
+				self.message: Optional[JSONRPCResponseMessage] = None
+				self.messages_received = 0
+
+			def wait_for_message(self) -> JSONRPCResponseMessage:
+				if self.messages_received > 0:
+					self.message_received_event.clear()
+				if self.message_received_event.wait(self.timeout) and self.message:
+					return self.message
+				raise OpsiTimeoutError(f"Timed out waiting for JSONRPCResponseMessage with {self.rpc_id=}")
+
+			def message_received(self, message: Message) -> None:
+				if isinstance(message, JSONRPCResponseMessage) and message.rpc_id == self.rpc_id:
+					self.message = message
+					self.messages_received += 1
+					self.message_received_event.set()
+
+		listener = JSONRPCResponseListener(rpc_id, timeout)
+		with listener.register(self):
+			return listener.wait_for_message()
+
+	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any]] = None, wait: int = None) -> Any:
+		if isinstance(params, list):
+			params = tuple(params)
+		msg = JSONRPCRequestMessage(sender="*", channel="service:config:jsonrpc", method=method, params=params)  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+		self.send_message(msg)
+		if wait is None:
+			return msg
+		res = self.wait_for_jsonrpc_response_message(rpc_id=msg.rpc_id, timeout=wait)
+		return {"id": res.rpc_id, "result": res.result, "error": res.error}
 
 	def send_message(self, message: Message) -> None:
 		if not self._app:

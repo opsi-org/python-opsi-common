@@ -11,7 +11,7 @@ opsicommon.messagebus
 import time
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Type, TypeVar, Union
 from uuid import uuid4
 
 from msgpack import dumps as msgpack_dumps  # type: ignore[import]
@@ -35,6 +35,9 @@ class Error:
 	details: Union[str, None] = None
 
 
+MessageT = TypeVar('MessageT', bound='Message')
+
+
 @dataclass(slots=True, kw_only=True)
 class Message:
 	type: str  # Custom message types are allowed
@@ -45,7 +48,7 @@ class Message:
 	expires: int = 0
 
 	@classmethod
-	def from_dict(cls, data: Dict[str, Any]) -> "Message":
+	def from_dict(cls: Type[MessageT], data: Dict[str, Any]) -> MessageT:
 		_cls = cls
 		if _cls is Message:
 			_type = data.get("type")
@@ -59,14 +62,14 @@ class Message:
 		return asdict(self)
 
 	@classmethod
-	def from_json(cls, data: Union[bytes, str]) -> "Message":
+	def from_json(cls: Type[MessageT], data: Union[bytes, str]) -> MessageT:
 		return cls.from_dict(json_loads(data))
 
 	def to_json(self) -> bytes:
 		return json_dumps(self.to_dict())
 
 	@classmethod
-	def from_msgpack(cls, data: bytes) -> "Message":
+	def from_msgpack(cls: Type[MessageT], data: bytes) -> MessageT:
 		return cls.from_dict(msgpack_loads(data))
 
 	def to_msgpack(self) -> bytes:
@@ -80,7 +83,7 @@ class JSONRPCRequestMessage(Message):
 	api_version: str = "1"
 	rpc_id: str = field(default_factory=lambda: str(uuid4()))
 	method: str
-	params: Tuple[Any, ...] = tuple()
+	params: Optional[Tuple[Any, ...]] = tuple()
 
 
 @dataclass(slots=True, kw_only=True)

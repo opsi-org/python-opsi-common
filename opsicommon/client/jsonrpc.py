@@ -243,6 +243,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		except ValueError:
 			pass
 
+		# TODO: This is problematic for more than one JSONRPCClient instance with different _ip_version settings
 		setattr(urllib3.util.connection, "allowed_gai_family", self._allowed_gai_family)
 
 		if self._connect_on_init:

@@ -28,7 +28,7 @@ from io import BufferedReader, BytesIO
 from pathlib import Path
 from socketserver import BaseServer
 from tempfile import NamedTemporaryFile
-from typing import Any, Dict, Generator, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Generator, Optional, Tuple, Union
 from urllib.parse import urlsplit, urlunsplit
 
 import lz4  # type: ignore[import]
@@ -330,10 +330,13 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self._log(
 			{"method": "websocket", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers), "request": log_message}
 		)
+		if self.server.ws_message_callback:
+			self.server.ws_message_callback(self, message)
 
 	def on_ws_connected(self) -> None:
 		# print("Websocket connected")
-		self.ws_send_message(self._opcode_binary, self.server.response_body or b"")
+		if self.server.ws_connect_callback:
+			self.server.ws_connect_callback(self)
 
 	def on_ws_closed(self) -> None:
 		# print("Websocket closed")
@@ -369,7 +372,10 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 				raise WebSocketError("Websocket read aborted while listening") from err
 			# The socket was closed while waiting for input
 
-	def ws_send_message(self, opcode: int, message: bytes) -> None:
+	def ws_send_message(self, message: bytes) -> None:
+		self._ws_send_message(self._opcode_binary, message)
+
+	def _ws_send_message(self, opcode: int, message: bytes) -> None:
 		try:
 			# Use of self.wfile.write gives socket exception after socket is closed. Avoid.
 			self.wfile.write(bytes([0x80 + opcode]))
@@ -429,7 +435,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self._ws_close()
 		# ping
 		elif self._ws_opcode == self._opcode_ping:
-			self.ws_send_message(self._opcode_pong, message)
+			self._ws_send_message(self._opcode_pong, message)
 		# pong
 		elif self._ws_opcode == self._opcode_pong:
 			pass
@@ -457,6 +463,8 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		response_status: Tuple[int, str] = None,
 		response_body: bytes = None,
 		response_delay: float = None,
+		ws_connect_callback: Callable = None,
+		ws_message_callback: Callable = None,
 		serve_directory: Union[str, Path] = None,
 		send_max_bytes: int = None
 	) -> None:
@@ -469,6 +477,8 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		self.response_status = response_status if response_status else None
 		self.response_body = response_body if response_body else None
 		self.response_delay = response_delay if response_delay else None
+		self.ws_connect_callback = ws_connect_callback if ws_connect_callback else None
+		self.ws_message_callback = ws_message_callback if ws_message_callback else None
 		self.serve_directory = str(serve_directory) if serve_directory else None
 		self.send_max_bytes = int(send_max_bytes) if send_max_bytes else None
 		# Auto select free port
@@ -496,6 +506,8 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		self.server.response_status = self.response_status  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
 		self.server.response_body = self.response_body  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
 		self.server.response_delay = self.response_delay  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
+		self.server.ws_connect_callback = self.ws_connect_callback  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
+		self.server.ws_message_callback = self.ws_message_callback  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
 		self.server.serve_directory = self.serve_directory  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
 		self.server.send_max_bytes = self.send_max_bytes  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
 		# print("Server listening on port:" + str(self.port))
@@ -521,6 +533,8 @@ def http_test_server(  # pylint: disable=too-many-arguments,too-many-locals
 	response_status: Tuple[int, str] = None,
 	response_body: bytes = None,
 	response_delay: float = None,
+	ws_connect_callback: Callable = None,
+	ws_message_callback: Callable = None,
 	serve_directory: Union[str, Path] = None,
 	send_max_bytes: int = None
 ) -> Generator[HTTPTestServer, None, None]:
@@ -557,6 +571,8 @@ def http_test_server(  # pylint: disable=too-many-arguments,too-many-locals
 			response_status=response_status,
 			response_body=response_body,
 			response_delay=response_delay,
+			ws_connect_callback=ws_connect_callback,
+			ws_message_callback=ws_message_callback,
 			serve_directory=serve_directory,
 			send_max_bytes=send_max_bytes
 		)
