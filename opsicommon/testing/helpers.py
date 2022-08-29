@@ -597,3 +597,10 @@ def environment(env_vars: Dict[str, str]) -> Generator[Dict[str, str], None, Non
 	finally:
 		os.environ.clear()
 		os.environ.update(old_environ)
+
+
+if __name__ == "__main__":
+	with http_test_server(generate_cert=True) as server:
+		print(server.port)
+		while True:
+			time.sleep(1)
