@@ -311,7 +311,7 @@ def test_get() -> None:
 			for thread in threads:
 				thread.start()
 			for thread in threads:
-				thread.join(3)
+				thread.join(5)
 			for thread in threads:
 				(status_code, reason, headers, content) = thread.response
 				assert status_code == 202  # pylint: disable=loop-invariant-statement
@@ -354,7 +354,7 @@ def test_messagebus_jsonrpc() -> None:
 		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
 			messagebus = client.connect_messagebus()
 			for _ in range(10):
-				res = messagebus.jsonrpc("test", wait=3)  # pylint: disable=loop-invariant-statement
+				res = messagebus.jsonrpc("test", wait=5)  # pylint: disable=loop-invariant-statement
 				assert res["id"]
 				assert res["result"] == f"RESULT {res['id']}"
 				assert res["error"] is None
