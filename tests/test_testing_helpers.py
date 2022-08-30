@@ -137,7 +137,7 @@ def test_test_http_server_serve_files(tmp_path: Path) -> None:
 
 def test_http_server_websocket(tmp_path: Path) -> None:
 	log_file = tmp_path / "server.log"
-	with http_test_server(log_file=log_file, response_body=b"response") as server:
+	with http_test_server(log_file=log_file, ws_message_callback=lambda handler, message: handler.ws_send_message(b"response")) as server:
 		wsock = websocket.create_connection(f"ws://127.0.0.1:{server.port}/websocket/test")
 		wsock.send(b"test")
 		assert wsock.recv() == b"response"
