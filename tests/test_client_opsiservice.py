@@ -481,7 +481,7 @@ def test_timeouts() -> None:
 			start = time.time()
 			with pytest.raises(OpsiTimeoutError):
 				client.get("/", read_timeout=2)
-			assert round(time.time() - start) == 2
+			assert round(time.time() - start) >= 2
 
 			assert client.get("/", read_timeout=4)[0] == 200
 
