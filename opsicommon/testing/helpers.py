@@ -327,6 +327,18 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self.send_response(200, "OK")
 			self.end_headers()
 
+	def do_CONNECT(self) -> None:  # pylint: disable=invalid-name
+		"""
+		Serve a CONNECT request.
+		For example, the CONNECT method can be used to access websites that use SSL (HTTPS).
+		The client asks an HTTP Proxy server to tunnel the TCP connection to the desired destination.
+		The server then proceeds to make the connection on behalf of the client.
+		Once the connection has been established by the server, the Proxy server continues to proxy the TCP stream to and from the client.
+		"""
+		self._log({"method": "CONNECT", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
+		self.send_response(501, "I am not a proxy")
+		self.end_headers()
+
 	def on_ws_message(self, message: bytes) -> None:
 		# print("Websocket message", message)
 		log_message = b64encode(message).decode("ascii") if isinstance(message, bytes) else message
@@ -623,7 +635,7 @@ def environment(env_vars: Dict[str, str]) -> Generator[Dict[str, str], None, Non
 
 
 if __name__ == "__main__":
-	with http_test_server(generate_cert=True) as server:
-		print(server.port)
+	with http_test_server(generate_cert=True) as test_server:
+		print(test_server.port)
 		while True:
-			time.sleep(1)
+			time.sleep(1)  # pylint: disable=dotted-import-in-loop
