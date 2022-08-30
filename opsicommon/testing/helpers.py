@@ -205,8 +205,11 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		response = None
 		if self.server.response_body:
 			response = self.server.response_body
-		else:
+		elif "json" in self.headers.get("Content-Type", "") or "msgpack" in self.headers.get("Content-Type", ""):
 			response = json.dumps({"id": request["id"], "result": []}).encode("utf-8")
+		else:
+			response = b""
+
 		if self.server.response_status:
 			self.send_response(self.server.response_status[0], self.server.response_status[1])
 		else:
