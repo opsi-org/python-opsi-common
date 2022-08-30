@@ -456,11 +456,11 @@ def test_get() -> None:
 		generate_cert=True, response_status=(202, "status"), response_headers={"x-1": "1", "x-2": "2"}, response_body=response_body
 	) as server:
 		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
-			threads = [ReqThread(client) for _ in range(50)]
+			threads = [ReqThread(client) for _ in range(10)]
 			for thread in threads:
 				thread.start()
 			for thread in threads:
-				thread.join(5)
+				thread.join(10)
 			for thread in threads:
 				(status_code, reason, headers, content) = thread.response
 				assert status_code == 202  # pylint: disable=loop-invariant-statement
@@ -553,11 +553,11 @@ def test_messagebus_multi_thread() -> None:
 		generate_cert=True, ws_message_callback=ws_message_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
 	) as server:
 		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
-			threads = [ReqThread(client) for _ in range(50)]
+			threads = [ReqThread(client) for _ in range(10)]
 			for thread in threads:
 				thread.start()
 			for thread in threads:
-				thread.join(3)
+				thread.join(10)
 			for thread in threads:
 				res = thread.response
 				assert res
