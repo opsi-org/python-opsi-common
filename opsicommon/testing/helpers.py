@@ -26,7 +26,7 @@ from http import HTTPStatus
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from io import BufferedReader, BytesIO
 from pathlib import Path
-from socketserver import BaseServer
+from socketserver import BaseServer, ThreadingMixIn
 from tempfile import NamedTemporaryFile
 from typing import Any, Callable, Dict, Generator, Optional, Tuple, Union
 from urllib.parse import urlsplit, urlunsplit
@@ -489,13 +489,17 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		self.server: Optional[HTTPServer] = None
 
 	def run(self) -> None:
-		class HTTPServer6(HTTPServer):  # pylint: disable=too-many-instance-attributes
+		# Use ThreadingMixIn to handle requests in a separate thread
+		class HTTPServer4(ThreadingMixIn, HTTPServer):  # pylint: disable=too-many-instance-attributes
+			address_family = socket.AF_INET
+
+		class HTTPServer6(ThreadingMixIn, HTTPServer):  # pylint: disable=too-many-instance-attributes
 			address_family = socket.AF_INET6
 
 		if self.ip_version == 6:
 			self.server = HTTPServer6(("::", self.port), HTTPTestServerRequestHandler)
 		else:
-			self.server = HTTPServer(("", self.port), HTTPTestServerRequestHandler)
+			self.server = HTTPServer4(("", self.port), HTTPTestServerRequestHandler)
 
 		if self.server_key and self.server_cert:
 			context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
