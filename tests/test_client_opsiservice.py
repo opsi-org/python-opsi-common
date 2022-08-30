@@ -500,7 +500,7 @@ def test_messagebus_ping() -> None:
 		with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}) as server:
 			with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
 				client.connect_messagebus()
-				time.sleep(5)
+				time.sleep(10)
 				assert pong_count >= 3
 
 
