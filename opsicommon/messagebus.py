@@ -16,8 +16,6 @@ from uuid import uuid4
 
 from msgpack import dumps as msgpack_dumps  # type: ignore[import]
 from msgpack import loads as msgpack_loads  # type: ignore[import]
-from orjson import dumps as json_dumps  # pylint: disable=no-name-in-module
-from orjson import loads as json_loads  # pylint: disable=no-name-in-module
 
 
 class MessageTypes(str, Enum):
@@ -60,13 +58,6 @@ class Message:
 
 	def to_dict(self) -> Dict[str, Any]:
 		return asdict(self)
-
-	@classmethod
-	def from_json(cls: Type[MessageT], data: Union[bytes, str]) -> MessageT:
-		return cls.from_dict(json_loads(data))
-
-	def to_json(self) -> bytes:
-		return json_dumps(self.to_dict())
 
 	@classmethod
 	def from_msgpack(cls: Type[MessageT], data: bytes) -> MessageT:
