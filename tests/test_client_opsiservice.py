@@ -8,6 +8,8 @@ This file is part of opsi - https://www.opsi.org
 
 import time
 from pathlib import Path
+from threading import Thread
+from typing import Tuple
 
 import pytest
 
@@ -289,16 +291,34 @@ def test_messagebus_reconnect() -> None:
 
 
 def test_get() -> None:
+	response_body = b"test" * 1000
+
+	class ReqThread(Thread):
+		def __init__(self, client: ServiceClient) -> None:
+			super().__init__()
+			self.daemon = True
+			self.client = client
+			self.response: Tuple[int, str, dict, bytes] = (0, "", {}, b"")
+
+		def run(self) -> None:
+			self.response = self.client.get("/")  # type: ignore[assignment]
+
 	with http_test_server(
-		generate_cert=True, response_status=(202, "status"), response_headers={"x-1": "1", "x-2": "2"}, response_body=b"body\x01\x02\x03"
+		generate_cert=True, response_status=(202, "status"), response_headers={"x-1": "1", "x-2": "2"}, response_body=response_body
 	) as server:
 		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
-			(status_code, reason, headers, content) = client.get("/")
-			assert status_code == 202
-			assert reason == "status"
-			assert headers["x-1"] == "1"
-			assert headers["x-2"] == "2"
-			assert content == b"body\x01\x02\x03"
+			threads = [ReqThread(client) for _ in range(50)]
+			for thread in threads:
+				thread.start()
+			for thread in threads:
+				thread.join(3)
+			for thread in threads:
+				(status_code, reason, headers, content) = thread.response
+				assert status_code == 202  # pylint: disable=loop-invariant-statement
+				assert reason == "status"  # pylint: disable=loop-invariant-statement
+				assert headers["x-1"] == "1"  # pylint: disable=loop-invariant-statement
+				assert headers["x-2"] == "2"  # pylint: disable=loop-invariant-statement
+				assert content == response_body  # pylint: disable=loop-invariant-statement
 
 
 def test_timeouts() -> None:
@@ -342,3 +362,38 @@ def test_messagebus_jsonrpc() -> None:
 			delay = 3.0
 			with pytest.raises(OpsiTimeoutError):
 				res = messagebus.jsonrpc("test", wait=1)
+
+
+def test_messagebus_multi_thread() -> None:
+	class ReqThread(Thread):
+		def __init__(self, client: ServiceClient) -> None:
+			super().__init__()
+			self.daemon = True
+			self.client = client
+			self.response = None
+
+		def run(self) -> None:
+			self.response = client.connect_messagebus().jsonrpc("test", wait=3)
+
+	def ws_message_callback(handler: HTTPTestServerRequestHandler, message: bytes) -> None:
+		msg = JSONRPCRequestMessage.from_msgpack(message)
+		res = JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+			sender="service:worker:test:1", channel="host:test-client.uib.local", rpc_id=msg.rpc_id, result=f"RESULT {msg.rpc_id}"
+		)
+		handler.ws_send_message(res.to_msgpack())
+
+	with http_test_server(
+		generate_cert=True, ws_message_callback=ws_message_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
+	) as server:
+		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+			threads = [ReqThread(client) for _ in range(50)]
+			for thread in threads:
+				thread.start()
+			for thread in threads:
+				thread.join(3)
+			for thread in threads:
+				res = thread.response
+				assert res
+				assert res["id"]
+				assert res["result"] == f"RESULT {res['id']}"
+				assert res["error"] is None

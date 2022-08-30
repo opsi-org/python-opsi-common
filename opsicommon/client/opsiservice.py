@@ -142,6 +142,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		self._messagebus_available = False
 		self._connected = False
 		self._connect_lock = Lock()
+		self._messagebus_connect_lock = Lock()
 
 		self._username = username
 		self._password = password
@@ -357,8 +358,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		self._messagebus_available = False
 
 	def _assert_connected(self) -> None:
-		if not self._connected:
-			self.connect()
+		with self._connect_lock:
+			if self._connected:
+				return
+		self.connect()
 
 	def _get_url(self, path: str) -> str:
 		if not path.startswith("/"):
@@ -390,8 +393,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 	def _assert_messagebus_connected(self) -> None:
 		if not self.messagebus_available:
 			raise RuntimeError(f"Messagebus not available (connected to: {self.server_name})")
-		if not self._messagebus.connected:
-			self._messagebus.connect()
+		with self._messagebus_connect_lock:
+			if not self._messagebus.connected:
+				self._messagebus.connect()
 
 	def connect_messagebus(self) -> "Messagebus":
 		self._assert_messagebus_connected()
