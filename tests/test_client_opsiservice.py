@@ -10,18 +10,21 @@ import time
 from pathlib import Path
 from threading import Thread
 from typing import Tuple
+from unittest import mock
 
 import pytest
 
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
 	UIB_OPSI_CA,
+	Messagebus,
 	MessagebusListener,
 	OpsiConnectionError,
 	OpsiServiceVerificationError,
 	OpsiTimeoutError,
 	ServiceClient,
 	ServiceVerificationModes,
+	WebSocketApp,
 )
 from opsicommon.messagebus import JSONRPCRequestMessage, JSONRPCResponseMessage, Message
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
@@ -335,6 +338,24 @@ def test_timeouts() -> None:
 			assert round(time.time() - start) == 2
 
 			assert client.get("/", read_timeout=4)[0] == 200
+
+
+def test_messagebus_ping() -> None:
+	pong_count = 0
+
+	def _on_pong(messagebus: Messagebus, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
+		nonlocal pong_count
+		pong_count += 1
+
+	with (
+		mock.patch("opsicommon.client.opsiservice.Messagebus._ping_interval", 1),
+		mock.patch("opsicommon.client.opsiservice.Messagebus._on_pong", _on_pong),
+	):
+		with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}) as server:
+			with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+				client.connect_messagebus()
+				time.sleep(5)
+				assert pong_count >= 3
 
 
 def test_messagebus_jsonrpc() -> None:

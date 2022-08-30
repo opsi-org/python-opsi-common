@@ -448,6 +448,8 @@ class CallbackThread(Thread):
 
 class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	_messagebus_path = "/messagebus/v1"
+	_ping_interval = 60  # Send ping every specified period in seconds.
+	_reconnect = 5  # After connection lost, reconnect after specified seconds.
 
 	def __init__(self, opsi_service_client: ServiceClient) -> None:
 		super().__init__()
@@ -497,6 +499,14 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 				CallbackThread(listener.message_received, message=msg).start()
 		except Exception as err:  # pylint: disable=broad-except
 			logger.error("Failed to process websocket message: %s", err, exc_info=True)
+
+	def _on_ping(self, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
+		logger.debug("Ping message")
+		if self._app:
+			self._app.send(b"", ABNF.OPCODE_PONG)
+
+	def _on_pong(self, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
+		logger.debug("Pong message")
 
 	def register_message_listener(self, listener: MessagebusListener) -> None:
 		with self._listener_lock:
@@ -604,6 +614,8 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			on_error=self._on_error,
 			on_close=self._on_close,
 			on_message=self._on_message,
+			on_ping=self._on_ping,
+			on_pong=self._on_pong
 		)
 
 		self._app.run_forever(  # type: ignore[attr-defined]
@@ -612,8 +624,8 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			http_proxy_port=http_proxy_port,
 			http_proxy_auth=http_proxy_auth,
 			http_no_proxy=os.environ.get("no_proxy"),
-			ping_interval=0,
-			reconnect=5,
+			ping_interval=self._ping_interval,
+			reconnect=self._reconnect,
 		)
 
 	def _disconnect(self) -> None:
