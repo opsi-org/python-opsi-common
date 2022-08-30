@@ -6,16 +6,22 @@
 This file is part of opsi - https://www.opsi.org
 """
 
+import json
 import time
 from pathlib import Path
 from threading import Thread
-from typing import Tuple
+from typing import Optional, Tuple
 from unittest import mock
 
 import pytest
 
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
+	MIN_VERSION_GZIP,
+	MIN_VERSION_LZ4,
+	MIN_VERSION_MESSAGEBUS,
+	MIN_VERSION_MSGPACK,
+	MIN_VERSION_SESSION_API,
 	UIB_OPSI_CA,
 	Messagebus,
 	MessagebusListener,
@@ -30,6 +36,7 @@ from opsicommon.messagebus import JSONRPCRequestMessage, JSONRPCResponseMessage,
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
 from opsicommon.testing.helpers import (  # type: ignore[import]
 	HTTPTestServerRequestHandler,
+	environment,
 	http_test_server,
 )
 
@@ -203,8 +210,140 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + "\n" + UIB_OPSI_CA
 
 
+def test_proxy(tmp_path: Path) -> None:
+	log_file = tmp_path / "request.log"
+	with http_test_server(generate_cert=True, log_file=log_file) as server:
+		with ServiceClient(
+			f"https://localhost:{server.port+1}", proxy_url=f"http://localhost:{server.port}", verify="accept_all", connect_timeout=2
+		) as client:
+			# Proxy will not be used for localhost (no_proxy_addresses)
+			with pytest.raises(OpsiConnectionError):
+				client.connect()
+
+		proxy_env = {"http_proxy": f"http://localhost:{server.port}", "https_proxy": f"http://localhost:{server.port}"}
+		with environment(proxy_env), pytest.raises(OpsiConnectionError):
+			with ServiceClient(f"https://localhost:{server.port+1}", proxy_url="system", verify="accept_all", connect_timeout=2) as client:
+				client.connect()
+
+		with mock.patch("opsicommon.client.opsiservice.ServiceClient.no_proxy_addresses", []):
+			# Now proxy will be used for localhost
+
+			proxy_env = {"http_proxy": "http://should-not-be-used", "https_proxy": "http://should-not-be-used"}
+			with environment(proxy_env):
+				for host, proxy_host in (
+					("localhost", "localhost"),
+					("localhost", "127.0.0.1"),
+					("127.0.0.1", "localhost"),
+					("127.0.0.1", "127.0.0.1"),
+				):
+					with ServiceClient(
+						f"https://{host}:{server.port+1}",  # pylint: disable=loop-invariant-statement
+						proxy_url=f"https://{proxy_host}:{server.port}",
+						verify="accept_all",
+						connect_timeout=2,
+					) as client:
+						with pytest.raises(OpsiConnectionError):  # pylint: disable=dotted-import-in-loop
+							# HTTPTestServer sends error 501 on CONNECT requests
+							client.connect()
+						request = json.loads(log_file.read_text(encoding="utf-8"))  # pylint: disable=dotted-import-in-loop
+						# print(request)
+						assert request["method"] == "CONNECT"
+						assert request["path"] == f"{host}:{server.port+1}"
+						log_file.write_bytes(b"")
+
+			proxy_env = {
+				"http_proxy": f"http://localhost:{server.port+2}",
+				"https_proxy": f"https://localhost:{server.port}",
+				"no_proxy": "",
+			}
+			with environment(proxy_env):
+				with ServiceClient(
+					f"https://localhost:{server.port+1}",  # pylint: disable=loop-invariant-statement
+					proxy_url="system",
+					verify="accept_all",
+					connect_timeout=2,
+				) as client:
+					with pytest.raises(OpsiConnectionError):  # pylint: disable=dotted-import-in-loop
+						# HTTPTestServer sends error 501 on CONNECT requests
+						client.connect()
+					request = json.loads(log_file.read_text(encoding="utf-8"))
+					# print(request)
+					assert request["method"] == "CONNECT"
+					assert request.get("path") == f"localhost:{server.port+1}"
+					log_file.write_bytes(b"")
+
+			proxy_env = {"http_proxy": "http://should-not-be-used", "https_proxy": "https://should-not-be-used"}
+			with environment(proxy_env):
+				with ServiceClient(
+					f"https://localhost:{server.port}",  # pylint: disable=loop-invariant-statement
+					proxy_url=None,  # Do not use any proxy
+					verify="accept_all",
+					connect_timeout=2,
+				) as client:
+					client.connect()
+					request = json.loads(log_file.read_text(encoding="utf-8"))
+					# print(request)
+					assert request.get("method") == "HEAD"
+					assert request.get("path") == "/"
+					log_file.write_bytes(b"")
+
+
+@pytest.mark.parametrize(
+	"server_name, expected_version, expected_content_type, expected_content_encoding, expected_messagebus_available",
+	(
+		(f"opsiconfd service {MIN_VERSION_MESSAGEBUS}", MIN_VERSION_MESSAGEBUS.release, "application/msgpack", "lz4", True),
+		(f"opsiconfd service {MIN_VERSION_MSGPACK}", MIN_VERSION_MSGPACK.release, "application/msgpack", "lz4", False),
+		(f"opsiconfd service {MIN_VERSION_LZ4}", MIN_VERSION_LZ4.release, "application/msgpack", "lz4", False),
+		(f"opsiconfd service {MIN_VERSION_GZIP}", MIN_VERSION_GZIP.release, "application/json", "gzip", False),
+		("opsi 4.1.0.1", (4, 1, 0, 1), "application/json", None, False),
+		("apache 2.0.1", (0,), "application/json", None, False),
+	),
+)
+def test_server_name_handling(  # pylint: disable=too-many-arguments
+	tmp_path: Path,
+	server_name: str,
+	expected_version: tuple,
+	expected_content_type: str,
+	expected_content_encoding: Optional[str],
+	expected_messagebus_available: bool,
+) -> None:
+	log_file = tmp_path / f"{server_name}.log"
+	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"Server": server_name}) as server:
+		server_version = None
+		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+			client.connect()
+			assert client.server_name == server_name
+			# print(server_name, client.server_version, client.server_version.release, expected_version)
+			assert client.server_version.release == expected_version
+			assert client.messagebus_available == expected_messagebus_available
+			client.jsonrpc("method", ["param" * 100])
+			server_version = client.server_version  # Keep server_version after logout
+
+		reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+
+		# Connect request
+		assert reqs[0]["method"] == "HEAD"
+
+		# JSONRPC request
+		assert reqs[1]["method"] == "POST"
+		assert reqs[1]["path"] == "/rpc"
+		assert reqs[1]["headers"].get("Content-Type") == expected_content_type
+		assert reqs[1]["headers"].get("Content-Encoding") == expected_content_encoding
+
+		# Close session request
+		assert reqs[2]["method"] == "POST"
+		if server_version and server_version >= MIN_VERSION_SESSION_API:
+			assert reqs[2]["path"] == "/session/logout"
+		else:
+			assert reqs[2]["path"] == "/rpc"
+			assert reqs[2]["request"]["method"] == "backend_exit"
+
+		# Clear log
+		log_file.write_bytes(b"")
+
+
 def test_connect_disconnect() -> None:
-	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.2.0.1 (uvicorn)"}) as server:
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
 		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
 			assert not client.messagebus_available
 			assert client.connected
@@ -222,26 +361,26 @@ def test_connect_disconnect() -> None:
 		client.connect()
 		assert client.connected is True
 		assert client.server_name == "opsiconfd 4.2.1.0 (uvicorn)"
-		assert client.server_version == (4, 2, 1, 0)
+		assert client.server_version.release == (4, 2, 1, 0)
 		client.disconnect()
 		assert client.connected is False
 		assert client.server_name == ""
-		assert client.server_version == (0, 0, 0, 0)
+		assert client.server_version.release == (0,)
 
 		client.disconnect()
 		assert client.connected is False
 		assert client.server_name == ""
-		assert client.server_version == (0, 0, 0, 0)
+		assert client.server_version.release == (0,)
 
 		client.get("/")
 		assert client.connected is True
 		assert client.server_name == "opsiconfd 4.2.1.0 (uvicorn)"
-		assert client.server_version == (4, 2, 1, 0)
+		assert client.server_version.release == (4, 2, 1, 0)
 
 		client.disconnect()
 		assert client.connected is False
 		assert client.server_name == ""
-		assert client.server_version == (0, 0, 0, 0)
+		assert client.server_version.release == (0,)
 
 		client.connect_messagebus()
 		assert client.messagebus_connected is True

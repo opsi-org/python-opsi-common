@@ -14,7 +14,7 @@ import subprocess
 import time
 import types
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Type, Union
 
 import requests
 
@@ -161,7 +161,7 @@ class Singleton(type):
 
 def prepare_proxy_environment(  # pylint: disable=too-many-branches
 	hostname: str,
-	proxy_url: Optional[str] = "system",
+	proxy_url: str = "system",
 	no_proxy_addresses: Union[List[str], None] = None,
 	session: Union[requests.Session, None] = None
 ) -> requests.Session:
