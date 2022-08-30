@@ -273,6 +273,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		return self._password
 
 	@property
+	def proxy_url(self) -> Optional[str]:
+		return self._proxy_url
+
+	@property
 	def session_coockie(self) -> Optional[str]:
 		if not self._session.cookies or not self._session.cookies._cookies:  # type: ignore[attr-defined] # pylint: disable=protected-access
 			return None
@@ -729,16 +733,28 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		if self._client.ca_cert_file:
 			sslopt["ca_certs"] = str(self._client.ca_cert_file)
 
-		sslopt = {"cert_reqs": ssl.CERT_NONE}
 		http_proxy_host = None
 		http_proxy_port = None
 		http_proxy_auth = None
-		if os.environ.get("https_proxy"):
-			proxy_url = urlparse(os.environ["https_proxy"])
-			http_proxy_host = proxy_url.hostname
-			http_proxy_port = proxy_url.port or None
-			if proxy_url.username or proxy_url.password:
-				http_proxy_auth = (proxy_url.username, proxy_url.password)
+		http_no_proxy = None
+		proxy_url = None
+		if self._client.proxy_url is None:
+			# no proxy
+			http_no_proxy = "*"
+		elif self._client.proxy_url == "system":
+			# Use system proxy
+			proxy_url = os.environ.get("https_proxy") or None
+			http_no_proxy = os.environ.get("no_proxy") or None
+		else:
+			# Use explicit proxy url
+			proxy_url = self._client.proxy_url
+
+		if proxy_url:
+			purl = urlparse(proxy_url)
+			http_proxy_host = purl.hostname
+			http_proxy_port = purl.port or None
+			if purl.username or purl.password:
+				http_proxy_auth = (purl.username, purl.password)
 
 		url = self._client.base_url.replace("https://", "wss://") + self._messagebus_path
 		header = [f"{k}: {v}" for k, v in self._client.default_headers.items()]
@@ -762,7 +778,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			http_proxy_host=http_proxy_host,
 			http_proxy_port=http_proxy_port,
 			http_proxy_auth=http_proxy_auth,
-			http_no_proxy=os.environ.get("no_proxy"),
+			http_no_proxy=http_no_proxy,
 			ping_interval=self._ping_interval,
 			reconnect=self._reconnect,
 		)

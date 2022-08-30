@@ -212,7 +212,7 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 
 def test_proxy(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
-	with http_test_server(generate_cert=True, log_file=log_file) as server:
+	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}) as server:
 		with ServiceClient(
 			f"https://localhost:{server.port+1}", proxy_url=f"http://localhost:{server.port}", verify="accept_all", connect_timeout=2
 		) as client:
@@ -281,10 +281,17 @@ def test_proxy(tmp_path: Path) -> None:
 					connect_timeout=2,
 				) as client:
 					client.connect()
-					request = json.loads(log_file.read_text(encoding="utf-8"))
-					# print(request)
-					assert request.get("method") == "HEAD"
-					assert request.get("path") == "/"
+					client.connect_messagebus()
+
+					reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+					# print(reqs)
+					assert reqs[0]["method"] == "HEAD"
+					assert reqs[0]["path"] == "/"
+
+					assert reqs[1]["method"] == "GET"
+					assert reqs[1]["path"] == "/messagebus/v1"
+					assert reqs[1]["headers"]["Upgrade"] == "websocket"
+
 					log_file.write_bytes(b"")
 
 
