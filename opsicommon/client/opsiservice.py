@@ -71,7 +71,7 @@ from ..messagebus import (
 	Message,
 	MessageType,
 )
-from ..utils import deserialize, prepare_proxy_environment, serialize
+from ..utils import prepare_proxy_environment, serialize
 
 warnings.simplefilter("ignore", InsecureRequestWarning)
 
@@ -433,7 +433,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 	) -> Tuple[int, str, CaseInsensitiveDict, bytes]:
 		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data)
 
-	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any], None] = None, full_response: bool = False) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any], None] = None, return_result_only: bool = True) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		params = params or []
 		if isinstance(params, tuple):
 			params = list(params)
@@ -513,7 +513,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 				data = msgpack_loads(data)
 			else:
 				data = json_loads(data)
-			if full_response:
+			if not return_result_only:
 				return data
 		except Exception:  # pylint: disable=broad-except
 			if error_cls:
@@ -532,7 +532,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		if error_cls:
 			raise error_cls(error_msg)
 
-		return deserialize(data.get("result"), prevent_object_creation=True)
+		return data.get("result")
 
 	@property
 	def messagebus(self) -> "Messagebus":
@@ -716,15 +716,25 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		with listener.register(self):
 			return listener.wait_for_message()
 
-	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any], None] = None, wait: int = None) -> Any:
+	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any], None] = None, return_result_only: bool = True) -> Any:
+		params = params or tuple()
 		if isinstance(params, list):
 			params = tuple(params)
 		msg = JSONRPCRequestMessage(sender="*", channel="service:config:jsonrpc", method=method, params=params)  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
 		self.send_message(msg)
-		if wait is None:
-			return msg
-		res = self.wait_for_jsonrpc_response_message(rpc_id=msg.rpc_id, timeout=wait)
-		return {"jsonrpc": "2.0", "id": res.rpc_id, "result": res.result, "error": res.error}
+		timeout = float(RPC_TIMEOUTS.get(method, 300))
+		res = self.wait_for_jsonrpc_response_message(rpc_id=msg.rpc_id, timeout=timeout)
+		if not return_result_only:
+			return {"jsonrpc": "2.0", "id": res.rpc_id, "result": res.result, "error": res.error}
+
+		if res.error:
+			logger.debug("JSONRPC-response contains error: %s", res.error)
+			error_cls: Type[Exception] = OpsiRpcError
+			if res.error["data"]["class"] == "BackendPermissionDeniedError":
+				error_cls = BackendPermissionDeniedError
+			raise error_cls(res.error["message"])
+
+		return res.result
 
 	def send_message(self, message: Message) -> None:
 		if not self._app:

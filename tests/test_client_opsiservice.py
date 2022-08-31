@@ -589,7 +589,7 @@ def test_jsonrpc_error_handling() -> None:
 			server.response_body = json.dumps({"error": {"message": "internal server error"}}).encode("utf-8")
 			with pytest.raises(OpsiRpcError):
 				client.jsonrpc("method")
-			res = client.jsonrpc("method", full_response=True)
+			res = client.jsonrpc("method", return_result_only=False)
 			assert res["error"]["message"] == "internal server error"
 
 	with http_test_server(generate_cert=True) as server:
@@ -599,7 +599,7 @@ def test_jsonrpc_error_handling() -> None:
 			server.response_body = json.dumps({"error": {"message": "auth error"}}).encode("utf-8")
 			with pytest.raises(BackendAuthenticationError):
 				client.jsonrpc("method")
-			res = client.jsonrpc("method", full_response=True)
+			res = client.jsonrpc("method", return_result_only=False)
 			assert res["error"]["message"] == "auth error"
 
 	with http_test_server(generate_cert=True) as server:
@@ -609,7 +609,7 @@ def test_jsonrpc_error_handling() -> None:
 			server.response_body = json.dumps({"error": {"message": "permission denied"}}).encode("utf-8")
 			with pytest.raises(BackendPermissionDeniedError):
 				client.jsonrpc("method")
-			res = client.jsonrpc("method", full_response=True)
+			res = client.jsonrpc("method", return_result_only=False)
 			assert res["error"]["message"] == "permission denied"
 
 	with http_test_server(generate_cert=True) as server:
@@ -619,7 +619,7 @@ def test_jsonrpc_error_handling() -> None:
 			with pytest.raises(OpsiRpcError) as err:
 				client.jsonrpc("method")
 			assert err.value.message == "err_msg"
-			res = client.jsonrpc("method", full_response=True)
+			res = client.jsonrpc("method", return_result_only=False)
 			assert res["error"]["message"] == "err_msg"
 
 	with http_test_server(generate_cert=True) as server:
@@ -629,18 +629,25 @@ def test_jsonrpc_error_handling() -> None:
 			with pytest.raises(OpsiRpcError) as err:
 				client.jsonrpc("method")
 			assert err.value.message == "err_msg2"
-			res = client.jsonrpc("method", full_response=True)
+			res = client.jsonrpc("method", return_result_only=False)
 			assert res["error"]["message"] == "err_msg2"
 
 
 def test_messagebus_jsonrpc() -> None:
 	delay = 0.0
+	rpc_error = None
 
 	def ws_message_callback(handler: HTTPTestServerRequestHandler, message: bytes) -> None:
+		nonlocal delay
+		nonlocal rpc_error
 		msg = JSONRPCRequestMessage.from_msgpack(message)
 		time.sleep(delay)
 		res = JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
-			sender="service:worker:test:1", channel="host:test-client.uib.local", rpc_id=msg.rpc_id, result=f"RESULT {msg.rpc_id}"
+			sender="service:worker:test:1",
+			channel="host:test-client.uib.local",
+			rpc_id=msg.rpc_id,
+			result=None if rpc_error else msg.params,
+			error=rpc_error,
 		)
 		handler.ws_send_message(res.to_msgpack())
 
@@ -661,20 +668,23 @@ def test_messagebus_jsonrpc() -> None:
 				tuple(),
 			]
 			for _params in params:
-				res = messagebus.jsonrpc("test", params=_params, wait=5)  # pylint: disable=loop-invariant-statement
-				assert res["id"]
-				assert res["result"] == f"RESULT {res['id']}"
-				assert res["error"] is None
+				res = messagebus.jsonrpc("test", params=_params)  # pylint: disable=loop-invariant-statement
+				assert res == list(_params or [])
 
 			delay = 3.0
-			with pytest.raises(OpsiTimeoutError):
-				res = messagebus.jsonrpc("test", wait=1)
+			with mock.patch("opsicommon.client.opsiservice.RPC_TIMEOUTS", {"test": 1}):
+				with pytest.raises(OpsiTimeoutError):
+					res = messagebus.jsonrpc("test")
 
-			res = messagebus.jsonrpc("test_no_wait", params=[1, 2, 3], wait=None)  # pylint: disable=loop-invariant-statement
-			assert isinstance(res, JSONRPCRequestMessage)
-			assert res.rpc_id
-			assert res.method == "test_no_wait"
-			assert res.params == (1, 2, 3)
+			rpc_error = {"code": 0, "message": "error_message", "data": {"class": "BackendPermissionDeniedError", "details": "details"}}
+			with pytest.raises(BackendPermissionDeniedError) as err:
+				res = messagebus.jsonrpc("test")
+			assert err.value.message == "error_message"
+
+			res = messagebus.jsonrpc("test", return_result_only=False)
+			assert res["jsonrpc"] == "2.0"
+			assert res["error"] == rpc_error
+			assert res["result"] is None
 
 
 def test_messagebus_multi_thread() -> None:
@@ -686,7 +696,7 @@ def test_messagebus_multi_thread() -> None:
 			self.response = None
 
 		def run(self) -> None:
-			self.response = client.connect_messagebus().jsonrpc("test", wait=3)
+			self.response = client.connect_messagebus().jsonrpc("test", return_result_only=False)
 
 	def ws_message_callback(handler: HTTPTestServerRequestHandler, message: bytes) -> None:
 		msg = JSONRPCRequestMessage.from_msgpack(message)
