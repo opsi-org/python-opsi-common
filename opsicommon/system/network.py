@@ -8,6 +8,7 @@ system.network
 
 import ipaddress
 import socket
+from typing import Any, Dict, Generator, Set
 
 import psutil  # type: ignore[import]
 
@@ -16,7 +17,7 @@ from opsicommon.logging import get_logger
 logger = get_logger("opsicommon.general")
 
 
-def get_ip_addresses():
+def get_ip_addresses() -> Generator[Dict[str, Any], None, None]:
 	for interface, snics in psutil.net_if_addrs().items():  # pylint: disable=dotted-import-in-loop
 		for snic in snics:
 			family = None
@@ -37,15 +38,15 @@ def get_ip_addresses():
 			yield {"family": family, "interface": interface, "address": snic.address, "ip_address": ip_address}
 
 
-def get_fqdn():
+def get_fqdn() -> str:
 	return socket.getfqdn().lower()
 
 
-def get_domain():
+def get_domain() -> str:
 	return ".".join(get_fqdn().split(".")[1:])
 
 
-def get_hostnames():
+def get_hostnames() -> Set[str]:
 	names = {"localhost"}
 	names.add(get_fqdn())
 	for addr in get_ip_addresses():

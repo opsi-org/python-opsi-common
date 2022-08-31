@@ -12,7 +12,7 @@ import grp
 import os
 import pwd
 import subprocess
-from typing import List
+from typing import Generator, List
 
 import psutil  # type: ignore[import]
 
@@ -23,7 +23,7 @@ from .. import Session
 logger = get_logger("opsicommon.general")
 
 
-def get_user_sessions(username: str = None, session_type: str = None):
+def get_user_sessions(username: str = None, session_type: str = None) -> Generator[Session, None, None]:
 	for user in psutil.users():  # pylint: disable=dotted-import-in-loop
 		if username is not None and user.name != username:  # pylint: disable=loop-invariant-statement
 			continue
@@ -46,7 +46,7 @@ def get_user_sessions(username: str = None, session_type: str = None):
 		yield Session(id=terminal, type=_type, username=user.name, started=user.started, login_pid=user.pid, terminal=terminal)
 
 
-def run_process_in_session(command: List[str], session_id: str, shell: bool = False, impersonate: bool = False):
+def run_process_in_session(command: List[str], session_id: str, shell: bool = False, impersonate: bool = False) -> subprocess.Popen:
 	session = None
 	for sess in get_user_sessions():
 		if sess.id == session_id:
@@ -76,7 +76,7 @@ def run_process_in_session(command: List[str], session_id: str, shell: bool = Fa
 	)
 
 
-def drop_privileges(username: str):
+def drop_privileges(username: str) -> None:
 	logger.debug("Switching to user %s", username)
 	user = pwd.getpwnam(username)
 	gids = [user.pw_gid]

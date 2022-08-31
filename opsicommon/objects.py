@@ -173,10 +173,10 @@ class BaseObject:
 	def getForeignIdAttributes(self) -> List[str]:  # pylint: disable=invalid-name
 		return self.foreign_id_attributes
 
-	def getIdentAttributes(self) -> Tuple[str]:  # pylint: disable=invalid-name
+	def getIdentAttributes(self) -> Tuple[str, ...]:  # pylint: disable=invalid-name
 		return get_ident_attributes(self.__class__)
 
-	def getIdent(self, returnType: str = "unicode") -> Union[List[str], Tuple[str], Dict[str, str], str]:  # pylint: disable=invalid-name
+	def getIdent(self, returnType: str = "unicode") -> Union[List[str], Tuple[str, ...], Dict[str, str], str]:  # pylint: disable=invalid-name
 		returnType = forceUnicodeLower(returnType)
 		ident_attributes = self.getIdentAttributes()
 
@@ -203,17 +203,17 @@ class BaseObject:
 	def setDefaults(self) -> None:  # pylint: disable=invalid-name
 		pass
 
-	def emptyValues(self, keepAttributes: Union[List[str], None] = None):  # pylint: disable=invalid-name
-		keepAttributes = set(forceUnicodeList(keepAttributes or []))
+	def emptyValues(self, keepAttributes: Union[List[str], None] = None) -> None:  # pylint: disable=invalid-name
+		keep_attributes = set(forceUnicodeList(keepAttributes or []))
 		for attribute in self.getIdentAttributes():
-			keepAttributes.add(attribute)
-		keepAttributes.add("type")
+			keep_attributes.add(attribute)
+		keep_attributes.add("type")
 
 		for attribute in self.__dict__:
-			if attribute not in keepAttributes:
+			if attribute not in keep_attributes:
 				self.__dict__[attribute] = None
 
-	def update(self, updateObject: "BaseObject", updateWithNoneValues: bool = True):  # pylint: disable=invalid-name
+	def update(self, updateObject: "BaseObject", updateWithNoneValues: bool = True) -> None:  # pylint: disable=invalid-name
 		if not issubclass(updateObject.__class__, self.__class__):
 			raise TypeError(f"Cannot update instance of {self.__class__.__name__} with instance of {updateObject.__class__.__name__}")
 		object_hash = updateObject.toHash()
@@ -262,14 +262,14 @@ class BaseObject:
 		_hash["ident"] = self.getIdent()
 		return _hash
 
-	def __eq__(self, other: "BaseObject") -> bool:
+	def __eq__(self, other: object) -> bool:
 		if not isinstance(other, self.__class__):
 			return False
 		if self.isGeneratedDefault() or other.isGeneratedDefault():
 			return False
 		return self.getIdent() == other.getIdent()
 
-	def __hash__(self) -> str:
+	def __hash__(self) -> int:
 		def get_ident_value(attribute: str) -> str:
 			try:
 				value = getattr(self, attribute)
@@ -282,7 +282,7 @@ class BaseObject:
 		ident_values = tuple(get_ident_value(attribute) for attribute in self.getIdentAttributes())
 		return hash(ident_values)
 
-	def __ne__(self, other: "BaseObject") -> bool:
+	def __ne__(self, other: object) -> bool:
 		return not self.__eq__(other)
 
 	def __str__(self) -> str:
@@ -300,7 +300,7 @@ class BaseObject:
 		return self.__str__()
 
 
-def mandatory_constructor_args(_class: BaseObject) -> List[str]:
+def mandatory_constructor_args(_class: Type[BaseObject]) -> List[str]:
 	cache_key = _class.__name__  # type: ignore[attr-defined]
 	if cache_key not in _MANDATORY_CONSTRUCTOR_ARGS_CACHE:
 		spec = getfullargspec(_class.__init__)  # type: ignore[misc]
@@ -317,15 +317,15 @@ def mandatory_constructor_args(_class: BaseObject) -> List[str]:
 	return _MANDATORY_CONSTRUCTOR_ARGS_CACHE[cache_key]
 
 
-def get_ident_attributes(_class: Type[BaseObject]) -> Tuple[str]:
+def get_ident_attributes(_class: Type[BaseObject]) -> Tuple[str, ...]:
 	return tuple(mandatory_constructor_args(_class))
 
 
-def get_foreign_id_attributes(_class: BaseObject) -> Any:
+def get_foreign_id_attributes(_class: Type[BaseObject]) -> Any:
 	return _class.foreign_id_attributes
 
 
-def get_possible_class_attributes(_class: BaseObject) -> Set[str]:
+def get_possible_class_attributes(_class: Type[BaseObject]) -> Set[str]:
 	"""
 	Returns the possible attributes of a class.
 	"""
@@ -344,11 +344,11 @@ def get_possible_class_attributes(_class: BaseObject) -> Set[str]:
 	return attributes_set
 
 
-def get_backend_method_prefix(_class: BaseObject) -> Any:
+def get_backend_method_prefix(_class: Type[BaseObject]) -> Any:
 	return _class.backend_method_prefix
 
 
-def decode_ident(_class: BaseObject, _hash: Dict[str, Any]) -> Dict[str, Any]:
+def decode_ident(_class: Type[BaseObject], _hash: Dict[str, Any]) -> Dict[str, Any]:
 	if "ident" not in _hash:
 		return _hash
 
@@ -699,7 +699,7 @@ class OpsiClient(Host):
 	def setLastSeen(self, lastSeen: str) -> None:  # pylint: disable=invalid-name
 		self.lastSeen = forceOpsiTimestamp(lastSeen)
 
-	def getCreated(self):  # pylint: disable=invalid-name
+	def getCreated(self) -> Optional[str]:  # pylint: disable=invalid-name
 		return self.created
 
 	def setCreated(self, created: str) -> None:  # pylint: disable=invalid-name
@@ -1361,7 +1361,7 @@ class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-
 	def getId(self) -> str:  # pylint: disable=invalid-name
 		return self.id
 
-	def setId(self, id) -> None:  # pylint: disable=redefined-builtin,invalid-name
+	def setId(self, id: str) -> None:  # pylint: disable=redefined-builtin,invalid-name
 		self.id = forceProductId(id)  # pylint: disable=invalid-name
 
 	def getProductVersion(self) -> str:  # pylint: disable=invalid-name
@@ -1742,7 +1742,7 @@ class ProductProperty(Entity):  # pylint: disable=too-many-instance-attributes,t
 	def getPossibleValues(self) -> Optional[List[Any]]:  # pylint: disable=invalid-name
 		return self.possibleValues
 
-	def setPossibleValues(self, possibleValues: List[Any]):  # pylint: disable=invalid-name
+	def setPossibleValues(self, possibleValues: List[Any]) -> None:  # pylint: disable=invalid-name
 		self.possibleValues = list(set(forceList(possibleValues)))
 		self._updateValues()
 
@@ -3418,7 +3418,7 @@ class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-
 	def getState(self) -> Optional[int]:  # pylint: disable=invalid-name
 		return self.state
 
-	def setState(self, state: int):  # pylint: disable=invalid-name
+	def setState(self, state: int) -> None:  # pylint: disable=invalid-name
 		self.state = forceAuditState(state)
 
 	def getUsageFrequency(self) -> Optional[int]:  # pylint: disable=invalid-name
@@ -3462,7 +3462,7 @@ class AuditHardware(Entity):
 	backend_method_prefix = "auditHardware"
 	hardware_attributes: Dict[str, Dict[str, Any]] = {}
 
-	def __init__(self, hardwareClass: str, **kwargs) -> None:  # pylint: disable=too-many-branches,too-many-statements,invalid-name
+	def __init__(self, hardwareClass: str, **kwargs: Any) -> None:  # pylint: disable=too-many-branches,too-many-statements,invalid-name
 		self.setHardwareClass(hardwareClass)
 		attributes = self.hardware_attributes.get(hardwareClass, {})
 		for attribute in attributes:
@@ -3635,7 +3635,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 	hardware_attributes: Dict[str, Dict[str, Any]] = {}
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-branches,too-many-statements
-		self, hardwareClass: str, hostId: str, firstseen: str = None, lastseen: str = None, state: int = None, **kwargs  # pylint: disable=invalid-name
+		self, hardwareClass: str, hostId: str, firstseen: str = None, lastseen: str = None, state: int = None, **kwargs: Any  # pylint: disable=invalid-name
 	) -> None:
 		self.firstseen: Optional[str] = None
 		self.lastseen: Optional[str] = None
@@ -3779,7 +3779,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 		audit_hardware_hash = {"type": "AuditHardware"}
 		attributes = set(AuditHardware.hardware_attributes.get(self.getHardwareClass(), {}).keys())
 
-		for (attribute, value) in self.toHash():
+		for (attribute, value) in self.toHash().items():
 			if attribute == "type":
 				continue
 

@@ -15,26 +15,18 @@ import threading
 import time
 import types
 import warnings
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Type, Union
 from urllib.parse import quote, unquote, urlparse
 
+import lz4.frame  # type: ignore[import,no-redef]
 import msgpack  # type: ignore[import]
+import orjson as json  # type: ignore[import] # pylint: disable=import-error
 import requests
 import urllib3
 from requests.adapters import HTTPAdapter
 from requests.exceptions import SSLError
+from requests.models import PreparedRequest, Response
 from urllib3.util.retry import Retry
-
-try:
-	# pyright: reportMissingModuleSource=false
-	import orjson as json  # type: ignore[import] # pylint: disable=import-error
-except ModuleNotFoundError:
-	try:
-		import ujson as json  # type: ignore[import,no-redef]
-	except ModuleNotFoundError:
-		import json  # type: ignore[no-redef]
-
-import lz4.frame  # type: ignore[import,no-redef]
 
 from opsicommon import __version__
 from opsicommon.exceptions import (
@@ -62,14 +54,22 @@ def no_export(func: Callable) -> Callable:
 
 
 class TimeoutHTTPAdapter(HTTPAdapter):
-	def __init__(self, *args, **kwargs) -> None:
+	def __init__(self, *args: Any, **kwargs: Any) -> None:
 		self.timeout = None
 		if "timeout" in kwargs:
 			self.timeout = kwargs["timeout"]
 			del kwargs["timeout"]
 		super().__init__(*args, **kwargs)
 
-	def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):  # pylint: disable=too-many-arguments
+	def send(  # pylint: disable=too-many-arguments
+		self,
+		request: PreparedRequest,
+		stream: bool = False,
+		timeout: Union[None, float, Tuple[float, float], Tuple[float, None]] = None,
+		verify: Union[bool, str] = True,
+		cert: Union[None, bytes, str, Tuple[Union[bytes, str], Union[bytes, str]]] = None,
+		proxies: Optional[Mapping[str, str]] = None
+	) -> Response:
 		if timeout is None:
 			timeout = self.timeout
 		return super().send(request, stream, timeout, verify, cert, proxies)
@@ -98,7 +98,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			return socket.AF_UNSPEC
 		return socket.AF_INET
 
-	def __init__(self, address: str, **kwargs) -> None:  # pylint: disable=too-many-branches,too-many-statements
+	def __init__(self, address: str, **kwargs: Any) -> None:  # pylint: disable=too-many-branches,too-many-statements
 		"""
 		JSONRPC client
 		"""
@@ -208,7 +208,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			if "=" in session_id:
 				logger.confidential("Using session id passed: %s", session_id)
 				cookie_name, cookie_value = session_id.split("=", 1)
-				self._session.cookies.set(cookie_name, quote(cookie_value))
+				self._session.cookies.set(cookie_name, quote(cookie_value))  # type: ignore[no-untyped-call]
 			else:
 				logger.warning("Invalid session id passed: %s", session_id)
 
@@ -249,7 +249,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		if self._connect_on_init:
 			self.connect()
 
-	def __enter__(self):
+	def __enter__(self) -> "JSONRPCClient":
 		return self
 
 	def __exit__(
@@ -339,7 +339,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	setCompression = set_compression
 
 	@no_export
-	def get(self, path: str, headers: Optional[Dict[str, str]] = None):
+	def get(self, path: str, headers: Optional[Dict[str, str]] = None) -> Response:
 		if not self.base_url:
 			raise ValueError("No url provided for jsonrpcclient.")
 		url = self.base_url
@@ -417,7 +417,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			data = msgpack.dumps(data_dict)
 		else:
 			headers["Accept"] = headers["Content-Type"] = "application/json"
-			data = json.dumps(data_dict)
+			data = json.dumps(data_dict)  # pylint: disable=no-member
 
 		if not isinstance(data, bytes):
 			data = data.encode("utf-8")
@@ -507,7 +507,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			if content_type == "application/msgpack":
 				data = msgpack.loads(data)
 			else:
-				data = json.loads(data)
+				data = json.loads(data)  # pylint: disable=no-member
 		except Exception:  # pylint: disable=broad-except
 			if error_cls:
 				raise error_cls(f"{error_msg} (error on server)") from None
