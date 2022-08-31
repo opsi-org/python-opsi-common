@@ -370,14 +370,17 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 				except ssl.SSLWantReadError:  # pylint: disable=dotted-import-in-loop
 					# Timeout on non blocking read
 					time.sleep(0.1)  # pylint: disable=dotted-import-in-loop
+				except WebSocketError as err:
+					if "read aborted while listening" in str(err):  # pylint: disable=loop-invariant-statement)
+						time.sleep(0.1)
+					else:
+						raise
 		except (socket.error, WebSocketError):
 			self._ws_close()
 		except Exception:  # pylint: disable=broad-except
 			self._ws_close()
 
 	def _ws_read_next_message(self) -> None:
-		# self.rfile.read(n) is blocking.
-		# It returns however immediately when the socket is closed.
 		try:
 			self._ws_opcode = ord(self.rfile.read(1)) & 0x0F
 			length = ord(self.rfile.read(1)) & 0x7F
