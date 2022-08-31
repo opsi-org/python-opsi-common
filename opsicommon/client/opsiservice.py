@@ -419,8 +419,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 			)
 		except Timeout as err:
 			raise OpsiTimeoutError(str(err)) from err
-		# except Exception as err:  # pylint: disable=broad-except
-		# 	raise OpsiConnectionError(str(err)) from err
+		except Exception as err:  # pylint: disable=broad-except
+			raise OpsiConnectionError(str(err)) from err
 		return (response.status_code, response.reason, response.headers, response.content)
 
 	def get(

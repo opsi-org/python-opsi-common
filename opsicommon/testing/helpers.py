@@ -12,6 +12,7 @@ import datetime
 import gzip
 import json
 import os
+import platform
 import shutil
 import socket
 import ssl
@@ -642,8 +643,12 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		try:
 			if self.server:
 				self.server.stopping = True
-				self.server.shutdown()
-				self.server.socket.close()
+				if platform.system().lower() == "windows":
+					self.server.shutdown()
+					self.server.socket.close()
+				else:
+					self.server.socket.close()
+					self.server.shutdown()
 				try:
 					for thread in self.server._threads:  # type: ignore[attr-defined]  # pylint: disable=protected-access, not-an-iterable
 						thread.join(3)
