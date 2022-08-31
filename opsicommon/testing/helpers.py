@@ -528,17 +528,6 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):  # pylint: disable=too-ma
 		return self.test_server.send_max_bytes
 
 
-def with_retry(function: Callable, args: tuple = tuple(), attempts: int = 3, retry_time: float = 1.0) -> Any:
-	for attempt in range(1, attempts + 1):
-		try:  # pylint: disable=loop-try-except-usage
-			return function(*args)
-		except Exception as err:  # pylint: disable=broad-except
-			print(err)
-			if attempt == attempts:
-				raise
-			time.sleep(retry_time)  # pylint: disable=dotted-import-in-loop
-
-
 class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-instance-attributes
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
