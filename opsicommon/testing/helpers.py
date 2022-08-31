@@ -579,7 +579,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 			for attempt in (1, 2, 3):
 				try:  # pylint: disable=loop-try-except-usage
 					self._init_ssl_socket()
-				except OSError as err:
+				except Exception as err:  # pylint: disable=broad-except
 					print(err)
 					if attempt == 3:
 						raise
@@ -652,7 +652,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		self.stop(not new_cert)
 		self.wait_for_server_socket()
 
-	def wait_for_server_socket(self, timeout: int = 10) -> bool:
+	def wait_for_server_socket(self, timeout: int = 30) -> bool:
 		start = time.time()
 		sock_type = socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET
 		while time.time() - start < timeout:  # pylint: disable=dotted-import-in-loop
