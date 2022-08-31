@@ -23,6 +23,8 @@ from OpenSSL.crypto import (  # type: ignore[import]
 from opsicommon.logging import get_logger
 
 PRIVATE_KEY_CIPHER = "DES3"
+CA_KEY_BITS = 4096
+SERVER_KEY_BITS = 4096
 
 logger = get_logger("opsicommon.general")
 
@@ -56,7 +58,7 @@ def create_x590_name(subject: dict = None) -> X509Name:
 	return x509_name
 
 
-def create_ca(subject: dict, valid_days: int, key: PKey = None) -> Tuple[X509, PKey]:
+def create_ca(subject: dict, valid_days: int, key: PKey = None, bits: int = CA_KEY_BITS) -> Tuple[X509, PKey]:
 	common_name = subject.get("commonName", subject.get("CN"))
 	if not common_name:
 		raise ValueError("commonName missing in subject")
@@ -64,7 +66,7 @@ def create_ca(subject: dict, valid_days: int, key: PKey = None) -> Tuple[X509, P
 	if not key:
 		logger.notice("Creating CA keypair")
 		key = PKey()
-		key.generate_key(TYPE_RSA, 4096)
+		key.generate_key(TYPE_RSA, bits)
 
 	ca_cert = X509()
 	ca_cert.set_version(2)
@@ -90,7 +92,14 @@ def create_ca(subject: dict, valid_days: int, key: PKey = None) -> Tuple[X509, P
 
 
 def create_server_cert(  # pylint: disable=too-many-arguments
-	subject: dict, valid_days: int, ip_addresses: set, hostnames: set, ca_key: X509, ca_cert: PKey, key: PKey = None
+	subject: dict,
+	valid_days: int,
+	ip_addresses: set,
+	hostnames: set,
+	ca_key: X509,
+	ca_cert: PKey,
+	key: PKey = None,
+	bits: int = SERVER_KEY_BITS,
 ) -> Tuple[X509, PKey]:
 	common_name = subject.get("commonName", subject.get("CN"))
 	if not common_name:
@@ -99,7 +108,7 @@ def create_server_cert(  # pylint: disable=too-many-arguments
 	if not key:
 		logger.info("Creating server key pair")
 		key = PKey()
-		key.generate_key(TYPE_RSA, 4096)
+		key.generate_key(TYPE_RSA, bits)
 
 	# Chrome requires CN from Subject also as Subject Alt
 	hostnames.add(common_name)
