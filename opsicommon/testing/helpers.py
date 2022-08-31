@@ -643,12 +643,8 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		try:
 			if self.server:
 				self.server.stopping = True
-				if platform.system().lower() == "windows":
-					self.server.shutdown()
-					self.server.socket.close()
-				else:
-					self.server.socket.close()
-					self.server.shutdown()
+				self.server.shutdown()
+				self.server.socket.close()
 				try:
 					for thread in self.server._threads:  # type: ignore[attr-defined]  # pylint: disable=protected-access, not-an-iterable
 						thread.join(3)
@@ -665,7 +661,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		self.stop(not new_cert)
 		self.wait_for_server_socket()
 
-	def wait_for_server_socket(self, timeout: int = 60) -> bool:
+	def wait_for_server_socket(self, timeout: int = 15) -> bool:
 		start = time.time()
 		sock_type = socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET
 		while time.time() - start < timeout:  # pylint: disable=dotted-import-in-loop

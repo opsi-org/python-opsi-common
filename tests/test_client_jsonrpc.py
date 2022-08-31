@@ -10,6 +10,7 @@ import base64
 import json
 import os
 import time
+from pathlib import Path
 from urllib.parse import unquote
 
 import pytest
@@ -32,7 +33,7 @@ from opsicommon.testing.helpers import (  # type: ignore[import]
 from .helpers import log_stream
 
 
-def test_arguments():
+def test_arguments() -> None:
 	kwargs = {
 		"application": "application test",
 		"compression": True,
@@ -95,7 +96,7 @@ def test_arguments():
 	assert getattr(client, "_ip_version") == 6
 
 
-def test_timeouts():
+def test_timeouts() -> None:
 	with http_test_server(response_delay=3) as server:
 		start = time.time()
 		with pytest.raises(RConnectionError):
@@ -109,7 +110,7 @@ def test_timeouts():
 		JSONRPCClient(f"http://localhost:{server.port}", read_timeout=6)
 
 
-def test_proxy(tmp_path):
+def test_proxy(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	with http_test_server(log_file=log_file) as server:
 		# Proxy will not be used for localhost (JSONRPCClient.no_proxy_addresses)
@@ -169,7 +170,7 @@ def test_proxy(tmp_path):
 			os.remove(log_file)
 
 
-def test_proxy_legacy(tmp_path):
+def test_proxy_legacy(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	with http_test_server(log_file=log_file) as server:
 		JSONRPCClient.no_proxy_addresses = []
@@ -195,7 +196,7 @@ def test_proxy_legacy(tmp_path):
 			os.remove(log_file)
 
 
-def test_cookie_handling(tmp_path):
+def test_cookie_handling(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	cookie = "COOKIE-NAME=abc"
 	with http_test_server(
@@ -211,7 +212,7 @@ def test_cookie_handling(tmp_path):
 	assert request["headers"].get("Cookie") == cookie
 
 
-def test_force_ip_version_4(tmp_path):
+def test_force_ip_version_4(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	with http_test_server(ip_version=4, log_file=log_file) as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}", ip_version=4)
@@ -222,7 +223,7 @@ def test_force_ip_version_4(tmp_path):
 
 
 @pytest.mark.not_in_docker
-def test_force_ip_version_6(tmp_path):
+def test_force_ip_version_6(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	with http_test_server(ip_version=6, log_file=log_file) as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}", ip_version=6)
@@ -238,14 +239,13 @@ def test_force_ip_version_6(tmp_path):
 	("opsiconfd service 4.2.0.x", None),
 	("apache 2.0.1", None),
 ))
-def test_server_name_handling(tmp_path, server_name, expected_version):
+def test_server_name_handling(tmp_path: Path, server_name: str, expected_version: list) -> None:
 	log_file = tmp_path / f"{server_name}.log"
 	with http_test_server(
 		log_file=log_file,
 		response_headers={"Server": server_name}
 	) as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}", compression=True)
-		client
 		assert client.server_name == server_name
 		assert client.server_name == client.serverName
 		assert client.server_version == expected_version
@@ -262,7 +262,7 @@ def test_server_name_handling(tmp_path, server_name, expected_version):
 			assert request["headers"].get('Content-Encoding') is None
 
 
-def test_compression_and_serialization(tmp_path):
+def test_compression_and_serialization(tmp_path: Path) -> None:
 	for compression, serialization in (
 		(True, "json"),
 		("lz4", "json"),
@@ -293,7 +293,7 @@ def test_compression_and_serialization(tmp_path):
 		assert request["headers"].get('Content-Encoding') == compression
 
 
-def test_pass_session_id(tmp_path):
+def test_pass_session_id(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	session_id = "opsi-session-id=_ABüßö&$§"
 	with http_test_server(
@@ -313,7 +313,7 @@ def test_pass_session_id(tmp_path):
 		assert unquote(request["headers"].get("Cookie")) == session_id
 
 
-def test_pass_invalid_session_id():
+def test_pass_invalid_session_id() -> None:
 	session_id = "1234556789"
 	client = JSONRPCClient(
 		"http://localhost",
@@ -324,7 +324,7 @@ def test_pass_invalid_session_id():
 	assert not client.session_id
 
 
-def test_get_path(tmp_path):
+def test_get_path(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	user_agent = "opsi 4.2"
 	session_lifetime = 10
@@ -356,7 +356,7 @@ def test_get_path(tmp_path):
 	assert auth == f"{username}:{password}"
 
 
-def test_error_handling():
+def test_error_handling() -> None:
 	with http_test_server(response_status=[500, "internal server error"]) as server:
 		with pytest.raises(OpsiRpcError):
 			JSONRPCClient(f"http://localhost:{server.port}")
@@ -387,7 +387,7 @@ def test_error_handling():
 			client.get("/", {"X-Response-Status": "500 Internal Server Error"})
 
 
-def test_interface_and_exit(tmp_path):
+def test_interface_and_exit(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	with open("tests/data/client/jsonrpc/interface.json", "rb") as file:
 		interface = file.read()
@@ -402,13 +402,13 @@ def test_interface_and_exit(tmp_path):
 		client.disconnect()
 
 		client._connected = True  # pylint: disable=protected-access
-		client.execute_rpc = lambda method, params: exec('raise Exception("fail")')  # pylint: disable=exec-used
+		client.execute_rpc = lambda method, params: exec('raise Exception("fail")')  # type: ignore[assignment]  # pylint: disable=exec-used
 		client.disconnect()
 	request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
 	assert request["request"]["method"] == "backend_exit"
 
 
-def test_env_requests_ca_bundle(tmpdir):
+def test_env_requests_ca_bundle(tmp_path: Path) -> None:
 	ca_cert, ca_key = create_ca({"CN": "python-opsi-common test ca"}, 3)
 	kwargs = {
 		"subject": {"CN": "python-opsi-common test server cert"},
@@ -419,8 +419,8 @@ def test_env_requests_ca_bundle(tmpdir):
 		"ca_cert": ca_cert
 	}
 	cert, key = create_server_cert(**kwargs)
-	server_cert = tmpdir / "server_cert.pem"
-	server_key = tmpdir / "server_key.pem"
+	server_cert = tmp_path / "server_cert.pem"
+	server_key = tmp_path / "server_key.pem"
 	server_cert.write_text(as_pem(cert), encoding="utf-8")
 	server_key.write_text(as_pem(key), encoding="utf-8")
 
@@ -437,7 +437,7 @@ def test_env_requests_ca_bundle(tmpdir):
 				assert f"WARNING Environment variable REQUESTS_CA_BUNDLE is set to '{ca_bundle}'" in log
 
 
-def test_context_manager():
+def test_context_manager() -> None:
 	with http_test_server() as server:
 		with JSONRPCClient(f"http://localhost:{server.port}") as client:
 			response = client.get("/path")
