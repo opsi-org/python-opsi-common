@@ -8,10 +8,9 @@ This file is part of opsi - https://www.opsi.org
 
 import json
 import time
-from multiprocessing.dummy.connection import Listener
 from pathlib import Path
 from threading import Thread
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union
 from unittest import mock
 
 import pytest
@@ -412,7 +411,7 @@ def test_connect_disconnect() -> None:
 
 
 def test_messagebus_reconnect() -> None:
-	class Listener(MessagebusListener):
+	class MBListener(MessagebusListener):
 		messages = []  # pylint: disable=use-tuple-over-list
 
 		def message_received(self, message: Message) -> None:
@@ -421,7 +420,6 @@ def test_messagebus_reconnect() -> None:
 	rpc_id = 0
 
 	def ws_connect_callback(handler: HTTPTestServerRequestHandler) -> None:
-		time.sleep(1)
 		nonlocal rpc_id
 		for _ in range(3):
 			rpc_id += 1
@@ -429,21 +427,23 @@ def test_messagebus_reconnect() -> None:
 				sender="service:worker:test:1", channel="host:test-client.uib.local", rpc_id=str(rpc_id), result="RESULT"
 			)
 			handler.ws_send_message(msg.to_msgpack())
-		handler._ws_connected = False  # pylint: disable=protected-access
 
 	with http_test_server(
 		generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
 	) as server:
-		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
-			listener = Listener()
+		with mock.patch("opsicommon.client.opsiservice.Messagebus._reconnect", 5):
+			with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+				listener = MBListener()
 
-			with listener.register(client.messagebus):
-				client.connect_messagebus()
-				time.sleep(10)
+				with listener.register(client.messagebus):
+					client.connect_messagebus()
+					time.sleep(3)
+					server.restart(downtime=3)
+					time.sleep(10)
 
-			assert len(listener.messages) >= 6
-			rpc_ids = sorted([int(m.rpc_id) for m in listener.messages])  # type: ignore[attr-defined]
-			assert rpc_ids[:6] == [1, 2, 3, 4, 5, 6]
+				assert len(listener.messages) == 6
+				rpc_ids = sorted([int(m.rpc_id) for m in listener.messages])  # type: ignore[attr-defined]
+				assert rpc_ids[:6] == [1, 2, 3, 4, 5, 6]
 
 
 def test_get() -> None:
@@ -457,7 +457,8 @@ def test_get() -> None:
 			self.response: Tuple[int, str, dict, bytes] = (0, "", {}, b"")
 
 		def run(self) -> None:
-			self.response = self.client.get("/")  # type: ignore[assignment]
+			self.client.get("/")
+			self.response = self.client.get("test")  # type: ignore[assignment]
 
 	with http_test_server(
 		generate_cert=True, response_status=(202, "status"), response_headers={"x-1": "1", "x-2": "2"}, response_body=response_body
@@ -496,19 +497,60 @@ def test_timeouts() -> None:
 def test_messagebus_ping() -> None:
 	pong_count = 0
 
+	def ws_connect_callback(handler: HTTPTestServerRequestHandler) -> None:
+		handler._ws_send_message(handler._opcode_ping, b"")  # pylint: disable=protected-access
+
 	def _on_pong(messagebus: Messagebus, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
 		nonlocal pong_count
 		pong_count += 1
 
-	with (
-		mock.patch("opsicommon.client.opsiservice.Messagebus._ping_interval", 1),
-		mock.patch("opsicommon.client.opsiservice.Messagebus._on_pong", _on_pong),
-	):
-		with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}) as server:
+	with mock.patch("opsicommon.client.opsiservice.Messagebus._ping_interval", 1):
+		with http_test_server(
+			generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
+		) as server:
+			# Test original _on_pong method
 			with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
 				client.connect_messagebus()
-				time.sleep(10)
-				assert pong_count >= 3
+				time.sleep(3)
+
+			# Override _on_pong method and count pongs
+			with mock.patch("opsicommon.client.opsiservice.Messagebus._on_pong", _on_pong):
+				with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+					client.connect_messagebus()
+					time.sleep(5)
+					assert pong_count >= 3
+
+
+def test_jsonrpc(tmp_path: Path) -> None:
+	log_file = tmp_path / "request.log"
+	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.0.0 (uvicorn)"}) as server:
+		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+			params: List[Union[Tuple[Any, ...], List[Any], None]] = [
+				[1],
+				(1, 2),
+				["1", "2", 3],
+				[None, "str"],
+				(True, False),
+				[],
+				None,
+				("test",),
+				tuple(),
+			]
+			for _params in params:
+				client.jsonrpc("method", params=_params)  # pylint: disable=loop-invariant-statement
+
+			server.restart(downtime=1, new_cert=True)
+
+			client.jsonrpc("reconnect")
+
+			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+			assert reqs[0]["method"] == "HEAD"
+			for idx in range(len(params)):  # pylint: disable=consider-using-enumerate
+				assert reqs[idx + 1]["path"] == "/rpc"
+				assert reqs[idx + 1]["method"] == "POST"
+				assert reqs[idx + 1]["request"]["method"] == "method"
+				assert reqs[idx + 1]["request"]["jsonrpc"] == "2.0"
+				assert reqs[idx + 1]["request"]["params"] == list(params[idx] or [])
 
 
 def test_messagebus_jsonrpc() -> None:
@@ -527,8 +569,19 @@ def test_messagebus_jsonrpc() -> None:
 	) as server:
 		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
 			messagebus = client.connect_messagebus()
-			for _ in range(10):
-				res = messagebus.jsonrpc("test", wait=5)  # pylint: disable=loop-invariant-statement
+			params: List[Union[Tuple[Any, ...], List[Any], None]] = [
+				[1],
+				(1, 2),
+				["1", "2", 3],
+				[None, "str"],
+				(True, False),
+				[],
+				None,
+				("test",),
+				tuple(),
+			]
+			for _params in params:
+				res = messagebus.jsonrpc("test", params=_params, wait=5)  # pylint: disable=loop-invariant-statement
 				assert res["id"]
 				assert res["result"] == f"RESULT {res['id']}"
 				assert res["error"] is None
@@ -623,6 +676,7 @@ def test_messagebus_listener() -> None:
 				id="33333333-3333-3333-3333-333333333333", sender="service:worker:test:3", channel="host:test-client.uib.local", rpc_id="3"
 			).to_msgpack()
 		)
+		handler.ws_send_message(b"DO NOT CRASH ON INVALID DATA")
 		handler.ws_send_message(
 			FileUploadResultMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
 				id="44444444-4444-4444-4444-444444444444",
