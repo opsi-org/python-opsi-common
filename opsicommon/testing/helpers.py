@@ -482,7 +482,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 # Use ThreadingMixIn to handle requests in a separate thread
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):  # pylint: disable=too-many-instance-attributes
 	block_on_close = True
-	daemon_threads = True
+	daemon_threads = False
 	allow_reuse_address = True
 
 	def __init__(self, test_server: "HTTPTestServer", server_address: Tuple[str, int], address_family: int = socket.AF_INET) -> None:
@@ -528,15 +528,15 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):  # pylint: disable=too-ma
 		return self.test_server.send_max_bytes
 
 
-def with_retry(function: Callable, attempts: int = 3, retry_time: float = 1.0) -> Any:
+def with_retry(function: Callable, args: tuple = tuple(), attempts: int = 3, retry_time: float = 1.0) -> Any:
 	for attempt in range(1, attempts + 1):
 		try:  # pylint: disable=loop-try-except-usage
-			return function()
-		except Exception:  # pylint: disable=broad-except
+			return function(*args)
+		except Exception as err:  # pylint: disable=broad-except
+			print(err)
 			if attempt == attempts:
 				raise
 			time.sleep(retry_time)  # pylint: disable=dotted-import-in-loop
-	return None
 
 
 class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-instance-attributes
@@ -572,6 +572,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		self.serve_directory = str(serve_directory) if serve_directory else None
 		self.send_max_bytes = int(send_max_bytes) if send_max_bytes else None
 		self._restart_server = False
+		self._cleanup_done = threading.Event()
 		# Auto select free port
 		with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
 			sock.bind(("", 0))
@@ -582,6 +583,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 	def run(self) -> None:
 		while True:
 			self._restart_server = False
+			self._cleanup_done.clear()
 			if self.generate_cert:  # pylint: disable=dotted-import-in-loop
 				self._generate_cert()
 			self.server = ThreadingHTTPServer(
@@ -589,11 +591,12 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 				("::" if self.ip_version == 6 else "", self.port),
 				socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET  # pylint: disable=dotted-import-in-loop
 			)
-			with_retry(self._init_ssl_socket)
+			self._init_ssl_socket()
 			# print("Server listening on port:" + str(self.port))
-			with_retry(self.server.serve_forever)
+			self.server.serve_forever()
 			if not self._restart_server:
 				break
+			time.sleep(3)  # pylint: disable=dotted-import-in-loop
 			# print("Server restarting")
 
 	def set_option(self, name: str, value: Any) -> None:
@@ -643,16 +646,15 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		try:
 			if self.server:
 				self.server.stopping = True
+				if self._restart_server and platform.system().lower() != "windows":
+					self.server.socket.close()
 				self.server.shutdown()
-				self.server.socket.close()
-				try:
-					for thread in self.server._threads:  # type: ignore[attr-defined]  # pylint: disable=protected-access, not-an-iterable
-						thread.join(3)
-				except TypeError:
-					time.sleep(3)
+				if self._restart_server and platform.system().lower() == "windows":
+					self.server.socket.close()
 		finally:
 			if cleanup_cert:
 				self._cleanup_cert()
+			self._cleanup_done.set()
 
 	def restart(self, new_cert: bool = False) -> None:
 		if not self.server:
