@@ -509,9 +509,11 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		# Use ThreadingMixIn to handle requests in a separate thread
 		class HTTPServer4(ThreadingMixIn, HTTPServer):  # pylint: disable=too-many-instance-attributes
 			address_family = socket.AF_INET
+			block_on_close = False
 
 		class HTTPServer6(ThreadingMixIn, HTTPServer):  # pylint: disable=too-many-instance-attributes
 			address_family = socket.AF_INET6
+			block_on_close = False
 
 		if self.ip_version == 6:
 			self.server = HTTPServer6(("::", self.port), HTTPTestServerRequestHandler)
