@@ -66,6 +66,12 @@ class Message:
 	def to_msgpack(self) -> bytes:
 		return msgpack_dumps(self.to_dict())
 
+	def __repr__(self) -> str:
+		return f"Message(type={self.type},id={self.id})"
+
+	def __str__(self) -> str:
+		return f"({self.type},{self.id})"
+
 
 @dataclass(slots=True, kw_only=True)
 class JSONRPCRequestMessage(Message):
