@@ -527,6 +527,17 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):  # pylint: disable=too-ma
 		return self.test_server.send_max_bytes
 
 
+def with_retry(function: Callable, attempts: int = 3, retry_time: float = 1.0) -> Any:
+	for attempt in range(1, attempts + 1):
+		try:  # pylint: disable=loop-try-except-usage
+			return function()
+		except Exception:  # pylint: disable=broad-except
+			if attempt == attempts:
+				raise
+			time.sleep(retry_time)  # pylint: disable=dotted-import-in-loop
+	return None
+
+
 class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-instance-attributes
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
@@ -559,7 +570,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		self.ws_message_callback = ws_message_callback if ws_message_callback else None
 		self.serve_directory = str(serve_directory) if serve_directory else None
 		self.send_max_bytes = int(send_max_bytes) if send_max_bytes else None
-		self._restart_in_seconds = 0
+		self._restart_server = False
 		# Auto select free port
 		with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
 			sock.bind(("", 0))
@@ -569,28 +580,21 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 
 	def run(self) -> None:
 		while True:
+			self._restart_server = False
 			if self.generate_cert:  # pylint: disable=dotted-import-in-loop
+				# This can take very long!
 				self._generate_cert()
 			self.server = ThreadingHTTPServer(
 				self,
 				("::" if self.ip_version == 6 else "", self.port),
 				socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET  # pylint: disable=dotted-import-in-loop
 			)
-			for attempt in (1, 2, 3):
-				try:  # pylint: disable=loop-try-except-usage
-					self._init_ssl_socket()
-				except Exception as err:  # pylint: disable=broad-except
-					print(err)
-					if attempt == 3:
-						raise
-					time.sleep(1)  # pylint: disable=dotted-import-in-loop
+			with_retry(self._init_ssl_socket)
 			# print("Server listening on port:" + str(self.port))
-			self.server.serve_forever()
-			if self._restart_in_seconds:
-				# print(f"Server restarting in {self._restart_in_seconds} seconds")
-				time.sleep(self._restart_in_seconds)  # pylint: disable=dotted-import-in-loop
-			else:
+			with_retry(self.server.serve_forever)
+			if not self._restart_server:
 				break
+			# print(f"Server restarting")
 
 	def set_option(self, name: str, value: Any) -> None:
 		setattr(self, name, value)
@@ -645,19 +649,19 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 			if cleanup_cert:
 				self._cleanup_cert()
 
-	def restart(self, downtime: int = 3, new_cert: bool = False) -> None:
+	def restart(self, new_cert: bool = False) -> None:
 		if not self.server:
 			return
-		self._restart_in_seconds = downtime
+		self._restart_server = True
 		self.stop(not new_cert)
 		self.wait_for_server_socket()
 
-	def wait_for_server_socket(self, timeout: int = 30) -> bool:
+	def wait_for_server_socket(self, timeout: int = 60) -> bool:
 		start = time.time()
 		sock_type = socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET
 		while time.time() - start < timeout:  # pylint: disable=dotted-import-in-loop
 			with closing(socket.socket(sock_type, socket.SOCK_STREAM)) as sock:  # pylint: disable=dotted-import-in-loop
-				sock.settimeout(0.5)
+				sock.settimeout(1)
 				res = sock.connect_ex(("::1" if self.ip_version == 6 else "127.0.0.1", self.port))  # pylint: disable=loop-invariant-statement
 				if res == 0:
 					return True
