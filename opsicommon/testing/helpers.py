@@ -644,8 +644,11 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 				self.server.stopping = True
 				self.server.shutdown()
 				self.server.socket.close()
-				for thread in self.server._threads:  # type: ignore[attr-defined]  # pylint: disable=protected-access, not-an-iterable
-					thread.join(3)
+				try:
+					for thread in self.server._threads:  # type: ignore[attr-defined]  # pylint: disable=protected-access, not-an-iterable
+						thread.join(3)
+				except TypeError:
+					time.sleep(3)
 		finally:
 			if cleanup_cert:
 				self._cleanup_cert()
