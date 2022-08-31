@@ -8,9 +8,10 @@ This file is part of opsi - https://www.opsi.org
 
 import json
 import time
+from multiprocessing.dummy.connection import Listener
 from pathlib import Path
 from threading import Thread
-from typing import Optional, Tuple
+from typing import Iterable, List, Optional, Tuple, Union
 from unittest import mock
 
 import pytest
@@ -32,7 +33,13 @@ from opsicommon.client.opsiservice import (
 	ServiceVerificationModes,
 	WebSocketApp,
 )
-from opsicommon.messagebus import JSONRPCRequestMessage, JSONRPCResponseMessage, Message
+from opsicommon.messagebus import (
+	FileUploadResultMessage,
+	JSONRPCRequestMessage,
+	JSONRPCResponseMessage,
+	Message,
+	MessageType,
+)
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
 from opsicommon.testing.helpers import (  # type: ignore[import]
 	HTTPTestServerRequestHandler,
@@ -564,3 +571,110 @@ def test_messagebus_multi_thread() -> None:
 				assert res["id"]
 				assert res["result"] == f"RESULT {res['id']}"
 				assert res["error"] is None
+
+
+def test_messagebus_listener() -> None:
+	class StoringListener(MessagebusListener):
+		def __init__(self, message_types: Iterable[Union[MessageType, str]] = None) -> None:
+			super().__init__(message_types)
+			self.messages_received: List[Message] = []
+			self.expired_messages_received: List[Message] = []
+
+		def message_received(self, message: Message) -> None:
+			self.messages_received.append(message)
+
+		def expired_message_received(self, message: Message) -> None:
+			self.expired_messages_received.append(message)
+
+	listener1 = StoringListener(message_types=(MessageType.JSONRPC_RESPONSE, "file_upload_result", "file_upload_result"))
+	assert listener1.message_types == {MessageType.JSONRPC_RESPONSE, MessageType.FILE_UPLOAD_RESULT}
+
+	listener2 = StoringListener(message_types={MessageType.JSONRPC_RESPONSE})
+	assert listener2.message_types == {MessageType.JSONRPC_RESPONSE}
+
+	listener3 = StoringListener()
+	assert listener3.message_types is None
+
+	listener4 = StoringListener(message_types={MessageType.FILE_CHUNK})
+	assert listener4.message_types == {MessageType.FILE_CHUNK}
+
+	def ws_connect_callback(handler: HTTPTestServerRequestHandler) -> None:
+		now = int(time.time())
+		handler.ws_send_message(
+			JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+				id="11111111-1111-1111-1111-111111111111",
+				sender="service:worker:test:1",
+				channel="host:test-client.uib.local",
+				rpc_id="1",
+				expires=now - 1,
+			).to_msgpack()
+		)
+		handler.ws_send_message(
+			JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+				id="22222222-2222-2222-2222-222222222222",
+				sender="service:worker:test:2",
+				channel="host:test-client.uib.local",
+				rpc_id="2",
+				expires=0,
+			).to_msgpack()
+		)
+		handler.ws_send_message(
+			JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+				id="33333333-3333-3333-3333-333333333333", sender="service:worker:test:3", channel="host:test-client.uib.local", rpc_id="3"
+			).to_msgpack()
+		)
+		handler.ws_send_message(
+			FileUploadResultMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+				id="44444444-4444-4444-4444-444444444444",
+				sender="service:worker:test:1",
+				channel="host:test-client.uib.local",
+				file_id="bcc2b07d-badc-49b8-9ff6-6ce37884686e",
+				expires=now - 1,
+			).to_msgpack()
+		)
+		handler.ws_send_message(
+			FileUploadResultMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+				id="55555555-5555-5555-5555-555555555555",
+				sender="service:worker:test:1",
+				channel="host:test-client.uib.local",
+				file_id="49730998-2bfa-4ae3-b80c-bd0af20e9441",
+			).to_msgpack()
+		)
+
+	with http_test_server(
+		generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
+	) as server:
+		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+			with (
+				listener1.register(client.messagebus),
+				listener2.register(client.messagebus),
+				listener3.register(client.messagebus),
+				listener4.register(client.messagebus),
+			):
+				assert len(client.messagebus._listener) == 4  # pylint: disable=protected-access
+				client.connect_messagebus()
+				# Receive messages for 3 seconds
+				time.sleep(3)
+			assert len(client.messagebus._listener) == 0  # pylint: disable=protected-access
+
+	# listener1 / listener3: JSONRPC_RESPONSE + FILE_UPLOAD_RESULT
+	for listener in (listener1, listener3):
+		assert ["11111111-1111-1111-1111-111111111111", "44444444-4444-4444-4444-444444444444"] == sorted(
+			[m.id for m in listener.expired_messages_received]
+		)
+		assert [
+			"22222222-2222-2222-2222-222222222222",
+			"33333333-3333-3333-3333-333333333333",
+			"55555555-5555-5555-5555-555555555555",
+		] == sorted([m.id for m in listener.messages_received])
+
+	# listener2: JSONRPC_RESPONSE
+	assert ["11111111-1111-1111-1111-111111111111"] == sorted([m.id for m in listener2.expired_messages_received])
+	assert [
+		"22222222-2222-2222-2222-222222222222",
+		"33333333-3333-3333-3333-333333333333",
+	] == sorted([m.id for m in listener2.messages_received])
+
+	# listener4: FILE_CHUNK
+	assert not listener4.expired_messages_received
+	assert not listener4.messages_received

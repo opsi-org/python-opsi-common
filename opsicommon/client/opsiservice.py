@@ -12,7 +12,6 @@ import re
 import ssl
 import time
 import warnings
-from abc import ABC, abstractmethod
 from base64 import b64encode
 from contextlib import contextmanager
 from enum import Enum
@@ -21,7 +20,18 @@ from pathlib import Path
 from threading import Event, Lock, Thread
 from traceback import TracebackException
 from types import TracebackType
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import (
+	Any,
+	Callable,
+	Dict,
+	Generator,
+	Iterable,
+	List,
+	Optional,
+	Tuple,
+	Type,
+	Union,
+)
 from urllib.parse import quote, unquote, urlparse
 from uuid import uuid4
 
@@ -59,7 +69,7 @@ from ..messagebus import (
 	JSONRPCRequestMessage,
 	JSONRPCResponseMessage,
 	Message,
-	MessageTypes,
+	MessageType,
 )
 from ..utils import deserialize, prepare_proxy_environment, serialize
 
@@ -558,16 +568,29 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		self.disconnect()
 
 
-class MessagebusListener(ABC):  # pylint: disable=too-few-public-methods
-	def __init__(self, message_types: List[MessageTypes] = None) -> None:
-		self.message_types = message_types
+class MessagebusListener():  # pylint: disable=too-few-public-methods
+	def __init__(self, message_types: Iterable[Union[MessageType, str]] = None) -> None:
+		"""
+		message_types:
+		"""
+		self.message_types = {MessageType(mt) for mt in message_types} if message_types else None
 
-	@abstractmethod
 	def message_received(self, message: Message) -> None:
-		pass
+		"""
+		Called when a valid message is received.
+		"""
+
+	def expired_message_received(self, message: Message) -> None:
+		"""
+		Called when a expired message is received.
+		Expired messages should not be processed!
+		"""
 
 	@contextmanager
 	def register(self, messagebus: "Messagebus") -> Generator[None, None, None]:
+		"""
+		Context manager for register this listener on and off the message bus.
+		"""
 		try:
 			messagebus.register_message_listener(self)
 			yield
@@ -636,10 +659,19 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		logger.debug("Websocket message received")
 		try:
 			msg = Message.from_msgpack(message)
+
+			expired = msg.expires and msg.expires <= time.time()
+			if expired:
+				callback = "expired_message_received"
+				logger.debug("Received expired message: %r", msg)
+			else:
+				callback = "message_received"
+				logger.debug("Received message: %r", msg)
+
 			for listener in self._listener:
 				if listener.message_types and msg.type not in listener.message_types:
 					continue
-				CallbackThread(listener.message_received, message=msg).start()
+				CallbackThread(getattr(listener, callback), message=msg).start()
 		except Exception as err:  # pylint: disable=broad-except
 			logger.error("Failed to process websocket message: %s", err, exc_info=True)
 
@@ -664,7 +696,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def wait_for_jsonrpc_response_message(self, rpc_id: str, timeout: float = None) -> JSONRPCResponseMessage:
 		class JSONRPCResponseListener(MessagebusListener):
 			def __init__(self, rpc_id: str, timeout: float = None) -> None:
-				super().__init__([MessageTypes.JSONRPC_RESPONSE])
+				super().__init__((MessageType.JSONRPC_RESPONSE,))
 				self.rpc_id = rpc_id
 				self.timeout = timeout
 				self.message_received_event = Event()

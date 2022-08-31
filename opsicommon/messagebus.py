@@ -18,7 +18,7 @@ from msgpack import dumps as msgpack_dumps  # type: ignore[import]
 from msgpack import loads as msgpack_loads  # type: ignore[import]
 
 
-class MessageTypes(str, Enum):
+class MessageType(str, Enum):
 	JSONRPC_REQUEST = "jsonrpc_request"
 	JSONRPC_RESPONSE = "jsonrpc_response"
 	FILE_UPLOAD = "file_upload"
@@ -51,7 +51,7 @@ class Message:
 		if _cls is Message:
 			_type = data.get("type")
 			if _type:
-				if isinstance(_type, MessageTypes):
+				if isinstance(_type, MessageType):
 					_type = _type.value
 				_cls = MESSAGE_TYPE_TO_CLASS.get(_type, Message)
 		return _cls(**data)
@@ -76,7 +76,7 @@ class Message:
 @dataclass(slots=True, kw_only=True)
 class JSONRPCRequestMessage(Message):
 
-	type: str = MessageTypes.JSONRPC_REQUEST.value
+	type: str = MessageType.JSONRPC_REQUEST.value
 	api_version: str = "1"
 	rpc_id: str = field(default_factory=lambda: str(uuid4()))
 	method: str
@@ -85,7 +85,7 @@ class JSONRPCRequestMessage(Message):
 
 @dataclass(slots=True, kw_only=True)
 class JSONRPCResponseMessage(Message):
-	type: str = MessageTypes.JSONRPC_RESPONSE.value
+	type: str = MessageType.JSONRPC_RESPONSE.value
 	rpc_id: str
 	error: Any = None
 	result: Any = None
@@ -93,24 +93,24 @@ class JSONRPCResponseMessage(Message):
 
 @dataclass(slots=True, kw_only=True)
 class FileUploadMessage(Message):
-	type: str = MessageTypes.FILE_UPLOAD.value
+	type: str = MessageType.FILE_UPLOAD.value
 	file_id: str
 	content_type: str
-	name: Union[str, None] = None
-	size: Union[int, None] = None
+	name: Optional[str] = None
+	size: Optional[int] = None
 
 
 @dataclass(slots=True, kw_only=True)
 class FileUploadResultMessage(Message):
-	type: str = MessageTypes.FILE_UPLOAD_RESULT.value
+	type: str = MessageType.FILE_UPLOAD_RESULT.value
 	file_id: str
-	error: Error
-	path: Union[str, None] = None
+	error: Optional[Error] = None
+	path: Optional[str] = None
 
 
 @dataclass(slots=True, kw_only=True)
 class FileChunk(Message):
-	type: str = MessageTypes.FILE_CHUNK.value
+	type: str = MessageType.FILE_CHUNK.value
 	file_id: str
 	number: int
 	last: bool = False
@@ -118,9 +118,9 @@ class FileChunk(Message):
 
 
 MESSAGE_TYPE_TO_CLASS = {
-	MessageTypes.JSONRPC_REQUEST.value: JSONRPCRequestMessage,
-	MessageTypes.JSONRPC_RESPONSE.value: JSONRPCResponseMessage,
-	MessageTypes.FILE_UPLOAD.value: FileUploadMessage,
-	MessageTypes.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
-	MessageTypes.FILE_CHUNK.value: FileChunk,
+	MessageType.JSONRPC_REQUEST.value: JSONRPCRequestMessage,
+	MessageType.JSONRPC_RESPONSE.value: JSONRPCResponseMessage,
+	MessageType.FILE_UPLOAD.value: FileUploadMessage,
+	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
+	MessageType.FILE_CHUNK.value: FileChunk,
 }
