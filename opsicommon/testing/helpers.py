@@ -372,7 +372,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 					time.sleep(0.1)  # pylint: disable=dotted-import-in-loop
 				except WebSocketError as err:
 					if "read aborted while listening" in str(err):  # pylint: disable=loop-invariant-statement)
-						time.sleep(0.1)
+						time.sleep(0.1)  # pylint: disable=dotted-import-in-loop
 					else:
 						raise
 		except (socket.error, WebSocketError):
@@ -481,6 +481,8 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 # Use ThreadingMixIn to handle requests in a separate thread
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):  # pylint: disable=too-many-instance-attributes
 	block_on_close = True
+	daemon_threads = True
+	allow_reuse_address = True
 
 	def __init__(self, test_server: "HTTPTestServer", server_address: Tuple[str, int], address_family: int = socket.AF_INET) -> None:
 		self.address_family = address_family
@@ -557,85 +559,109 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		self.ws_message_callback = ws_message_callback if ws_message_callback else None
 		self.serve_directory = str(serve_directory) if serve_directory else None
 		self.send_max_bytes = int(send_max_bytes) if send_max_bytes else None
+		self._restart_in_seconds = 0
 		# Auto select free port
 		with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
 			sock.bind(("", 0))
 			sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 			self.port = sock.getsockname()[1]
-
-		self.server = ThreadingHTTPServer(
-			self,
-			("::" if self.ip_version == 6 else "", self.port),
-			socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET
-		)
-		self._init_ssl()
+		self.server: Optional[ThreadingHTTPServer] = None
 
 	def run(self) -> None:
-		# print("Server listening on port:" + str(self.port))
-		self.server.serve_forever()
+		while True:
+			if self.generate_cert:  # pylint: disable=dotted-import-in-loop
+				self._generate_cert()
+			self.server = ThreadingHTTPServer(
+				self,
+				("::" if self.ip_version == 6 else "", self.port),
+				socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET  # pylint: disable=dotted-import-in-loop
+			)
+			for attempt in (1, 2, 3):
+				try:  # pylint: disable=loop-try-except-usage
+					self._init_ssl_socket()
+				except OSError as err:
+					print(err)
+					if attempt == 3:
+						raise
+					time.sleep(1)  # pylint: disable=dotted-import-in-loop
+			# print("Server listening on port:" + str(self.port))
+			self.server.serve_forever()
+			if self._restart_in_seconds:
+				# print(f"Server restarting in {self._restart_in_seconds} seconds")
+				time.sleep(self._restart_in_seconds)  # pylint: disable=dotted-import-in-loop
+			else:
+				break
 
 	def set_option(self, name: str, value: Any) -> None:
 		setattr(self, name, value)
 
-	def stop(self) -> None:
-		try:
-			self.server.stopping = True
-			self.server.shutdown()
-		finally:
-			if self.generate_cert:
-				if self.server_key:
-					os.unlink(self.server_key)
-				if self.server_cert:
-					os.unlink(self.server_cert)
+	def _generate_cert(self) -> None:
+		if self.server_key and os.path.exists(self.server_key) and self.server_cert and os.path.exists(self.server_cert):
+			return
 
-	def _init_ssl(self, new_cert: bool = False) -> None:
-		if (
-			self.generate_cert and (  # pylint: disable=too-many-boolean-expressions
-				not self.server_key or
-				not os.path.exists(self.server_key) or
-				not self.server_cert or
-				not os.path.exists(self.server_cert) or
-				new_cert
-			)
-		):
-			ca_cert, ca_key = create_ca({"CN": "http_test_server ca"}, 3)
-			kwargs = {
-				"subject": {"CN": "http_test_server server cert"},
-				"valid_days": 3,
-				"ip_addresses": {"172.0.0.1", "::1"},
-				"hostnames": {"localhost", "ip6-localhost"},
-				"ca_key": ca_key,
-				"ca_cert": ca_cert
-			}
-			cert, key = create_server_cert(**kwargs)
+		ca_cert, ca_key = create_ca({"CN": "http_test_server ca"}, 3)
+		kwargs = {
+			"subject": {"CN": "http_test_server server cert"},
+			"valid_days": 3,
+			"ip_addresses": {"172.0.0.1", "::1"},
+			"hostnames": {"localhost", "ip6-localhost"},
+			"ca_key": ca_key,
+			"ca_cert": ca_cert
+		}
+		cert, key = create_server_cert(**kwargs)
 
-			tmp = NamedTemporaryFile(delete=False)  # pylint: disable=consider-using-with
-			tmp.write(as_pem(key).encode("utf-8"))
-			tmp.close()
-			self.server_key = tmp.name
+		tmp = NamedTemporaryFile(delete=False)  # pylint: disable=consider-using-with
+		tmp.write(as_pem(key).encode("utf-8"))
+		tmp.close()
+		self.server_key = tmp.name
 
-			tmp = NamedTemporaryFile(delete=False)  # pylint: disable=consider-using-with
-			tmp.write(as_pem(cert).encode("utf-8"))
-			tmp.close()
-			self.server_cert = tmp.name
+		tmp = NamedTemporaryFile(delete=False)  # pylint: disable=consider-using-with
+		tmp.write(as_pem(cert).encode("utf-8"))
+		tmp.close()
+		self.server_cert = tmp.name
 
+	def _cleanup_cert(self) -> None:
+		if self.generate_cert:
+			if self.server_key and os.path.exists(self.server_key):
+				os.unlink(self.server_key)
+			if self.server_cert and os.path.exists(self.server_cert):
+				os.unlink(self.server_cert)
+
+	def _init_ssl_socket(self) -> None:
 		if self.server and self.server_key and self.server_cert:
 			context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 			context.load_cert_chain(keyfile=self.server_key, certfile=self.server_cert)
 			self.server.socket = context.wrap_socket(sock=self.server.socket, server_side=True)
 
+	def stop(self, cleanup_cert: bool = True) -> None:
+		try:
+			if self.server:
+				self.server.socket.close()
+				self.server.stopping = True
+				self.server.shutdown()
+				for thread in self.server._threads:  # type: ignore[attr-defined]  # pylint: disable=protected-access, not-an-iterable
+					thread.join(3)
+		finally:
+			if cleanup_cert:
+				self._cleanup_cert()
+
 	def restart(self, downtime: int = 3, new_cert: bool = False) -> None:
-		self.server.stopping = True
-		self.server.server_close()
+		if not self.server:
+			return
+		self._restart_in_seconds = downtime
+		self.stop(not new_cert)
+		self.wait_for_server_socket()
 
-		time.sleep(downtime)
-
-		self.server.stopping = False
-		if self.ip_version == 6:
-			self.server.__init__(("::", self.port), self)  # type: ignore[misc]  # pylint: disable=unnecessary-dunder-call
-		else:
-			self.server.__init__(("", self.port), self)  # type: ignore[misc]  # pylint: disable=unnecessary-dunder-call
-		self._init_ssl(new_cert=new_cert)
+	def wait_for_server_socket(self, timeout: int = 10) -> bool:
+		start = time.time()
+		sock_type = socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET
+		while time.time() - start < timeout:  # pylint: disable=dotted-import-in-loop
+			with closing(socket.socket(sock_type, socket.SOCK_STREAM)) as sock:  # pylint: disable=dotted-import-in-loop
+				sock.settimeout(0.5)
+				res = sock.connect_ex(("::1" if self.ip_version == 6 else "127.0.0.1", self.port))  # pylint: disable=loop-invariant-statement
+				if res == 0:
+					return True
+		return False
 
 
 @contextmanager
@@ -655,7 +681,6 @@ def http_test_server(  # pylint: disable=too-many-arguments,too-many-locals
 	serve_directory: Union[str, Path] = None,
 	send_max_bytes: int = None
 ) -> Generator[HTTPTestServer, None, None]:
-	timeout = 5
 	server = HTTPTestServer(
 		log_file=log_file,
 		ip_version=ip_version,
@@ -673,19 +698,7 @@ def http_test_server(  # pylint: disable=too-many-arguments,too-many-locals
 	)
 	server.daemon = True
 	server.start()
-
-	running = False
-	start = time.time()
-	sock_type = socket.AF_INET6 if ip_version == 6 else socket.AF_INET
-	while time.time() - start < timeout:  # pylint: disable=dotted-import-in-loop
-		with closing(socket.socket(sock_type, socket.SOCK_STREAM)) as sock:  # pylint: disable=dotted-import-in-loop
-			sock.settimeout(1)
-			res = sock.connect_ex(("::1" if ip_version == 6 else "127.0.0.1", server.port))  # pylint: disable=loop-invariant-statement
-			if res == 0:
-				running = True
-				break
-
-	if not running:
+	if not server.wait_for_server_socket():
 		raise RuntimeError("Failed to start HTTPTestServer")
 	try:
 		yield server

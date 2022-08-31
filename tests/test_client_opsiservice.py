@@ -150,7 +150,7 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 	server_cert, server_key = create_server_cert(
 		subject={"CN": "python-opsi-common test server cert"},
 		valid_days=3,
-		ip_addresses={"172.0.0.1", "::1"},
+		ip_addresses={"127.0.0.1", "::1"},
 		hostnames={"localhost", "ip6-localhost"},
 		ca_key=ca_key,
 		ca_cert=ca_cert,
@@ -576,29 +576,40 @@ def test_jsonrpc(tmp_path: Path) -> None:
 				assert reqs[idx + 1]["request"]["jsonrpc"] == "2.0"
 				assert reqs[idx + 1]["request"]["params"] == list(params[idx] or [])
 
+			assert reqs[-1]["method"] == "POST"
+			assert reqs[-1]["request"]["method"] == "reconnect"
+
 
 def test_jsonrpc_error_handling() -> None:
 	with http_test_server(generate_cert=True) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			client.connect()
 			server.response_status = (500, "internal server error")
+			server.response_body = json.dumps({"error": {"message": "internal server error"}}).encode("utf-8")
 			with pytest.raises(OpsiRpcError):
 				client.jsonrpc("method")
-			assert client.jsonrpc("method", full_response=True) == {"123"}
+			res = client.jsonrpc("method", full_response=True)
+			assert res["error"]["message"] == "internal server error"
 
 	with http_test_server(generate_cert=True) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			client.connect()
 			server.response_status = (401, "auth error")
+			server.response_body = json.dumps({"error": {"message": "auth error"}}).encode("utf-8")
 			with pytest.raises(BackendAuthenticationError):
 				client.jsonrpc("method")
+			res = client.jsonrpc("method", full_response=True)
+			assert res["error"]["message"] == "auth error"
 
 	with http_test_server(generate_cert=True) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			client.connect()
 			server.response_status = (403, "permission denied")
+			server.response_body = json.dumps({"error": {"message": "permission denied"}}).encode("utf-8")
 			with pytest.raises(BackendPermissionDeniedError):
 				client.jsonrpc("method")
+			res = client.jsonrpc("method", full_response=True)
+			assert res["error"]["message"] == "permission denied"
 
 	with http_test_server(generate_cert=True) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
@@ -606,7 +617,9 @@ def test_jsonrpc_error_handling() -> None:
 			server.response_body = json.dumps({"error": {"message": "err_msg"}}).encode("utf-8")
 			with pytest.raises(OpsiRpcError) as err:
 				client.jsonrpc("method")
-		assert err.value.message == "err_msg"
+			assert err.value.message == "err_msg"
+			res = client.jsonrpc("method", full_response=True)
+			assert res["error"]["message"] == "err_msg"
 
 	with http_test_server(generate_cert=True) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
@@ -614,7 +627,9 @@ def test_jsonrpc_error_handling() -> None:
 			server.response_body = json.dumps({"error": {"message": "err_msg2"}}).encode("utf-8")
 			with pytest.raises(OpsiRpcError) as err:
 				client.jsonrpc("method")
-		assert err.value.message == "err_msg2"
+			assert err.value.message == "err_msg2"
+			res = client.jsonrpc("method", full_response=True)
+			assert res["error"]["message"] == "err_msg2"
 
 
 def test_messagebus_jsonrpc() -> None:
@@ -653,6 +668,12 @@ def test_messagebus_jsonrpc() -> None:
 			delay = 3.0
 			with pytest.raises(OpsiTimeoutError):
 				res = messagebus.jsonrpc("test", wait=1)
+
+			res = messagebus.jsonrpc("test_no_wait", params=[1, 2, 3], wait=None)  # pylint: disable=loop-invariant-statement
+			assert isinstance(res, JSONRPCRequestMessage)
+			assert res.rpc_id
+			assert res.method == "test_no_wait"
+			assert res.params == (1, 2, 3)
 
 
 def test_messagebus_multi_thread() -> None:

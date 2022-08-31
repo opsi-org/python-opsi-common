@@ -287,7 +287,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		return self._proxy_url
 
 	@property
-	def session_coockie(self) -> Optional[str]:
+	def session_cookie(self) -> Optional[str]:
 		if not self._session.cookies or not self._session.cookies._cookies:  # type: ignore[attr-defined] # pylint: disable=protected-access
 			return None
 		for tmp1 in self._session.cookies._cookies.values():  # type: ignore[attr-defined] # pylint: disable=protected-access
@@ -433,7 +433,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 	) -> Tuple[int, str, CaseInsensitiveDict, bytes]:
 		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data)
 
-	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any], None] = None) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any], None] = None, full_response: bool = False) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		params = params or []
 		if isinstance(params, tuple):
 			params = list(params)
@@ -513,6 +513,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 				data = msgpack_loads(data)
 			else:
 				data = json_loads(data)
+			if full_response:
+				return data
 		except Exception:  # pylint: disable=broad-except
 			if error_cls:
 				raise error_cls(error_msg) from None
@@ -530,9 +532,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		if error_cls:
 			raise error_cls(error_msg)
 
-		data = deserialize(data.get("result"), prevent_object_creation=True)
-
-		return data
+		return deserialize(data.get("result"), prevent_object_creation=True)
 
 	@property
 	def messagebus(self) -> "Messagebus":
@@ -724,7 +724,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		if wait is None:
 			return msg
 		res = self.wait_for_jsonrpc_response_message(rpc_id=msg.rpc_id, timeout=wait)
-		return {"id": res.rpc_id, "result": res.result, "error": res.error}
+		return {"jsonrpc": "2.0", "id": res.rpc_id, "result": res.result, "error": res.error}
 
 	def send_message(self, message: Message) -> None:
 		if not self._app:
