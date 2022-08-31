@@ -7,7 +7,6 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import json
-import platform
 import time
 from pathlib import Path
 from threading import Thread
