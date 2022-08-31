@@ -419,8 +419,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 			)
 		except Timeout as err:
 			raise OpsiTimeoutError(str(err)) from err
-		except Exception as err:  # pylint: disable=broad-except
-			raise OpsiConnectionError(str(err)) from err
+		# except Exception as err:  # pylint: disable=broad-except
+		# 	raise OpsiConnectionError(str(err)) from err
 		return (response.status_code, response.reason, response.headers, response.content)
 
 	def get(
@@ -433,7 +433,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 	) -> Tuple[int, str, CaseInsensitiveDict, bytes]:
 		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data)
 
-	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any]] = None) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any], None] = None) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		params = params or []
 		if isinstance(params, tuple):
 			params = list(params)
@@ -701,26 +701,22 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 				self.timeout = timeout
 				self.message_received_event = Event()
 				self.message: Optional[JSONRPCResponseMessage] = None
-				self.messages_received = 0
 
 			def wait_for_message(self) -> JSONRPCResponseMessage:
-				if self.messages_received > 0:
-					self.message_received_event.clear()
 				if self.message_received_event.wait(self.timeout) and self.message:
 					return self.message
-				raise OpsiTimeoutError(f"Timed out waiting for JSONRPCResponseMessage with {self.rpc_id=}")
+				raise OpsiTimeoutError(f"Timed out waiting for JSONRPCResponseMessage with rpc_id={self.rpc_id}")
 
 			def message_received(self, message: Message) -> None:
 				if isinstance(message, JSONRPCResponseMessage) and message.rpc_id == self.rpc_id:
 					self.message = message
-					self.messages_received += 1
 					self.message_received_event.set()
 
 		listener = JSONRPCResponseListener(rpc_id, timeout)
 		with listener.register(self):
 			return listener.wait_for_message()
 
-	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any]] = None, wait: int = None) -> Any:
+	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any], None] = None, wait: int = None) -> Any:
 		if isinstance(params, list):
 			params = tuple(params)
 		msg = JSONRPCRequestMessage(sender="*", channel="service:config:jsonrpc", method=method, params=params)  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
