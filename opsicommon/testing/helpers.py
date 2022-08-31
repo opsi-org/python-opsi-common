@@ -51,7 +51,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 	_opcode_pong = 0xa
 
 	mutex = threading.Lock()
-	server: HTTPServer
+	server: "ThreadingHTTPServer"
 
 	def __init__(self, *args: Any, **kwargs: Any) -> None:
 		if args[2].serve_directory:
@@ -63,29 +63,31 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self.close_connection = False
 
 	def _log(self, data: Any) -> None:  # pylint: disable=invalid-name
-		if not self.server.log_file:  # type: ignore[attr-defined]
+		if not self.server.log_file:
 			return
 
-		with open(self.server.log_file, "a", encoding="utf-8") as file:  # type: ignore[attr-defined]
+		with open(self.server.log_file, "a", encoding="utf-8") as file:
 			file.write(json.dumps(data))
 			file.write("\n")
 			file.flush()
 
 	def version_string(self) -> str:
-		for name, value in self.server.response_headers.items():  # type: ignore[attr-defined]
-			if name.lower() == "server":
-				return value
+		if self.server.response_headers:
+			for name, value in self.server.response_headers.items():
+				if name.lower() == "server":
+					return value
 		return super().version_string()
 
-	def end_headers(self) -> None:  # type: ignore[attr-defined]
-		if self.server.response_delay:  # type: ignore[attr-defined]
-			time.sleep(self.server.response_delay)  # type: ignore[attr-defined]
-		for name, value in self.server.response_headers.items():  # type: ignore[attr-defined]
-			if name.lower() == "server":
-				continue
-			value = value.replace("{server_address}", f"{self.server.server_address[0]}:{self.server.server_address[1]}")
-			value = value.replace("{host}", self.headers["Host"])
-			self.send_header(name, value)
+	def end_headers(self) -> None:
+		if self.server.response_delay:
+			time.sleep(self.server.response_delay)
+		if self.server.response_headers:
+			for name, value in self.server.response_headers.items():
+				if name.lower() == "server":
+					continue
+				value = value.replace("{server_address}", f"{self.server.server_address[0]}:{self.server.server_address[1]}")
+				value = value.replace("{host}", self.headers["Host"])
+				self.send_header(name, value)
 		super().end_headers()
 
 	def send_head(self) -> Union[None, BufferedReader, BytesIO]:  # pylint: disable=too-many-branches,too-many-statements
@@ -203,22 +205,22 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			{"method": "POST", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers), "request": log_request}
 		)
 		response = None
-		if self.server.response_body:  # type: ignore[attr-defined]
-			response = self.server.response_body  # type: ignore[attr-defined]
+		if self.server.response_body:
+			response = self.server.response_body
 		elif "json" in self.headers.get("Content-Type", "") or "msgpack" in self.headers.get("Content-Type", ""):
 			response = json.dumps({"id": request["id"], "result": []}).encode("utf-8")
 		else:
 			response = b""
 
-		if self.server.response_status:  # type: ignore[attr-defined]
-			self.send_response(self.server.response_status[0], self.server.response_status[1])  # type: ignore[attr-defined]
+		if self.server.response_status:
+			self.send_response(self.server.response_status[0], self.server.response_status[1])
 		else:
 			self.send_response(200, "OK")
 		self.send_header("Content-Length", str(len(response)))
 		self.send_header("Content-Type", "application/json")
 		self.end_headers()
-		if self.server.send_max_bytes:  # type: ignore[attr-defined]
-			response = response[:self.server.send_max_bytes]  # type: ignore[attr-defined]
+		if self.server.send_max_bytes:
+			response = response[:self.server.send_max_bytes]
 		self.wfile.write(response)
 
 	def do_GET(self) -> None:  # pylint: disable=invalid-name,too-many-branches
@@ -230,7 +232,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self._ws_read_messages()
 			return None
 
-		if self.server.serve_directory:  # type: ignore[attr-defined]
+		if self.server.serve_directory:
 			file = self.send_head()
 			if file:
 				try:
@@ -247,8 +249,8 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 					else:
 						response = file.read()
 
-					if self.server.send_max_bytes:  # type: ignore[attr-defined]
-						response = response[:self.server.send_max_bytes]  # type: ignore[attr-defined]
+					if self.server.send_max_bytes:
+						response = response[:self.server.send_max_bytes]
 					self.wfile.write(response)
 				finally:
 					file.close()
@@ -257,27 +259,27 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		if self.headers["X-Response-Status"]:
 			val = self.headers["X-Response-Status"].split(" ", 1)
 			self.send_response(int(val[0]), val[1])
-		elif self.server.response_status:  # type: ignore[attr-defined]
-			self.send_response(self.server.response_status[0], self.server.response_status[1])  # type: ignore[attr-defined]
+		elif self.server.response_status:
+			self.send_response(self.server.response_status[0], self.server.response_status[1])
 		else:
 			self.send_response(200, "OK")
 
 		response = b""
-		if self.server.response_body:  # type: ignore[attr-defined]
-			response = self.server.response_body  # type: ignore[attr-defined]
+		if self.server.response_body:
+			response = self.server.response_body
 		else:
 			response = "OK".encode("utf-8")
 		self.send_header("Content-Length", str(len(response)))
 		self.end_headers()
-		if self.server.send_max_bytes:  # type: ignore[attr-defined]
-			response = response[:self.server.send_max_bytes]  # type: ignore[attr-defined]
+		if self.server.send_max_bytes:
+			response = response[:self.server.send_max_bytes]
 		self.wfile.write(response)
 		return None
 
 	def do_PUT(self) -> None:  # pylint: disable=invalid-name
 		"""Serve a PUT request."""
 		self._log({"method": "PUT", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
-		if self.server.serve_directory:  # type: ignore[attr-defined]
+		if self.server.serve_directory:
 			path = self.translate_path(self.path)
 			length = int(self.headers["Content-Length"])
 			with open(path, "wb") as file:
@@ -291,7 +293,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 	def do_MKCOL(self) -> None:  # pylint: disable=invalid-name
 		"""Serve a MKCOL request."""
 		self._log({"method": "MKCOL", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
-		if self.server.serve_directory:  # type: ignore[attr-defined]
+		if self.server.serve_directory:
 			path = self.translate_path(self.path)
 			os.makedirs(path)
 			self.send_response(201, "Created")
@@ -303,7 +305,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 	def do_DELETE(self) -> None:  # pylint: disable=invalid-name
 		"""Serve a DELETE request."""
 		self._log({"method": "DELETE", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
-		if self.server.serve_directory:  # type: ignore[attr-defined]
+		if self.server.serve_directory:
 			path = self.translate_path(self.path)
 			if os.path.exists(path):
 				if os.path.isdir(path):
@@ -321,7 +323,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 	def do_HEAD(self) -> None:  # pylint: disable=invalid-name
 		"""Serve a HEAD request."""
 		self._log({"method": "HEAD", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
-		if self.server.serve_directory:  # type: ignore[attr-defined]
+		if self.server.serve_directory:
 			super().do_HEAD()
 		else:
 			self.send_response(200, "OK")
@@ -345,13 +347,13 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self._log(
 			{"method": "websocket", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers), "request": log_message}
 		)
-		if self.server.ws_message_callback:  # type: ignore[attr-defined]
-			self.server.ws_message_callback(self, message)  # type: ignore[attr-defined]
+		if self.server.ws_message_callback:
+			self.server.ws_message_callback(self, message)
 
 	def on_ws_connected(self) -> None:
 		# print("Websocket connected")
-		if self.server.ws_connect_callback:  # type: ignore[attr-defined]
-			self.server.ws_connect_callback(self)  # type: ignore[attr-defined]
+		if self.server.ws_connect_callback:
+			self.server.ws_connect_callback(self)
 
 	def on_ws_closed(self) -> None:
 		# print("Websocket closed")
@@ -362,7 +364,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self.connection.setblocking(False)
 			while self._ws_connected:
 				try:  # pylint: disable=loop-try-except-usage
-					if self.server.stopping:  # type: ignore[attr-defined]
+					if self.server.stopping:
 						return
 					self._ws_read_next_message()
 				except ssl.SSLWantReadError:  # pylint: disable=dotted-import-in-loop
@@ -473,6 +475,53 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self.wfile.write(msg)
 
 
+# Use ThreadingMixIn to handle requests in a separate thread
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):  # pylint: disable=too-many-instance-attributes
+	block_on_close = True
+
+	def __init__(self, test_server: "HTTPTestServer", server_address: Tuple[str, int], address_family: int = socket.AF_INET) -> None:
+		self.address_family = address_family
+		super().__init__(server_address, HTTPTestServerRequestHandler)
+		self.test_server = test_server
+		self.stopping = False
+
+	@property
+	def log_file(self) -> Optional[str]:
+		return self.test_server.log_file
+
+	@property
+	def response_headers(self) -> Optional[Dict[str, str]]:
+		return self.test_server.response_headers
+
+	@property
+	def response_status(self) -> Optional[Tuple[int, str]]:
+		return self.test_server.response_status
+
+	@property
+	def response_body(self) -> Optional[bytes]:
+		return self.test_server.response_body
+
+	@property
+	def response_delay(self) -> Optional[float]:
+		return self.test_server.response_delay
+
+	@property
+	def ws_connect_callback(self) -> Optional[Callable]:
+		return self.test_server.ws_connect_callback
+
+	@property
+	def ws_message_callback(self) -> Optional[Callable]:
+		return self.test_server.ws_message_callback
+
+	@property
+	def serve_directory(self) -> Union[str, Path, None]:
+		return self.test_server.serve_directory
+
+	@property
+	def send_max_bytes(self) -> Optional[int]:
+		return self.test_server.send_max_bytes
+
+
 class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-instance-attributes
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
@@ -510,45 +559,25 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 			sock.bind(("", 0))
 			sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 			self.port = sock.getsockname()[1]
-		self.server: Optional[HTTPServer] = None
 
-	def run(self) -> None:
-		# Use ThreadingMixIn to handle requests in a separate thread
-		class HTTPServer4(ThreadingMixIn, HTTPServer):  # pylint: disable=too-many-instance-attributes
-			address_family = socket.AF_INET
-			block_on_close = True
-
-		class HTTPServer6(ThreadingMixIn, HTTPServer):  # pylint: disable=too-many-instance-attributes
-			address_family = socket.AF_INET6
-			block_on_close = True
-
-		if self.ip_version == 6:
-			self.server = HTTPServer6(("::", self.port), HTTPTestServerRequestHandler)
-		else:
-			self.server = HTTPServer4(("", self.port), HTTPTestServerRequestHandler)
+		self.server = ThreadingHTTPServer(
+			self,
+			("::" if self.ip_version == 6 else "", self.port),
+			socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET
+		)
 		self._init_ssl()
 
-		self.server.log_file = self.log_file  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
-		self.server.response_headers = self.response_headers  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
-		self.server.response_status = self.response_status  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
-		self.server.response_body = self.response_body  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
-		self.server.response_delay = self.response_delay  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
-		self.server.ws_connect_callback = self.ws_connect_callback  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
-		self.server.ws_message_callback = self.ws_message_callback  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
-		self.server.serve_directory = self.serve_directory  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
-		self.server.send_max_bytes = self.send_max_bytes  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
-		self.server.stopping = False  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
+	def run(self) -> None:
 		# print("Server listening on port:" + str(self.port))
 		self.server.serve_forever()
 
 	def set_option(self, name: str, value: Any) -> None:
-		setattr(self.server, name, value)
+		setattr(self, name, value)
 
 	def stop(self) -> None:
 		try:
-			if self.server:
-				self.server.stopping = True  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
-				self.server.shutdown()
+			self.server.stopping = True
+			self.server.shutdown()
 		finally:
 			if self.generate_cert:
 				if self.server_key:
@@ -593,19 +622,16 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 			self.server.socket = context.wrap_socket(sock=self.server.socket, server_side=True)
 
 	def restart(self, downtime: int = 3, new_cert: bool = False) -> None:
-		if not self.server:
-			raise RuntimeError("Server not running")
-
-		self.server.stopping = True  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
+		self.server.stopping = True
 		self.server.server_close()
 
 		time.sleep(downtime)
 
-		self.server.stopping = False  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
+		self.server.stopping = False
 		if self.ip_version == 6:
-			self.server.__init__(("::", self.port), HTTPTestServerRequestHandler)  # type: ignore[misc]  # pylint: disable=unnecessary-dunder-call
+			self.server.__init__(("::", self.port), self)  # type: ignore[misc]  # pylint: disable=unnecessary-dunder-call
 		else:
-			self.server.__init__(("", self.port), HTTPTestServerRequestHandler)  # type: ignore[misc]  # pylint: disable=unnecessary-dunder-call
+			self.server.__init__(("", self.port), self)  # type: ignore[misc]  # pylint: disable=unnecessary-dunder-call
 		self._init_ssl(new_cert=new_cert)
 
 
