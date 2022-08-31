@@ -12,6 +12,7 @@ from pathlib import Path
 from threading import Thread
 from typing import Any, Iterable, List, Optional, Tuple, Union
 from unittest import mock
+from urllib.parse import unquote
 
 import pytest
 
@@ -31,6 +32,11 @@ from opsicommon.client.opsiservice import (
 	ServiceClient,
 	ServiceVerificationModes,
 	WebSocketApp,
+)
+from opsicommon.exceptions import (
+	BackendAuthenticationError,
+	BackendPermissionDeniedError,
+	OpsiRpcError,
 )
 from opsicommon.messagebus import (
 	FileUploadResultMessage,
@@ -163,39 +169,39 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 		response_headers={"server": "opsiconfd 4.2.1.1 (uvicorn)"},
 	) as server:
 		# strict_check
-		with ServiceClient(f"https://localhost:{server.port}", verify="strict_check") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="strict_check") as client:
 			with pytest.raises(OpsiServiceVerificationError):
 				client.connect()
 			with pytest.raises(OpsiServiceVerificationError):
 				client.connect_messagebus()
 
-		with ServiceClient(f"https://localhost:{server.port}", ca_cert_file=ca_cert_file, verify="strict_check") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=ca_cert_file, verify="strict_check") as client:
 			client.connect()
 			client.connect_messagebus()
 
-		with ServiceClient(f"https://localhost:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="strict_check") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="strict_check") as client:
 			with pytest.raises(OpsiServiceVerificationError):
 				client.connect()
 
 		# accept_all
-		with ServiceClient(f"https://localhost:{server.port}", ca_cert_file=None, verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=None, verify="accept_all") as client:
 			client.connect()
 
-		with ServiceClient(f"https://localhost:{server.port}", ca_cert_file=ca_cert_file, verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=ca_cert_file, verify="accept_all") as client:
 			client.connect()
 
-		with ServiceClient(f"https://localhost:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="accept_all") as client:
 			client.connect()
 
 		assert not opsi_ca_file_on_client.exists()
 
 		# fetch_ca
-		with ServiceClient(f"https://localhost:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca") as client:
 			client.connect()
 		assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert)
 
 		opsi_ca_file_on_client.write_text(as_pem(other_ca_cert), encoding="utf-8")
-		with ServiceClient(f"https://localhost:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca") as client:
 			with pytest.raises(OpsiServiceVerificationError):
 				client.connect()
 
@@ -206,14 +212,32 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 			assert client.get("/")[0] == 200
 
 		# fetch_ca_trust_uib
-		with ServiceClient(f"https://localhost:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca_trust_uib") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca_trust_uib") as client:
 			client.connect()
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + "\n" + UIB_OPSI_CA
 
 		opsi_ca_file_on_client.write_text("", encoding="utf-8")
-		with ServiceClient(f"https://localhost:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca_trust_uib") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca_trust_uib") as client:
 			client.connect()
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + "\n" + UIB_OPSI_CA
+
+
+def test_cookie_handling(tmp_path: Path) -> None:
+	session_cookie = "COOKIE-NAME=abc"
+	with http_test_server(generate_cert=True, response_headers={"Set-Cookie": f"{session_cookie}; SameSite=Lax"}) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.get("/")
+			assert client.session_cookie == session_cookie
+
+	log_file = tmp_path / "request.log"
+	session_cookie = "COOKIE-NAME=üöä"
+	with http_test_server(generate_cert=True, log_file=log_file) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", session_cookie=session_cookie) as client:
+			client.get("/")
+			assert client.session_cookie == session_cookie
+		for line in log_file.read_text(encoding="utf-8").strip().split("\n"):
+			request = json.loads(line)  # pylint: disable=dotted-import-in-loop
+			assert unquote(request["headers"].get("Cookie")) == session_cookie
 
 
 def test_proxy(tmp_path: Path) -> None:
@@ -323,7 +347,7 @@ def test_server_name_handling(  # pylint: disable=too-many-arguments
 	log_file = tmp_path / f"{server_name}.log"
 	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"Server": server_name}) as server:
 		server_version = None
-		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			client.connect()
 			assert client.server_name == server_name
 			# print(server_name, client.server_version, client.server_version.release, expected_version)
@@ -357,20 +381,20 @@ def test_server_name_handling(  # pylint: disable=too-many-arguments
 
 def test_connect_disconnect() -> None:
 	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
-		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			assert not client.messagebus_available
 			assert client.connected
 			with pytest.raises(RuntimeError):
 				client.connect_messagebus()
 
-		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			with pytest.raises(RuntimeError):
 				client.connect_messagebus()
 			assert client.connected
 			assert not client.messagebus_available
 
 	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}) as server:
-		client = ServiceClient(f"https://localhost:{server.port}", verify="accept_all")
+		client = ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all")
 		client.connect()
 		assert client.connected is True
 		assert client.server_name == "opsiconfd 4.2.1.0 (uvicorn)"
@@ -432,7 +456,7 @@ def test_messagebus_reconnect() -> None:
 		generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
 	) as server:
 		with mock.patch("opsicommon.client.opsiservice.Messagebus._reconnect", 5):
-			with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 				listener = MBListener()
 
 				with listener.register(client.messagebus):
@@ -463,7 +487,7 @@ def test_get() -> None:
 	with http_test_server(
 		generate_cert=True, response_status=(202, "status"), response_headers={"x-1": "1", "x-2": "2"}, response_body=response_body
 	) as server:
-		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			threads = [ReqThread(client) for _ in range(10)]
 			for thread in threads:
 				thread.start()
@@ -480,11 +504,11 @@ def test_get() -> None:
 
 def test_timeouts() -> None:
 	with http_test_server(generate_cert=True, response_delay=3) as server:
-		with ServiceClient(f"https://localhost:{server.port+1}", connect_timeout=4) as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port+1}", connect_timeout=4) as client:
 			with pytest.raises(OpsiConnectionError):
 				client.connect()
 
-		with ServiceClient(f"https://localhost:{server.port}", connect_timeout=4, verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", connect_timeout=4, verify="accept_all") as client:
 			client.connect()
 			start = time.time()
 			with pytest.raises(OpsiTimeoutError):
@@ -509,13 +533,13 @@ def test_messagebus_ping() -> None:
 			generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
 		) as server:
 			# Test original _on_pong method
-			with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 				client.connect_messagebus()
 				time.sleep(3)
 
 			# Override _on_pong method and count pongs
 			with mock.patch("opsicommon.client.opsiservice.Messagebus._on_pong", _on_pong):
-				with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+				with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 					client.connect_messagebus()
 					time.sleep(5)
 					assert pong_count >= 3
@@ -524,7 +548,7 @@ def test_messagebus_ping() -> None:
 def test_jsonrpc(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.0.0 (uvicorn)"}) as server:
-		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			params: List[Union[Tuple[Any, ...], List[Any], None]] = [
 				[1],
 				(1, 2),
@@ -553,6 +577,46 @@ def test_jsonrpc(tmp_path: Path) -> None:
 				assert reqs[idx + 1]["request"]["params"] == list(params[idx] or [])
 
 
+def test_jsonrpc_error_handling() -> None:
+	with http_test_server(generate_cert=True) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.connect()
+			server.response_status = (500, "internal server error")
+			with pytest.raises(OpsiRpcError):
+				client.jsonrpc("method")
+			assert client.jsonrpc("method", full_response=True) == {"123"}
+
+	with http_test_server(generate_cert=True) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.connect()
+			server.response_status = (401, "auth error")
+			with pytest.raises(BackendAuthenticationError):
+				client.jsonrpc("method")
+
+	with http_test_server(generate_cert=True) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.connect()
+			server.response_status = (403, "permission denied")
+			with pytest.raises(BackendPermissionDeniedError):
+				client.jsonrpc("method")
+
+	with http_test_server(generate_cert=True) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.connect()
+			server.response_body = json.dumps({"error": {"message": "err_msg"}}).encode("utf-8")
+			with pytest.raises(OpsiRpcError) as err:
+				client.jsonrpc("method")
+		assert err.value.message == "err_msg"
+
+	with http_test_server(generate_cert=True) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.connect()
+			server.response_body = json.dumps({"error": {"message": "err_msg2"}}).encode("utf-8")
+			with pytest.raises(OpsiRpcError) as err:
+				client.jsonrpc("method")
+		assert err.value.message == "err_msg2"
+
+
 def test_messagebus_jsonrpc() -> None:
 	delay = 0.0
 
@@ -567,7 +631,7 @@ def test_messagebus_jsonrpc() -> None:
 	with http_test_server(
 		generate_cert=True, ws_message_callback=ws_message_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
 	) as server:
-		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			messagebus = client.connect_messagebus()
 			params: List[Union[Tuple[Any, ...], List[Any], None]] = [
 				[1],
@@ -612,7 +676,7 @@ def test_messagebus_multi_thread() -> None:
 	with http_test_server(
 		generate_cert=True, ws_message_callback=ws_message_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
 	) as server:
-		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			threads = [ReqThread(client) for _ in range(10)]
 			for thread in threads:
 				thread.start()
@@ -698,7 +762,7 @@ def test_messagebus_listener() -> None:
 	with http_test_server(
 		generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
 	) as server:
-		with ServiceClient(f"https://localhost:{server.port}", verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			with (
 				listener1.register(client.messagebus),
 				listener2.register(client.messagebus),
