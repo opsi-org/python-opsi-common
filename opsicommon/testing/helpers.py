@@ -582,7 +582,6 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		while True:
 			self._restart_server = False
 			if self.generate_cert:  # pylint: disable=dotted-import-in-loop
-				# This can take very long!
 				self._generate_cert()
 			self.server = ThreadingHTTPServer(
 				self,
@@ -594,7 +593,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 			with_retry(self.server.serve_forever)
 			if not self._restart_server:
 				break
-			# print(f"Server restarting")
+			# print("Server restarting")
 
 	def set_option(self, name: str, value: Any) -> None:
 		setattr(self, name, value)
@@ -603,14 +602,16 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		if self.server_key and os.path.exists(self.server_key) and self.server_cert and os.path.exists(self.server_cert):
 			return
 
-		ca_cert, ca_key = create_ca({"CN": "http_test_server ca"}, 3)
+		# Use 2048 bits for speedup
+		ca_cert, ca_key = create_ca({"CN": "http_test_server ca"}, 3, bits=2048)
 		kwargs = {
 			"subject": {"CN": "http_test_server server cert"},
 			"valid_days": 3,
 			"ip_addresses": {"172.0.0.1", "::1"},
 			"hostnames": {"localhost", "ip6-localhost"},
 			"ca_key": ca_key,
-			"ca_cert": ca_cert
+			"ca_cert": ca_cert,
+			"bits": 2048
 		}
 		cert, key = create_server_cert(**kwargs)
 
@@ -640,9 +641,9 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 	def stop(self, cleanup_cert: bool = True) -> None:
 		try:
 			if self.server:
-				self.server.socket.close()
 				self.server.stopping = True
 				self.server.shutdown()
+				self.server.socket.close()
 				for thread in self.server._threads:  # type: ignore[attr-defined]  # pylint: disable=protected-access, not-an-iterable
 					thread.join(3)
 		finally:

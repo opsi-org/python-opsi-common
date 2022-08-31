@@ -460,15 +460,13 @@ def test_messagebus_reconnect() -> None:
 			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 				listener = MBListener()
 
-				expected_messages = 3
 				with listener.register(client.messagebus):
 					client.connect_messagebus()
 					time.sleep(3)
-					if platform.system().lower() == "linux":  # Restart only works reliably under Linux
-						expected_messages = 6
-						server.restart(new_cert=True)
-						time.sleep(10)
+					server.restart(new_cert=True)
+					time.sleep(10)
 
+				expected_messages = 6
 				assert len(listener.messages) == expected_messages
 				rpc_ids = sorted([int(m.rpc_id) for m in listener.messages])  # type: ignore[attr-defined]
 				assert rpc_ids[:6] == list(range(1, expected_messages + 1))
@@ -567,8 +565,7 @@ def test_jsonrpc(tmp_path: Path) -> None:
 			for _params in params:
 				client.jsonrpc("method", params=_params)  # pylint: disable=loop-invariant-statement
 
-			if platform.system().lower() == "linux":  # Restart only works reliably under Linux
-				server.restart(new_cert=True)
+			server.restart(new_cert=True)
 
 			client.jsonrpc("reconnect")
 

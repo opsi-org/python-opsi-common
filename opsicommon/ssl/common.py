@@ -29,7 +29,7 @@ SERVER_KEY_BITS = 4096
 logger = get_logger("opsicommon.general")
 
 
-def as_pem(cert_or_key: Union[X509, PKey], passphrase=None):
+def as_pem(cert_or_key: Union[X509, PKey], passphrase: str = None) -> str:
 	if isinstance(cert_or_key, X509):
 		return dump_certificate(FILETYPE_PEM, cert_or_key).decode("ascii")
 	if isinstance(cert_or_key, PKey):
@@ -91,7 +91,7 @@ def create_ca(subject: dict, valid_days: int, key: PKey = None, bits: int = CA_K
 	return (ca_cert, key)
 
 
-def create_server_cert(  # pylint: disable=too-many-arguments
+def create_server_cert(  # pylint: disable=too-many-arguments,too-many-locals
 	subject: dict,
 	valid_days: int,
 	ip_addresses: set,
