@@ -474,6 +474,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		ip_version: str = None,
 		server_key: str = None,
 		server_cert: str = None,
+		generate_cert: bool = False,
 		response_headers: Dict[str, str] = None,
 		response_status: Tuple[int, str] = None,
 		response_body: bytes = None,
@@ -488,6 +489,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		self.ip_version = 6 if ip_version == 6 else 4
 		self.server_key = server_key if server_key else None
 		self.server_cert = server_cert if server_cert else None
+		self.generate_cert = generate_cert
 		self.response_headers = response_headers if response_headers else {}
 		self.response_status = response_status if response_status else None
 		self.response_body = response_body if response_body else None
@@ -515,11 +517,8 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 			self.server = HTTPServer6(("::", self.port), HTTPTestServerRequestHandler)
 		else:
 			self.server = HTTPServer4(("", self.port), HTTPTestServerRequestHandler)
+		self._init_ssl()
 
-		if self.server_key and self.server_cert:
-			context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-			context.load_cert_chain(keyfile=self.server_key, certfile=self.server_cert)
-			self.server.socket = context.wrap_socket(sock=self.server.socket, server_side=True)
 		self.server.log_file = self.log_file  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
 		self.server.response_headers = self.response_headers  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
 		self.server.response_status = self.response_status  # type: ignore[attr-defined]  # pylint: disable=attribute-defined-outside-init
@@ -536,8 +535,64 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		setattr(self.server, name, value)
 
 	def stop(self) -> None:
-		if self.server:
-			self.server.shutdown()
+		try:
+			if self.server:
+				self.server.shutdown()
+		finally:
+			if self.generate_cert:
+				if self.server_key:
+					os.unlink(self.server_key)
+				if self.server_cert:
+					os.unlink(self.server_cert)
+
+	def _init_ssl(self, new_cert: bool = False) -> None:
+		if (
+			self.generate_cert and (  # pylint: disable=too-many-boolean-expressions
+				not self.server_key or
+				not os.path.exists(self.server_key) or
+				not self.server_cert or
+				not os.path.exists(self.server_cert) or
+				new_cert
+			)
+		):
+			ca_cert, ca_key = create_ca({"CN": "http_test_server ca"}, 3)
+			kwargs = {
+				"subject": {"CN": "http_test_server server cert"},
+				"valid_days": 3,
+				"ip_addresses": {"172.0.0.1", "::1"},
+				"hostnames": {"localhost", "ip6-localhost"},
+				"ca_key": ca_key,
+				"ca_cert": ca_cert
+			}
+			cert, key = create_server_cert(**kwargs)
+
+			tmp = NamedTemporaryFile(delete=False)  # pylint: disable=consider-using-with
+			tmp.write(as_pem(key).encode("utf-8"))
+			tmp.close()
+			self.server_key = tmp.name
+
+			tmp = NamedTemporaryFile(delete=False)  # pylint: disable=consider-using-with
+			tmp.write(as_pem(cert).encode("utf-8"))
+			tmp.close()
+			self.server_cert = tmp.name
+
+		if self.server and self.server_key and self.server_cert:
+			context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+			context.load_cert_chain(keyfile=self.server_key, certfile=self.server_cert)
+			self.server.socket = context.wrap_socket(sock=self.server.socket, server_side=True)
+
+	def restart(self, downtime: int = 3, new_cert: bool = False) -> None:
+		if not self.server:
+			raise RuntimeError("Server not running")
+
+		self.server.server_close()
+		time.sleep(downtime)
+
+		if self.ip_version == 6:
+			self.server.__init__(("::", self.port), HTTPTestServerRequestHandler)  # type: ignore[misc]  # pylint: disable=unnecessary-dunder-call
+		else:
+			self.server.__init__(("", self.port), HTTPTestServerRequestHandler)  # type: ignore[misc]  # pylint: disable=unnecessary-dunder-call
+		self._init_ssl(new_cert=new_cert)
 
 
 @contextmanager
@@ -557,70 +612,42 @@ def http_test_server(  # pylint: disable=too-many-arguments,too-many-locals
 	serve_directory: Union[str, Path] = None,
 	send_max_bytes: int = None
 ) -> Generator[HTTPTestServer, None, None]:
-	if generate_cert:
-		ca_cert, ca_key = create_ca({"CN": "http_test_server ca"}, 3)
-		kwargs = {
-			"subject": {"CN": "http_test_server server cert"},
-			"valid_days": 3,
-			"ip_addresses": {"172.0.0.1", "::1"},
-			"hostnames": {"localhost", "ip6-localhost"},
-			"ca_key": ca_key,
-			"ca_cert": ca_cert
-		}
-		cert, key = create_server_cert(**kwargs)
+	timeout = 5
+	server = HTTPTestServer(
+		log_file=log_file,
+		ip_version=ip_version,
+		server_key=server_key,
+		server_cert=server_cert,
+		generate_cert=generate_cert,
+		response_headers=response_headers,
+		response_status=response_status,
+		response_body=response_body,
+		response_delay=response_delay,
+		ws_connect_callback=ws_connect_callback,
+		ws_message_callback=ws_message_callback,
+		serve_directory=serve_directory,
+		send_max_bytes=send_max_bytes
+	)
+	server.daemon = True
+	server.start()
 
-		tmp = NamedTemporaryFile(delete=False)
-		tmp.write(as_pem(key).encode("utf-8"))
-		tmp.close()
-		server_key = tmp.name
+	running = False
+	start = time.time()
+	sock_type = socket.AF_INET6 if ip_version == 6 else socket.AF_INET
+	while time.time() - start < timeout:  # pylint: disable=dotted-import-in-loop
+		with closing(socket.socket(sock_type, socket.SOCK_STREAM)) as sock:  # pylint: disable=dotted-import-in-loop
+			sock.settimeout(1)
+			res = sock.connect_ex(("::1" if ip_version == 6 else "127.0.0.1", server.port))  # pylint: disable=loop-invariant-statement
+			if res == 0:
+				running = True
+				break
 
-		tmp = NamedTemporaryFile(delete=False)
-		tmp.write(as_pem(cert).encode("utf-8"))
-		tmp.close()
-		server_cert = tmp.name
-
+	if not running:
+		raise RuntimeError("Failed to start HTTPTestServer")
 	try:
-		timeout = 5
-		server = HTTPTestServer(
-			log_file=log_file,
-			ip_version=ip_version,
-			server_key=server_key,
-			server_cert=server_cert,
-			response_headers=response_headers,
-			response_status=response_status,
-			response_body=response_body,
-			response_delay=response_delay,
-			ws_connect_callback=ws_connect_callback,
-			ws_message_callback=ws_message_callback,
-			serve_directory=serve_directory,
-			send_max_bytes=send_max_bytes
-		)
-		server.daemon = True
-		server.start()
-
-		running = False
-		start = time.time()
-		sock_type = socket.AF_INET6 if ip_version == 6 else socket.AF_INET
-		while time.time() - start < timeout:  # pylint: disable=dotted-import-in-loop
-			with closing(socket.socket(sock_type, socket.SOCK_STREAM)) as sock:  # pylint: disable=dotted-import-in-loop
-				sock.settimeout(1)
-				res = sock.connect_ex(("::1" if ip_version == 6 else "127.0.0.1", server.port))  # pylint: disable=loop-invariant-statement
-				if res == 0:
-					running = True
-					break
-
-		if not running:
-			raise RuntimeError("Failed to start HTTPTestServer")
-		try:
-			yield server
-		finally:
-			server.stop()
+		yield server
 	finally:
-		if generate_cert:
-			if server_key:
-				os.unlink(server_key)
-			if server_cert:
-				os.unlink(server_cert)
+		server.stop()
 
 
 @contextmanager
@@ -632,10 +659,3 @@ def environment(env_vars: Dict[str, str]) -> Generator[Dict[str, str], None, Non
 	finally:
 		os.environ.clear()
 		os.environ.update(old_environ)
-
-
-if __name__ == "__main__":
-	with http_test_server(generate_cert=True) as test_server:
-		print(test_server.port)
-		while True:
-			time.sleep(1)  # pylint: disable=dotted-import-in-loop
