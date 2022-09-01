@@ -8,6 +8,7 @@ This file is part of opsi - https://www.opsi.org
 
 import os
 import subprocess
+from typing import Tuple
 
 import distro
 from OpenSSL import crypto  # type: ignore[import]
@@ -20,7 +21,7 @@ __all__ = ("install_ca", "load_ca", "remove_ca")
 logger = get_logger("opsicommon.general")
 
 
-def _get_cert_path_and_cmd():
+def _get_cert_path_and_cmd() -> Tuple[str, str]:
 	dist = {distro.id()}
 	for name in (distro.like() or "").split(" "):  # pylint: disable=dotted-import-in-loop
 		if name:
@@ -37,7 +38,7 @@ def _get_cert_path_and_cmd():
 	raise RuntimeError(f"Failed to set system cert path on distro '{distro.id()}', like: {distro.like()}")
 
 
-def install_ca(ca_cert: crypto.X509):
+def install_ca(ca_cert: crypto.X509) -> None:
 	system_cert_path, cmd = _get_cert_path_and_cmd()
 
 	logger.info("Installing CA '%s' into system store", ca_cert.get_subject().CN)

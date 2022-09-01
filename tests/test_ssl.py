@@ -9,6 +9,8 @@ This file is part of opsi - https://www.opsi.org
 import ipaddress
 import platform
 import subprocess
+from pathlib import Path
+from typing import Optional, Type
 from unittest import mock
 
 import pytest
@@ -38,7 +40,9 @@ from opsicommon.testing.helpers import http_test_server  # type: ignore[import]
 	("", "", "", "", RuntimeError),
 	(None, None, "", "", RuntimeError)
 ))
-def test_get_cert_path_and_cmd(distro_id, distro_like, expected_path, expected_cmd, exc):
+def test_get_cert_path_and_cmd(
+	distro_id: str, distro_like: str, expected_path: str, expected_cmd: str, exc: Optional[Type[Exception]]
+) -> None:
 	from opsicommon.ssl.linux import (  # pylint: disable=import-outside-toplevel
 		_get_cert_path_and_cmd,
 	)
@@ -51,14 +55,14 @@ def test_get_cert_path_and_cmd(distro_id, distro_like, expected_path, expected_c
 			assert _get_cert_path_and_cmd() == (expected_path, expected_cmd)
 
 
-def test_create_x590_name():
+def test_create_x590_name() -> None:
 	subject = {"emailAddress": "test@test.de"}
 	x590_name = create_x590_name(subject)
 	assert x590_name.emailAddress == subject["emailAddress"]
 	assert x590_name.CN == "opsi"
 
 
-def test_create_ca():
+def test_create_ca() -> None:
 	subject = {
 		"CN": "opsi CA",
 		"OU": "opsi",
@@ -76,7 +80,7 @@ def test_create_ca():
 		create_ca(subject, 100)
 
 
-def test_create_server_cert():
+def test_create_server_cert() -> None:
 	subject = {
 		"CN": "opsi CA",
 		"OU": "opsi",
@@ -112,15 +116,15 @@ def test_create_server_cert():
 					cert_hns.add(alt_name.split(":", 1)[-1].strip())
 				elif alt_name.startswith(("IP:", "IP Address:")):
 					addr = alt_name.split(":", 1)[-1].strip()
-					addr = ipaddress.ip_address(addr)  # pylint: disable=dotted-import-in-loop
-					cert_ips.add(addr.compressed)
+					ip_addr = ipaddress.ip_address(addr)  # pylint: disable=dotted-import-in-loop
+					cert_ips.add(ip_addr.compressed)
 			break
 
 	assert cert_hns == kwargs["hostnames"]
 	assert cert_ips == kwargs["ip_addresses"]
 
 
-def test_as_pem():
+def test_as_pem() -> None:
 	subject = {
 		"CN": "opsi CA",
 		"OU": "opsi",
@@ -138,7 +142,7 @@ def test_as_pem():
 
 
 @pytest.mark.admin_permissions
-def test_install_load_remove_ca():
+def test_install_load_remove_ca() -> None:
 	subject_name = "python-opsi-common test ca"
 	ca_cert, _ca_key = create_ca({"CN": subject_name}, 3)
 	install_ca(ca_cert)
@@ -158,7 +162,7 @@ def test_install_load_remove_ca():
 @pytest.mark.linux
 @pytest.mark.windows
 @pytest.mark.admin_permissions
-def test_wget(tmpdir):  # pylint: disable=redefined-outer-name, unused-argument
+def test_wget(tmp_path: Path) -> None:  # pylint: disable=redefined-outer-name, unused-argument
 	ca_cert, ca_key = create_ca({"CN": "python-opsi-common test ca"}, 3)
 	kwargs = {
 		"subject": {"CN": "python-opsi-common test server cert"},
@@ -170,8 +174,8 @@ def test_wget(tmpdir):  # pylint: disable=redefined-outer-name, unused-argument
 	}
 	cert, key = create_server_cert(**kwargs)
 
-	server_cert = tmpdir / "server_cert.pem"
-	server_key = tmpdir / "server_key.pem"
+	server_cert = tmp_path / "server_cert.pem"
+	server_key = tmp_path / "server_key.pem"
 	server_cert.write_text(as_pem(cert), encoding="utf-8")
 	server_key.write_text(as_pem(key), encoding="utf-8")
 

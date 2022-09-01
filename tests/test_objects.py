@@ -8,11 +8,13 @@ test_objects
 
 import json
 from contextlib import contextmanager
+from typing import Any, Dict, Generator, Optional, Type
 from unittest import mock
 
 import pytest
 
 from opsicommon.objects import (
+	Entity,
 	decode_ident,
 	get_backend_method_prefix,
 	get_foreign_id_attributes,
@@ -29,6 +31,7 @@ from opsicommon.objects import (  # pylint: disable=wrong-import-position,unused
 	AuditSoftware,
 	AuditSoftwareOnClient,
 	AuditSoftwareToLicensePool,
+	BaseObject,
 	BoolConfig,
 	BoolProductProperty,
 	ConcurrentSoftwareLicense,
@@ -68,12 +71,12 @@ object_classes = [
 
 
 @contextmanager
-def empty_mandatory_constructor_args_cache():
+def empty_mandatory_constructor_args_cache() -> Generator[None, None, None]:
 	with mock.patch('opsicommon.objects._MANDATORY_CONSTRUCTOR_ARGS_CACHE', {}):
 		yield
 
 
-def test_object_classes():
+def test_object_classes() -> None:
 	objs = (
 		Host(
 			"test.dom.tld", "desc", "notes", "00:01:02:03:04:05", "172.16.1.1", "inv001"
@@ -122,7 +125,7 @@ def test_object_classes():
 			"product1", "1.0", "1", "prop_id", "desc", ["a", "b"], ["a"], True, True
 		),
 		UnicodeProductProperty(
-			"product1", "1.0", "1", "unicode_prop_id", ["a2", "b2"], ["a2"], True, True
+			"product1", "1.0", "1", "unicode_prop_id", "desc", ["a2", "b2"], ["a2"], True, True
 		),
 		BoolProductProperty(
 			"product1", "1.0", "1", "bool_prop_id", "desc", [True]
@@ -217,21 +220,27 @@ def test_object_classes():
 			if value is not None:
 				setter(value)
 
-		for key in dir(obj.__class__):
-			if isinstance(getattr(obj.__class__, key), property):
+		# type: ignore[assignment]
+		if not isinstance(obj, Entity):
+			raise ValueError("wrong type")  # pylint: disable=loop-invariant-statement
+
+		_class = obj.__class__
+
+		for key in dir(_class):
+			if isinstance(getattr(_class, key), property):
 				assert getattr(obj, key)
 
-		obj.__class__.fromHash(_dict)
+		_class.fromHash(_dict)
 		del _dict["type"]
-		assert isinstance(obj.__class__.fromHash(_dict), obj.__class__)
-		assert isinstance(obj.__class__.from_json(json.dumps(_dict)), obj.__class__)  # pylint: disable=dotted-import-in-loop
+		assert isinstance(_class.fromHash(_dict), _class)
+		assert isinstance(_class.from_json(json.dumps(_dict)), _class)  # pylint: disable=dotted-import-in-loop
 
 		obj.update(obj.clone())
 		obj.emptyValues()
 		obj.setDefaults()
 
 
-def test_get_possible_class_attributes():
+def test_get_possible_class_attributes() -> None:
 	assert get_possible_class_attributes(Host) == set([
 		'masterDepotId', 'depotLocalUrl', 'repositoryRemoteUrl',
 		'description', 'created', 'inventoryNumber', 'notes',
@@ -242,20 +251,20 @@ def test_get_possible_class_attributes():
 		'workbenchRemoteUrl', 'workbenchLocalUrl'
 	])
 
-	class Test():  # pylint: disable=too-few-public-methods
-		sub_classes = {}
+	class Test(Entity):  # pylint: disable=too-few-public-methods
+		sub_classes: Dict[str, type] = {}
 
-		def __init__(no_self, arg):  # pylint: disable=unused-argument,no-self-argument
+		def __init__(no_self: Any, arg: Any) -> None:  # pylint: disable=unused-argument,no-self-argument
 			pass
 
 	assert get_possible_class_attributes(Test) == set(["no_self", "arg", "type"])
 
 
-def test_get_foreign_id_attributes():
+def test_get_foreign_id_attributes() -> None:
 	assert get_foreign_id_attributes(Host) == ['objectId', 'hostId']
 
 
-def test_get_backend_method_prefix():
+def test_get_backend_method_prefix() -> None:
 	assert get_backend_method_prefix(Host) == 'host'
 
 
@@ -285,7 +294,7 @@ def test_get_backend_method_prefix():
 		ValueError
 	)
 ))
-def test_decode_ident(cls, value, expected, exc):
+def test_decode_ident(cls: Type, value: dict, expected: Optional[dict], exc: Optional[Type[Exception]]) -> None:
 	if exc:
 		with pytest.raises(exc):
 			decode_ident(cls, value)
@@ -295,36 +304,36 @@ def test_decode_ident(cls, value, expected, exc):
 		assert result == expected
 
 
-CONFIG_SERVER1 = {
-	"id": 'configserver1.test.invalid',
-	"opsiHostKey": '71234545689056789012123678901234',
-	"depotLocalUrl": 'file:///var/lib/opsi/depot',
-	"depotRemoteUrl": 'smb://configserver1/opsi_depot',
-	"repositoryLocalUrl": 'file:///var/lib/opsi/repository',
-	"repositoryRemoteUrl": 'webdavs://configserver1:4447/repository',
-	"description": 'The configserver',
-	"notes": 'Config 1',
-	"hardwareAddress": None,
-	"ipAddress": None,
-	"inventoryNumber": '00000000001',
-	"networkAddress": '192.168.1.0/24',
-	"maxBandwidth": 10000
-}
+CONFIG_SERVER1 = vars(OpsiConfigserver(
+	id='configserver1.test.invalid',
+	opsiHostKey='71234545689056789012123678901234',
+	depotLocalUrl='file:///var/lib/opsi/depot',
+	depotRemoteUrl='smb://configserver1/opsi_depot',
+	repositoryLocalUrl='file:///var/lib/opsi/repository',
+	repositoryRemoteUrl='webdavs://configserver1:4447/repository',
+	description='The configserver',
+	notes='Config 1',
+	hardwareAddress=None,
+	ipAddress=None,
+	inventoryNumber='00000000001',
+	networkAddress='192.168.1.0/24',
+	maxBandwidth=10000
+))
 
 
-def test_object_hash():
+def test_object_hash() -> None:
 	config_server1 = OpsiConfigserver(**CONFIG_SERVER1)
 	config_server2 = OpsiConfigserver(**CONFIG_SERVER1)
 	assert hash(config_server1) == hash(config_server2)
 
 
-def test_object_to_str():
+def test_object_to_str() -> None:
 	config_server1 = OpsiConfigserver(**CONFIG_SERVER1)
 	_str = str(config_server1)
 	assert _str.startswith("<OpsiConfigserver")
 
 
-def test_objects_differ():
+def test_objects_differ() -> None:
 	config_server1 = OpsiConfigserver(**CONFIG_SERVER1)
 	config_server2 = OpsiConfigserver(**CONFIG_SERVER1)
 	assert not objects_differ(config_server1, config_server2)
@@ -335,69 +344,69 @@ def test_objects_differ():
 	assert objects_differ(config_server1, config_server2)
 	assert not objects_differ(config_server1, config_server2, exclude_attributes=["description"])
 
-	config_server2.description = 123
+	config_server2.description = 123  # type: ignore[assignment]
 	assert objects_differ(config_server1, config_server2)
 
-	config_server1.description = {"test": 1}
-	config_server2.description = {"test": 1, "test2": 2}
+	config_server1.description = {"test": 1}  # type: ignore[assignment]
+	config_server2.description = {"test": 1, "test2": 2}  # type: ignore[assignment]
 	assert objects_differ(config_server1, config_server2)
 
-	config_server1.description = {"test": 1}
-	config_server2.description = {"test": 2}
+	config_server1.description = {"test": 1}  # type: ignore[assignment]
+	config_server2.description = {"test": 2}  # type: ignore[assignment]
 	assert objects_differ(config_server1, config_server2)
 
-	config_server1.description = ["test"]
-	config_server2.description = ["test", "test2"]
+	config_server1.description = ["test"]  # type: ignore[assignment]
+	config_server2.description = ["test", "test2"]  # type: ignore[assignment]
 	assert objects_differ(config_server1, config_server2)
 
-	config_server1.description = ["test", "test1"]
-	config_server2.description = ["test", "test2"]
+	config_server1.description = ["test", "test1"]  # type: ignore[assignment]
+	config_server2.description = ["test", "test2"]  # type: ignore[assignment]
 	assert objects_differ(config_server1, config_server2)
 
-	config_server1.description = ["test", "test2"]
-	config_server2.description = ["test", "test2", "test3"]
+	config_server1.description = ["test", "test2"]  # type: ignore[assignment]
+	config_server2.description = ["test", "test2", "test3"]  # type: ignore[assignment]
 	assert objects_differ(config_server1, config_server2)
 
 
-def test_comparing_config_server_to_other_object_with_same_settings():
+def test_comparing_config_server_to_other_object_with_same_settings() -> None:
 	config_server1 = OpsiConfigserver(**CONFIG_SERVER1)
 	config_server2 = OpsiConfigserver(**CONFIG_SERVER1)
 	assert config_server1 == config_server2
 
 
-def test_comparing_configserver_to_depotserver_fails():
+def test_comparing_configserver_to_depotserver_fails() -> None:
 	assert OpsiConfigserver(**CONFIG_SERVER1) != OpsiDepotserver(**CONFIG_SERVER1)
 
 
-def test_comparing_config_server_to_some_dict_fails():
+def test_comparing_config_server_to_some_dict_fails() -> None:
 	assert OpsiConfigserver(**CONFIG_SERVER1) != {"test": 123}
 
 
-PRODUCT1 = {
-	"id": 'product2',
-	"name": 'Product 2',
-	"productVersion": '2.0',
-	"packageVersion": 'test',
-	"licenseRequired": False,
-	"setupScript": "setup.ins",
-	"uninstallScript": "uninstall.ins",
-	"updateScript": "update.ins",
-	"alwaysScript": None,
-	"onceScript": None,
-	"priority": 0,
-	"description": None,
-	"advice": "",
-	"productClassIds": ['localboot-products'],
-	"windowsSoftwareIds": ['{98723-7898adf2-287aab}', 'xxxxxxxx']
-}
+PRODUCT2 = vars(LocalbootProduct(
+	id='product2',
+	name='Product 2',
+	productVersion='2.0',
+	packageVersion='test',
+	licenseRequired=False,
+	setupScript="setup.ins",
+	uninstallScript="uninstall.ins",
+	updateScript="update.ins",
+	alwaysScript=None,
+	onceScript=None,
+	priority=0,
+	description=None,
+	advice="",
+	productClassIds=['localboot-products'],
+	windowsSoftwareIds=['{98723-7898adf2-287aab}', 'xxxxxxxx']
+))
 
 
-def test_comparing_two_localboot_products_with_same_settings():
-	assert LocalbootProduct(**PRODUCT1) == LocalbootProduct(**PRODUCT1)
+def test_comparing_two_localboot_products_with_same_settings() -> None:
+	assert LocalbootProduct(**PRODUCT2) == LocalbootProduct(**PRODUCT2)
 
 
-def test_object_empty_values():
-	product = LocalbootProduct(**PRODUCT1)
+def test_object_empty_values() -> None:
+	product = LocalbootProduct(**PRODUCT2)
 	product.emptyValues()
 	mand = mandatory_constructor_args(LocalbootProduct)
 	mand.append("type")
@@ -406,9 +415,9 @@ def test_object_empty_values():
 			assert val is None
 
 
-def test_object_update():
-	product1 = LocalbootProduct(**PRODUCT1)
-	product2 = LocalbootProduct(**PRODUCT1)
+def test_object_update() -> None:
+	product1 = LocalbootProduct(**PRODUCT2)
+	product2 = LocalbootProduct(**PRODUCT2)
 	product2.setDescription("NEW DESCRIPTION")
 	product2.setAdvice("NEW ADVICE")
 
@@ -427,9 +436,9 @@ def test_object_update():
 	assert product1.description is None
 
 
-def test_from_hash():
-	product1 = LocalbootProduct(**PRODUCT1)
-	_hash = PRODUCT1.copy()
+def test_from_hash() -> None:
+	product1 = LocalbootProduct(**PRODUCT2)
+	_hash = PRODUCT2.copy()
 	product2 = LocalbootProduct.fromHash(_hash)
 	assert not objects_differ(product1, product2)
 
@@ -442,8 +451,8 @@ def test_from_hash():
 	assert "Missing required argument(s): 'productVersion', 'packageVersion'" in str(err.value)
 
 
-def test_clone():
-	product1 = LocalbootProduct(**PRODUCT1)
+def test_clone() -> None:
+	product1 = LocalbootProduct(**PRODUCT2)
 	product2 = product1.clone(identOnly=False)
 	assert not objects_differ(product1, product2)
 
@@ -454,23 +463,23 @@ def test_clone():
 			assert getattr(product1, attr) == getattr(product2, attr)
 
 
-def test_serialize():
-	product1 = LocalbootProduct(**PRODUCT1)
+def test_serialize() -> None:
+	product1 = LocalbootProduct(**PRODUCT2)
 	_hash = product1.to_hash()
 	res = product1.serialize()
 	_hash["ident"] = product1.getIdent("str")
 	assert _hash == res
 
 
-def test_set_defaults():
-	product1 = LocalbootProduct(**PRODUCT1)
+def test_set_defaults() -> None:
+	product1 = LocalbootProduct(**PRODUCT2)
 	product1.emptyValues()
 	product1.setDefaults()
 	assert product1.customScript == ""
 	assert product1.priority == 0
 
 
-def test_multivalue_unicode_config_with_unicode():
+def test_multivalue_unicode_config_with_unicode() -> None:
 	config = UnicodeConfig(
 		id='python-opsi.test',
 		description="Something from the OPSI forums.",
@@ -478,34 +487,34 @@ def test_multivalue_unicode_config_with_unicode():
 		defaultValues=["Neutron Mikroelektronik GmbH"]
 	)
 
-	assert "Neutron Gerätetechnik GmbH" in config.possibleValues
-	assert "Neutron Mikroelektronik GmbH" in config.possibleValues
+	assert config.possibleValues and "Neutron Gerätetechnik GmbH" in config.possibleValues
+	assert config.possibleValues and "Neutron Mikroelektronik GmbH" in config.possibleValues
 
 
-AUDIT_HARDWARE_ON_HOST1 = {
-	"hostId": "client.test.local",
-	"hardwareClass": 'COMPUTER_SYSTEM',
-	"description": "Description for auditHardware",
-	"vendor": "Vendor for auditHardware",
-	"model": "Model for auditHardware",
-	"serialNumber": '843391034-2192',
-	"systemType": 'Desktop',
-	"totalPhysicalMemory": 1073741824
-}
+AUDIT_HARDWARE_ON_HOST1 = vars(AuditHardwareOnHost(
+	hostId="client.test.local",
+	hardwareClass='COMPUTER_SYSTEM',
+	description="Description for auditHardware",
+	vendor="Vendor for auditHardware",
+	model="Model for auditHardware",
+	serialNumber='843391034-2192',
+	systemType='Desktop',
+	totalPhysicalMemory=1073741824
+))
 
 
-def test_audit_hardware_on_host_unicode():
+def test_audit_hardware_on_host_unicode() -> None:
 	audit_hardware_on_host = AuditHardwareOnHost(**AUDIT_HARDWARE_ON_HOST1)
 	assert str(audit_hardware_on_host)
 
 
-def test_audit_hardware_on_host_unicode_with_additionals():
+def test_audit_hardware_on_host_unicode_with_additionals() -> None:
 	audit_hardware_on_host = AuditHardwareOnHost(**AUDIT_HARDWARE_ON_HOST1)
-	audit_hardware_on_host.name = "Ünicöde name."
+	setattr(audit_hardware_on_host, "name", "Ünicöde name.")
 	assert str(audit_hardware_on_host)
 
 
-def test_getting_helpful_error_message_with_baseclass_relationship():
+def test_getting_helpful_error_message_with_baseclass_relationship() -> None:
 	"""
 	Error messages for object.fromHash should be helpful.
 
@@ -530,7 +539,7 @@ def test_getting_helpful_error_message_with_baseclass_relationship():
 	assert 'packageVersion' in str(err)
 
 
-def test_getting_helpful_error_message_with_baseclass_entity():
+def test_getting_helpful_error_message_with_baseclass_entity() -> None:
 	"""
 	Error messages for Product.fromHash should be helpful.
 
@@ -550,9 +559,9 @@ def test_getting_helpful_error_message_with_baseclass_entity():
 	assert 'packageVersion' in str(err)
 
 
-def test_get_mandatory_constructor_args_from_constructor_with_no_arguments():
-	class NoArgs:  # pylint: disable=too-few-public-methods
-		def __init__(self):
+def test_get_mandatory_constructor_args_from_constructor_with_no_arguments() -> None:
+	class NoArgs(BaseObject):  # pylint: disable=too-few-public-methods
+		def __init__(self) -> None:
 			pass
 
 	obj = NoArgs()
@@ -560,9 +569,9 @@ def test_get_mandatory_constructor_args_from_constructor_with_no_arguments():
 		assert mandatory_constructor_args(obj.__class__) == []
 
 
-def test_get_mandatory_constructor_args_from_constructor_with_only_mandatory_arguments():
-	class OnlyMandatory:  # pylint: disable=too-few-public-methods
-		def __init__(self, arg1, arg2, arg3):  # pylint: disable=unused-argument
+def test_get_mandatory_constructor_args_from_constructor_with_only_mandatory_arguments() -> None:
+	class OnlyMandatory(BaseObject):  # pylint: disable=too-few-public-methods
+		def __init__(self, arg1: Any, arg2: Any, arg3: Any) -> None:  # pylint: disable=unused-argument
 			pass
 
 	obj = OnlyMandatory(1, 1, 1)
@@ -570,9 +579,9 @@ def test_get_mandatory_constructor_args_from_constructor_with_only_mandatory_arg
 		assert mandatory_constructor_args(obj.__class__) == ['arg1', 'arg2', 'arg3']
 
 
-def test_get_mandatory_constructor_args_from_constructor_with_only_optional_arguments():
-	class OnlyOptional:  # pylint: disable=too-few-public-methods
-		def __init__(self, only=1, optional=2, arguments=None):  # pylint: disable=unused-argument
+def test_get_mandatory_constructor_args_from_constructor_with_only_optional_arguments() -> None:
+	class OnlyOptional(BaseObject):  # pylint: disable=too-few-public-methods
+		def __init__(self, only: int = 1, optional: int = 2, arguments: Any = None) -> None:  # pylint: disable=unused-argument
 			pass
 
 	obj = OnlyOptional()
@@ -580,9 +589,9 @@ def test_get_mandatory_constructor_args_from_constructor_with_only_optional_argu
 		assert mandatory_constructor_args(obj.__class__) == []
 
 
-def test_get_mandatory_constructor_args_from_constructor_with_mixed_arguments():
-	class MixedArgs:  # pylint: disable=too-few-public-methods
-		def __init__(self, arg1, arg2, kwarg1=0, kwarg2=0):  # pylint: disable=unused-argument
+def test_get_mandatory_constructor_args_from_constructor_with_mixed_arguments() -> None:
+	class MixedArgs(BaseObject):  # pylint: disable=too-few-public-methods
+		def __init__(self, arg1: bool, arg2: bool, kwarg1: int = 0, kwarg2: int = 0) -> None:  # pylint: disable=unused-argument
 			pass
 
 	obj = MixedArgs(True, True)
@@ -590,9 +599,9 @@ def test_get_mandatory_constructor_args_from_constructor_with_mixed_arguments():
 		assert mandatory_constructor_args(obj.__class__) == ["arg1", "arg2"]
 
 
-def test_get_mandatory_constructor_args_from_constructor_with_wildcard_arguments():
-	class WildcardOnly:  # pylint: disable=too-few-public-methods
-		def __init__(self, *only):  # pylint: disable=unused-argument
+def test_get_mandatory_constructor_args_from_constructor_with_wildcard_arguments() -> None:
+	class WildcardOnly(BaseObject):  # pylint: disable=too-few-public-methods
+		def __init__(self, *only: Any) -> None:  # pylint: disable=unused-argument
 			pass
 
 	obj = WildcardOnly("yeah", "great", "thing")
@@ -600,9 +609,9 @@ def test_get_mandatory_constructor_args_from_constructor_with_wildcard_arguments
 		assert mandatory_constructor_args(obj.__class__) == []
 
 
-def test_get_mandatory_constructor_args_from_constructor_with_keyword_arguments():
-	class Kwargz:  # pylint: disable=too-few-public-methods
-		def __init__(self, **kwargs):  # pylint: disable=unused-argument
+def test_get_mandatory_constructor_args_from_constructor_with_keyword_arguments() -> None:
+	class Kwargz(BaseObject):  # pylint: disable=too-few-public-methods
+		def __init__(self, **kwargs: Any) -> None:  # pylint: disable=unused-argument
 			pass
 
 	obj = Kwargz(goand=1, get="asdf", them=[], girl=True)
@@ -610,9 +619,9 @@ def test_get_mandatory_constructor_args_from_constructor_with_keyword_arguments(
 		assert mandatory_constructor_args(obj.__class__) == []
 
 
-def test_get_mandatory_constructor_args_from_constructor_with_mixed_with_args_and_kwargs():
-	class KwargzAndMore:  # pylint: disable=too-few-public-methods
-		def __init__(self, crosseyed, heart, *more, **kwargs):  # pylint: disable=unused-argument
+def test_get_mandatory_constructor_args_from_constructor_with_mixed_with_args_and_kwargs() -> None:
+	class KwargzAndMore(BaseObject):  # pylint: disable=too-few-public-methods
+		def __init__(self, crosseyed: bool, heart: bool, *more: Any, **kwargs: Any) -> None:  # pylint: disable=unused-argument
 			pass
 
 	obj = KwargzAndMore(False, True, "some", "more", things="here")
@@ -620,7 +629,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_mixed_with_args_an
 		assert mandatory_constructor_args(obj.__class__) == ["crosseyed", "heart"]
 
 
-def test_product_name_can_be_very_long():
+def test_product_name_can_be_very_long() -> None:
 	"""
 	Namens with a length of more than 128 characters can are supported.
 	"""
@@ -645,7 +654,7 @@ def test_product_name_can_be_very_long():
 
 @pytest.mark.parametrize("property_class", [ProductProperty, BoolProductProperty, UnicodeProductProperty])
 @pytest.mark.parametrize("required_attribute", ["description", "defaultValues"])
-def test_product_property_shows_optional_arguments_in_repr(property_class, required_attribute):
+def test_product_property_shows_optional_arguments_in_repr(property_class: Type, required_attribute: str) -> None:
 	additional_param = {required_attribute: [True]}
 	prod_prop = property_class('testprod', '1.0', '2', 'myproperty', **additional_param)
 	rep = repr(prod_prop)
@@ -661,7 +670,9 @@ def test_product_property_shows_optional_arguments_in_repr(property_class, requi
 	'',
 	None
 ])
-def test_product_property_representation_shows_value_if_filled(property_class, attribute_name, attribute_value):
+def test_product_property_representation_shows_value_if_filled(
+	property_class: Type, attribute_name: str, attribute_value: Optional[str]
+) -> None:
 	attrs = {attribute_name: attribute_value}
 	prod_prop = property_class('testprod', '1.0', '2', 'myproperty', **attrs)
 
@@ -676,7 +687,7 @@ def test_product_property_representation_shows_value_if_filled(property_class, a
 
 @pytest.mark.parametrize("property_class", [ProductProperty, UnicodeProductProperty])
 @pytest.mark.parametrize("required_attribute", ["multiValue", "editable", "possibleValues"])
-def test_product_property_shows_optional_arguments_in_repr2(property_class, required_attribute):
+def test_product_property_shows_optional_arguments_in_repr2(property_class: Type, required_attribute: str) -> None:
 	additional_param = {required_attribute: [True]}
 	prod_prop = property_class('testprod', '1.0', '2', 'myproperty', **additional_param)
 	rep = repr(prod_prop)
@@ -692,7 +703,7 @@ def test_product_property_shows_optional_arguments_in_repr2(property_class, requ
 	[True],
 	True,
 ])
-def test_product_property_state_show_selected_values(test_values):
+def test_product_property_state_show_selected_values(test_values: Any) -> None:
 	product_id = 'testprod'
 	property_id = 'myproperty'
 	object_id = 'testobject.foo.bar'
