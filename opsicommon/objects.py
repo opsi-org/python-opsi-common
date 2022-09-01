@@ -428,19 +428,7 @@ class Entity(BaseObject):
 			if varname in _hash:
 				kwargs[varname] = _hash[varname]
 
-		try:
-			return cls(**kwargs)
-		except TypeError as err:
-			missing_args = []  # pylint: disable=use-tuple-over-list
-			try:
-				args = mandatory_constructor_args(cls)
-				missing_args = [arg for arg in args if arg not in kwargs]
-			except Exception:  # pylint: disable=broad-except
-				pass
-
-			if missing_args:
-				raise TypeError(f"Missing required argument(s): {', '.join(repr(a) for a in missing_args)}") from err
-			raise err
+		return cls(**kwargs)
 
 	def clone(self, identOnly: bool = False) -> Any:  # pylint: disable=invalid-name
 		_hash = {}
@@ -483,19 +471,8 @@ class Relationship(BaseObject):
 		for varname in cls.__init__.__code__.co_varnames[1:]:  # pylint: disable=use-dict-comprehension
 			if varname in _hash:
 				kwargs[varname] = _hash[varname]
-		try:
-			return cls(**kwargs)
-		except TypeError as err:
-			if "__init__() takes at least" in str(err):
-				try:
-					args = mandatory_constructor_args(cls)
-					missing_args = [arg for arg in args if arg not in kwargs]
-					if missing_args:
-						raise TypeError(f"Missing required argument(s): {', '.join(repr(a) for a in missing_args)}") from err
-				except NameError:
-					pass
 
-			raise err
+		return cls(**kwargs)
 
 	def clone(self, identOnly: bool = False) -> Any:  # pylint: disable=invalid-name
 		_hash = {}
