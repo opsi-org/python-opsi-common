@@ -57,6 +57,7 @@ from opsicommon.objects import (  # pylint: disable=wrong-import-position,unused
 	ProductOnDepot,
 	ProductProperty,
 	ProductPropertyState,
+	Relationship,
 	RetailSoftwareLicense,
 	SoftwareLicense,
 	SoftwareLicenseToLicensePool,
@@ -206,7 +207,14 @@ def test_object_classes() -> None:
 		assert obj.backend_method_prefix is not None
 		assert obj.foreign_id_attributes is not None
 		assert obj.getIdentAttributes()
-		assert obj.getIdent()
+		assert isinstance(obj.getIdent(), str)
+		assert isinstance(obj.getIdent("unicode"), str)
+		assert isinstance(obj.getIdent("str"), str)
+		assert isinstance(obj.getIdent("list"), list)
+		assert isinstance(obj.getIdent("tuple"), tuple)
+		assert isinstance(obj.getIdent("dict"), dict)
+		assert isinstance(obj.getIdent("hash"), dict)
+
 		assert obj.getType()
 		assert obj.to_json()
 
@@ -221,8 +229,8 @@ def test_object_classes() -> None:
 				setter(value)
 
 		# type: ignore[assignment]
-		if not isinstance(obj, Entity):
-			raise ValueError("wrong type")  # pylint: disable=loop-invariant-statement
+		if not isinstance(obj, (Entity, Relationship)):  # pylint: disable=loop-invariant-statement
+			raise ValueError(f"wrong type: {type(obj)}")  # pylint: disable=loop-invariant-statement
 
 		_class = obj.__class__
 
@@ -230,14 +238,24 @@ def test_object_classes() -> None:
 			if isinstance(getattr(_class, key), property):
 				assert getattr(obj, key)
 
+		assert isinstance(obj.serialize(), dict)
+
 		_class.fromHash(_dict)
 		del _dict["type"]
 		assert isinstance(_class.fromHash(_dict), _class)
 		assert isinstance(_class.from_json(json.dumps(_dict)), _class)  # pylint: disable=dotted-import-in-loop
 
 		obj.update(obj.clone())
+		with pytest.raises(TypeError):  # pylint: disable=dotted-import-in-loop
+			obj.update({"wrong": "type"})  # type: ignore[arg-type]
 		obj.emptyValues()
 		obj.setDefaults()
+
+		obj.setGeneratedDefault(True)
+		assert obj.isGeneratedDefault()
+
+		obj.setGeneratedDefault(False)
+		assert not obj.isGeneratedDefault()
 
 
 def test_get_possible_class_attributes() -> None:
@@ -446,9 +464,11 @@ def test_from_hash() -> None:
 	with pytest.raises(TypeError):
 		LocalbootProduct.fromHash(_hash)
 
-	with pytest.raises(TypeError) as err:
+	with pytest.raises(TypeError, match=r"missing 2 required positional arguments: 'productVersion' and 'packageVersion'"):
 		LocalbootProduct.fromHash({"id": "p1"})
-	assert "Missing required argument(s): 'productVersion', 'packageVersion'" in str(err.value)
+
+	with pytest.raises(TypeError, match=r"missing 1 required positional argument: 'objectId'"):
+		ConfigState.fromHash({"configId": "c1"})
 
 
 def test_clone() -> None:
@@ -718,3 +738,17 @@ def test_product_property_state_show_selected_values(test_values: Any) -> None:
 	assert repr(test_values) in rep
 	assert rep.startswith('<')
 	assert rep.endswith('>')
+
+
+def test_hardware_config() -> None:
+	with open("tests/data/objects/opsihwaudit.json", encoding="utf-8") as file:
+		data = json.loads(file.read())
+		AuditHardware.setHardwareConfig(data)
+		AuditHardwareOnHost.setHardwareConfig(data)
+
+	with open("tests/data/objects/audithardwareonhost.json", encoding="utf-8") as file:
+		data = json.loads(file.read())
+
+	for ahoh in data:
+		ahw = AuditHardwareOnHost.fromHash(ahoh)
+		ahw.toAuditHardware()
