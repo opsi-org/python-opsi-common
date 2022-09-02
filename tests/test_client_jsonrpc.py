@@ -51,10 +51,12 @@ def test_arguments() -> None:
 		"http_pool_maxsize": 13,
 		"http_max_retries": 14,
 		"session_lifetime": 15,
+		"create_objects": True,
+		"raw_responses": True
 	}
 	client = JSONRPCClient("http://localhost", **kwargs)
 	for attr, val in kwargs.items():
-		assert getattr(client, f"_{attr}") == val
+		assert getattr(client, f"_{attr}", getattr(client, attr, None)) == val
 
 	_kwargs = kwargs.copy()
 	del _kwargs["http_max_retries"]

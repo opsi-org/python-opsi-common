@@ -18,6 +18,14 @@ from opsicommon.messagebus import (
 	JSONRPCResponseMessage,
 	Message,
 	MessageType,
+	TerminalCloseEvent,
+	TerminalCloseRequest,
+	TerminalDataRead,
+	TerminalDataWrite,
+	TerminalOpenEvent,
+	TerminalOpenRequest,
+	TerminalResizeEvent,
+	TerminalResizeRequest,
 )
 
 
@@ -66,18 +74,8 @@ def test_message_to_from_msgpack() -> None:
 	assert msg1 == msg2
 
 
-def test_message_to_from_json() -> None:
-	msg1 = Message(type="custom_message_type", sender="291b9f3e-e370-428d-be30-1248a906ae86", channel="xyz")
-	data = msg1.to_json()
-	assert isinstance(data, bytes)
-	msg2 = Message.from_json(data)
-	assert msg1 == msg2
-	msg3 = Message.from_json(data.decode("utf-8"))
-	assert msg1 == msg3
-
-
 @pytest.mark.parametrize(
-	"message_class, attributes, expected, exception",
+	"message_class, attributes, exception",
 	[
 		(
 			JSONRPCRequestMessage,
@@ -88,47 +86,124 @@ def test_message_to_from_json() -> None:
 				"method": "noop",
 				"params": ("1", "2")
 			},
+			None,
+		),
+		(
+			JSONRPCResponseMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
-				"channel": "service:config:jsonrpc",
+				"channel": "host:aa608319-401c-467b-ae3f-0c1057490df7",
 				"rpc_id": "1",
-				"method": "noop",
-				"params": ("1", "2")
+				"result": None,
+				"error": {
+					"code": 1230,
+					"message": "error",
+					"data": {"class": "ValueError", "details": "details"}
+				}
 			},
 			None,
 		),
 		(
-			JSONRPCRequestMessage,
+			TerminalCloseEvent,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
-				"channel": "service:config:jsonrpc",
-				"rpc_id": "1",
-				"method": "noop",
-				"params": ("1", "2")
-			},
-			{
-				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
-				"channel": "service:config:jsonrpc",
-				"rpc_id": "1",
-				"method": "noop",
-				"params": ("1", "2")
+				"channel": "user:admin",
+				"terminal_id": "26ca809d-35e3-4739-b79b-b096562b5251",
 			},
 			None,
-		)
+		),
+		(
+			TerminalCloseRequest,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "service_worker:localhost:1",
+				"terminal_id": "26ca809d-35e3-4739-b79b-b096562b5251",
+			},
+			None,
+		),
+		(
+			TerminalDataRead,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "user:admin",
+				"terminal_id": "26ca809d-35e3-4739-b79b-b096562b5251",
+				"data": b"data read"
+			},
+			None,
+		),
+		(
+			TerminalDataWrite,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "service_worker:localhost:1",
+				"terminal_id": "26ca809d-35e3-4739-b79b-b096562b5251",
+				"data": b"data write"
+			},
+			None,
+		),
+		(
+			TerminalOpenEvent,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "user:admin",
+				"terminal_id": "26ca809d-35e3-4739-b79b-b096562b5251",
+				"terminal_channel": "service_worker:localhost:1",
+				"rows": 30,
+				"cols": 100
+			},
+			None,
+		),
+		(
+			TerminalOpenRequest,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "service_node:localhost",
+				"rows": 22,
+				"cols": 44
+			},
+			None,
+		),
+		(
+			TerminalResizeRequest,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "service_node:localhost",
+				"terminal_id": "26ca809d-35e3-4739-b79b-b096562b5251",
+				"rows": 22,
+				"cols": 44
+			},
+			None,
+		),
+		(
+			TerminalResizeEvent,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "user:admin",
+				"terminal_id": "26ca809d-35e3-4739-b79b-b096562b5251",
+				"rows": 22,
+				"cols": 44
+			},
+			None,
+		),
 	],
 )
 def test_message_types(
 	message_class: Type[Message],
 	attributes: Union[dict, None],
-	expected: Union[dict, None],
 	exception: Union[Type[BaseException], None]
 ) -> None:
 	attributes = attributes or {}
-	expected = expected or {}
 	if exception:
 		with pytest.raises(exception):
 			message_class(**attributes)
 	else:
-		values = message_class(**attributes).to_dict()
-		for key, value in expected.items():
+		kwargs = attributes.copy()
+		msg = message_class(**kwargs)
+		assert isinstance(msg, message_class)
+
+		assert repr(msg) == f"Message(type={msg.type},id={msg.id},channel={msg.channel})"
+		assert str(msg) == f"({msg.type},{msg.id},{msg.channel})"
+
+		values = msg.to_dict()
+		for key, value in attributes.items():
 			assert values[key] == value
