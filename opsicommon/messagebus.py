@@ -44,7 +44,7 @@ class Error:
 MessageT = TypeVar('MessageT', bound='Message')
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class Message:
 	type: str  # Custom message types are allowed
 	sender: str
@@ -82,7 +82,7 @@ class Message:
 
 
 # JSONRPC
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class JSONRPCRequestMessage(Message):
 
 	type: str = MessageType.JSONRPC_REQUEST.value
@@ -92,7 +92,7 @@ class JSONRPCRequestMessage(Message):
 	params: Optional[Tuple[Any, ...]] = tuple()
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class JSONRPCResponseMessage(Message):
 	type: str = MessageType.JSONRPC_RESPONSE.value
 	rpc_id: str
@@ -101,7 +101,7 @@ class JSONRPCResponseMessage(Message):
 
 
 # Terminal
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class TerminalOpenRequest(Message):
 	type: str = MessageType.TERMINAL_OPEN_REQUEST.value
 	rows: Optional[int] = None
@@ -109,7 +109,7 @@ class TerminalOpenRequest(Message):
 	shell: Optional[str] = None
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class TerminalOpenEvent(Message):
 	type: str = MessageType.TERMINAL_OPEN_EVENT.value
 	terminal_channel: str
@@ -119,21 +119,21 @@ class TerminalOpenEvent(Message):
 	error: Optional[Error] = None
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class TerminalDataRead(Message):
 	type: str = MessageType.TERMINAL_DATA_READ.value
 	terminal_id: str
 	data: bytes
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class TerminalDataWrite(Message):
 	type: str = MessageType.TERMINAL_DATA_WRITE.value
 	terminal_id: str
 	data: bytes
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class TerminalResizeRequest(Message):
 	type: str = MessageType.TERMINAL_RESIZE_REQUEST.value
 	terminal_id: str
@@ -141,7 +141,7 @@ class TerminalResizeRequest(Message):
 	cols: int
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class TerminalResizeEvent(Message):
 	type: str = MessageType.TERMINAL_RESIZE_EVENT.value
 	terminal_id: str
@@ -150,20 +150,20 @@ class TerminalResizeEvent(Message):
 	error: Optional[Error] = None
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class TerminalCloseRequest(Message):
 	type: str = MessageType.TERMINAL_CLOSE_REQUEST.value
 	terminal_id: str
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class TerminalCloseEvent(Message):
 	type: str = MessageType.TERMINAL_CLOSE_EVENT.value
 	terminal_id: str
 
 
 # FileUpload
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class FileUploadMessage(Message):
 	type: str = MessageType.FILE_UPLOAD.value
 	file_id: str
@@ -172,7 +172,7 @@ class FileUploadMessage(Message):
 	size: Optional[int] = None
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class FileUploadResultMessage(Message):
 	type: str = MessageType.FILE_UPLOAD_RESULT.value
 	file_id: str
@@ -180,7 +180,7 @@ class FileUploadResultMessage(Message):
 	path: Optional[str] = None
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True, kw_only=True, repr=False)
 class FileChunk(Message):
 	type: str = MessageType.FILE_CHUNK.value
 	file_id: str
