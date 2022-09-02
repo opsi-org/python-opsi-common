@@ -21,6 +21,14 @@ from msgpack import loads as msgpack_loads  # type: ignore[import]
 class MessageType(str, Enum):
 	JSONRPC_REQUEST = "jsonrpc_request"
 	JSONRPC_RESPONSE = "jsonrpc_response"
+	TERMINAL_OPEN_REQUEST = "terminal_open_request"
+	TERMINAL_OPEN_EVENT = "terminal_open_event"
+	TERMINAL_RESIZE_REQUEST = "terminal_resize_request"
+	TERMINAL_RESIZE_EVENT = "terminal_resize_event"
+	TERMINAL_DATA_READ = "terminal_data_read"
+	TERMINAL_DATA_WRITE = "terminal_data_write"
+	TERMINAL_CLOSE_REQUEST = "terminal_close_request"
+	TERMINAL_CLOSE_EVENT = "terminal_close_event"
 	FILE_UPLOAD = "file_upload"
 	FILE_UPLOAD_RESULT = "file_upload_result"
 	FILE_CHUNK = "file_chunk"
@@ -67,12 +75,13 @@ class Message:
 		return msgpack_dumps(self.to_dict())
 
 	def __repr__(self) -> str:
-		return f"Message(type={self.type},id={self.id})"
+		return f"Message(type={self.type},id={self.id},channel={self.channel})"
 
 	def __str__(self) -> str:
-		return f"({self.type},{self.id})"
+		return f"({self.type},{self.id},{self.channel})"
 
 
+# JSONRPC
 @dataclass(slots=True, kw_only=True)
 class JSONRPCRequestMessage(Message):
 
@@ -91,6 +100,69 @@ class JSONRPCResponseMessage(Message):
 	result: Any = None
 
 
+# Terminal
+@dataclass(slots=True, kw_only=True)
+class TerminalOpenRequest(Message):
+	type: str = MessageType.TERMINAL_OPEN_REQUEST.value
+	rows: Optional[int] = None
+	cols: Optional[int] = None
+	shell: Optional[str] = None
+
+
+@dataclass(slots=True, kw_only=True)
+class TerminalOpenEvent(Message):
+	type: str = MessageType.TERMINAL_OPEN_EVENT.value
+	terminal_channel: str
+	terminal_id: str
+	rows: int
+	cols: int
+	error: Optional[Error] = None
+
+
+@dataclass(slots=True, kw_only=True)
+class TerminalDataRead(Message):
+	type: str = MessageType.TERMINAL_DATA_READ.value
+	terminal_id: str
+	data: bytes
+
+
+@dataclass(slots=True, kw_only=True)
+class TerminalDataWrite(Message):
+	type: str = MessageType.TERMINAL_DATA_WRITE.value
+	terminal_id: str
+	data: bytes
+
+
+@dataclass(slots=True, kw_only=True)
+class TerminalResizeRequest(Message):
+	type: str = MessageType.TERMINAL_RESIZE_REQUEST.value
+	terminal_id: str
+	rows: int
+	cols: int
+
+
+@dataclass(slots=True, kw_only=True)
+class TerminalResizeEvent(Message):
+	type: str = MessageType.TERMINAL_RESIZE_EVENT.value
+	terminal_id: str
+	rows: int
+	cols: int
+	error: Optional[Error] = None
+
+
+@dataclass(slots=True, kw_only=True)
+class TerminalCloseRequest(Message):
+	type: str = MessageType.TERMINAL_CLOSE_REQUEST.value
+	terminal_id: str
+
+
+@dataclass(slots=True, kw_only=True)
+class TerminalCloseEvent(Message):
+	type: str = MessageType.TERMINAL_CLOSE_EVENT.value
+	terminal_id: str
+
+
+# FileUpload
 @dataclass(slots=True, kw_only=True)
 class FileUploadMessage(Message):
 	type: str = MessageType.FILE_UPLOAD.value
@@ -120,6 +192,14 @@ class FileChunk(Message):
 MESSAGE_TYPE_TO_CLASS = {
 	MessageType.JSONRPC_REQUEST.value: JSONRPCRequestMessage,
 	MessageType.JSONRPC_RESPONSE.value: JSONRPCResponseMessage,
+	MessageType.TERMINAL_OPEN_REQUEST.value: TerminalOpenRequest,
+	MessageType.TERMINAL_OPEN_EVENT.value: TerminalOpenEvent,
+	MessageType.TERMINAL_DATA_READ.value: TerminalDataRead,
+	MessageType.TERMINAL_DATA_WRITE.value: TerminalDataWrite,
+	MessageType.TERMINAL_RESIZE_REQUEST.value: TerminalResizeRequest,
+	MessageType.TERMINAL_RESIZE_EVENT.value: TerminalResizeEvent,
+	MessageType.TERMINAL_CLOSE_REQUEST.value: TerminalCloseRequest,
+	MessageType.TERMINAL_CLOSE_EVENT.value: TerminalCloseEvent,
 	MessageType.FILE_UPLOAD.value: FileUploadMessage,
 	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
 	MessageType.FILE_CHUNK.value: FileChunk,
