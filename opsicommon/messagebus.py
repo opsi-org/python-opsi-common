@@ -37,8 +37,8 @@ class MessageType(str, Enum):
 @dataclass(slots=True, kw_only=True)
 class Error:
 	message: str
-	code: Union[int, None] = None
-	details: Union[str, None] = None
+	code: Optional[int] = None
+	details: Optional[str] = None
 
 
 MessageT = TypeVar('MessageT', bound='Message')
@@ -49,6 +49,7 @@ class Message:
 	type: str  # Custom message types are allowed
 	sender: str
 	channel: str
+	back_channel: Optional[str] = None
 	id: str = field(default_factory=lambda: str(uuid4()))  # pylint: disable=invalid-name
 	created: int = field(default_factory=lambda: int(time.time() * 1000))
 	expires: int = 0
@@ -104,6 +105,7 @@ class JSONRPCResponseMessage(Message):
 @dataclass(slots=True, kw_only=True, repr=False)
 class TerminalOpenRequest(Message):
 	type: str = MessageType.TERMINAL_OPEN_REQUEST.value
+	terminal_id: str
 	rows: Optional[int] = None
 	cols: Optional[int] = None
 	shell: Optional[str] = None
@@ -112,7 +114,6 @@ class TerminalOpenRequest(Message):
 @dataclass(slots=True, kw_only=True, repr=False)
 class TerminalOpenEvent(Message):
 	type: str = MessageType.TERMINAL_OPEN_EVENT.value
-	terminal_channel: str
 	terminal_id: str
 	rows: int
 	cols: int
