@@ -14,6 +14,9 @@ from typing import Type, Union
 import pytest
 
 from opsicommon.messagebus import (
+	ChannelSubscriptionEventMessage,
+	ChannelSubscriptionRequestMessage,
+	GeneralErrorMessage,
 	JSONRPCRequestMessage,
 	JSONRPCResponseMessage,
 	Message,
@@ -77,6 +80,39 @@ def test_message_to_from_msgpack() -> None:
 @pytest.mark.parametrize(
 	"message_class, attributes, exception",
 	[
+		(
+			GeneralErrorMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "service:config:jsonrpc",
+				"ref_message_id": "3cd293fd-bad8-4ff0-a7c3-610979e1dae6",
+				"error": {
+					"message": "general error",
+					"code": 4001,
+					"details": "error details"
+				}
+			},
+			None,
+		),
+		(
+			ChannelSubscriptionRequestMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:aa608319-401c-467b-ae3f-0c1057490df7",
+				"channels": ["channel1", "channel2"],
+				"operation": "set"
+			},
+			None,
+		),
+		(
+			ChannelSubscriptionEventMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:aa608319-401c-467b-ae3f-0c1057490df7",
+				"subscribed_channels": ["channel1", "channel2"]
+			},
+			None,
+		),
 		(
 			JSONRPCRequestMessage,
 			{
@@ -147,7 +183,7 @@ def test_message_to_from_msgpack() -> None:
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "user:admin",
 				"terminal_id": "26ca809d-35e3-4739-b79b-b096562b5251",
-				"terminal_channel": "service_worker:localhost:1",
+				"back_channel": "service_worker:localhost:1",
 				"rows": 30,
 				"cols": 100
 			},
@@ -158,6 +194,7 @@ def test_message_to_from_msgpack() -> None:
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "service_node:localhost",
+				"terminal_id": "26ca809d-35e3-4739-b79b-b096562b5251",
 				"rows": 22,
 				"cols": 44
 			},
@@ -201,8 +238,8 @@ def test_message_types(
 		msg = message_class(**kwargs)
 		assert isinstance(msg, message_class)
 
-		assert repr(msg) == f"Message(type={msg.type},id={msg.id},channel={msg.channel})"
-		assert str(msg) == f"({msg.type},{msg.id},{msg.channel})"
+		assert repr(msg) == f"Message(type={msg.type}, channel={msg.channel}, sender={msg.sender})"
+		assert str(msg) == f"({msg.type}, {msg.channel}, {msg.sender})"
 
 		values = msg.to_dict()
 		for key, value in attributes.items():

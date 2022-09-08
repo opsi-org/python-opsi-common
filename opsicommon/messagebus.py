@@ -11,7 +11,7 @@ opsicommon.messagebus
 import time
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
 from uuid import uuid4
 
 from msgpack import dumps as msgpack_dumps  # type: ignore[import]
@@ -19,6 +19,9 @@ from msgpack import loads as msgpack_loads  # type: ignore[import]
 
 
 class MessageType(str, Enum):
+	GENERAL_ERROR = "general_error"
+	CHANNEL_SUBSCRIPTION_REQUEST = "channel_subscription_request"
+	CHANNEL_SUBSCRIPTION_EVENT = "channel_subscription_event"
 	JSONRPC_REQUEST = "jsonrpc_request"
 	JSONRPC_RESPONSE = "jsonrpc_response"
 	TERMINAL_OPEN_REQUEST = "terminal_open_request"
@@ -76,16 +79,43 @@ class Message:
 		return msgpack_dumps(self.to_dict())
 
 	def __repr__(self) -> str:
-		return f"Message(type={self.type},id={self.id},channel={self.channel})"
+		return f"Message(type={self.type}, channel={self.channel}, sender={self.sender})"
 
 	def __str__(self) -> str:
-		return f"({self.type},{self.id},{self.channel})"
+		return f"({self.type}, {self.channel}, {self.sender})"
+
+
+# General
+@dataclass(slots=True, kw_only=True, repr=False)
+class GeneralErrorMessage(Message):
+	type: str = MessageType.GENERAL_ERROR.value
+	error: Optional[Error]
+	ref_message_id: str
+
+
+class ChannelSubscriptionOperation(str, Enum):
+	SET = "set"
+	ADD = "add"
+	REMOVE = "remove"
+
+
+@dataclass(slots=True, kw_only=True, repr=False)
+class ChannelSubscriptionRequestMessage(Message):
+	type: str = MessageType.CHANNEL_SUBSCRIPTION_REQUEST.value
+	channels: List[str]
+	operation: str = ChannelSubscriptionOperation.SET.value
+
+
+@dataclass(slots=True, kw_only=True, repr=False)
+class ChannelSubscriptionEventMessage(Message):
+	type: str = MessageType.CHANNEL_SUBSCRIPTION_EVENT.value
+	error: Optional[Error] = None
+	subscribed_channels: Optional[List[str]] = None
 
 
 # JSONRPC
 @dataclass(slots=True, kw_only=True, repr=False)
 class JSONRPCRequestMessage(Message):
-
 	type: str = MessageType.JSONRPC_REQUEST.value
 	api_version: str = "1"
 	rpc_id: str = field(default_factory=lambda: str(uuid4()))
@@ -191,6 +221,9 @@ class FileChunk(Message):
 
 
 MESSAGE_TYPE_TO_CLASS = {
+	MessageType.GENERAL_ERROR.value: GeneralErrorMessage,
+	MessageType.CHANNEL_SUBSCRIPTION_REQUEST.value: ChannelSubscriptionRequestMessage,
+	MessageType.CHANNEL_SUBSCRIPTION_EVENT.value: ChannelSubscriptionEventMessage,
 	MessageType.JSONRPC_REQUEST.value: JSONRPCRequestMessage,
 	MessageType.JSONRPC_RESPONSE.value: JSONRPCResponseMessage,
 	MessageType.TERMINAL_OPEN_REQUEST.value: TerminalOpenRequest,
