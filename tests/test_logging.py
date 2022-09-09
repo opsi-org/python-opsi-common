@@ -344,7 +344,7 @@ def test_foreign_logs():  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_DEBUG, format="%(message)s") as stream:
 		logger.error("message before request")
 
-		requests.get("http://www.uib.de")
+		requests.get("http://www.uib.de", timeout=10)
 
 		logger.error("message after request")
 		stream.seek(0)
