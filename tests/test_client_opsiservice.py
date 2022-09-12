@@ -548,7 +548,7 @@ def test_timeouts() -> None:
 			assert listener.events[0][0] == "open"
 			assert listener.events[1][0] == "failed"
 			assert listener.events[1][1] is client
-			assert "Connection refused" in str(listener.events[1][2])
+			assert "max retries exceeded" in str(listener.events[1][2]).lower()
 
 		with ServiceClient(f"https://127.0.0.1:{server.port}", connect_timeout=4, verify="accept_all") as client:
 			client.connect()
