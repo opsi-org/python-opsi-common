@@ -8,7 +8,6 @@ This file is part of opsi - https://www.opsi.org
 
 import json
 import time
-from multiprocessing.sharedctypes import Value
 from pathlib import Path
 from threading import Thread
 from typing import Any, Iterable, List, Optional, Tuple, Union
@@ -31,6 +30,7 @@ from opsicommon.client.opsiservice import (
 	OpsiServiceVerificationError,
 	OpsiTimeoutError,
 	ServiceClient,
+	ServiceConnectionListener,
 	ServiceVerificationModes,
 	WebSocketApp,
 )
@@ -52,6 +52,24 @@ from opsicommon.testing.helpers import (  # type: ignore[import]
 	environment,
 	http_test_server,
 )
+
+
+class MyConnectionListener(ServiceConnectionListener):
+	def __init__(self) -> None:
+		super().__init__()
+		self.events: List[Tuple[str, ServiceClient, Optional[Exception]]] = []
+
+	def connection_open(self, service_client: ServiceClient) -> None:
+		self.events.append(("open", service_client, None))
+
+	def connection_established(self, service_client: "ServiceClient") -> None:
+		self.events.append(("established", service_client, None))
+
+	def connection_failed(self, service_client: ServiceClient, exception: Exception) -> None:
+		self.events.append(("failed", service_client, exception))
+
+	def connection_closed(self, service_client: ServiceClient) -> None:
+		self.events.append(("closed", service_client, None))
 
 
 def test_arguments() -> None:  # pylint: disable=too-many-statements
@@ -384,19 +402,33 @@ def test_server_name_handling(  # pylint: disable=too-many-arguments
 		log_file.write_bytes(b"")
 
 
-def test_connect_disconnect() -> None:
+def test_connect_disconnect() -> None:  # pylint: disable=too-many-statements
 	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
+		listener = MyConnectionListener()
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
-			assert not client.messagebus_available
-			assert client.connected
-			with pytest.raises(RuntimeError):
-				client.connect_messagebus()
+			with listener.register(client):
+				assert not client.messagebus_available
+				assert client.connected
+				with pytest.raises(RuntimeError):
+					client.connect_messagebus()
+				client.disconnect()
+				assert len(listener.events) == 3
+				assert listener.events[0][0] == "open"
+				assert listener.events[1][0] == "established"
+				assert listener.events[2][0] == "closed"
 
+		listener = MyConnectionListener()
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
-			with pytest.raises(RuntimeError):
-				client.connect_messagebus()
-			assert client.connected
-			assert not client.messagebus_available
+			with listener.register(client):
+				with pytest.raises(RuntimeError):
+					client.connect_messagebus()
+				assert client.connected
+				assert not client.messagebus_available
+				client.disconnect()
+				assert len(listener.events) == 3
+				assert listener.events[0][0] == "open"
+				assert listener.events[1][0] == "established"
+				assert listener.events[2][0] == "closed"
 
 	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}) as server:
 		client = ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all")
@@ -522,10 +554,18 @@ def test_get() -> None:
 
 
 def test_timeouts() -> None:
+	listener = MyConnectionListener()
+
 	with http_test_server(generate_cert=True, response_delay=3) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port+1}", connect_timeout=4) as client:
+			client.register_connection_listener(listener)
 			with pytest.raises(OpsiConnectionError):
 				client.connect()
+			assert len(listener.events) == 2
+			assert listener.events[0][0] == "open"
+			assert listener.events[1][0] == "failed"
+			assert listener.events[1][1] is client
+			assert "max retries exceeded" in str(listener.events[1][2]).lower()
 
 		with ServiceClient(f"https://127.0.0.1:{server.port}", connect_timeout=4, verify="accept_all") as client:
 			client.connect()

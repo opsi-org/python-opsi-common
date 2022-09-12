@@ -35,7 +35,7 @@ def test_environment() -> None:
 def test_test_http_server_log_file(tmp_path: Path) -> None:
 	log_file = tmp_path / "server.log"
 	with http_test_server(log_file=log_file) as server:
-		res = requests.get(f"http://localhost:{server.port}/dir/file")
+		res = requests.get(f"http://localhost:{server.port}/dir/file", timeout=10)
 		assert res.status_code == 200
 	request = json.loads(log_file.read_text(encoding="utf-8").strip())
 	assert request["method"] == "GET"
@@ -45,7 +45,7 @@ def test_test_http_server_log_file(tmp_path: Path) -> None:
 	log_file.unlink()
 
 	with http_test_server(log_file=None) as server:
-		res = requests.get(f"http://localhost:{server.port}/dir/file")
+		res = requests.get(f"http://localhost:{server.port}/dir/file", timeout=10)
 		assert res.status_code == 200
 
 	assert not log_file.exists()
@@ -53,7 +53,7 @@ def test_test_http_server_log_file(tmp_path: Path) -> None:
 
 def test_test_http_server_headers() -> None:
 	with http_test_server(response_headers={"Server": "test/123", "X-Server-Adress": "{server_address}", "X-Host": "{host}"}) as server:
-		res = requests.get(f"http://localhost:{server.port}")
+		res = requests.get(f"http://localhost:{server.port}", timeout=10)
 		assert res.status_code == 200
 		assert res.headers["Server"] == "test/123"
 		assert res.headers["X-Server-Adress"].endswith(f":{server.port}")
@@ -63,7 +63,7 @@ def test_test_http_server_headers() -> None:
 def test_test_http_server_response_delay() -> None:
 	with http_test_server(response_delay=2) as server:
 		start = time.time()
-		res = requests.get(f"http://localhost:{server.port}")
+		res = requests.get(f"http://localhost:{server.port}", timeout=10)
 		assert res.status_code == 200
 		delay = round(time.time() - start)
 		assert 6 >= delay >= 2
@@ -72,7 +72,7 @@ def test_test_http_server_response_delay() -> None:
 def test_test_http_server_post() -> None:
 	with http_test_server() as server:
 		rpc = {"id": 1, "method": "test", "parms": [1, 2]}
-		res = requests.post(f"http://localhost:{server.port}", json=rpc)
+		res = requests.post(f"http://localhost:{server.port}", json=rpc, timeout=10)
 		assert res.status_code == 200
 
 
@@ -84,54 +84,54 @@ def test_test_http_server_serve_files(tmp_path: Path) -> None:
 	test_file2 = test_dir / "file2"
 	test_file2.write_text("test2", encoding="utf-8")
 	with http_test_server(serve_directory=tmp_path) as server:
-		res = requests.get(f"http://127.0.0.1:{server.port}/dir1")
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1", timeout=10)
 		assert res.status_code == 200
 		assert "Directory listing for /dir1" in res.text
 
-		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2")
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", timeout=10)
 		assert res.status_code == 200
 		assert res.text == "test2"
 
-		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", headers={"Range": "bytes=3-4"})
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", headers={"Range": "bytes=3-4"}, timeout=10)
 		assert res.status_code == 206
 		assert res.text == "t2"
 
-		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", headers={"Range": "bytes=3-1024"})
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", headers={"Range": "bytes=3-1024"}, timeout=10)
 		assert res.status_code == 206
 		assert res.text == "t2"
 
 		(test_dir / "index.html").write_text("index", encoding="utf-8")
 
-		res = requests.get(f"http://127.0.0.1:{server.port}/dir1")
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1", timeout=10)
 		assert res.status_code == 200
 		assert res.text == "index"
 
-		res = requests.get(f"http://127.0.0.1:{server.port}/dir2/")
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir2/", timeout=10)
 		assert res.status_code == 404
 
-		res = requests.get(f"http://127.0.0.1:{server.port}/404")
+		res = requests.get(f"http://127.0.0.1:{server.port}/404", timeout=10)
 		assert res.status_code == 404
 
 		date = formatdate(timeval=time.time())
-		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", headers={"If-Modified-Since": date})
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", headers={"If-Modified-Since": date}, timeout=10)
 		assert res.status_code == 304
 
-		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", headers={"If-Modified-Since": "INVALID"})
+		res = requests.get(f"http://127.0.0.1:{server.port}/dir1/file2", headers={"If-Modified-Since": "INVALID"}, timeout=10)
 		assert res.status_code == 200
 
-		res = requests.put(f"http://127.0.0.1:{server.port}/dir1/put", data="test")
+		res = requests.put(f"http://127.0.0.1:{server.port}/dir1/put", data="test", timeout=10)
 		assert res.status_code == 201
 
-		res = requests.head(f"http://127.0.0.1:{server.port}/dir1/file1")
+		res = requests.head(f"http://127.0.0.1:{server.port}/dir1/file1", timeout=10)
 		assert res.status_code == 200
 
-		res = requests.delete(f"http://127.0.0.1:{server.port}/dir1/file1")
+		res = requests.delete(f"http://127.0.0.1:{server.port}/dir1/file1", timeout=10)
 		assert res.status_code == 204
 
-		res = requests.head(f"http://127.0.0.1:{server.port}/dir1/file1")
+		res = requests.head(f"http://127.0.0.1:{server.port}/dir1/file1", timeout=10)
 		assert res.status_code == 404
 
-		res = requests.request("MKCOL", f"http://127.0.0.1:{server.port}/newdir")
+		res = requests.request("MKCOL", f"http://127.0.0.1:{server.port}/newdir", timeout=10)
 		assert res.status_code == 201
 
 

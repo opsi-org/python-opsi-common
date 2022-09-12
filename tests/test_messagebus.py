@@ -34,7 +34,7 @@ from opsicommon.messagebus import (
 
 def test_message() -> None:
 	with pytest.raises(TypeError, match="'type', 'sender', and 'channel'"):
-		Message()  # type: ignore[call-arg] # pylint: disable=no-value-for-parameter
+		Message()  # type: ignore[call-arg] # pylint: disable=missing-kwoa
 	msg = Message(type=MessageType.JSONRPC_REQUEST, sender="291b9f3e-e370-428d-be30-1248a906ae86", channel="service:config:jsonrpc")
 
 	assert msg.type == "jsonrpc_request"
