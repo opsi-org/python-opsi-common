@@ -139,13 +139,13 @@ class ServiceVerificationModes(str, Enum):
 logger = get_logger("opsicommon.general")
 
 
-class ServiceClient:  # pylint: disable=too-many-instance-attributes
+class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
 
 	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]  # pylint: disable=use-tuple-over-list
 
 	def __init__(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		self,
-		address: str,
+		address: Union[Iterable[str], str],
 		*,
 		username: str = None,
 		password: str = None,
@@ -164,16 +164,18 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		"""
 		self._messagebus = Messagebus(self)
 
-		self.base_url = "https://localhost:4447"
+		self._addresses: List[str] = []
+		self._address_index = 0
 		self.server_name = ""
 		self.server_version = version.parse("0")
 		self._messagebus_available = False
 		self._connected = False
 		self._connect_lock = Lock()
 		self._messagebus_connect_lock = Lock()
-
 		self._username = username
 		self._password = password
+
+		self.set_addresses(address)
 
 		self._ca_cert_file = None
 		if ca_cert_file:
@@ -204,8 +206,6 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 			"User-Agent": self._user_agent,
 			"X-opsi-session-lifetime": str(self._session_lifetime),
 		}
-
-		self._set_address(address)
 
 		ca_bundle = os.environ.get("REQUESTS_CA_BUNDLE", None)
 		if ca_bundle:
@@ -240,27 +240,44 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		else:
 			self._session.verify = str(self._ca_cert_file) if self._ca_cert_file else True
 
-	def _set_address(self, address: str) -> None:
-		if "://" not in address:
-			try:
-				ipa = ip_address(address)
-				if isinstance(ipa, IPv6Address):
-					address = f"[{ipa.compressed}]"
-			except ValueError:
-				pass
-			address = f"https://{address}"
-		url = urlparse(address)
-		if url.scheme != "https":
-			raise ValueError(f"Protocol {url.scheme} not supported")
+	def set_addresses(self, address: Union[Iterable[str], str]) -> None:
+		self._addresses = []
+		self._address_index = 0
 
-		hostname = str(url.hostname)
-		if ":" in hostname:
-			hostname = f"[{hostname}]"
-		self.base_url = f"{url.scheme}://{hostname}:{url.port or _DEFAULT_HTTPS_PORT}"
-		if url.username and not self._username:
-			self._username = url.username
-		if url.password and not self._password:
-			self._password = url.password
+		for addr in [address] if isinstance(address, str) else address:
+			if "://" not in addr:
+				try:  # pylint: disable=loop-try-except-usage
+					ipa = ip_address(addr)
+					if isinstance(ipa, IPv6Address):
+						addr = f"[{ipa.compressed}]"
+				except ValueError:
+					pass
+				addr = f"https://{addr}"
+			url = urlparse(addr)
+			if url.scheme != "https":
+				raise ValueError(f"Protocol {url.scheme} not supported")
+
+			hostname = str(url.hostname)
+			if ":" in hostname:
+				hostname = f"[{hostname}]"
+
+			if url.username is not None:
+				if not self._username:
+					self._username = url.username
+				elif self._username != url.username:
+					raise ValueError("Different usernames supplied")  # pylint: disable=loop-invariant-statement
+
+			if url.password is not None:
+				if not self._password:
+					self._password = url.password
+				elif self._password != url.password:
+					raise ValueError("Different passwords supplied")  # pylint: disable=loop-invariant-statement
+
+			self._addresses.append(f"{url.scheme}://{hostname}:{url.port or _DEFAULT_HTTPS_PORT}")  # pylint: disable=loop-global-usage
+
+	@property
+	def base_url(self) -> str:
+		return self._addresses[self._address_index]
 
 	@property
 	def verify(self) -> ServiceVerificationModes:
@@ -330,7 +347,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 
 		logger.info("CA cert file '%s' successfully updated", self._ca_cert_file)
 
-	def connect(self) -> None:
+	def connect(self) -> None:  # pylint: disable=too-many-branches
 		if self._connect_lock.locked():
 			return
 		self.disconnect()
@@ -349,19 +366,26 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 				# Prevent OSError invalid path
 				verify = True
 
-			try:
-				timeout = (self._connect_timeout, self._connect_timeout)
-				response = self._session.head(self.base_url, timeout=timeout, verify=verify)
-			except SSLError as err:
-				try:
-					if err.args[0].reason.args[0].errno == 8:
-						# EOF occurred in violation of protocol
-						raise OpsiConnectionError(str(err)) from err
-				except (AttributeError, IndexError):
-					pass
-				raise OpsiServiceVerificationError(str(err)) from err
-			except Exception as err:  # pylint: disable=broad-except
-				raise OpsiConnectionError(str(err)) from err
+			for address_index in range(len(self._addresses)):
+				self._address_index = address_index
+				try:  # pylint: disable=loop-try-except-usage
+					try:  # pylint: disable=loop-try-except-usage
+						timeout = (self._connect_timeout, self._connect_timeout)
+						response = self._session.head(self.base_url, timeout=timeout, verify=verify)
+						break
+					except SSLError as err:  # pylint: disable=loop-invariant-statement
+						try:  # pylint: disable=loop-try-except-usage
+							if err.args[0].reason.args[0].errno == 8:
+								# EOF occurred in violation of protocol
+								raise OpsiConnectionError(str(err)) from err  # pylint: disable=loop-invariant-statement
+						except (AttributeError, IndexError):
+							pass
+						raise OpsiServiceVerificationError(str(err)) from err  # pylint: disable=loop-invariant-statement
+					except Exception as err:  # pylint: disable=broad-except
+						raise OpsiConnectionError(str(err)) from err  # pylint: disable=loop-invariant-statement
+				except Exception as err:  # pylint: disable=broad-except,loop-invariant-statement
+					if self._address_index >= len(self._addresses) - 1:
+						raise
 
 			self._connected = True
 			if "server" in response.headers:

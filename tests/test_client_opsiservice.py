@@ -8,6 +8,7 @@ This file is part of opsi - https://www.opsi.org
 
 import json
 import time
+from multiprocessing.sharedctypes import Value
 from pathlib import Path
 from threading import Thread
 from typing import Any, Iterable, List, Optional, Tuple, Union
@@ -86,16 +87,20 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 	assert client._username == "usr"  # pylint: disable=protected-access
 	assert client._password == "pas"  # pylint: disable=protected-access
 
-	client = ServiceClient("https://usr:pas@localhost", username="user", password="pass")
-	assert client._username == "user"  # pylint: disable=protected-access
-	assert client._password == "pass"  # pylint: disable=protected-access
+	with pytest.raises(ValueError, match="Different usernames supplied"):
+		client = ServiceClient("https://usr:pas@localhost", username="user", password="pass")
 
-	client = ServiceClient("https://usr:pas@localhost", password="pass")
-	assert client._username == "usr"  # pylint: disable=protected-access
-	assert client._password == "pass"  # pylint: disable=protected-access
+	with pytest.raises(ValueError, match="Different usernames supplied"):
+		client = ServiceClient("https://usr:pas@localhost", username="user")
+
+	with pytest.raises(ValueError, match="Different passwords supplied"):
+		client = ServiceClient("https://usr:pas@localhost", username="usr", password="pass")
+
+	with pytest.raises(ValueError, match="Different passwords supplied"):
+		client = ServiceClient("https://usr:pas@localhost", password="pass")
 
 	client = ServiceClient("https://:pass@localhost")
-	assert client._username is None  # pylint: disable=protected-access
+	assert client._username == ""  # pylint: disable=protected-access
 	assert client._password == "pass"  # pylint: disable=protected-access
 
 	# verify / ca_cert_file
@@ -432,6 +437,19 @@ def test_connect_disconnect() -> None:
 		client.disconnect()
 		assert client.messagebus_connected is False
 		assert client.connected is False
+
+
+def test_multi_address() -> None:
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
+		with ServiceClient((f"https://127.0.0.1:{server.port+1}", f"https://127.0.0.1:{server.port}"), verify="accept_all") as client:
+			client.connect()
+			assert client.connected
+			assert client.base_url == f"https://127.0.0.1:{server.port}"
+
+		with ServiceClient((f"https://127.0.0.1:{server.port}", f"https://localhost:{server.port}"), verify="accept_all") as client:
+			client.connect()
+			assert client.connected
+			assert client.base_url == f"https://127.0.0.1:{server.port}"
 
 
 def test_messagebus_reconnect() -> None:
