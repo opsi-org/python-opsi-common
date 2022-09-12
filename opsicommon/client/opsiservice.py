@@ -40,6 +40,7 @@ from msgpack import dumps as msgpack_dumps  # type: ignore[import]
 from msgpack import loads as msgpack_loads  # type: ignore[import]
 from OpenSSL.crypto import (  # type: ignore[import]
 	FILETYPE_PEM,
+	X509,
 	dump_certificate,
 	load_certificate,
 )
@@ -129,6 +130,9 @@ kGOsCMSImzajpmtonx3ccPgSOyEWyoEaGij6u80QtFkj9g==
 -----END CERTIFICATE-----"""
 
 
+logger = get_logger("opsicommon.general")
+
+
 class ServiceVerificationModes(str, Enum):
 	STRICT_CHECK = "strict_check"
 	FETCH_CA = "fetch_ca"
@@ -136,7 +140,51 @@ class ServiceVerificationModes(str, Enum):
 	ACCEPT_ALL = "accept_all"
 
 
-logger = get_logger("opsicommon.general")
+class CallbackThread(Thread):
+	def __init__(self, callback: Callable, **kwargs: Any):
+		super().__init__()
+		self.daemon = True
+		self.callback = callback
+		self.kwargs = kwargs
+
+	def run(self) -> None:
+		try:
+			self.callback(**self.kwargs)
+		except Exception as err:  # pylint: disable=broad-except
+			logger.error("Error in %s: %s", self, err, exc_info=True)
+
+
+class ServiceConnectionListener():  # pylint: disable=too-few-public-methods
+	def connection_open(self, service_client: "ServiceClient") -> None:
+		"""
+		Called when the connection to the service is opened.
+		"""
+
+	def connection_established(self, service_client: "ServiceClient") -> None:
+		"""
+		Called when the connection to the service is established.
+		"""
+
+	def connection_closed(self, service_client: "ServiceClient") -> None:
+		"""
+		Called when the connection to the service is close.
+		"""
+
+	def connection_failed(self, service_client: "ServiceClient", exception: Exception) -> None:
+		"""
+		Called when a connection to the service failed.
+		"""
+
+	@contextmanager
+	def register(self, service_client: "ServiceClient") -> Generator[None, None, None]:
+		"""
+		Context manager for register this listener on and off the message bus.
+		"""
+		try:
+			service_client.register_connection_listener(self)
+			yield
+		finally:
+			service_client.unregister_connection_listener(self)
 
 
 class ServiceClient:  # pylint: disable=too-many-instance-attributes
@@ -171,6 +219,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 		self._connected = False
 		self._connect_lock = Lock()
 		self._messagebus_connect_lock = Lock()
+		self._listener_lock = Lock()
+		self._listener: List[ServiceConnectionListener] = []
 
 		self._username = username
 		self._password = password
@@ -296,6 +346,16 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 					return f"{cookie.name}={unquote(cookie.value)}"
 		return None
 
+	def register_connection_listener(self, listener: ServiceConnectionListener) -> None:
+		with self._listener_lock:
+			if listener not in self._listener:
+				self._listener.append(listener)
+
+	def unregister_connection_listener(self, listener: ServiceConnectionListener) -> None:
+		with self._listener_lock:
+			if listener in self._listener:
+				self._listener.remove(listener)
+
 	def fetch_opsi_ca(self, skip_verify: bool = False) -> None:
 		if not self._ca_cert_file:
 			raise RuntimeError("CA cert file not set")
@@ -330,6 +390,21 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 
 		logger.info("CA cert file '%s' successfully updated", self._ca_cert_file)
 
+	def get_opsi_ca_certs(self) -> List[X509]:
+		ca_certs: List[X509] = []
+		if not self._ca_cert_file or not self._ca_cert_file.exists() or self._ca_cert_file.stat().st_size == 0:
+			return ca_certs
+		try:
+			data = self._ca_cert_file.read_text(encoding="utf-8")
+			for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):
+				try:
+					ca_certs.append(load_certificate(FILETYPE_PEM, match.group(1).encode("utf-8")))
+				except Exception as err:  # pylint: disable=broad-except
+					logger.error(err, exc_info=True)
+		except Exception as err:  # pylint: disable=broad-except
+			logger.warning(err, exc_info=True)
+		return ca_certs
+
 	def connect(self) -> None:
 		if self._connect_lock.locked():
 			return
@@ -349,6 +424,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 				# Prevent OSError invalid path
 				verify = True
 
+			for listener in self._listener:
+				CallbackThread(listener.connection_open, service_client=self).start()
 			try:
 				timeout = (self._connect_timeout, self._connect_timeout)
 				response = self._session.head(self.base_url, timeout=timeout, verify=verify)
@@ -361,6 +438,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 					pass
 				raise OpsiServiceVerificationError(str(err)) from err
 			except Exception as err:  # pylint: disable=broad-except
+				for listener in self._listener:
+					CallbackThread(listener.connection_failed, service_client=self, exception=err).start()
 				raise OpsiConnectionError(str(err)) from err
 
 			self._connected = True
@@ -374,8 +453,12 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 			if self._verify in (ServiceVerificationModes.FETCH_CA, ServiceVerificationModes.FETCH_CA_TRUST_UIB):
 				self.fetch_opsi_ca(skip_verify=not verify)
 
+			for listener in self._listener:
+				CallbackThread(listener.connection_established, service_client=self).start()
+
 	def disconnect(self) -> None:
 		self.disconnect_messagebus()
+		was_connected = self._connected
 		if self._connected:
 			try:
 				if self.server_version >= MIN_VERSION_SESSION_API:
@@ -388,10 +471,15 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes
 				self._session.close()
 			except Exception:  # pylint: disable=broad-except
 				pass
+
 		self._connected = False
 		self.server_version = version.parse("0")
 		self.server_name = ""
 		self._messagebus_available = False
+
+		if was_connected:
+			for listener in self._listener:
+				CallbackThread(listener.connection_closed, service_client=self).start()
 
 	def _assert_connected(self) -> None:
 		with self._connect_lock:
@@ -596,20 +684,6 @@ class MessagebusListener():  # pylint: disable=too-few-public-methods
 			yield
 		finally:
 			messagebus.unregister_message_listener(self)
-
-
-class CallbackThread(Thread):
-	def __init__(self, callback: Callable, **kwargs: Any):
-		super().__init__()
-		self.daemon = True
-		self.callback = callback
-		self.kwargs = kwargs
-
-	def run(self) -> None:
-		try:
-			self.callback(**self.kwargs)
-		except Exception as err:  # pylint: disable=broad-except
-			logger.error("Error in %s: %s", self, err, exc_info=True)
 
 
 class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
