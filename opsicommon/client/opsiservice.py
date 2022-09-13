@@ -80,7 +80,7 @@ warnings.simplefilter("ignore", InsecureRequestWarning)
 setattr(SSLDispatcher, 'timeout', Dispatcher.timeout)
 
 
-MIN_VERSION_MESSAGEBUS = version.parse("4.2.1.0")
+MIN_VERSION_MESSAGEBUS = version.parse("4.2.0.287")
 MIN_VERSION_MSGPACK = version.parse("4.2.0.171")
 MIN_VERSION_LZ4 = version.parse("4.2.0.171")
 MIN_VERSION_GZIP = version.parse("4.2.0.0")
@@ -425,6 +425,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	def connect(self) -> None:  # pylint: disable=too-many-branches
 		if self._connect_lock.locked():
 			return
+
 		self.disconnect()
 		with self._connect_lock:
 			ca_cert_file_exists = self._ca_cert_file and self._ca_cert_file.exists()
@@ -468,6 +469,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 						raise
 
 			self._connected = True
+			session_cookie = self.session_cookie
+			if session_cookie:
+				secret_filter.add_secrets(session_cookie.split("=", 1)[-1])
+
 			if "server" in response.headers:
 				self.server_name = response.headers["server"]
 				match = re.search(r"^opsi\D+([\d\.]+)", self.server_name)
