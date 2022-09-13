@@ -463,6 +463,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 						raise OpsiConnectionError(str(err)) from err  # pylint: disable=loop-invariant-statement
 				except Exception as err:  # pylint: disable=broad-except,loop-invariant-statement
 					if self._address_index >= len(self._addresses) - 1:
+						for listener in self._listener:
+							CallbackThread(listener.connection_failed, service_client=self, exception=err).start()
 						raise
 
 			self._connected = True
