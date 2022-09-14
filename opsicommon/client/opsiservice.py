@@ -718,7 +718,8 @@ class MessagebusListener():  # pylint: disable=too-few-public-methods
 
 class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	_messagebus_path = "/messagebus/v1"
-	_ping_interval = 60  # Send ping every specified period in seconds.
+	_ping_interval = 15  # Send ping every specified period in seconds.
+	_ping_timeout = 10  # Ping timeout in seconds.
 	_reconnect = 5  # After connection lost, reconnect after specified seconds.
 
 	def __init__(self, opsi_service_client: ServiceClient) -> None:
@@ -922,6 +923,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			http_proxy_auth=http_proxy_auth,
 			http_no_proxy=http_no_proxy,
 			ping_interval=self._ping_interval,
+			ping_timeout=self._ping_timeout,
 			reconnect=self._reconnect,
 		)
 
