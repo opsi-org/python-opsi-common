@@ -595,7 +595,7 @@ def test_messagebus_ping() -> None:
 		# Test original _on_pong method
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			client.messagebus.ping_interval = 1
-			client.messagebus.ping_timeout = 0.1
+			client.messagebus.ping_timeout = None  # type: ignore[assignment]
 			client.connect_messagebus()
 			time.sleep(3)
 
@@ -603,7 +603,7 @@ def test_messagebus_ping() -> None:
 		with mock.patch("opsicommon.client.opsiservice.Messagebus._on_pong", _on_pong):
 			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 				client.messagebus.ping_interval = 1
-				client.messagebus.ping_timeout = 0.1
+				client.messagebus.ping_timeout = None  # type: ignore[assignment]
 				client.connect_messagebus()
 				time.sleep(5)
 				assert pong_count >= 3
