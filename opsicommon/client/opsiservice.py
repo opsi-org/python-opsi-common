@@ -76,9 +76,6 @@ from ..utils import prepare_proxy_environment, serialize
 
 warnings.simplefilter("ignore", InsecureRequestWarning)
 
-# Workaround websocket bug
-setattr(SSLDispatcher, 'timeout', Dispatcher.timeout)
-
 
 MIN_VERSION_MESSAGEBUS = version.parse("4.2.0.287")
 MIN_VERSION_MSGPACK = version.parse("4.2.0.171")
