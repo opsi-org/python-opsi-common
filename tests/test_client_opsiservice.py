@@ -7,6 +7,7 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import json
+import platform
 import time
 from pathlib import Path
 from threading import Thread
@@ -523,6 +524,7 @@ def test_messagebus_reconnect() -> None:
 
 def test_get() -> None:
 	response_body = b"test" * 1000
+	thread_count = 10 if platform.system().lower() == "linux" else 5
 
 	class ReqThread(Thread):
 		def __init__(self, client: ServiceClient) -> None:
@@ -539,7 +541,7 @@ def test_get() -> None:
 		generate_cert=True, response_status=(202, "status"), response_headers={"x-1": "1", "x-2": "2"}, response_body=response_body
 	) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
-			threads = [ReqThread(client) for _ in range(10)]
+			threads = [ReqThread(client) for _ in range(thread_count)]
 			for thread in threads:
 				thread.start()
 			for thread in threads:

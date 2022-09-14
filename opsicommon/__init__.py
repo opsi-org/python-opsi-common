@@ -6,4 +6,4 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-__version__ = '4.2.0.281'
+__version__ = '4.2.0.296'
