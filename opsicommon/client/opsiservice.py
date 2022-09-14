@@ -914,13 +914,14 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 
 		self._app.run_forever(  # type: ignore[attr-defined]
 			sslopt=sslopt,
+			skip_utf8_validation=True,
 			http_proxy_host=http_proxy_host,
 			http_proxy_port=http_proxy_port,
 			http_proxy_auth=http_proxy_auth,
 			http_no_proxy=http_no_proxy,
 			ping_interval=self.ping_interval,
 			ping_timeout=self.ping_timeout,
-			reconnect=self.reconnect_wait,
+			reconnect=self.reconnect_wait
 		)
 
 	def _disconnect(self) -> None:
