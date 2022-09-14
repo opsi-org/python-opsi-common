@@ -431,7 +431,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				and self._ca_cert_file
 				and (not ca_cert_file_exists or self._ca_cert_file.stat().st_size == 0)
 			):
-				logger.info("Service verification enabled, but CA cert file %r does not exist or is empty, skipping verification")
+				logger.info("Service verification enabled, but CA cert file %r does not exist or is empty, skipping verification", self._ca_cert_file)
 				verify = False
 
 			if self._ca_cert_file and verify and not ca_cert_file_exists:
