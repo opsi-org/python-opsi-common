@@ -505,20 +505,20 @@ def test_messagebus_reconnect() -> None:
 	with http_test_server(
 		generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
 	) as server:
-		with mock.patch("opsicommon.client.opsiservice.Messagebus._reconnect", 5):
-			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
-				listener = MBListener()
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.messagebus.reconnect_wait = 5
+			listener = MBListener()
 
-				with listener.register(client.messagebus):
-					client.connect_messagebus()
-					time.sleep(3)
-					server.restart(new_cert=True)
-					time.sleep(10)
+			with listener.register(client.messagebus):
+				client.connect_messagebus()
+				time.sleep(3)
+				server.restart(new_cert=True)
+				time.sleep(10)
 
-				expected_messages = 6
-				assert len(listener.messages) == expected_messages
-				rpc_ids = sorted([int(m.rpc_id) for m in listener.messages])  # type: ignore[attr-defined]
-				assert rpc_ids[:6] == list(range(1, expected_messages + 1))
+			expected_messages = 6
+			assert len(listener.messages) == expected_messages
+			rpc_ids = sorted([int(m.rpc_id) for m in listener.messages])  # type: ignore[attr-defined]
+			assert rpc_ids[:6] == list(range(1, expected_messages + 1))
 
 
 def test_get() -> None:
@@ -587,21 +587,24 @@ def test_messagebus_ping() -> None:
 		nonlocal pong_count
 		pong_count += 1
 
-	with mock.patch("opsicommon.client.opsiservice.Messagebus._ping_interval", 1):
-		with http_test_server(
-			generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
-		) as server:
-			# Test original _on_pong method
-			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
-				client.connect_messagebus()
-				time.sleep(3)
+	with http_test_server(
+		generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
+	) as server:
+		# Test original _on_pong method
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.messagebus.ping_interval = 1
+			client.messagebus.ping_timeout = 0.1
+			client.connect_messagebus()
+			time.sleep(3)
 
-			# Override _on_pong method and count pongs
-			with mock.patch("opsicommon.client.opsiservice.Messagebus._on_pong", _on_pong):
-				with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
-					client.connect_messagebus()
-					time.sleep(5)
-					assert pong_count >= 3
+		# Override _on_pong method and count pongs
+		with mock.patch("opsicommon.client.opsiservice.Messagebus._on_pong", _on_pong):
+			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+				client.messagebus.ping_interval = 1
+				client.messagebus.ping_timeout = 0.1
+				client.connect_messagebus()
+				time.sleep(5)
+				assert pong_count >= 3
 
 
 def test_jsonrpc(tmp_path: Path) -> None:

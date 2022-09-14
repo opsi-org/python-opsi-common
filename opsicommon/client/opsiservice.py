@@ -715,9 +715,6 @@ class MessagebusListener():  # pylint: disable=too-few-public-methods
 
 class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	_messagebus_path = "/messagebus/v1"
-	_ping_interval = 15  # Send ping every specified period in seconds.
-	_ping_timeout = 10  # Ping timeout in seconds.
-	_reconnect = 5  # After connection lost, reconnect after specified seconds.
 
 	def __init__(self, opsi_service_client: ServiceClient) -> None:
 		super().__init__()
@@ -731,6 +728,9 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self._send_lock = Lock()
 		self._listener: List[MessagebusListener] = []
 		self._listener_lock = Lock()
+		self.ping_interval = 15.0  # Send ping every specified period in seconds.
+		self.ping_timeout = 10.0  # Ping timeout in seconds.
+		self.reconnect_wait = 5.0  # After connection lost, reconnect after specified seconds.
 
 		# from websocket import enableTrace
 		# enableTrace(True)
@@ -919,9 +919,9 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			http_proxy_port=http_proxy_port,
 			http_proxy_auth=http_proxy_auth,
 			http_no_proxy=http_no_proxy,
-			ping_interval=self._ping_interval,
-			ping_timeout=self._ping_timeout,
-			reconnect=self._reconnect,
+			ping_interval=self.ping_interval,
+			ping_timeout=self.ping_timeout,
+			reconnect=self.reconnect_wait,
 		)
 
 	def _disconnect(self) -> None:
