@@ -53,7 +53,6 @@ from requests.structures import CaseInsensitiveDict
 from urllib3.exceptions import InsecureRequestWarning
 from websocket import WebSocketApp  # type: ignore[import]
 from websocket._abnf import ABNF  # type: ignore[import]
-from websocket._app import Dispatcher, SSLDispatcher  # type: ignore[import]
 
 from .. import __version__
 from ..exceptions import (
