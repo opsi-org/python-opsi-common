@@ -127,6 +127,7 @@ class ChannelSubscriptionEventMessage(Message):
 class TraceRequestMessage(Message):
 	type: str = MessageType.TRACE_REQUEST.value
 	trace: Dict[str, Any]
+	payload: Optional[bytes] = None
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
@@ -135,6 +136,7 @@ class TraceResponseMessage(Message):
 	req_id: str
 	req_trace: Dict[str, Any]
 	trace: Dict[str, Any]
+	payload: Optional[bytes] = None
 
 
 # JSONRPC
