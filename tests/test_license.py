@@ -120,6 +120,39 @@ def test_sign_opsi_license():
 		with pytest.raises(NotImplementedError):
 			lic.sign(private_key)
 
+	private_key, public_key = generate_key_pair(return_pem=False)
+	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
+		lic_file_data = (
+			"[8b8fa230-1438-407d-9d7c-dfe364d89126]\n"
+			"type = standard\n"
+			"schema_version = 2\n"
+			"opsi_version = 4.2\n"
+			"customer_id = MAN000014\n"
+			"customer_name = Test Lizenz verschiedene Customer 2\n"
+			"customer_address = Mainz\n"
+			"customer_unit =\n"
+			"contract_id = MAN000015\n"
+			"service_id =\n"
+			"module_id = mysql_backend\n"
+			"client_number = 150\n"
+			"issued_at = 2022-09-15\n"
+			"valid_from = 2022-09-15\n"
+			"valid_until = 2022-09-23\n"
+			"revoked_ids =\n"
+			"note =\n"
+			"additional_data =\n"
+			"signature = aaa\n"
+		)
+		lic_file = OpsiLicenseFile(None)
+		lic_file.read_string(lic_file_data)
+		lic_file.licenses[0].sign(private_key)
+		assert lic_file.licenses[0].get_state() != OPSI_LICENSE_STATE_INVALID_SIGNATURE
+
+		lic_file_data2 = lic_file.write_string()
+		lic_file2 = OpsiLicenseFile(None)
+		lic_file2.read_string(lic_file_data2)
+		assert lic_file.licenses[0].get_state() != OPSI_LICENSE_STATE_INVALID_SIGNATURE
+
 
 def test_opsi_license_defaults():
 	lic = OpsiLicense(
