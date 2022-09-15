@@ -18,11 +18,11 @@ from msgpack import dumps as msgpack_dumps  # type: ignore[import]
 from msgpack import loads as msgpack_loads  # type: ignore[import]
 
 
-def timestamp():
+def timestamp() -> int:
 	return int(time() * 1000)
 
 
-def message_id():
+def message_id() -> str:
 	return str(uuid4())
 
 
