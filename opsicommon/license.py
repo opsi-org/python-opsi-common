@@ -24,6 +24,8 @@ from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, U
 
 import attr
 
+from opsicommon.logging import logger
+
 try:
 	# PyCryptodome from pypi installs into Crypto
 	from Crypto.Hash import MD5, SHA3_512
@@ -357,6 +359,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 					pss.new(public_key).verify(_hash, self.signature)  # type: ignore[arg-type]
 					self._cached_signature_valid = True
 			except (ValueError, TypeError):
+				logger.warning("License %r has invalid signature", self.id)
 				self._cached_signature_valid = False
 
 		return self._cached_signature_valid
