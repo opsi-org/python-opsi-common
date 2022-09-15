@@ -8,9 +8,9 @@
 opsicommon.messagebus
 """
 
-import time
 from dataclasses import asdict, dataclass, field
 from enum import Enum
+from time import time
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
 from uuid import uuid4
 
@@ -18,10 +18,20 @@ from msgpack import dumps as msgpack_dumps  # type: ignore[import]
 from msgpack import loads as msgpack_loads  # type: ignore[import]
 
 
+def timestamp():
+	return int(time() * 1000)
+
+
+def message_id():
+	return str(uuid4())
+
+
 class MessageType(str, Enum):
 	GENERAL_ERROR = "general_error"
 	CHANNEL_SUBSCRIPTION_REQUEST = "channel_subscription_request"
 	CHANNEL_SUBSCRIPTION_EVENT = "channel_subscription_event"
+	TRACE_REQUEST = "trace_request"
+	TRACE_RESPONSE = "trace_response"
 	JSONRPC_REQUEST = "jsonrpc_request"
 	JSONRPC_RESPONSE = "jsonrpc_response"
 	TERMINAL_OPEN_REQUEST = "terminal_open_request"
@@ -53,8 +63,8 @@ class Message:
 	sender: str
 	channel: str
 	back_channel: Optional[str] = None
-	id: str = field(default_factory=lambda: str(uuid4()))  # pylint: disable=invalid-name
-	created: int = field(default_factory=lambda: int(time.time() * 1000))
+	id: str = field(default_factory=lambda: message_id())  # pylint: disable=invalid-name
+	created: int = field(default_factory=lambda: timestamp())
 	expires: int = 0
 
 	@classmethod
@@ -111,6 +121,20 @@ class ChannelSubscriptionEventMessage(Message):
 	type: str = MessageType.CHANNEL_SUBSCRIPTION_EVENT.value
 	error: Optional[Error] = None
 	subscribed_channels: Optional[List[str]] = None
+
+
+@dataclass(slots=True, kw_only=True, repr=False)
+class TraceRequestMessage(Message):
+	type: str = MessageType.TRACE_REQUEST.value
+	trace: Dict[str, Any]
+
+
+@dataclass(slots=True, kw_only=True, repr=False)
+class TraceResponseMessage(Message):
+	type: str = MessageType.TRACE_RESPONSE.value
+	req_id: str
+	req_trace: Dict[str, Any]
+	trace: Dict[str, Any]
 
 
 # JSONRPC
@@ -224,6 +248,8 @@ MESSAGE_TYPE_TO_CLASS = {
 	MessageType.GENERAL_ERROR.value: GeneralErrorMessage,
 	MessageType.CHANNEL_SUBSCRIPTION_REQUEST.value: ChannelSubscriptionRequestMessage,
 	MessageType.CHANNEL_SUBSCRIPTION_EVENT.value: ChannelSubscriptionEventMessage,
+	MessageType.TRACE_REQUEST.value: TraceRequestMessage,
+	MessageType.TRACE_RESPONSE.value: TraceResponseMessage,
 	MessageType.JSONRPC_REQUEST.value: JSONRPCRequestMessage,
 	MessageType.JSONRPC_RESPONSE.value: JSONRPCResponseMessage,
 	MessageType.TERMINAL_OPEN_REQUEST.value: TerminalOpenRequest,
