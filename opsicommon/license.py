@@ -266,6 +266,11 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 
 	_cached_signature_valid: Union[bool, None] = None
 
+	def __attrs_post_init__(self):
+		for attribute, value in attr.asdict(self).items():
+			if not attribute.startswith("_") and isinstance(value, str) and value.strip() == "":
+				setattr(self, attribute, None)
+
 	def set_license_pool(self, license_pool: "OpsiLicensePool") -> None:
 		self._license_pool = license_pool
 
