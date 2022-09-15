@@ -63,8 +63,8 @@ class Message:
 	sender: str
 	channel: str
 	back_channel: Optional[str] = None
-	id: str = field(default_factory=lambda: message_id())  # pylint: disable=invalid-name
-	created: int = field(default_factory=lambda: timestamp())
+	id: str = field(default_factory=message_id)  # pylint: disable=invalid-name
+	created: int = field(default_factory=timestamp)
 	expires: int = 0
 
 	@classmethod
