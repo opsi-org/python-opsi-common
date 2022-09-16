@@ -131,7 +131,7 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 	for mode in ServiceVerificationModes:
 		assert ServiceClient("::1", ca_cert_file="ca.pem", verify=mode)._verify == mode  # pylint: disable=protected-access
 		assert ServiceClient("::1", ca_cert_file="ca.pem", verify=mode.value)._verify == mode  # pylint: disable=protected-access
-	for mode in ServiceVerificationModes.FETCH_CA, ServiceVerificationModes.FETCH_CA_TRUST_UIB:
+	for mode in ServiceVerificationModes.OPSI_CA, ServiceVerificationModes.UIB_OPSI_CA:
 		with pytest.raises(ValueError, match="ca_cert_file required"):  # pylint: disable=dotted-import-in-loop
 			ServiceClient("::1", verify=mode)
 	with pytest.raises(ValueError, match="bad_mode"):  # pylint: disable=dotted-import-in-loop
@@ -193,6 +193,7 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 		response_headers={"server": "opsiconfd 4.2.1.1 (uvicorn)"},
 	) as server:
 		# strict_check
+		assert not opsi_ca_file_on_client.exists()
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="strict_check") as client:
 			with pytest.raises(OpsiServiceVerificationError):
 				client.connect()
@@ -207,6 +208,8 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 			with pytest.raises(OpsiServiceVerificationError):
 				client.connect()
 
+		assert not opsi_ca_file_on_client.exists()
+
 		# accept_all
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=None, verify="accept_all") as client:
 			client.connect()
@@ -217,15 +220,16 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="accept_all") as client:
 			client.connect()
 
-		assert not opsi_ca_file_on_client.exists()
+		assert opsi_ca_file_on_client.exists()
+		assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert)
 
-		# fetch_ca
-		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca") as client:
+		# opsi_ca
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="opsi_ca") as client:
 			client.connect()
 		assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert)
 
 		opsi_ca_file_on_client.write_text(as_pem(other_ca_cert), encoding="utf-8")
-		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="opsi_ca") as client:
 			with pytest.raises(OpsiServiceVerificationError):
 				client.connect()
 
@@ -235,13 +239,13 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert)
 			assert client.get("/")[0] == 200
 
-		# fetch_ca_trust_uib
-		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca_trust_uib") as client:
+		# uib_opsi_ca
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="uib_opsi_ca") as client:
 			client.connect()
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + "\n" + UIB_OPSI_CA
 
 		opsi_ca_file_on_client.write_text("", encoding="utf-8")
-		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="fetch_ca_trust_uib") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="uib_opsi_ca") as client:
 			client.connect()
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + "\n" + UIB_OPSI_CA
 

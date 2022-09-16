@@ -131,8 +131,8 @@ logger = get_logger("opsicommon.general")
 
 class ServiceVerificationModes(str, Enum):
 	STRICT_CHECK = "strict_check"
-	FETCH_CA = "fetch_ca"
-	FETCH_CA_TRUST_UIB = "fetch_ca_trust_uib"
+	OPSI_CA = "opsi_ca"
+	UIB_OPSI_CA = "uib_opsi_ca"
 	ACCEPT_ALL = "accept_all"
 
 
@@ -203,8 +203,22 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	) -> None:
 		"""
 		proxy_url:
-			system = Use system proxy
-			None = Do not use a proxy
+			system: Use system proxy
+			None: Do not use a proxy
+
+		verify:
+			strict_check:
+				Check server certifcate against default certs or ca_cert_file if provided.
+			opsi_ca:
+				Needs ca_cert_file to be set.
+				Check server certifcate against ca_cert_file.
+				If ca_cert_file missing or empty, accept every certificate once.
+				Fetch opsi ca from service after each successful connection.
+			uib_opsi_ca:
+				Like opsi_ca, but also accept server certficates signed by uib.
+			accept_all:
+				Do not check server certificate.
+				Fetch opsi ca from service and update ca_cert_file if provided.
 		"""
 		self._messagebus = Messagebus(self)
 
@@ -233,7 +247,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			verify = ServiceVerificationModes(verify)
 		if verify not in ServiceVerificationModes:
 			raise ValueError("Invalid verification mode")
-		if verify in (ServiceVerificationModes.FETCH_CA, ServiceVerificationModes.FETCH_CA_TRUST_UIB) and not self._ca_cert_file:
+		if verify in (ServiceVerificationModes.OPSI_CA, ServiceVerificationModes.UIB_OPSI_CA) and not self._ca_cert_file:
 			raise ValueError("ca_cert_file required for selected verification mode")
 		if verify and isinstance(verify, ServiceVerificationModes):
 			self._verify: ServiceVerificationModes = verify
@@ -397,7 +411,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			raise OpsiServiceError("Failed to fetch opsi-ca-cert.pem: No certificates in response")
 
 		data = "\n".join([dump_certificate(FILETYPE_PEM, cert).decode("utf-8") for cert in ca_certs])
-		if self._verify == ServiceVerificationModes.FETCH_CA_TRUST_UIB:
+		if self._verify == ServiceVerificationModes.UIB_OPSI_CA:
 			data += "\n" + UIB_OPSI_CA
 		self._ca_cert_file.write_text(data, encoding="utf-8")
 
@@ -427,7 +441,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			ca_cert_file_exists = self._ca_cert_file and self._ca_cert_file.exists()
 			verify = self._session.verify
 			if (
-				self._verify in (ServiceVerificationModes.FETCH_CA, ServiceVerificationModes.FETCH_CA_TRUST_UIB)
+				self._verify in (ServiceVerificationModes.OPSI_CA, ServiceVerificationModes.UIB_OPSI_CA)
 				and self._ca_cert_file
 				and (not ca_cert_file_exists or self._ca_cert_file.stat().st_size == 0)
 			):
@@ -476,7 +490,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					self.server_version = version.parse(match.group(1))
 					self._messagebus_available = self.server_version >= MIN_VERSION_MESSAGEBUS
 
-			if self._verify in (ServiceVerificationModes.FETCH_CA, ServiceVerificationModes.FETCH_CA_TRUST_UIB):
+			if self._ca_cert_file:
 				self.fetch_opsi_ca(skip_verify=not verify)
 
 			for listener in self._listener:
