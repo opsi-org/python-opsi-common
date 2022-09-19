@@ -96,8 +96,8 @@ def create_server_cert(  # pylint: disable=too-many-arguments,too-many-locals
 	valid_days: int,
 	ip_addresses: set,
 	hostnames: set,
-	ca_key: X509,
-	ca_cert: PKey,
+	ca_key: PKey,
+	ca_cert: X509,
 	key: PKey = None,
 	bits: int = SERVER_KEY_BITS,
 ) -> Tuple[X509, PKey]:
