@@ -689,7 +689,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	def disconnect_messagebus(self) -> None:
 		self._messagebus.disconnect()
 
-	def stop(self):
+	def stop(self) -> None:
 		self.disconnect()
 		self.messagebus.stop()
 		if self.messagebus.is_alive():
@@ -766,15 +766,17 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 
 	@property
 	def websocket_connected(self) -> bool:
-		return self._app and self._app.sock and self._app.sock.connected
+		return bool(self._app and self._app.sock and self._app.sock.connected)
 
 	def _on_open(self, app: WebSocketApp) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket opened")
 		self._connected = True
+		self._connected_result.set()
 
 	def _on_error(self, app: WebSocketApp, error: Exception) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket error: %s", error)
 		self._connect_exception = error
+		self._connected_result.set()
 
 	def _on_close(self, app: WebSocketApp, close_status_code: int, close_message: str) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket closed with status_code=%r and message %r", close_status_code, close_message)
@@ -977,6 +979,6 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		except Exception as err:  # pylint: disable=broad-except
 			logger.error(err, exc_info=True)
 
-	def stop(self):
+	def stop(self) -> None:
 		self.disconnect()
 		self._should_stop.set()
