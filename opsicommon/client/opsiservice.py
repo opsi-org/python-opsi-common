@@ -348,10 +348,6 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		return self._ca_cert_file
 
 	@property
-	def connect_timeout(self) -> float:
-		return self._connect_timeout
-
-	@property
 	def connected(self) -> bool:
 		return self._connected
 
@@ -753,6 +749,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self._send_lock = Lock()
 		self._listener: List[MessagebusListener] = []
 		self._listener_lock = Lock()
+		self._connect_timeout = 10.0
 		self.ping_interval = 15.0  # Send ping every specified period in seconds.
 		self.ping_timeout = 10.0  # Ping timeout in seconds.
 		self.reconnect_wait = 5.0  # After connection lost, reconnect after specified seconds.
@@ -877,9 +874,9 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		if not self.is_alive():
 			self.start()
 		if wait:
-			if not self._connected_result.wait(self._client.connect_timeout):
+			if not self._connected_result.wait(self._connect_timeout):
 				self._connect_exception = TimeoutError(
-					f"Timed out after {self._client.connect_timeout} seconds while waiting for connect result"
+					f"Timed out after {self._connect_timeout} seconds while waiting for connect result"
 				)
 			if self._connect_exception:
 				raise self._connect_exception
@@ -954,6 +951,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			http_proxy_port=http_proxy_port,
 			http_proxy_auth=http_proxy_auth,
 			http_no_proxy=http_no_proxy,
+			http_proxy_timeout=self._connect_timeout,
 			ping_interval=self.ping_interval,
 			ping_timeout=self.ping_timeout,
 			reconnect=self.reconnect_wait
