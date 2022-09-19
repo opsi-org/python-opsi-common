@@ -203,8 +203,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	) -> None:
 		"""
 		proxy_url:
-			system: Use system proxy
-			None: Do not use a proxy
+			system = Use system proxy
+			None = Do not use a proxy
 
 		verify:
 			strict_check:
@@ -346,6 +346,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	@property
 	def ca_cert_file(self) -> Optional[Path]:
 		return self._ca_cert_file
+
+	@property
+	def connect_timeout(self) -> float:
+		return self._connect_timeout
 
 	@property
 	def connected(self) -> bool:
@@ -685,6 +689,12 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	def disconnect_messagebus(self) -> None:
 		self._messagebus.disconnect()
 
+	def stop(self):
+		self.disconnect()
+		self.messagebus.stop()
+		if self.messagebus.is_alive():
+			self.messagebus.join(7)
+
 	@property
 	def messagebus_connected(self) -> bool:
 		return self._messagebus.connected
@@ -693,7 +703,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		return self
 
 	def __exit__(self, exc_type: Exception, exc_value: TracebackException, traceback: TracebackType) -> None:
-		self.disconnect()
+		self.stop()
 
 
 class MessagebusListener():  # pylint: disable=too-few-public-methods
@@ -734,10 +744,12 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self.daemon = True
 		self._client = opsi_service_client
 		self._app: Optional[WebSocketApp] = None
+		self._should_stop = Event()
 		self._should_be_connected = False
 		self._connected = False
 		self._connected_result = Event()
 		self._connect_exception: Optional[Exception] = None
+		self._disconnected_result = Event()
 		self._send_lock = Lock()
 		self._listener: List[MessagebusListener] = []
 		self._listener_lock = Lock()
@@ -752,23 +764,21 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def connected(self) -> bool:
 		return self._connected
 
+	@property
+	def websocket_connected(self) -> bool:
+		return self._app and self._app.sock and self._app.sock.connected
+
 	def _on_open(self, app: WebSocketApp) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket opened")
 		self._connected = True
-		self._connect_exception = None
-		self._connected_result.set()
 
 	def _on_error(self, app: WebSocketApp, error: Exception) -> None:  # pylint: disable=unused-argument
-		logger.debug("Websocket error")
-		self._connected = False
+		logger.debug("Websocket error: %s", error)
 		self._connect_exception = error
-		self._connected_result.set()
 
 	def _on_close(self, app: WebSocketApp, close_status_code: int, close_message: str) -> None:  # pylint: disable=unused-argument
-		logger.debug("Websocket closed")
-		self._connected = False
-		self._connect_exception = None
-		self._connected_result.set()
+		logger.debug("Websocket closed with status_code=%r and message %r", close_status_code, close_message)
+		# Websocket is doing reconnect, do not set self._connected = False
 
 	def _on_message(self, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket message received")
@@ -858,26 +868,35 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			self._app.send(message.to_msgpack(), ABNF.OPCODE_BINARY)
 
 	def connect(self, wait: bool = True) -> None:
+		if self._should_be_connected:
+			return
 		self._connected_result.clear()
+		self._should_be_connected = True
 		if not self.is_alive():
 			self.start()
-		self._should_be_connected = True
 		if wait:
-			self._connected_result.wait()
+			if not self._connected_result.wait(self._client.connect_timeout):
+				self._connect_exception = TimeoutError(
+					f"Timed out after {self._client.connect_timeout} seconds while waiting for connect result"
+				)
 			if self._connect_exception:
 				raise self._connect_exception
 
 	def disconnect(self, wait: bool = True) -> None:
+		self._should_be_connected = False
 		if not self._connected:
 			return
-		self._should_be_connected = False
+		self._disconnected_result.clear()
 		self._disconnect()
 		if wait:
-			self._connected_result.wait()
+			if not self._disconnected_result.wait(5):
+				logger.warning("Timed out after 5 seconds while waiting for disconnect result")
 
 	def _connect(self) -> None:
+		logger.info("Connecting to messagebus websocket")
+		if self._connected:
+			self._disconnect()
 		self._connected_result.clear()
-		self._disconnect()
 		self._connect_exception = None
 
 		sslopt: Dict[str, Union[str, ssl.VerifyMode]] = {}  # pylint: disable=no-member
@@ -939,21 +958,25 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		)
 
 	def _disconnect(self) -> None:
+		logger.info("Disconnecting from messagebus websocket")
+		self._disconnected_result.clear()
 		if self._app and self._app.sock:
-			self._connected_result.clear()
 			try:
 				self._app.close()  # type: ignore[attr-defined]
 			except Exception as err:  # pylint: disable=broad-except
 				logger.error(err, exc_info=True)
-			self._connected = False
-			self._connected_result.set()
+		self._connected = False
+		self._disconnected_result.set()
 
 	def run(self) -> None:
-		_sleep = time.sleep
 		try:
-			while True:
+			while not self._should_stop.wait(1):
 				if self._should_be_connected and not self._connected:
+					# Call of _connect() will block
 					self._connect()
-				_sleep(1)
 		except Exception as err:  # pylint: disable=broad-except
 			logger.error(err, exc_info=True)
+
+	def stop(self):
+		self.disconnect()
+		self._should_stop.set()
