@@ -194,7 +194,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 
 	@customer_id.validator
 	def validate_customer_id(self, attribute: str, value: Any) -> None:
-		if self.schema_version > 1 and self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^[a-zA-Z0-9\-_]{5,}$", value):
+		if self.schema_version > 1 and self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^[a-zA-Z0-9\-_]{3,}$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
 	customer_name: str = attr.ib()
