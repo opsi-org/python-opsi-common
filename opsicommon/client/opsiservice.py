@@ -874,18 +874,22 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			self._app.send(message.to_msgpack(), ABNF.OPCODE_BINARY)
 
 	def connect(self, wait: bool = True) -> None:
+		logger.debug("Messagebus.connect")
 		if self._should_be_connected:
 			return
 		self._connected_result.clear()
 		self._should_be_connected = True
 		if not self.is_alive():
+			logger.debug("Starting thread")
 			self.start()
 		if wait:
+			logger.debug("Waiting for connected result (timeout=%r)", self._connect_timeout)
 			if not self._connected_result.wait(self._connect_timeout):
 				self._connect_exception = TimeoutError(
 					f"Timed out after {self._connect_timeout} seconds while waiting for connect result"
 				)
 			if self._connect_exception:
+				logger.debug("Raising connect exception %r", self._connect_exception)
 				raise self._connect_exception
 
 	def disconnect(self, wait: bool = True) -> None:
@@ -979,9 +983,11 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def run(self) -> None:
 		for var in self._context:
 			var.set(self._context[var])
+		logger.debug("Messagebus thread started")
 		try:
 			while not self._should_stop.wait(1):
 				if self._should_be_connected and not self._connected:
+					logger.debug("Calling _connect()")
 					# Call of _connect() will block
 					self._connect()
 		except Exception as err:  # pylint: disable=broad-except
