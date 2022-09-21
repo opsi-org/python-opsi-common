@@ -936,6 +936,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self._app = WebSocketApp(
 			url,
 			header=header,
+			cookie=self._client.session_cookie,
 			on_open=self._on_open,
 			on_error=self._on_error,
 			on_close=self._on_close,
