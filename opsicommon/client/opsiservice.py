@@ -899,7 +899,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 				logger.warning("Timed out after 5 seconds while waiting for disconnect result")
 
 	def _connect(self) -> None:
-		logger.info("Connecting to messagebus websocket")
+		logger.notice("Connecting to opsi messagebus")
 		if self._connected:
 			self._disconnect()
 		self._connected_result.clear()
