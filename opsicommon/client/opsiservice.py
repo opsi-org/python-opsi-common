@@ -987,7 +987,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		try:
 			while not self._should_stop.wait(1):
 				if self._should_be_connected and not self._connected:
-					logger.debug("Calling _connect()")
+					logger.debug("Calling _connect()")  # pylint: disable=loop-global-usage
 					# Call of _connect() will block
 					self._connect()
 		except Exception as err:  # pylint: disable=broad-except
