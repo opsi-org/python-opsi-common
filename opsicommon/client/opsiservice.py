@@ -772,6 +772,8 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 
 	def _on_open(self, app: WebSocketApp) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket opened")
+		if not self._connected:
+			logger.notice("Connected to opsi messagebus")
 		self._connected = True
 		self._connected_result.set()
 
@@ -964,7 +966,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		)
 
 	def _disconnect(self) -> None:
-		logger.info("Disconnecting from messagebus websocket")
+		logger.notice("Disconnecting from opsi messagebus")
 		self._disconnected_result.clear()
 		if self._app and self._app.sock:
 			try:
