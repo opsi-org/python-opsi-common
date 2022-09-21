@@ -14,6 +14,7 @@ import time
 import warnings
 from base64 import b64encode
 from contextlib import contextmanager
+from contextvars import copy_context
 from enum import Enum
 from ipaddress import IPv6Address, ip_address
 from pathlib import Path
@@ -142,8 +143,11 @@ class CallbackThread(Thread):
 		self.daemon = True
 		self.callback = callback
 		self.kwargs = kwargs
+		self._context = copy_context()
 
 	def run(self) -> None:
+		for var in self._context:
+			var.set(self._context[var])
 		try:
 			self.callback(**self.kwargs)
 		except Exception as err:  # pylint: disable=broad-except
@@ -738,6 +742,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def __init__(self, opsi_service_client: ServiceClient) -> None:
 		super().__init__()
 		self.daemon = True
+		self._context = copy_context()
 		self._client = opsi_service_client
 		self._app: Optional[WebSocketApp] = None
 		self._should_stop = Event()
@@ -970,6 +975,8 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self._disconnected_result.set()
 
 	def run(self) -> None:
+		for var in self._context:
+			var.set(self._context[var])
 		try:
 			while not self._should_stop.wait(1):
 				if self._should_be_connected and not self._connected:
