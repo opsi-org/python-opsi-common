@@ -228,6 +228,8 @@ class FileUploadRequestMessage(Message):
 	content_type: str
 	name: Optional[str] = None
 	size: Optional[int] = None
+	destination_dir: Optional[str] = None
+	terminal_id: Optional[str] = None
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
