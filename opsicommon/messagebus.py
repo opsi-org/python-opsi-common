@@ -42,7 +42,7 @@ class MessageType(str, Enum):
 	TERMINAL_DATA_WRITE = "terminal_data_write"
 	TERMINAL_CLOSE_REQUEST = "terminal_close_request"
 	TERMINAL_CLOSE_EVENT = "terminal_close_event"
-	FILE_UPLOAD = "file_upload"
+	FILE_UPLOAD_REQUEST = "file_upload_request"
 	FILE_UPLOAD_RESULT = "file_upload_result"
 	FILE_CHUNK = "file_chunk"
 
@@ -217,12 +217,13 @@ class TerminalCloseRequest(Message):
 class TerminalCloseEvent(Message):
 	type: str = MessageType.TERMINAL_CLOSE_EVENT.value
 	terminal_id: str
+	error: Optional[Error] = None
 
 
 # FileUpload
 @dataclass(slots=True, kw_only=True, repr=False)
-class FileUploadMessage(Message):
-	type: str = MessageType.FILE_UPLOAD.value
+class FileUploadRequestMessage(Message):
+	type: str = MessageType.FILE_UPLOAD_REQUEST.value
 	file_id: str
 	content_type: str
 	name: Optional[str] = None
@@ -262,7 +263,7 @@ MESSAGE_TYPE_TO_CLASS = {
 	MessageType.TERMINAL_RESIZE_EVENT.value: TerminalResizeEvent,
 	MessageType.TERMINAL_CLOSE_REQUEST.value: TerminalCloseRequest,
 	MessageType.TERMINAL_CLOSE_EVENT.value: TerminalCloseEvent,
-	MessageType.FILE_UPLOAD.value: FileUploadMessage,
+	MessageType.FILE_UPLOAD_REQUEST.value: FileUploadRequestMessage,
 	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
 	MessageType.FILE_CHUNK.value: FileChunk,
 }
