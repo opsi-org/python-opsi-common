@@ -129,7 +129,7 @@ class ChannelSubscriptionEventMessage(Message):
 @dataclass(slots=True, kw_only=True, repr=False)
 class TraceRequestMessage(Message):
 	type: str = MessageType.TRACE_REQUEST.value
-	trace: Optional[Dict[str, Any]] = {}
+	trace: Optional[Dict[str, Any]] = field(default_factory=dict)  # type: ignore[assignment]
 	payload: Optional[bytes] = None
 
 
