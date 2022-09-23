@@ -16,6 +16,9 @@ import pytest
 from opsicommon.messagebus import (
 	ChannelSubscriptionEventMessage,
 	ChannelSubscriptionRequestMessage,
+	FileChunk,
+	FileUploadRequestMessage,
+	FileUploadResultMessage,
 	GeneralErrorMessage,
 	JSONRPCRequestMessage,
 	JSONRPCResponseMessage,
@@ -36,10 +39,9 @@ def test_message() -> None:
 	with pytest.raises(TypeError, match="'type', 'sender', and 'channel'"):
 		Message()  # type: ignore[call-arg] # pylint: disable=missing-kwoa
 	msg = Message(type=MessageType.JSONRPC_REQUEST, sender="291b9f3e-e370-428d-be30-1248a906ae86", channel="service:config:jsonrpc")
-
 	assert msg.type == "jsonrpc_request"
-	assert abs(time.time() * 1000 - msg.created) <= 1
-	assert msg.expires == 0
+	assert abs(time.time() * 1000 - msg.created) <= 2
+	assert abs(time.time() * 1000 - msg.expires + 60000) <= 2
 	assert msg.sender == "291b9f3e-e370-428d-be30-1248a906ae86"
 	assert len(msg.id) == 36
 
@@ -55,7 +57,12 @@ def test_message_to_from_dict() -> None:
 		rpc_id="rpc1",
 		method="test"
 	)
+	data = msg1.to_dict(none_values=True)
+	assert data["ref_id"] is None
+
 	data = msg1.to_dict()
+	assert "ref_id" not in data
+
 	assert isinstance(data, dict)
 	msg2 = Message.from_dict(data)
 	assert msg1 == msg2
@@ -85,7 +92,7 @@ def test_message_to_from_msgpack() -> None:
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "service:config:jsonrpc",
-				"ref_message_id": "3cd293fd-bad8-4ff0-a7c3-610979e1dae6",
+				"ref_id": "3cd293fd-bad8-4ff0-a7c3-610979e1dae6",
 				"error": {
 					"message": "general error",
 					"code": 4001,
@@ -222,6 +229,43 @@ def test_message_to_from_msgpack() -> None:
 			},
 			None,
 		),
+		(
+			FileUploadRequestMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "user:admin",
+				"file_id": "5eb61665-ee9f-43a5-ae52-73361865ea40",
+				"content_type": "text/plain",
+				"name": "test.txt",
+				"size": 12812,
+				"destination_dir": "/tmp",
+				"terminal_id": "26ca809d-35e3-4739-b79b-b096562b5251"
+			},
+			None,
+		),
+		(
+			FileUploadResultMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "user:admin",
+				"file_id": "5eb61665-ee9f-43a5-ae52-73361865ea40",
+				"error": None,
+				"path": "/tmp/test.txt"
+			},
+			None,
+		),
+		(
+			FileChunk,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "user:admin",
+				"file_id": "5eb61665-ee9f-43a5-ae52-73361865ea40",
+				"number": 12,
+				"last": True,
+				"data": b"data"
+			},
+			None,
+		),
 	],
 )
 def test_message_types(
@@ -241,6 +285,6 @@ def test_message_types(
 		assert repr(msg) == f"Message(type={msg.type}, channel={msg.channel}, sender={msg.sender})"
 		assert str(msg) == f"({msg.type}, {msg.channel}, {msg.sender})"
 
-		values = msg.to_dict()
+		values = msg.to_dict(none_values=True)
 		for key, value in attributes.items():
 			assert values[key] == value

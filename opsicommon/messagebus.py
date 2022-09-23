@@ -58,14 +58,14 @@ MessageT = TypeVar('MessageT', bound='Message')
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
-class Message:
+class Message:  # pylint: disable=too-many-instance-attributes
 	type: str  # Custom message types are allowed
 	sender: str
 	channel: str
 	back_channel: Optional[str] = None
 	id: str = field(default_factory=message_id)  # pylint: disable=invalid-name
 	created: int = field(default_factory=timestamp)
-	expires: int = 0
+	expires: int = field(default_factory=lambda: timestamp() + 60000)
 	ref_id: Optional[str] = None
 
 	@classmethod
@@ -79,15 +79,18 @@ class Message:
 				_cls = MESSAGE_TYPE_TO_CLASS.get(_type, Message)
 		return _cls(**data)
 
-	def to_dict(self) -> Dict[str, Any]:
-		return asdict(self)
+	def to_dict(self, none_values: bool = False) -> Dict[str, Any]:
+		_dict = asdict(self)
+		if none_values:
+			return _dict
+		return {k: v for k, v in _dict.items() if v is not None}
 
 	@classmethod
 	def from_msgpack(cls: Type[MessageT], data: bytes) -> MessageT:
 		return cls.from_dict(msgpack_loads(data))
 
-	def to_msgpack(self) -> bytes:
-		return msgpack_dumps(self.to_dict())
+	def to_msgpack(self, none_values: bool = False) -> bytes:
+		return msgpack_dumps(self.to_dict(none_values=none_values))
 
 	def __repr__(self) -> str:
 		return f"Message(type={self.type}, channel={self.channel}, sender={self.sender})"
