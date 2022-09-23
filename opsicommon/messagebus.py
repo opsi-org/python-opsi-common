@@ -66,6 +66,7 @@ class Message:
 	id: str = field(default_factory=message_id)  # pylint: disable=invalid-name
 	created: int = field(default_factory=timestamp)
 	expires: int = 0
+	ref_id: Optional[str] = None
 
 	@classmethod
 	def from_dict(cls: Type[MessageT], data: Dict[str, Any]) -> MessageT:
@@ -100,7 +101,6 @@ class Message:
 class GeneralErrorMessage(Message):
 	type: str = MessageType.GENERAL_ERROR.value
 	error: Optional[Error]
-	ref_message_id: str
 
 
 class ChannelSubscriptionOperation(str, Enum):
