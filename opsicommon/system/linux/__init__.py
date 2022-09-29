@@ -12,6 +12,7 @@ import grp
 import os
 import pwd
 import subprocess
+from datetime import datetime
 from typing import Generator, List
 
 import psutil  # type: ignore[import]
@@ -23,24 +24,29 @@ from .. import Session
 logger = get_logger("opsicommon.general")
 
 
+def set_system_datetime(utc_datetime: datetime) -> None:
+	subprocess.run(["date", "--utc", "--set", utc_datetime.strftime("%Y-%m-%d %H:%M:%S")], capture_output=True, check=True)
+
+
 def get_user_sessions(username: str = None, session_type: str = None) -> Generator[Session, None, None]:
 	for user in psutil.users():  # pylint: disable=dotted-import-in-loop
 		if username is not None and user.name != username:  # pylint: disable=loop-invariant-statement
 			continue
 		_type = None
 		terminal = user.terminal
-		if terminal.startswith(":"):
-			_type = "x11"
-		elif terminal.startswith("tty"):
-			_type = "tty"
-			proc = psutil.Process(user.pid)  # pylint: disable=dotted-import-in-loop
-			env = proc.environ()
-			# DISPLAY, XDG_SESSION_TYPE, XDG_SESSION_ID
-			if env.get("DISPLAY"):
+		if terminal:
+			if terminal.startswith(":"):
 				_type = "x11"
-				terminal = env["DISPLAY"]
-		elif terminal.startswith("pts"):
-			_type = "pts"
+			elif terminal.startswith("tty"):
+				_type = "tty"
+				proc = psutil.Process(int(user.pid))  # pylint: disable=dotted-import-in-loop
+				env = proc.environ()
+				# DISPLAY, XDG_SESSION_TYPE, XDG_SESSION_ID
+				if env.get("DISPLAY"):
+					_type = "x11"
+					terminal = env["DISPLAY"]
+			elif terminal.startswith("pts"):
+				_type = "pts"
 		if session_type is not None and session_type != _type:  # pylint: disable=loop-invariant-statement
 			continue
 		yield Session(id=terminal, type=_type, username=user.name, started=user.started, login_pid=user.pid, terminal=terminal)

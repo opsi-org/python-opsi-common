@@ -16,14 +16,18 @@ from opsicommon.logging import get_logger
 
 Session = namedtuple("Session", ["id", "type", "username", "terminal", "login_pid", "started"])
 
-if sys.platform == "linux":
-	from .linux import get_user_sessions, run_process_in_session
+if sys.platform.lower() == "linux":
+	from .linux import get_user_sessions, run_process_in_session, set_system_datetime
+elif sys.platform.lower() == "windows":
+	from .windows import set_system_datetime
+elif sys.platform == "darwin":
+	from .darwin import set_system_datetime
 
 
 logger = get_logger("opsicommon.general")
 
 
-def ensure_not_already_running(process_name: str = None):
+def ensure_not_already_running(process_name: str = None) -> None:
 	our_pid = os.getpid()
 	other_pid = None
 	try:
