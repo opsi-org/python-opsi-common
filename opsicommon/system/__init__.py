@@ -20,7 +20,7 @@ if sys.platform.lower() == "linux":
 	from .linux import get_user_sessions, run_process_in_session, set_system_datetime
 elif sys.platform.lower() == "windows":
 	from .windows import set_system_datetime
-elif sys.platform == "darwin":
+elif sys.platform.lower() == "darwin":
 	from .darwin import set_system_datetime
 
 
