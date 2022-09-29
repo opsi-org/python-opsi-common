@@ -439,7 +439,7 @@ def test_connect_disconnect() -> None:  # pylint: disable=too-many-statements
 				assert listener.events[2][0] == "closed"
 
 	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}) as server:
-		client = ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all")
+		client = ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", connect_timeout=15.0)
 		client.connect()
 		assert client.connected is True
 		assert client.server_name == "opsiconfd 4.2.1.0 (uvicorn)"
