@@ -7,7 +7,7 @@ system
 """
 
 import os
-import sys
+import platform
 from collections import namedtuple
 
 import psutil  # type: ignore[import]
@@ -16,11 +16,11 @@ from opsicommon.logging import get_logger
 
 Session = namedtuple("Session", ["id", "type", "username", "terminal", "login_pid", "started"])
 
-if sys.platform.lower() == "linux":
+if platform.system().lower() == "linux":
 	from .linux import get_user_sessions, run_process_in_session, set_system_datetime
-elif sys.platform.lower() == "windows":
+elif platform.system().lower() == "windows":
 	from .windows import set_system_datetime
-elif sys.platform.lower() == "darwin":
+elif platform.system().lower() == "darwin":
 	from .darwin import set_system_datetime
 
 

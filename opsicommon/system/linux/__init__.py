@@ -26,9 +26,11 @@ logger = get_logger("opsicommon.general")
 
 def set_system_datetime(utc_datetime: datetime) -> None:
 	try:
-		subprocess.run(["date", "--utc", "-x-set", utc_datetime.strftime("%Y-%m-%d %H:%M:%S")], capture_output=True, check=True)
+		subprocess.run(["date", "--utc", "--set", utc_datetime.strftime("%Y-%m-%d %H:%M:%S")], capture_output=True, check=True)
 	except subprocess.CalledProcessError as err:
-		raise RuntimeError(f"Failed to set system time: {err.returncode} - {err.stderr.decode(errors='replace')}") from err
+		raise RuntimeError(
+			f"Failed to set system time as uid {os.geteuid()}: {err.returncode} - {err.stderr.decode(errors='replace')}"
+		) from err
 
 
 def get_user_sessions(username: str = None, session_type: str = None) -> Generator[Session, None, None]:
