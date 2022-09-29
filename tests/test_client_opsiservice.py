@@ -926,6 +926,7 @@ def test_server_date_update() -> None:
 
 @pytest.mark.admin_permissions
 def test_server_date_update_max_diff() -> None:
+	now = datetime.utcnow()
 	server_dt = now + timedelta(seconds=30)
 	with http_test_server(
 		generate_cert=True, response_headers={"date": datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")}
