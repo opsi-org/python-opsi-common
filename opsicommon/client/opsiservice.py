@@ -5,6 +5,7 @@
 """
 This file is part of opsi - https://www.opsi.org
 """
+# pylint: disable=too-many-lines
 
 import gzip
 import os
@@ -15,6 +16,7 @@ import warnings
 from base64 import b64encode
 from contextlib import contextmanager
 from contextvars import copy_context
+from datetime import datetime
 from enum import Enum
 from ipaddress import IPv6Address, ip_address
 from pathlib import Path
@@ -72,6 +74,7 @@ from ..messagebus import (
 	Message,
 	MessageType,
 )
+from ..system import set_system_datetime
 from ..utils import prepare_proxy_environment, serialize
 
 warnings.simplefilter("ignore", InsecureRequestWarning)
@@ -204,6 +207,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		proxy_url: Optional[str] = "system",
 		user_agent: str = None,
 		connect_timeout: float = 10.0,
+		max_time_diff: float = 5.0
 	) -> None:
 		"""
 		proxy_url:
@@ -232,6 +236,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self.server_version = version.parse("0")
 		self._messagebus_available = False
 		self._connected = False
+		self._max_time_diff = max_time_diff
 		self._connect_lock = Lock()
 		self._messagebus_connect_lock = Lock()
 		self._listener_lock = Lock()
@@ -436,7 +441,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			logger.warning(err, exc_info=True)
 		return ca_certs
 
-	def connect(self) -> None:  # pylint: disable=too-many-branches
+	def connect(self) -> None:  # pylint: disable=too-many-branches,too-many-statements
 		if self._connect_lock.locked():
 			return
 
@@ -493,6 +498,20 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				if match:
 					self.server_version = version.parse(match.group(1))
 					self._messagebus_available = self.server_version >= MIN_VERSION_MESSAGEBUS
+
+			if self._max_time_diff >= 0 and "date" in response.headers:
+				try:
+					server_dt = datetime.strptime(response.headers["date"], "%a, %d %b %Y %H:%M:%S %Z")
+					local_dt = datetime.utcnow()
+					diff = server_dt - local_dt
+					if diff.total_seconds() > self._max_time_diff:
+						logger.warning(
+							"Local time %r differs from server time (max diff: %0.3f), setting system time to %r",
+							server_dt, self._max_time_diff, server_dt
+						)
+						set_system_datetime(server_dt)
+				except Exception as err:  # pylint: disable=broad-except
+					logger.warning("Failed to process date header %r: %r", response.headers["date"], err)
 
 			if self._ca_cert_file:
 				self.fetch_opsi_ca(skip_verify=not verify)

@@ -9,6 +9,7 @@ This file is part of opsi - https://www.opsi.org
 import json
 import platform
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Thread
 from typing import Any, Iterable, List, Optional, Tuple, Union
@@ -48,6 +49,7 @@ from opsicommon.messagebus import (
 	MessageType,
 )
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
+from opsicommon.system import set_system_datetime
 from opsicommon.testing.helpers import (  # type: ignore[import]
 	HTTPTestServerRequestHandler,
 	environment,
@@ -895,3 +897,37 @@ def test_messagebus_listener() -> None:
 	# listener4: FILE_CHUNK
 	assert not listener4.expired_messages_received
 	assert not listener4.messages_received
+
+
+def test_server_date_update() -> None:
+	now = datetime.utcnow()
+	try:
+		server_dt = now + timedelta(seconds=30)
+		with http_test_server(
+			generate_cert=True, response_headers={"date": datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")}
+		) as server:
+			now = datetime.utcnow()
+			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", max_time_diff=5) as client:
+				client.connect()
+				cur = datetime.utcnow()
+				# Check if time was set to server time
+				assert abs((server_dt - cur).total_seconds()) < 10
+	finally:
+		set_system_datetime(now)
+
+
+def test_server_date_update_max_diff() -> None:
+	now = datetime.utcnow()
+	try:
+		server_dt = now + timedelta(seconds=30)
+		with http_test_server(
+			generate_cert=True, response_headers={"date": datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")}
+		) as server:
+			now = datetime.utcnow()
+			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", max_time_diff=60) as client:
+				client.connect()
+				cur = datetime.utcnow()
+				# Check if time was set to server time
+				assert abs((server_dt - cur).total_seconds()) > 20
+	finally:
+		set_system_datetime(now)
