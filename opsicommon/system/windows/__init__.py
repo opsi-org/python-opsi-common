@@ -8,7 +8,7 @@ This file is part of opsi - https://www.opsi.org
 
 from datetime import datetime
 
-import win32api
+import win32api  # type: ignore[import] # pylint: disable=import-error
 
 
 def set_system_datetime(utc_datetime: datetime) -> None:
