@@ -102,6 +102,7 @@ def test_drop_privileges() -> None:
 	drop_privileges(username)
 
 
+@pytest.mark.not_in_docker
 @pytest.mark.admin_permissions
 def test_set_system_datetime() -> None:
 	now = datetime.utcnow()

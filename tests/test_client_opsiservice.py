@@ -15,7 +15,7 @@ from threading import Thread
 from typing import Any, Iterable, List, Optional, Tuple, Union
 from unittest import mock
 from urllib.parse import unquote
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
 
@@ -900,13 +900,19 @@ def test_messagebus_listener() -> None:
 	assert not listener4.messages_received
 
 
+@pytest.mark.not_in_docker
+@pytest.mark.admin_permissions
 def test_server_date_update() -> None:
 	now = datetime.utcnow()
 	try:
 		server_dt = now + timedelta(seconds=30)
+		try:
+			server_dt_str = datetime.strftime(server_dt.astimezone(ZoneInfo("GMT")), "%a, %d %b %Y %H:%M:%S %Z")
+		except ZoneInfoNotFoundError:
+			server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")
 		with http_test_server(
 			generate_cert=True,
-			response_headers={"date": datetime.strftime(server_dt.astimezone(ZoneInfo("GMT")), "%a, %d %b %Y %H:%M:%S %Z")},
+			response_headers={"date": server_dt_str},
 		) as server:
 			now = datetime.utcnow()
 			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", max_time_diff=5) as client:
@@ -918,6 +924,7 @@ def test_server_date_update() -> None:
 		set_system_datetime(now)
 
 
+@pytest.mark.admin_permissions
 def test_server_date_update_max_diff() -> None:
 	now = datetime.utcnow()
 	try:
