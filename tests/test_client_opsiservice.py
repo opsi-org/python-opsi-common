@@ -15,6 +15,7 @@ from threading import Thread
 from typing import Any, Iterable, List, Optional, Tuple, Union
 from unittest import mock
 from urllib.parse import unquote
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -904,7 +905,8 @@ def test_server_date_update() -> None:
 	try:
 		server_dt = now + timedelta(seconds=30)
 		with http_test_server(
-			generate_cert=True, response_headers={"date": datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")}
+			generate_cert=True,
+			response_headers={"date": datetime.strftime(server_dt.astimezone(ZoneInfo("GMT")), "%a, %d %b %Y %H:%M:%S %Z")},
 		) as server:
 			now = datetime.utcnow()
 			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", max_time_diff=5) as client:
