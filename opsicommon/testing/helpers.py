@@ -187,13 +187,11 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			file.close()
 			raise
 
-	def send_response(self, code, message=None):
+	def send_response(self, code: int, message: str = None) -> None:
 		self.log_request(code)
 		self.send_response_only(code, message)
-		headers = [hdr.lower() for hdr in self.server.response_headers]
-		if "server" not in headers:
-			self.send_header('Server', self.version_string())
-		if "date" not in headers:
+		self.send_header('Server', self.version_string())
+		if "date" not in [hdr.lower() for hdr in self.server.response_headers]:
 			self.send_header('Date', self.date_time_string())
 
 	def do_POST(self) -> None:  # pylint: disable=invalid-name
