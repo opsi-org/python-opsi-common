@@ -244,12 +244,15 @@ class FileUploadResultMessage(Message):
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
-class FileChunk(Message):
+class FileChunkMessage(Message):
 	type: str = MessageType.FILE_CHUNK.value
 	file_id: str
 	number: int
 	last: bool = False
 	data: bytes
+
+
+FileChunk = FileChunkMessage
 
 
 MESSAGE_TYPE_TO_CLASS = {
@@ -270,5 +273,5 @@ MESSAGE_TYPE_TO_CLASS = {
 	MessageType.TERMINAL_CLOSE_EVENT.value: TerminalCloseEvent,
 	MessageType.FILE_UPLOAD_REQUEST.value: FileUploadRequestMessage,
 	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
-	MessageType.FILE_CHUNK.value: FileChunk,
+	MessageType.FILE_CHUNK.value: FileChunkMessage,
 }
