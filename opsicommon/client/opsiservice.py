@@ -507,7 +507,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					if diff.total_seconds() > self._max_time_diff:
 						logger.warning(
 							"Local time %r differs from server time (max diff: %0.3f), setting system time to %r",
-							server_dt, self._max_time_diff, server_dt
+							local_dt.strftime("%Y-%m-%d %H:%M:%S"), self._max_time_diff, server_dt.strftime("%Y-%m-%d %H:%M:%S")
 						)
 						set_system_datetime(server_dt)
 				except Exception as err:  # pylint: disable=broad-except
