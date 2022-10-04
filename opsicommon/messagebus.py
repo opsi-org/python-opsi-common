@@ -136,7 +136,6 @@ class TraceRequestMessage(Message):
 @dataclass(slots=True, kw_only=True, repr=False)
 class TraceResponseMessage(Message):
 	type: str = MessageType.TRACE_RESPONSE.value
-	req_id: str
 	req_trace: Dict[str, Any]
 	trace: Dict[str, Any]
 	payload: Optional[bytes] = None
