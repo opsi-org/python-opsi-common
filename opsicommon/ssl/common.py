@@ -7,7 +7,7 @@ ssl
 """
 
 import random
-from typing import Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
 from OpenSSL.crypto import (  # type: ignore[import]
 	FILETYPE_PEM,
@@ -42,18 +42,26 @@ def as_pem(cert_or_key: Union[X509, PKey], passphrase: str = None) -> str:
 	raise TypeError(f"Invalid type: {cert_or_key}")
 
 
-def create_x590_name(subject: dict = None) -> X509Name:
-	subj = {"C": "DE", "ST": "RP", "L": "MAINZ", "O": "uib", "OU": "opsi", "CN": "opsi", "emailAddress": "info@opsi.org"}
+def create_x590_name(subject: Dict[str, Optional[str]] = None) -> X509Name:
+	subj: Dict[str, Optional[str]] = {
+		"C": "DE",
+		"ST": "RP",
+		"L": "MAINZ",
+		"O": "uib",
+		"OU": "opsi",
+		"CN": "opsi",
+		"emailAddress": "info@opsi.org",
+	}
 	subj.update(subject or {})
 
 	x509_name = X509Name(X509().get_subject())
-	x509_name.countryName = subj.get("countryName", subj.get("C"))
-	x509_name.stateOrProvinceName = subj.get("stateOrProvinceName", subj.get("ST"))
-	x509_name.localityName = subj.get("localityName", subj.get("L"))
-	x509_name.organizationName = subj.get("organizationName", subj.get("O"))
-	x509_name.organizationalUnitName = subj.get("organizationalUnitName", subj.get("OU"))
-	x509_name.commonName = subj.get("commonName", subj.get("CN"))
-	x509_name.emailAddress = subj.get("emailAddress")
+	x509_name.countryName = subj.get("countryName", subj.get("C"))  # type: ignore[assignment]
+	x509_name.stateOrProvinceName = subj.get("stateOrProvinceName", subj.get("ST"))  # type: ignore[assignment]
+	x509_name.localityName = subj.get("localityName", subj.get("L"))  # type: ignore[assignment]
+	x509_name.organizationName = subj.get("organizationName", subj.get("O"))  # type: ignore[assignment]
+	x509_name.organizationalUnitName = subj.get("organizationalUnitName", subj.get("OU"))  # type: ignore[assignment]
+	x509_name.commonName = subj.get("commonName", subj.get("CN"))  # type: ignore[assignment]
+	x509_name.emailAddress = subj.get("emailAddress")  # type: ignore[assignment]
 
 	return x509_name
 
