@@ -92,7 +92,11 @@ def create_ca(subject: dict, valid_days: int, key: PKey = None, bits: int = CA_K
 	ca_cert.set_issuer(ca_subject)
 	ca_cert.set_subject(ca_subject)
 	ca_cert.add_extensions(
-		[X509Extension(b"subjectKeyIdentifier", False, b"hash", subject=ca_cert), X509Extension(b"basicConstraints", True, b"CA:TRUE")]
+		[
+			X509Extension(b"subjectKeyIdentifier", False, b"hash", subject=ca_cert),
+			X509Extension(b"basicConstraints", True, b"CA:true, pathlen:0"),
+			X509Extension(b"keyUsage", True, b"digitalSignature, cRLSign, keyCertSign"),
+		]
 	)
 	ca_cert.sign(key, "sha256")
 
@@ -147,7 +151,7 @@ def create_server_cert(  # pylint: disable=too-many-arguments,too-many-locals
 	cert.add_extensions(
 		[
 			X509Extension(b"subjectKeyIdentifier", False, b"hash", subject=ca_cert),
-			X509Extension(b"basicConstraints", True, b"CA:FALSE"),
+			X509Extension(b"basicConstraints", True, b"CA:false"),
 			X509Extension(b"keyUsage", True, b"nonRepudiation, digitalSignature, keyEncipherment"),
 			X509Extension(b"extendedKeyUsage", False, b"serverAuth, clientAuth, codeSigning, emailProtection"),
 		]
