@@ -1,12 +1,9 @@
-# -*- coding: utf-8 -*-
-
 # Copyright (c) uib GmbH <info@uib.de>
 # License: AGPL-3.0
 """
 Testing behaviour of exceptions.
 """
 
-from __future__ import print_function
 
 import time
 
@@ -61,7 +58,7 @@ def exception_class(request):
 		True,
 		time.localtime(),
 		"unicode string",
-		"utf-8 string: äöüß€".encode("utf-8"),
+		"utf-8 string: äöüß€".encode(),
 		"windows-1258 string: äöüß€".encode("windows-1258"),
 		"utf-16 string: äöüß€".encode("utf-16"),
 		"latin1 string: äöüß".encode("latin-1"),

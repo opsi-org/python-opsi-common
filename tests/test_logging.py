@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright (c) uib GmbH <info@uib.de>
 # License: AGPL-3.0
 """
@@ -75,16 +73,16 @@ def test_log_file(tmpdir):
 	logger.addHandler(logging.FileHandler(log_file1))
 	logging_config(log_file=log_file2, file_level=logging.INFO, file_format="%(message)s", remove_handlers=False)
 	logger.warning("message")
-	with open(log_file1, "r", encoding="utf-8") as file:
+	with open(log_file1, encoding="utf-8") as file:
 		assert file.read().strip() == "message"
-	with open(log_file2, "r", encoding="utf-8") as file:
+	with open(log_file2, encoding="utf-8") as file:
 		assert file.read().strip() == "message"
 
 	logger.addHandler(logging.FileHandler(log_file3))
 	logging_config(log_file=log_file2, file_level=logging.INFO, file_format="%(message)s", remove_handlers=True)
 	logger.warning("message2")
 	assert not os.path.exists(log_file3) or os.path.getsize(log_file3) == 0
-	with open(log_file2, "r", encoding="utf-8") as file:
+	with open(log_file2, encoding="utf-8") as file:
 		assert "message2" in file.read()
 
 	logging_config(log_file=None, remove_handlers=True)

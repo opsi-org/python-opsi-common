@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright (c) uib GmbH <info@uib.de>
 # License: AGPL-3.0
 """
@@ -259,7 +257,7 @@ def test_object_classes() -> None:
 
 
 def test_get_possible_class_attributes() -> None:
-	assert get_possible_class_attributes(Host) == set([
+	assert get_possible_class_attributes(Host) == {
 		'masterDepotId', 'depotLocalUrl', 'repositoryRemoteUrl',
 		'description', 'created', 'inventoryNumber', 'notes',
 		'oneTimePassword', 'isMasterDepot', 'id', 'lastSeen',
@@ -267,7 +265,7 @@ def test_get_possible_class_attributes() -> None:
 		'repositoryLocalUrl', 'opsiHostKey', 'ipAddress',
 		'depotWebdavUrl', 'depotRemoteUrl', 'type',
 		'workbenchRemoteUrl', 'workbenchLocalUrl'
-	])
+	}
 
 	class Test(Entity):  # pylint: disable=too-few-public-methods
 		sub_classes: Dict[str, type] = {}
@@ -275,7 +273,7 @@ def test_get_possible_class_attributes() -> None:
 		def __init__(no_self: Any, arg: Any) -> None:  # pylint: disable=unused-argument,no-self-argument
 			pass
 
-	assert get_possible_class_attributes(Test) == set(["no_self", "arg", "type"])
+	assert get_possible_class_attributes(Test) == {"no_self", "arg", "type"}
 
 
 def test_get_foreign_id_attributes() -> None:
