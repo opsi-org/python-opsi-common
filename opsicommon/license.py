@@ -688,7 +688,7 @@ class OpsiLicensePool:
 		for lic in self.get_licenses(valid_only=True, at_date=at_date):
 			if lic.module_id not in modules:
 				modules[lic.module_id] = {"client_number": 0, "license_ids": []}  # pylint: disable=loop-invariant-statement
-			if modules[lic.module_id]["state"] == OPSI_MODULE_STATE_FREE:  # pylint: disable=loop-global-usage
+			elif modules[lic.module_id]["state"] == OPSI_MODULE_STATE_FREE:  # pylint: disable=loop-global-usage
 				continue
 
 			modules[lic.module_id]["available"] = True
