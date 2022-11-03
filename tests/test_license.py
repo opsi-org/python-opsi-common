@@ -1,16 +1,19 @@
+# -*- coding: utf-8 -*-
+
 # Copyright (c) uib GmbH <info@uib.de>
 # License: AGPL-3.0
 """
 This file is part of opsi - https://www.opsi.org
 """
 
-import codecs
+
 import json
-import pathlib
 import re
 import shutil
 import time
 from datetime import date, timedelta
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple, Type, Union
 from unittest import mock
 
 import pytest
@@ -43,7 +46,7 @@ from opsicommon.license import (
 	set_default_opsi_license_pool,
 )
 
-LIC1 = {
+LIC1: Dict[str, Any] = {
 	"id": "1bf8e14c-1faf-4288-a468-d92e1ee2dd8b",
 	"type": "core",
 	"schema_version": 2,
@@ -66,18 +69,18 @@ LIC1 = {
 }
 
 
-def _read_modules_file(modules_file):
+def _read_modules_file(modules_file: Union[Path, str]) -> Tuple[Dict[str, str], date, str, str]:
 	modules = {}
 	expires = None
 	customer = None
 	signature = None
-	with codecs.open(modules_file, "r", "utf-8") as file:
+	with open(modules_file, "r", encoding="utf-8") as file:
 		for line in file:
 			key, val = line.lower().split("=", 1)
 			key = key.strip()
 			val = val.strip()
 			if key == "expires":
-				expires = date.fromisoformat(OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED) if val == "never" else date.fromisoformat(val)
+				expires = OPSI_LICENSE_DATE_UNLIMITED if val == "never" else date.fromisoformat(val)
 			elif key == "customer":
 				customer = val
 			elif key == "signature":
@@ -86,20 +89,22 @@ def _read_modules_file(modules_file):
 					signature = "0" + signature
 			else:
 				modules[key] = val
+	if not (expires and customer and signature):
+		raise RuntimeError(f"Failed to parse {modules_file}")
 	return modules, expires, customer, signature
 
 
-def test_generate_key_pair():
+def test_generate_key_pair() -> None:
 	private_key, public_key = generate_key_pair(return_pem=False)
 	assert private_key.has_private()
 	assert not public_key.has_private()
 
-	private_key, public_key = generate_key_pair(return_pem=True)
-	assert "-----BEGIN RSA PRIVATE KEY-----" in private_key
-	assert "-----BEGIN PUBLIC KEY-----" in public_key
+	private_key_str, public_key_str = generate_key_pair(return_pem=True)
+	assert "-----BEGIN RSA PRIVATE KEY-----" in private_key_str
+	assert "-----BEGIN PUBLIC KEY-----" in public_key_str
 
 
-def test_sign_opsi_license():
+def test_sign_opsi_license() -> None:
 	private_key, public_key = generate_key_pair(return_pem=False)
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
 		lic = OpsiLicense(**LIC1)
@@ -108,15 +113,15 @@ def test_sign_opsi_license():
 		lic.sign(private_key)
 		assert lic.get_state() == OPSI_LICENSE_STATE_VALID
 
-	private_key, public_key = generate_key_pair(return_pem=True)
-	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: RSA.import_key(public_key)):
+	private_key_str, _ = generate_key_pair(return_pem=True)
+	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: RSA.import_key(private_key_str)):
 		lic = OpsiLicense(**LIC1)
-		lic.sign(private_key)
+		lic.sign(private_key_str)
 		assert lic.get_state() == OPSI_LICENSE_STATE_VALID
 
 		lic.schema_version = 1
 		with pytest.raises(NotImplementedError):
-			lic.sign(private_key)
+			lic.sign(private_key_str)
 
 	private_key, public_key = generate_key_pair(return_pem=False)
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
@@ -152,7 +157,7 @@ def test_sign_opsi_license():
 		assert lic_file.licenses[0].get_state() != OPSI_LICENSE_STATE_INVALID_SIGNATURE
 
 
-def test_opsi_license_defaults():
+def test_opsi_license_defaults() -> None:
 	lic = OpsiLicense(
 		customer_id="12345",
 		customer_name="uib GmbH",
@@ -207,8 +212,8 @@ def test_opsi_license_defaults():
 		("signature", bytes.fromhex("0102030405060708090a0b0c0d0e"), None),
 	),
 )
-def test_opsi_license_validation(attribute, value, exception):
-	kwargs = {
+def test_opsi_license_validation(attribute: str, value: Any, exception: Optional[Type]) -> None:
+	kwargs: Dict[str, Any] = {
 		"customer_id": "12345",
 		"customer_name": "uib GmbH",
 		"customer_address": "Mainz",
@@ -224,7 +229,7 @@ def test_opsi_license_validation(attribute, value, exception):
 		OpsiLicense(**kwargs)
 
 
-def test_opsi_license_to_from_json():
+def test_opsi_license_to_from_json() -> None:
 	lic = OpsiLicense(**LIC1)
 	json_data = lic.to_json()
 	assert LIC1 == json.loads(json_data)
@@ -237,7 +242,7 @@ def test_opsi_license_to_from_json():
 	assert data["_state"] == OPSI_LICENSE_STATE_INVALID_SIGNATURE
 
 
-def test_opsi_license_to_from_dict():
+def test_opsi_license_to_from_dict() -> None:
 	lic = OpsiLicense(**LIC1)
 	lic_dict = lic.to_dict(serializable=True)
 	assert lic_dict == LIC1
@@ -248,7 +253,7 @@ def test_opsi_license_to_from_dict():
 	assert lic.to_dict(serializable=True) == lic_dict
 
 
-def test_opsi_license_hash():
+def test_opsi_license_hash() -> None:
 	lic = OpsiLicense(**LIC1)
 	assert lic.get_hash(hex_digest=True) == (
 		"137cd167b2b1104cdbdd5190e12bd9a6cf5bb2726218c966d136c80c271f262c"
@@ -260,7 +265,7 @@ def test_opsi_license_hash():
 	)
 
 
-def test_default_opsi_license_pool():
+def test_default_opsi_license_pool() -> None:
 	def_pool1 = get_default_opsi_license_pool()
 	pool = OpsiLicensePool(license_file_path="/tmp/licenses")
 	set_default_opsi_license_pool(pool)
@@ -274,7 +279,7 @@ def test_default_opsi_license_pool():
 	assert def_pool3 != def_pool2
 
 
-def test_load_opsi_license_pool():
+def test_load_opsi_license_pool() -> None:
 	modules_file = "tests/data/license/modules"
 	olp = OpsiLicensePool(license_file_path="tests/data/license/test1.opsilic")
 	olp.load()
@@ -307,7 +312,7 @@ def test_load_opsi_license_pool():
 		assert module_id in module_ids  # pylint: disable=loop-invariant-statement
 
 
-def test_opsi_license_pool_modified(tmp_path):
+def test_opsi_license_pool_modified(tmp_path: Path) -> None:
 	license_file_path = tmp_path / "licenses"
 	modules_file_path = tmp_path / "licenses" / "modules"
 	shutil.copytree("tests/data/license", str(license_file_path))
@@ -333,7 +338,7 @@ def test_opsi_license_pool_modified(tmp_path):
 	assert not olp.modified()
 
 
-def test_opsi_license_pool_add_remove_license(tmp_path):
+def test_opsi_license_pool_add_remove_license(tmp_path: Path) -> None:
 	license_file_path = tmp_path / "licenses"
 	modules_file_path = tmp_path / "licenses" / "modules"
 	shutil.copytree("tests/data/license", str(license_file_path))
@@ -367,7 +372,7 @@ def test_opsi_license_pool_add_remove_license(tmp_path):
 		assert len(lic._cached_state) == 0  # pylint: disable=protected-access
 
 
-def test_opsi_license_pool_licenses_checksum():
+def test_opsi_license_pool_licenses_checksum() -> None:
 	olp = OpsiLicensePool(license_file_path="tests/data/license")
 	olp.load()
 	private_key, public_key = generate_key_pair(return_pem=False)
@@ -397,7 +402,7 @@ def test_opsi_license_pool_licenses_checksum():
 		assert olp.get_licenses_checksum() == "34c7b2d2"
 
 
-def test_opsi_license_pool_relevant_dates():
+def test_opsi_license_pool_relevant_dates() -> None:
 	olp = OpsiLicensePool(license_file_path="tests/data/license")
 	olp.load()
 	private_key, public_key = generate_key_pair(return_pem=False)
@@ -435,7 +440,7 @@ def test_opsi_license_pool_relevant_dates():
 				assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_OVER_LIMIT
 
 
-def test_licensing_info_and_cache():
+def test_licensing_info_and_cache() -> None:
 	olp = OpsiLicensePool(license_file_path="tests/data/license", modules_file_path="tests/data/license/modules")
 	olp.load()
 	private_key, public_key = generate_key_pair(return_pem=False)
@@ -447,15 +452,15 @@ def test_licensing_info_and_cache():
 		timings = []
 		for num in range(3):
 			start = time.time()  # pylint: disable=dotted-import-in-loop
-			info = {
+			info: Dict[str, Any] = {  # pylint: disable=loop-invariant-statement
 				"client_numbers": olp.client_numbers,
-				"available_modules": [module_id for module_id, info in olp.get_modules().items() if info["available"]],
+				"available_modules": [module_id for module_id, info in olp.get_modules().items() if info["available"]],  # pylint: disable=loop-invariant-statement
 				"licenses_checksum": olp.get_licenses_checksum(),
 			}
 			licenses = olp.get_licenses()
-			info["licenses"] = [lic.to_dict(serializable=True, with_state=True) for lic in licenses]
-			info["legacy_modules"] = olp.get_legacy_modules()
-			info["dates"] = {}
+			info["licenses"] = [lic.to_dict(serializable=True, with_state=True) for lic in licenses]  # pylint: disable=loop-invariant-statement
+			info["legacy_modules"] = olp.get_legacy_modules()  # pylint: disable=loop-invariant-statement
+			info["dates"] = {}  # pylint: disable=loop-invariant-statement
 			for at_date in olp.get_relevant_dates():
 				info["dates"][str(at_date)] = {"modules": olp.get_modules(at_date=at_date)}  # pylint: disable=loop-invariant-statement
 			timings.append(time.time() - start)  # pylint: disable=dotted-import-in-loop
@@ -500,20 +505,20 @@ def test_licensing_info_and_cache():
 	),
 )
 def test_license_state_client_number_warning_and_thresholds(  # pylint: disable=too-many-arguments,too-many-locals
-	lic_scalability1,
-	lic_linux,
-	clients_total,
-	clients_linux,
-	warn_absolute,
-	warn_percent,
-	exp_state_scalabilty,
-	exp_avail_scalability,
-	exp_state_linux,
-	exp_avail_linux,
-):
+	lic_scalability1: int,
+	lic_linux: int,
+	clients_total: int,
+	clients_linux: int,
+	warn_absolute: int,
+	warn_percent: int,
+	exp_state_scalabilty: str,
+	exp_avail_scalability: bool,
+	exp_state_linux: str,
+	exp_avail_linux: bool,
+) -> None:
 	private_key, public_key = generate_key_pair(return_pem=False)
 
-	def client_info():
+	def client_info() -> Dict[str, int]:
 		return {"macos": 0, "linux": clients_linux, "windows": clients_total - clients_linux}
 
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
@@ -547,12 +552,12 @@ def test_license_state_client_number_warning_and_thresholds(  # pylint: disable=
 		assert modules["linux_agent"]["available"] == exp_avail_linux
 
 
-def test_future_warning():
+def test_future_warning() -> None:
 	private_key, public_key = generate_key_pair(return_pem=False)
 
 	clients = 100
 
-	def client_info():
+	def client_info() -> Dict[str, int]:
 		return {"macos": 0, "linux": 0, "windows": clients}
 
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
@@ -583,7 +588,7 @@ def test_future_warning():
 		assert state["available"] is False
 
 
-def test_license_state():
+def test_license_state() -> None:
 	private_key, public_key = generate_key_pair(return_pem=False)
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
 		lic = OpsiLicense(**LIC1)
@@ -625,7 +630,45 @@ def test_license_state():
 		assert lic.get_state() == OPSI_LICENSE_STATE_INVALID_SIGNATURE
 
 
-def test_license_state_cache():
+def test_free_module_state() -> None:
+	private_key, public_key = generate_key_pair(return_pem=False)
+
+	def client_info() -> Dict[str, int]:
+		return {"macos": 0, "linux": 0, "windows": 1000}
+
+	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
+		kwargs = LIC1.copy()
+		kwargs["module_id"] = OPSI_FREE_MODULE_IDS[0]
+		kwargs["client_number"] = 100
+		lic = OpsiLicense(**kwargs)
+		lic.sign(private_key)
+
+		olp = OpsiLicensePool(client_info=client_info)
+		olp.add_license(lic)
+
+		assert lic.get_state() == OPSI_LICENSE_STATE_VALID
+
+		module = olp.get_modules()[OPSI_FREE_MODULE_IDS[0]]
+		assert module["client_number"] == OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
+		assert module["state"] == OPSI_MODULE_STATE_FREE
+		assert module["available"] is True
+
+		kwargs["valid_until"] = "2020-01-01"
+		lic = OpsiLicense(**kwargs)
+		lic.sign(private_key)
+
+		olp = OpsiLicensePool(client_info=client_info)
+		olp.add_license(lic)
+
+		assert lic.get_state() == OPSI_LICENSE_STATE_EXPIRED
+
+		module = olp.get_modules()[OPSI_FREE_MODULE_IDS[0]]
+		assert module["client_number"] == OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
+		assert module["state"] == OPSI_MODULE_STATE_FREE
+		assert module["available"] is True
+
+
+def test_license_state_cache() -> None:
 	private_key, public_key = generate_key_pair(return_pem=False)
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
 		lic = OpsiLicense(**LIC1)
@@ -661,22 +704,22 @@ def test_license_state_cache():
 			assert len(lic._cached_state) == 1  # pylint: disable=protected-access
 
 
-def test_opsi_license_pool_unknown_module_id():
+def test_opsi_license_pool_unknown_module_id() -> None:
 	private_key, public_key = generate_key_pair(return_pem=False)
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
 		olp = OpsiLicensePool()
 		lic = dict(LIC1)
 		lic["module_id"] = "unknownmod"
 		lic["valid_until"] = "2123-12-31"
-		lic = OpsiLicense(**lic)
-		lic.sign(private_key)
-		olp.add_license(lic)
+		olic = OpsiLicense(**lic)
+		olic.sign(private_key)
+		olp.add_license(olic)
 		mods = olp.get_modules()
 		assert "unknownmod" in mods
 
 
-def test_license_state_modules(tmp_path):
-	modules = pathlib.Path("tests/data/license/modules").read_text(encoding="utf-8")
+def test_license_state_modules(tmp_path: Path) -> None:
+	modules = Path("tests/data/license/modules").read_text(encoding="utf-8")
 	modules_file = tmp_path / "modules"
 	modules_file.write_text(modules)
 
@@ -718,7 +761,7 @@ def test_license_state_modules(tmp_path):
 	assert lic.get_state() == OPSI_LICENSE_STATE_INVALID_SIGNATURE
 
 
-def test_license_state_replaced_by_non_core():
+def test_license_state_replaced_by_non_core() -> None:
 	olp = OpsiLicensePool(license_file_path="tests/data/license")
 	olp.load()
 	private_key, public_key = generate_key_pair(return_pem=False)
@@ -730,7 +773,7 @@ def test_license_state_replaced_by_non_core():
 				assert lic.get_state() == OPSI_LICENSE_STATE_REPLACED_BY_NON_CORE
 
 
-def test_license_state_revoked():
+def test_license_state_revoked() -> None:
 	olp = OpsiLicensePool(license_file_path="tests/data/license")
 	olp.load()
 	private_key, public_key = generate_key_pair(return_pem=False)
@@ -742,9 +785,9 @@ def test_license_state_revoked():
 				assert lic.get_state() == OPSI_LICENSE_STATE_REVOKED
 
 
-def test_opsi_modules_file(tmp_path):
+def test_opsi_modules_file(tmp_path: Path) -> None:
 	orig_modules_file = "tests/data/license/modules"
-	raw_data = pathlib.Path(orig_modules_file).read_text(encoding="utf-8")
+	raw_data = Path(orig_modules_file).read_text(encoding="utf-8")
 
 	modules_file = tmp_path / "modules"
 	modules_file.write_text(raw_data, encoding="utf-8")
@@ -776,7 +819,7 @@ def test_opsi_modules_file(tmp_path):
 		assert lic.get_state() == OPSI_LICENSE_STATE_INVALID_SIGNATURE
 
 
-def test_write_license_file(tmp_path):
+def test_write_license_file(tmp_path: Path) -> None:
 	license_file = str(tmp_path / "test.opsilic")
 	private_key, public_key = generate_key_pair(return_pem=False)
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
@@ -784,15 +827,15 @@ def test_write_license_file(tmp_path):
 		del lic1["id"]
 		lic1["module_id"] = "scalability1"
 		lic1["note"] = "Line1\nLine2"
-		lic1 = OpsiLicense(**lic1)
-		lic1.sign(private_key)
+		olic1 = OpsiLicense(**lic1)
+		olic1.sign(private_key)
 
 		lic2 = dict(LIC1)
 		del lic2["id"]
 		lic2["module_id"] = "vpn"
 		lic2["revoked_ids"] = ["legacy-vpn", "7cf9ef7e-6e6f-43f5-8b52-7c4e582ff6f1"]
-		lic2 = OpsiLicense(**lic2)
-		lic2.sign(private_key)
+		olic2 = OpsiLicense(**lic2)
+		olic2.sign(private_key)
 
 		file = OpsiLicenseFile(license_file)
 		with pytest.raises(RuntimeError) as err:
@@ -800,21 +843,21 @@ def test_write_license_file(tmp_path):
 		assert str(err.value) == "No licenses to write"
 
 		file = OpsiLicenseFile(license_file)
-		file.add_license(lic1)
-		file.add_license(lic2)
+		file.add_license(olic1)
+		file.add_license(olic2)
 		file.write()
 
 		file = OpsiLicenseFile(license_file)
 		file.read()
 		assert len(file.licenses) == 2
 		for lic in file.licenses:
-			if lic.id == lic1.id:
-				assert lic.to_dict() == lic1.to_dict()
-			elif lic.id == lic2.id:
-				assert lic.to_dict() == lic2.to_dict()
+			if lic.id == olic1.id:
+				assert lic.to_dict() == olic1.to_dict()
+			elif lic.id == olic2.id:
+				assert lic.to_dict() == olic2.to_dict()
 
 
-def test_modules_file_and_license_file(tmp_path):
+def test_modules_file_and_license_file(tmp_path: Path) -> None:
 	license_file = str(tmp_path / "test.opsilic")
 	lic1 = dict(LIC1)
 	lic1["type"] = "standard"
@@ -822,13 +865,13 @@ def test_modules_file_and_license_file(tmp_path):
 	lic1["valid_from"] = "2020-01-01"
 	lic1["valid_until"] = "2020-02-01"
 	lic1["revoked_ids"] = ["c6af25cf-62e4-4b90-8f4b-21c542d8b74b", "legacy-scalability1"]
-	lic1 = OpsiLicense(**lic1)
+	olic1 = OpsiLicense(**lic1)
 
 	private_key, public_key = generate_key_pair(return_pem=False)
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
-		lic1.sign(private_key)
+		olic1.sign(private_key)
 		file = OpsiLicenseFile(license_file)
-		file.add_license(lic1)
+		file.add_license(olic1)
 		file.write()
 
 		pool = OpsiLicensePool(license_file_path=str(tmp_path), modules_file_path="tests/data/license/modules")
@@ -842,8 +885,8 @@ def test_modules_file_and_license_file(tmp_path):
 
 		start_date = date.fromisoformat("2010-01-01")
 		assert start_date in dates
-		assert lic1.valid_from in dates
-		assert lic1.valid_until + timedelta(days=1) in dates
+		assert olic1.valid_from in dates
+		assert olic1.valid_until + timedelta(days=1) in dates
 
 		lics = pool.get_licenses(at_date=start_date)
 		for lic in lics:
@@ -853,17 +896,17 @@ def test_modules_file_and_license_file(tmp_path):
 			else:
 				assert state == OPSI_LICENSE_STATE_NOT_YET_VALID
 
-		lics = pool.get_licenses(at_date=lic1.valid_from)
+		lics = pool.get_licenses(at_date=olic1.valid_from)
 		for lic in lics:
-			state = lic.get_state(at_date=lic1.valid_from)
-			if lic.schema_version == 1 and lic.module_id == lic1.module_id:
+			state = lic.get_state(at_date=olic1.valid_from)
+			if lic.schema_version == 1 and lic.module_id == olic1.module_id:
 				assert state == OPSI_LICENSE_STATE_REVOKED
 			else:
 				assert state == OPSI_LICENSE_STATE_VALID
 
-		lics = pool.get_licenses(at_date=lic1.valid_until + timedelta(days=1))
+		lics = pool.get_licenses(at_date=olic1.valid_until + timedelta(days=1))
 		for lic in lics:
-			state = lic.get_state(at_date=lic1.valid_until + timedelta(days=1))
+			state = lic.get_state(at_date=olic1.valid_until + timedelta(days=1))
 			if lic.schema_version == 1:
 				assert state == OPSI_LICENSE_STATE_VALID
 			else:

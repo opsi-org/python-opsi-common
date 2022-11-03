@@ -20,7 +20,20 @@ import zlib
 from collections import OrderedDict
 from datetime import date, timedelta
 from functools import lru_cache
-from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, Union
+from pathlib import Path
+from typing import (
+	Any,
+	Callable,
+	Dict,
+	Generator,
+	List,
+	Literal,
+	Optional,
+	Set,
+	Tuple,
+	Union,
+	overload,
+)
 
 import attr
 
@@ -115,7 +128,17 @@ def _hexstr2bytes(value: str) -> bytes:
 	return value
 
 
-def generate_key_pair(bits: int = 2048, return_pem: int = False) -> Union[Tuple[RSA.RsaKey, RSA.RsaKey], Tuple[str, str]]:
+@overload
+def generate_key_pair(bits: int = 2048, return_pem: Literal[True] = True) -> Tuple[str, str]:
+	...
+
+
+@overload
+def generate_key_pair(bits: int = 2048, return_pem: Literal[False] = False) -> Tuple[RSA.RsaKey, RSA.RsaKey]:
+	...
+
+
+def generate_key_pair(bits: int = 2048, return_pem: bool = False) -> Union[Tuple[str, str], Tuple[RSA.RsaKey, RSA.RsaKey]]:
 	key = RSA.generate(bits=bits)
 	if not return_pem:
 		return key, key.publickey()
@@ -399,8 +422,8 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 
 
 class OpsiLicenseFile:
-	def __init__(self, filename: str) -> None:
-		self.filename: str = filename
+	def __init__(self, filename: Optional[str]) -> None:
+		self.filename = filename
 		self._licenses: Dict[str, OpsiLicense] = {}
 
 	@property
@@ -425,6 +448,8 @@ class OpsiLicenseFile:
 			self.add_license(OpsiLicense(**kwargs))  # type: ignore[arg-type]
 
 	def read(self) -> None:
+		if not self.filename:
+			raise ValueError("Filename not defined")
 		with open(self.filename, "r", encoding="utf-8") as file:
 			self.read_string(file.read())
 
@@ -451,14 +476,16 @@ class OpsiLicenseFile:
 		return data
 
 	def write(self) -> None:
+		if not self.filename:
+			raise ValueError("Filename not defined")
 		data = self.write_string()
 		with codecs.open(self.filename, "w", "utf-8") as file:
 			file.write(data)
 
 
 class OpsiModulesFile:  # pylint: disable=too-few-public-methods
-	def __init__(self, filename: str) -> None:
-		self.filename: str = filename
+	def __init__(self, filename: Union[Path, str]) -> None:
+		self.filename = filename if isinstance(filename, Path) else Path(filename)
 		self._licenses: Dict[str, OpsiLicense] = {}
 
 	@property
@@ -470,17 +497,16 @@ class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 
 	def _read_raw_data(self) -> Dict[str, str]:
 		data = {}
-		with codecs.open(self.filename, "r", "utf-8") as file:
-			for line in file:
-				line = line.strip()
-				if "=" not in line:
-					continue
-				(attribute, value) = line.split("=", 1)
-				attribute = attribute.strip().lower()
-				value = value.strip()
-				if attribute != "customer":
-					value = value.lower()
-				data[attribute] = value
+		for line in self.filename.read_text(encoding="utf-8").split("\n"):
+			line = line.strip()
+			if "=" not in line:
+				continue
+			(attribute, value) = line.split("=", 1)
+			attribute = attribute.strip().lower()
+			value = value.strip()
+			if attribute != "customer":
+				value = value.lower()
+			data[attribute] = value
 		return data
 
 	def read(self) -> None:
@@ -662,6 +688,9 @@ class OpsiLicensePool:
 		for lic in self.get_licenses(valid_only=True, at_date=at_date):
 			if lic.module_id not in modules:
 				modules[lic.module_id] = {"client_number": 0, "license_ids": []}  # pylint: disable=loop-invariant-statement
+			elif modules[lic.module_id]["state"] == OPSI_MODULE_STATE_FREE:  # pylint: disable=loop-global-usage
+				continue
+
 			modules[lic.module_id]["available"] = True
 			modules[lic.module_id]["state"] = OPSI_MODULE_STATE_LICENSED  # pylint: disable=loop-global-usage
 			modules[lic.module_id]["license_ids"].append(lic.id)
@@ -757,7 +786,7 @@ class OpsiLicensePool:
 _default_opsi_license_pool = None  # pylint: disable=invalid-name
 
 
-def set_default_opsi_license_pool(pool: OpsiLicensePool) -> None:
+def set_default_opsi_license_pool(pool: Optional[OpsiLicensePool]) -> None:
 	global _default_opsi_license_pool  # pylint: disable=invalid-name,global-statement
 	_default_opsi_license_pool = pool
 
