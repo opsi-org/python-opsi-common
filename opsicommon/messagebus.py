@@ -14,8 +14,10 @@ from time import time
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
 from uuid import uuid4
 
-from msgpack import dumps as msgpack_dumps  # type: ignore[import]
-from msgpack import loads as msgpack_loads  # type: ignore[import]
+import msgspec
+
+message_decoder = msgspec.msgpack.Decoder()
+message_encoder = msgspec.msgpack.Encoder()
 
 
 def timestamp() -> int:
@@ -87,10 +89,10 @@ class Message:  # pylint: disable=too-many-instance-attributes
 
 	@classmethod
 	def from_msgpack(cls: Type[MessageT], data: bytes) -> MessageT:
-		return cls.from_dict(msgpack_loads(data))
+		return cls.from_dict(message_decoder.decode(data))
 
 	def to_msgpack(self, none_values: bool = False) -> bytes:
-		return msgpack_dumps(self.to_dict(none_values=none_values))
+		return message_encoder.encode(self.to_dict(none_values=none_values))
 
 	def __repr__(self) -> str:
 		return f"Message(type={self.type}, channel={self.channel}, sender={self.sender})"

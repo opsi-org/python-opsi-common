@@ -39,16 +39,13 @@ from urllib.parse import quote, unquote, urlparse
 from uuid import uuid4
 
 import lz4.frame  # type: ignore[import,no-redef]
-from msgpack import dumps as msgpack_dumps  # type: ignore[import]
-from msgpack import loads as msgpack_loads  # type: ignore[import]
+import msgspec
 from OpenSSL.crypto import (  # type: ignore[import]
 	FILETYPE_PEM,
 	X509,
 	dump_certificate,
 	load_certificate,
 )
-from orjson import dumps as json_dumps  # pylint: disable=no-name-in-module
-from orjson import loads as json_loads  # pylint: disable=no-name-in-module
 from packaging import version
 from requests import Session
 from requests.exceptions import SSLError, Timeout
@@ -243,6 +240,11 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self._listener: List[ServiceConnectionListener] = []
 		self._username = username
 		self._password = password
+
+		self._msgpack_decoder = msgspec.msgpack.Decoder()
+		self._msgpack_encoder = msgspec.msgpack.Encoder()
+		self._json_decoder = msgspec.json.Decoder()
+		self._json_encoder = msgspec.json.Encoder()
 
 		self.set_addresses(address)
 
@@ -602,10 +604,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		serialization = "msgpack" if self.server_version >= MIN_VERSION_MSGPACK else "json"
 		if serialization == "msgpack":
 			headers["Content-Type"] = headers["Accept"] = "application/msgpack"
-			data = msgpack_dumps(data_dict)
+			data = self._msgpack_encoder.encode(data_dict)
 		else:
 			headers["Content-Type"] = headers["Accept"] = "application/json"
-			data = json_dumps(data_dict)
+			data = self._json_encoder.encode(data_dict)
 
 		if not isinstance(data, bytes):
 			data = data.encode("utf-8")
@@ -659,31 +661,32 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			if status_code == 403:
 				error_cls = BackendPermissionDeniedError
 
+		rpc = {}
 		try:
 			if content_type == "application/msgpack":
-				data = msgpack_loads(data)
+				rpc = self._msgpack_decoder.decode(data)
 			else:
-				data = json_loads(data)
+				rpc = self._json_decoder.decode(data)
 			if not return_result_only:
-				return data
+				return rpc
 		except Exception:  # pylint: disable=broad-except
 			if error_cls:
 				raise error_cls(error_msg) from None
 			raise
 
-		if data.get("error"):
+		if rpc.get("error"):
 			logger.debug("JSONRPC-response contains error")
 			if not error_cls:
 				error_cls = OpsiRpcError
-			if isinstance(data["error"], dict) and data["error"].get("message"):
-				error_msg = data["error"]["message"]
+			if isinstance(rpc["error"], dict) and rpc["error"].get("message"):
+				error_msg = rpc["error"]["message"]
 			else:
-				error_msg = str(data["error"])
+				error_msg = str(rpc["error"])
 
 		if error_cls:
 			raise error_cls(error_msg)
 
-		return data.get("result")
+		return rpc.get("result")
 
 	@property
 	def messagebus(self) -> "Messagebus":

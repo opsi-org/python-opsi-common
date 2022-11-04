@@ -11,7 +11,6 @@ import base64
 import codecs
 import configparser
 import glob
-import json
 import os
 import re
 import struct
@@ -36,6 +35,7 @@ from typing import (
 )
 
 import attr
+import msgspec
 
 from opsicommon.logging import logger
 
@@ -194,6 +194,10 @@ def generate_license_id() -> str:
 	return str(uuid.uuid4())
 
 
+license_encoder = msgspec.json.Encoder()
+license_decoder = msgspec.json.Decoder()
+
+
 @attr.s(slots=True, auto_attribs=True, kw_only=True)
 class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
 	id: str = attr.ib(  # pylint: disable=invalid-name
@@ -322,11 +326,11 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 		return OpsiLicense(**data_dict)
 
 	def to_json(self, with_state: bool = False) -> str:
-		return json.dumps(self.to_dict(serializable=True, with_state=with_state))
+		return license_encoder.encode(self.to_dict(serializable=True, with_state=with_state)).decode("utf-8")
 
 	@classmethod
 	def from_json(cls, json_data: str) -> "OpsiLicense":
-		return OpsiLicense.from_dict(json.loads(json_data))
+		return OpsiLicense.from_dict(license_decoder.decode(json_data.encode("utf-8")))
 
 	def _hash_base(self, with_signature: bool = True) -> bytes:
 		string = ""
@@ -337,7 +341,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 			value = data[attribute]
 			if isinstance(value, list):
 				value = ",".join(sorted(value))
-			string += f"{attribute}={json.dumps(value)}\n"  # pylint: disable=dotted-import-in-loop
+			string += f"{attribute}={msgspec.json.encode(value).decode('utf-8')}\n"  # pylint: disable=dotted-import-in-loop
 		return string.encode("utf-8")
 
 	def get_checksum(self, with_signature: bool = True) -> str:

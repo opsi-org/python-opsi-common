@@ -16,6 +16,7 @@ import types
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, Union
 
+import msgspec
 import requests
 
 from opsicommon.logging import get_logger
@@ -116,18 +117,21 @@ def combine_versions(obj: Union["Product", "ProductOnClient", "ProductOnDepot"])
 	return f"{obj.productVersion}-{obj.packageVersion}"
 
 
-def from_json(obj: Any, object_type: str = None, prevent_object_creation: bool = False) -> Any:
-	if isinstance(obj, bytes):
-		# Allow decoding errors (workaround for opsi-script bug)
-		obj = obj.decode("utf-8", "replace")
-	obj = json.loads(obj)
+json_decoder = msgspec.json.Decoder()
+json_encoder = msgspec.json.Encoder()
+
+
+def from_json(obj: Union[str, bytes], object_type: str = None, prevent_object_creation: bool = False) -> Any:
+	if isinstance(obj, str):
+		obj = obj.encode("utf-8")
+	obj = json_decoder.decode(obj)
 	if isinstance(obj, dict) and object_type:
 		obj["type"] = object_type
 	return deserialize(obj, prevent_object_creation=prevent_object_creation)
 
 
-def to_json(obj: Any, ensure_ascii: bool = False) -> str:
-	return json.dumps(serialize(obj), ensure_ascii=ensure_ascii)
+def to_json(obj: Any) -> str:
+	return json_encoder.encode(serialize(obj)).decode("utf-8")
 
 
 def generate_opsi_host_key() -> str:

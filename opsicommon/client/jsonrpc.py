@@ -19,8 +19,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Type, Un
 from urllib.parse import quote, unquote, urlparse
 
 import lz4.frame  # type: ignore[import,no-redef]
-import msgpack  # type: ignore[import]
-import orjson as json  # type: ignore[import] # pylint: disable=import-error
+import msgspec
 import requests
 import urllib3
 from requests.adapters import HTTPAdapter
@@ -128,6 +127,11 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self.server_name: Optional[str] = None
 		self.base_url = None
 		self.no_proxy_addresses = list(set(self.no_proxy_addresses + [socket.getfqdn()]))
+
+		self._msgpack_decoder = msgspec.msgpack.Decoder()
+		self._msgpack_encoder = msgspec.msgpack.Encoder()
+		self._json_decoder = msgspec.json.Decoder()
+		self._json_encoder = msgspec.json.Encoder()
 
 		session_id = None
 		for option, value in kwargs.items():
@@ -414,10 +418,10 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		if serialization == "msgpack":
 			headers["Accept"] = headers["Content-Type"] = "application/msgpack"
-			data = msgpack.dumps(data_dict)
+			data = self._msgpack_encoder.encode(data_dict)
 		else:
 			headers["Accept"] = headers["Content-Type"] = "application/json"
-			data = json.dumps(data_dict)  # pylint: disable=no-member
+			data = self._json_encoder.encode(data_dict)  # pylint: disable=no-member
 
 		if not isinstance(data, bytes):
 			data = data.encode("utf-8")
@@ -505,9 +509,9 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		try:
 			if content_type == "application/msgpack":
-				data = msgpack.loads(data)
+				data = self._msgpack_decoder.decode(data)
 			else:
-				data = json.loads(data)  # pylint: disable=no-member
+				data = self._json_decoder.decode(data)  # pylint: disable=no-member
 		except Exception:  # pylint: disable=broad-except
 			if error_cls:
 				raise error_cls(f"{error_msg} (error on server)") from None

@@ -10,7 +10,6 @@ Helpers for testing.
 
 import datetime
 import gzip
-import json
 import os
 import platform
 import shutil
@@ -33,7 +32,7 @@ from typing import Any, Callable, Dict, Generator, Optional, Tuple, Union
 from urllib.parse import urlsplit, urlunsplit
 
 import lz4  # type: ignore[import]
-import msgpack  # type: ignore[import]
+import msgspec
 
 from opsicommon.ssl import as_pem, create_ca, create_server_cert  # type: ignore[import]
 
@@ -67,10 +66,8 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		if not self.server.log_file:
 			return
 
-		with open(self.server.log_file, "a", encoding="utf-8") as file:
-			file.write(json.dumps(data))
-			file.write("\n")
-			file.flush()
+		with open(self.server.log_file, "ab") as file:
+			file.write(msgspec.json.encode(data) + b"\n")
 
 	def version_string(self) -> str:
 		if self.server.response_headers:
@@ -191,7 +188,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self.log_request(code)
 		self.send_response_only(code, message)
 		self.send_header('Server', self.version_string())
-		if "date" not in [hdr.lower() for hdr in self.server.response_headers]:
+		if "date" not in [hdr.lower() for hdr in self.server.response_headers or {}]:
 			self.send_header('Date', self.date_time_string())
 
 	def do_POST(self) -> None:  # pylint: disable=invalid-name
@@ -204,9 +201,9 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			request = gzip.decompress(request)
 
 		if "json" in self.headers.get("Content-Type", ""):
-			request = json.loads(request)
+			request = msgspec.json.decode(request)
 		elif "msgpack" in self.headers.get("Content-Type", ""):
-			request = msgpack.loads(request)
+			request = msgspec.msgpack.decode(request)
 
 		log_request = b64encode(request).decode("ascii") if isinstance(request, bytes) else request
 		self._log(
@@ -216,7 +213,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		if self.server.response_body:
 			response = self.server.response_body
 		elif "json" in self.headers.get("Content-Type", "") or "msgpack" in self.headers.get("Content-Type", ""):
-			response = json.dumps({"id": request["id"], "result": []}).encode("utf-8")
+			response = msgspec.json.encode({"id": request["id"], "result": []})
 		else:
 			response = b""
 
