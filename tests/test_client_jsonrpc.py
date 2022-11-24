@@ -264,7 +264,7 @@ def test_server_name_handling(tmp_path: Path, server_name: str, expected_version
 
 def test_new_host_id_and_key_handling(tmp_path: Path) -> None:
 	new_host_id = "testhost.domain.local"
-	new_host_key = "0123456789"
+	new_host_key = "0123456789abcdef0123456789abcdef"
 	log_file = tmp_path / "new_host_id_and_key.log"
 	with http_test_server(
 		log_file=log_file,

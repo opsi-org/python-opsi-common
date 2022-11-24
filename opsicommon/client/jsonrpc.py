@@ -35,6 +35,7 @@ from opsicommon.exceptions import (
 	OpsiServiceVerificationError,
 )
 from opsicommon.logging import get_logger, secret_filter
+from opsicommon.types import forceHostId, forceOpsiHostKey
 from opsicommon.utils import deserialize, prepare_proxy_environment, serialize
 
 warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
@@ -496,9 +497,15 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		if "server" in response.headers:
 			self.server_name = response.headers.get("server")
 		if "x-opsi-new-host-id" in response.headers and not self.new_host_id:
-			self.x_opsi_new_host_id = response.headers.get("x-opsi-new-host-id")
+			try:
+				self.x_opsi_new_host_id = forceHostId(response.headers.get("x-opsi-new-host-id"))
+			except ValueError as error:
+				logger.error("Could not get HostId from header: %s", error, exc_info=True)
 		if "x-opsi-new-host-key" in response.headers and not self.new_host_key:
-			self.x_opsi_new_host_key = response.headers.get("x-opsi-new-host-key")
+			try:
+				self.x_opsi_new_host_key = forceOpsiHostKey(response.headers.get("x-opsi-new-host-key"))
+			except ValueError as error:
+				logger.error("Could not get OpsiHostKey from header: %s", error, exc_info=True)
 
 		data = response.content
 		# gzip and deflate transfer-encodings are automatically decoded
