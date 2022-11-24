@@ -35,6 +35,7 @@ from opsicommon.exceptions import (
 	OpsiServiceVerificationError,
 )
 from opsicommon.logging import get_logger, secret_filter
+from opsicommon.types import forceHostId, forceOpsiHostKey
 from opsicommon.utils import deserialize, prepare_proxy_environment, serialize
 
 warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
@@ -125,6 +126,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		self.create_objects = True
 		self.raw_responses = False
 		self.server_name: Optional[str] = None
+		self.x_opsi_new_host_id: Optional[str] = None
+		self.x_opsi_new_host_key: Optional[str] = None
 		self.base_url = None
 		self.no_proxy_addresses = list(set(self.no_proxy_addresses + [socket.getfqdn()]))
 
@@ -313,6 +316,14 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 		return self.server_name
 
 	@property
+	def new_host_id(self) -> Optional[str]:  # pylint: disable=invalid-name
+		return self.x_opsi_new_host_id
+
+	@property
+	def new_host_key(self) -> Optional[str]:  # pylint: disable=invalid-name
+		return self.x_opsi_new_host_key
+
+	@property
 	def interface(self) -> Optional[List[Dict[str, Any]]]:
 		if not self._interface and self._create_methods:
 			self.connect()
@@ -485,6 +496,16 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		if "server" in response.headers:
 			self.server_name = response.headers.get("server")
+		if "x-opsi-new-host-id" in response.headers and not self.new_host_id:
+			try:
+				self.x_opsi_new_host_id = forceHostId(response.headers.get("x-opsi-new-host-id"))
+			except ValueError as error:
+				logger.error("Could not get HostId from header: %s", error, exc_info=True)
+		if "x-opsi-new-host-key" in response.headers and not self.new_host_key:
+			try:
+				self.x_opsi_new_host_key = forceOpsiHostKey(response.headers.get("x-opsi-new-host-key"))
+			except ValueError as error:
+				logger.error("Could not get OpsiHostKey from header: %s", error, exc_info=True)
 
 		data = response.content
 		# gzip and deflate transfer-encodings are automatically decoded

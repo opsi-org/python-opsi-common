@@ -262,6 +262,22 @@ def test_server_name_handling(tmp_path: Path, server_name: str, expected_version
 			assert request["headers"].get('Content-Encoding') is None
 
 
+def test_new_host_id_and_key_handling(tmp_path: Path) -> None:
+	new_host_id = "testhost.domain.local"
+	new_host_key = "0123456789abcdef0123456789abcdef"
+	log_file = tmp_path / "new_host_id_and_key.log"
+	with http_test_server(
+		log_file=log_file,
+		response_headers={
+			"x-opsi-new-host-id": new_host_id,
+			"x-opsi-new-host-key": new_host_key,
+		}
+	) as server:
+		client = JSONRPCClient(f"http://localhost:{server.port}", compression=True)
+		assert client.new_host_id == new_host_id
+		assert client.new_host_key == new_host_key
+
+
 def test_compression_and_serialization(tmp_path: Path) -> None:
 	for compression, serialization in (
 		(True, "json"),

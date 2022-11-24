@@ -33,7 +33,6 @@ msgspec = "^0.9.1"
 [tool.poetry.dev-dependencies]
 flake8 = "^5.0"
 hypothesis = "^6.32"
-opsi-dev-tools = "^1.1"
 pylint = "^2.7"
 pytest = "^7.0"
 pytest-cov = "^4.0"
