@@ -1101,13 +1101,6 @@ class UnicodeConfig(Config):
 		if defaultValues is not None:
 			self.setDefaultValues(defaultValues)
 
-	def setDefaults(self) -> None:
-		if self.possibleValues is None:
-			self.possibleValues = [""]
-		if self.defaultValues is None:
-			self.defaultValues = [""]
-		Config.setDefaults(self)
-
 	def setPossibleValues(self, possibleValues: List[Any]) -> None:
 		Config.setPossibleValues(self, forceUnicodeList(possibleValues))
 
@@ -1806,13 +1799,6 @@ class UnicodeProductProperty(ProductProperty):
 			self.setPossibleValues(possibleValues)
 		if defaultValues is not None:
 			self.setDefaultValues(defaultValues)
-
-	def setDefaults(self) -> None:
-		if self.possibleValues is None:
-			self.possibleValues = [""]
-		if self.defaultValues is None:
-			self.defaultValues = [""]
-		ProductProperty.setDefaults(self)
 
 	def setPossibleValues(self, possibleValues: List[Any]) -> None:
 		ProductProperty.setPossibleValues(self, forceUnicodeList(possibleValues))
