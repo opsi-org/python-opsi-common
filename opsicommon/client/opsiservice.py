@@ -966,10 +966,15 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			basic_auth = b64encode(f"{self._client.username or ''}:{self._client.password or ''}".encode("utf-8")).decode("ascii")
 			header.append(f"Authorization: Basic {basic_auth}")
 
+		cookie = self._client.session_cookie
+		if cookie and "=" in cookie:
+			name, value = cookie.split("=", 1)
+			cookie = f"{name}={quote(value)}"
+
 		self._app = WebSocketApp(
 			url,
 			header=header,
-			cookie=self._client.session_cookie,
+			cookie=cookie,
 			on_open=self._on_open,
 			on_error=self._on_error,
 			on_close=self._on_close,

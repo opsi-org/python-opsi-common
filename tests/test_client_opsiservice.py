@@ -16,7 +16,6 @@ from urllib.parse import unquote
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
-
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
 	MIN_VERSION_GZIP,
@@ -260,13 +259,25 @@ def test_cookie_handling(tmp_path: Path) -> None:
 
 	log_file = tmp_path / "request.log"
 	session_cookie = "COOKIE-NAME=üöä"
-	with http_test_server(generate_cert=True, log_file=log_file) as server:
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}, log_file=log_file) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", session_cookie=session_cookie) as client:
 			client.get("/")
 			assert client.session_cookie == session_cookie
-		for line in log_file.read_text(encoding="utf-8").strip().split("\n"):
-			request = json.loads(line)  # pylint: disable=dotted-import-in-loop
-			assert unquote(request["headers"].get("Cookie")) == session_cookie
+			client.connect_messagebus()
+
+			lines = log_file.read_text(encoding="utf-8").strip().split("\n")
+
+			req1 = json.loads(lines[0])
+			assert req1["method"] == "HEAD"
+			assert unquote(req1["headers"].get("Cookie")) == session_cookie
+
+			req2 = json.loads(lines[1])
+			assert req2["method"] == "GET"
+			assert unquote(req2["headers"].get("Cookie")) == session_cookie
+
+			req3 = json.loads(lines[2])
+			assert req3["headers"]["Upgrade"] == "websocket"
+			assert unquote(req3["headers"].get("Cookie")) == session_cookie
 
 
 def test_proxy(tmp_path: Path) -> None:
