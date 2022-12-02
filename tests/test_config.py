@@ -12,7 +12,7 @@ from opsicommon.config import OpsiConfig
 
 def test_update_config_from_ini(tmp_path: Path) -> None:
 	config_file = tmp_path / "opsi.conf"
-	OpsiConfig.config_file = config_file
+	OpsiConfig.config_file = str(config_file)
 	data = """
 	[groups]
 	fileadmingroup = opsifileadmins
