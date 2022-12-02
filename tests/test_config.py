@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 from opsicommon.config.opsi import OpsiConfig
-from opsicommon.testing.helpers import environment
+from opsicommon.testing.helpers import environment  # type: ignore[import]
 
 
 def test_upgrade_config_from_ini(tmp_path: Path) -> None:
