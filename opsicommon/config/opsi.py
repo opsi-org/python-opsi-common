@@ -24,6 +24,8 @@ class OpsiConfig(metaclass=Singleton):
 	file_lock = Lock()
 	config_file = "/etc/opsi/opsi.conf"
 	default_config = {
+		"host": {"id": "", "key": "", "role": ""},
+		"service": {"url": ""},
 		"groups": {"fileadmingroup": "opsifileadmins", "admingroup": "opsiadmin"},
 		"packages": {"use_pigz": True},
 		"ldap_auth": {"ldap_url": "", "bind_user": ""},
