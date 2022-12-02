@@ -6,18 +6,119 @@
 This file is part of opsi - https://www.opsi.org
 """
 
+import os
 import re
+import socket
 from pathlib import Path
+from subprocess import PIPE, Popen
 from threading import Lock
 from typing import Any
+from urllib.parse import urlparse
 
 from tomlkit import dumps, loads
 from tomlkit.items import Item
 
 from ..logging import get_logger
+from ..types import forceFqdn
 from ..utils import Singleton
 
 logger = get_logger("opsicommon.config")
+
+
+GLOBAL_CONF = "/etc/opsi/global.conf"
+DISPATCH_CONF = "/etc/opsi/backendManager/dispatch.conf"
+JSONRPC_CONF = "/etc/opsi/backends/jsonrpc.conf"
+MYSQL_CONF = "/etc/opsi/backends/mysql.conf"
+
+
+def read_backend_config_file(file: Path) -> dict[str, Any]:
+	if not file.exists():
+		return {}
+	loc: dict[str, Any] = {}
+	exec(compile(file.read_bytes(), "<string>", "exec"), None, loc)  # pylint: disable=exec-used
+	return loc["config"]
+
+
+def get_role() -> str:
+	dipatch_conf = Path(DISPATCH_CONF)
+	if dipatch_conf.exists():
+		for line in dipatch_conf.read_text(encoding="utf-8").split("\n"):
+			line = line.strip()
+			if not line or line.startswith("#") or ":" not in line:
+				continue
+			if "jsonrpc" in line.split(":", 1)[1]:
+				return "depotserver"
+	return "configserver"
+
+
+def get_host_id(server_role: str) -> str:
+	if server_role == "depotserver":
+		jsonrpc_conf = read_backend_config_file(Path(JSONRPC_CONF))
+		if jsonrpc_conf and jsonrpc_conf.get("username"):
+			return jsonrpc_conf["username"]
+	else:
+		global_conf = Path(GLOBAL_CONF)
+		try:
+			if global_conf.exists():
+				regex = re.compile(r"^hostname\s*=\s*(\S+)")
+				for line in global_conf.read_text(encoding="utf-8").split("\n"):
+					match = regex.search(line.strip())
+					if match:
+						return forceFqdn(match.group(1))
+		except Exception:  # pylint: disable=broad-except
+			pass
+
+		try:
+			return forceFqdn(os.environ.get("OPSI_HOST_ID") or os.environ.get("OPSI_HOSTNAME"))
+		except ValueError:
+			pass
+
+	return forceFqdn(socket.getfqdn())
+
+
+def get_host_key(server_role: str) -> str:
+	if server_role == "depotserver":
+		jsonrpc_conf = read_backend_config_file(Path(JSONRPC_CONF))
+		return jsonrpc_conf.get("password", "")
+
+	mysql_conf = read_backend_config_file(Path(MYSQL_CONF))
+	if not mysql_conf:
+		return ""
+
+	with Popen(
+		[
+			"mysql",
+			"--defaults-file=/dev/stdin",
+			"--skip-column-names",
+			"-h",
+			urlparse(mysql_conf["address"]).hostname or mysql_conf["address"],
+			"-D",
+			mysql_conf["database"],
+			"-e",
+			"SELECT opsiHostKey FROM HOST WHERE type='OpsiConfigserver';",
+		],
+		stdin=PIPE,
+		stdout=PIPE,
+		stderr=PIPE,
+	) as proc:
+		out = proc.communicate(input=f"[client]\nuser={mysql_conf['username']}\npassword={mysql_conf['password']}\n".encode())
+		if proc.returncode != 0:
+			raise RuntimeError(f"mysql command failed ({proc.returncode}): {out[1].decode()}")
+		return out[0].decode().strip()
+
+
+def get_service_url(server_role: str) -> str:
+	if server_role == "depotserver":
+		jsonrpc_conf = read_backend_config_file(Path(JSONRPC_CONF))
+		addr = jsonrpc_conf.get("address", "")
+		if not addr:
+			return ""
+		if "://" not in addr:
+			addr = f"https://{addr}"
+		url = urlparse(addr)
+		return f"{url.scheme}://{url.hostname}:{url.port or 4447}"
+
+	return "https://localhost:4447"
 
 
 class OpsiConfig(metaclass=Singleton):
@@ -35,6 +136,7 @@ class OpsiConfig(metaclass=Singleton):
 		self._config_file_mtime = 0.0
 		self._config: dict[str, Any] = self.default_config
 		self._config_file_read = False
+		self._upgrade_done = False
 
 	@staticmethod
 	def _merge_config(destination: dict[str, Any], source: dict[str, Any]) -> None:
@@ -75,9 +177,13 @@ class OpsiConfig(metaclass=Singleton):
 		if persistent:
 			self.write_config_file()
 
-	def upgrade_config_file(self) -> None:
+	def upgrade_config_file(self) -> None:  # pylint: disable=too-many-branches
+		if self._upgrade_done:
+			return
 		# Convert ini (opsi < 4.3) to toml (opsi >= 4.3)
 		file = Path(self.config_file)
+		if not file.exists():
+			file.touch(mode=0o660)
 		data = file.read_text(encoding="utf-8")
 		key_val_regex = re.compile(r"([^=]+)=(\s*)(.+)")
 		lines = data.split("\n")
@@ -91,9 +197,28 @@ class OpsiConfig(metaclass=Singleton):
 			elif not val.startswith('"'):
 				line = f'{match.group(1)}={match.group(2)}"{match.group(3)}"'
 			lines[idx] = line
+
 		new_data = "\n".join(lines)
+		config = loads(new_data)
+		if not config.get("host"):
+			config["host"] = {}
+		if not config["host"].get("role"):  # type: ignore[union-attr]
+			config["host"]["role"] = get_role()  # type: ignore[union-attr,index]
+		if not config["host"].get("id"):  # type: ignore[union-attr]
+			config["host"]["id"] = get_host_id(str(config["host"]["role"]))  # type: ignore[union-attr,index]
+		if not config["host"].get("key"):  # type: ignore[union-attr]
+			config["host"]["key"] = get_host_key(str(config["host"]["role"]))  # type: ignore[union-attr,index]
+
+		if not config.get("service"):
+			config["service"] = {}
+		if not config["service"].get("url"):  # type: ignore[union-attr]
+			config["service"]["url"] = get_service_url(str(config["host"]["role"]))  # type: ignore[union-attr,index]
+
+		new_data = dumps(config)
 		if new_data != data:
 			file.write_text(new_data, encoding="utf-8")
+
+		self._upgrade_done = True
 
 	def read_config_file(self) -> None:
 		with self.file_lock:

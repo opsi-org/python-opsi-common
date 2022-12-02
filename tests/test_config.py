@@ -6,9 +6,11 @@ This file is part of opsi - https://www.opsi.org
 
 from pathlib import Path
 from textwrap import dedent
+from unittest.mock import patch
 
 import pytest
-from opsicommon.config import OpsiConfig
+from opsicommon.config.opsi import OpsiConfig
+from opsicommon.testing.helpers import environment
 
 
 def test_upgrade_config_from_ini(tmp_path: Path) -> None:
@@ -32,8 +34,9 @@ def test_upgrade_config_from_ini(tmp_path: Path) -> None:
 	config = OpsiConfig()
 	config.upgrade_config_file()
 	new_data = config_file.read_text(encoding="utf-8")
-	assert new_data == dedent(
-		"""
+	assert (
+		dedent(
+			"""
 	[groups]
 	fileadmingroup = "opsifileadmins"
 	#fileadmingroup = "commented"
@@ -45,7 +48,84 @@ def test_upgrade_config_from_ini(tmp_path: Path) -> None:
 	# Active Directory / Samba 4
 	ldap_url = "ldaps://ad.opsi.test/dc=ad,dc=opsi,dc=test"
 	"""
+		).strip()
+		in new_data
 	)
+
+
+def test_fill_from_legacy_config_depotserver(tmp_path: Path) -> None:
+	config_file = tmp_path / "opsi.conf"
+	dispatch_conf = tmp_path / "dispatch.conf"
+	jsonrpc_conf = tmp_path / "jsonrpc.conf"
+
+	OpsiConfig._instances = {}  # pylint: disable=protected-access
+	OpsiConfig.config_file = str(config_file)
+	config = OpsiConfig()
+
+	dispatch_conf.write_text("# comment\n.* : jsonrpc\n", encoding="utf-8")
+	jsonrpc_conf.write_text(
+		dedent(
+			"""
+	module = 'JSONRPC'
+	config = {
+		"username" : "depot.opsi.test",
+		"password" : "9a264fbe53fc58dd65030c1bd23983fa",
+		"address" : "config.opsi.test"
+	}
+	"""
+		),
+		encoding="utf-8",
+	)
+	with (
+		patch("opsicommon.config.opsi.DISPATCH_CONF", str(dispatch_conf)),
+		patch("opsicommon.config.opsi.JSONRPC_CONF", str(jsonrpc_conf)),
+	):
+		assert config.get("host", "role") == "depotserver"
+		assert config.get("host", "id") == "depot.opsi.test"
+		assert config.get("host", "key") == "9a264fbe53fc58dd65030c1bd23983fa"
+		assert config.get("service", "url") == "https://config.opsi.test:4447"
+
+
+def test_fill_from_legacy_config_configserver(tmp_path: Path) -> None:
+	config_file = tmp_path / "opsi.conf"
+	dispatch_conf = tmp_path / "dispatch.conf"
+	mysql_conf = Path("tests/data/opsi-config/backends/mysql.conf")
+	global_conf = tmp_path / "global.conf"
+
+	OpsiConfig._instances = {}  # pylint: disable=protected-access
+	OpsiConfig.config_file = str(config_file)
+	config = OpsiConfig()
+
+	dispatch_conf.write_text(".* : mysql\n", encoding="utf-8")
+	with (
+		patch("opsicommon.config.opsi.DISPATCH_CONF", str(dispatch_conf)),
+		patch("opsicommon.config.opsi.MYSQL_CONF", str(mysql_conf)),
+		patch("opsicommon.config.opsi.GLOBAL_CONF", str(global_conf)),
+	):
+		assert config.get("host", "role") == "configserver"
+		assert config.get("host", "id")
+		assert config.get("service", "url") == "https://localhost:4447"
+
+		config_file.write_bytes(b"")
+		OpsiConfig._instances = {}  # pylint: disable=protected-access
+		config = OpsiConfig()
+		global_conf.write_text("\n\n hostname =  config.server.id \n\n", encoding="utf-8")
+		assert config.get("host", "id") == "config.server.id"
+
+		config_file.write_bytes(b"")
+		OpsiConfig._instances = {}  # pylint: disable=protected-access
+		config = OpsiConfig()
+		global_conf.write_text("\n\n", encoding="utf-8")
+		with environment({"OPSI_HOSTNAME": "env-config.server.id"}):
+			assert config.get("host", "id") == "env-config.server.id"
+
+
+def test_fill_host_id_from_legacy(tmp_path: Path) -> None:
+	config_file = tmp_path / "opsi.conf"
+	OpsiConfig._instances = {}  # pylint: disable=protected-access
+	OpsiConfig.config_file = str(config_file)
+	config = OpsiConfig()
+	assert config.get("host", "id") == ""
 
 
 def test_read_config_file(tmp_path: Path) -> None:
