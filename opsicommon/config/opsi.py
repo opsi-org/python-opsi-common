@@ -127,7 +127,7 @@ class OpsiConfig(metaclass=Singleton):
 	default_config = {
 		"host": {"id": "", "key": "", "role": ""},
 		"service": {"url": ""},
-		"groups": {"fileadmingroup": "opsifileadmins", "admingroup": "opsiadmin"},
+		"groups": {"fileadmingroup": "opsifileadmins", "admingroup": "opsiadmin", "readonly": ""},
 		"packages": {"use_pigz": True},
 		"ldap_auth": {"ldap_url": "", "bind_user": ""},
 	}
