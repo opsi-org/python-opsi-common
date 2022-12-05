@@ -8,6 +8,7 @@ system.info
 
 import platform
 from functools import lru_cache
+from typing import Iterable
 
 
 @lru_cache
@@ -38,6 +39,19 @@ def linux_distro_id_like() -> set[str]:
 	for _id in info.get("ID_LIKE", "").split():
 		ids.add(_id)
 	return ids
+
+
+def linux_distro_id_like_contains(search: str | Iterable[str]) -> bool:
+	"""
+	Returns true if any string in ID_LIKE contains one of the search strings passed in `search`.
+	"""
+	if isinstance(search, str):
+		search = [search]  # pylint: disable=use-tuple-over-list
+	for did in linux_distro_id_like():
+		for entry in search:
+			if entry in did:
+				return True
+	return False
 
 
 @lru_cache

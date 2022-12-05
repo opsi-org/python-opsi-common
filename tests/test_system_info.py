@@ -21,6 +21,7 @@ from opsicommon.system.info import (
 	is_windows,
 	linux_distro_id,
 	linux_distro_id_like,
+	linux_distro_id_like_contains,
 )
 
 
@@ -54,6 +55,25 @@ def test_linux_distro_id_like() -> None:
 
 
 @pytest.mark.parametrize(
+	"id_like, search, expected",
+	(
+		({"ubuntu", "debian"}, "debian", True),
+		({"ubuntu", "debian"}, "suse", False),
+		({"debian"}, "debian", True),
+		({"ubuntu", "debian"}, ["other", "debian"], True),
+		({"ubuntu", "debian"}, ["other", "other2"], False),
+		({"ubuntu", "debian"}, {"other", "debian"}, True),
+		({"opensuse-leap", "opensuse-tumbleweed"}, ("opensuse", "sles"), True),
+		({"opensuse-leap", "opensuse-tumbleweed"}, "opensuse", True),
+	),
+)
+def test_linux_distro_id_like_contains(id_like: set[str], search: str, expected: bool) -> None:
+	linux_distro_id_like.cache_clear()
+	with patch("opsicommon.system.info.linux_distro_id_like", lambda: id_like):
+		assert linux_distro_id_like_contains(search) is expected
+
+
+@pytest.mark.parametrize(
 	"id_like, package_system, expected",
 	(
 		({"ubuntu", "debian"}, "deb", True),
@@ -62,9 +82,9 @@ def test_linux_distro_id_like() -> None:
 		({"amzn"}, "deb", False),
 		({"amzn"}, "rpm", True),
 		({"amzn"}, "pacman", False),
-		# ({"unknown", "arch"}, "deb", False),
-		# ({"unknown", "arch"}, "rpm", False),
-		# ({"unknown", "arch"}, "pacman", True),
+		({"unknown", "arch"}, "deb", False),
+		({"unknown", "arch"}, "rpm", False),
+		({"unknown", "arch"}, "pacman", True),
 	),
 )
 def test_linux_is_based(id_like: set[str], package_system: str, expected: bool) -> None:
