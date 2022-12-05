@@ -120,14 +120,6 @@ def test_fill_from_legacy_config_configserver(tmp_path: Path) -> None:
 			assert config.get("host", "id") == "env-config.server.id"
 
 
-def test_fill_host_id_from_legacy(tmp_path: Path) -> None:
-	config_file = tmp_path / "opsi.conf"
-	OpsiConfig._instances = {}  # pylint: disable=protected-access
-	OpsiConfig.config_file = str(config_file)
-	config = OpsiConfig()
-	assert config.get("host", "id") == ""
-
-
 def test_read_config_file(tmp_path: Path) -> None:
 	config_file = tmp_path / "opsi.conf"
 	OpsiConfig._instances = {}  # pylint: disable=protected-access
