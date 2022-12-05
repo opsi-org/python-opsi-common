@@ -80,7 +80,7 @@ def test_fill_from_legacy_config_depotserver(tmp_path: Path) -> None:
 		patch("opsicommon.config.opsi.DISPATCH_CONF", str(dispatch_conf)),
 		patch("opsicommon.config.opsi.JSONRPC_CONF", str(jsonrpc_conf)),
 	):
-		assert config.get("host", "role") == "depotserver"
+		assert config.get("host", "server-role") == "depotserver"
 		assert config.get("host", "id") == "depot.opsi.test"
 		assert config.get("host", "key") == "9a264fbe53fc58dd65030c1bd23983fa"
 		assert config.get("service", "url") == "https://config.opsi.test:4447"
@@ -102,7 +102,7 @@ def test_fill_from_legacy_config_configserver(tmp_path: Path) -> None:
 		patch("opsicommon.config.opsi.MYSQL_CONF", str(mysql_conf)),
 		patch("opsicommon.config.opsi.GLOBAL_CONF", str(global_conf)),
 	):
-		assert config.get("host", "role") == "configserver"
+		assert config.get("host", "server-role") == "configserver"
 		assert config.get("host", "id")
 		assert config.get("service", "url") == "https://localhost:4447"
 

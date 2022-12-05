@@ -14,7 +14,6 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-
 from opsicommon.system import ensure_not_already_running, set_system_datetime
 
 
@@ -33,7 +32,6 @@ def test_get_user_sessions_linux() -> None:
 @pytest.mark.linux
 def test_get_user_sessions_linux_mock() -> None:
 	import psutil  # type: ignore[import]  # pylint: disable=import-outside-toplevel
-
 	from opsicommon.system import (  # pylint: disable=import-outside-toplevel
 		get_user_sessions,
 	)

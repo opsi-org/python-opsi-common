@@ -125,7 +125,7 @@ class OpsiConfig(metaclass=Singleton):
 	file_lock = Lock()
 	config_file = "/etc/opsi/opsi.conf"
 	default_config = {
-		"host": {"id": "", "key": "", "role": ""},
+		"host": {"id": "", "key": "", "server-role": ""},
 		"service": {"url": ""},
 		"groups": {"fileadmingroup": "opsifileadmins", "admingroup": "opsiadmin", "readonly": ""},
 		"packages": {"use_pigz": True},
@@ -204,17 +204,17 @@ class OpsiConfig(metaclass=Singleton):
 		config = loads(new_data)
 		if not config.get("host"):
 			config["host"] = {}
-		if not config["host"].get("role"):  # type: ignore[union-attr]
-			config["host"]["role"] = get_role()  # type: ignore[union-attr,index]
+		if not config["host"].get("server-role"):  # type: ignore[union-attr]
+			config["host"]["server-role"] = get_role()  # type: ignore[union-attr,index]
 		if not config["host"].get("id"):  # type: ignore[union-attr]
-			config["host"]["id"] = get_host_id(str(config["host"]["role"]))  # type: ignore[union-attr,index]
+			config["host"]["id"] = get_host_id(str(config["host"]["server-role"]))  # type: ignore[union-attr,index]
 		if not config["host"].get("key"):  # type: ignore[union-attr]
-			config["host"]["key"] = get_host_key(str(config["host"]["role"]))  # type: ignore[union-attr,index]
+			config["host"]["key"] = get_host_key(str(config["host"]["server-role"]))  # type: ignore[union-attr,index]
 
 		if not config.get("service"):
 			config["service"] = {}
 		if not config["service"].get("url"):  # type: ignore[union-attr]
-			config["service"]["url"] = get_service_url(str(config["host"]["role"]))  # type: ignore[union-attr,index]
+			config["service"]["url"] = get_service_url(str(config["host"]["server-role"]))  # type: ignore[union-attr,index]
 
 		new_data = dumps(config)
 		if new_data != data:
