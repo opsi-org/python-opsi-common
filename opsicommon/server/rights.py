@@ -16,14 +16,16 @@ from opsicommon.logging import get_logger
 from opsicommon.system.info import linux_distro_id_like_contains
 from opsicommon.utils import Singleton
 
+_HAS_ROOT_RIGHTS = False
 if platform.system().lower() == "linux":
 	import grp
 	import pwd
 	import stat
 
+	_HAS_ROOT_RIGHTS = os.geteuid() == 0
 
 OPSICONFD_USER = "opsiconfd"
-_HAS_ROOT_RIGHTS = os.geteuid() == 0
+
 
 logger = get_logger("opsi.general")
 
