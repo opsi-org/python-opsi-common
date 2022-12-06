@@ -6,13 +6,17 @@
 server setup tasks
 """
 
-import grp
-import pwd
+import platform
 import subprocess
 
 from ..config import OpsiConfig
 from ..logging import get_logger
 from .rights import set_rights
+
+if platform.system().lower() == "linux":
+	import grp
+	import pwd
+
 
 logger = get_logger("opsi.general")
 

@@ -4,9 +4,9 @@
 test_server_rights
 """
 
-import grp
+
 import os
-import pwd
+import platform
 from pathlib import Path
 
 import pytest
@@ -16,6 +16,10 @@ from opsicommon.server.rights import (
 	PermissionRegistry,
 	set_rights,
 )
+
+if platform.system().lower() == "linux":
+	import grp
+	import pwd
 
 
 @pytest.fixture
@@ -51,6 +55,7 @@ def test_permission_registry() -> None:
 	assert len(registry.permissions) == permission_count
 
 
+@pytest.mark.linux
 def test_set_rights_recursive(  # pylint: disable=too-many-locals
 	tmp_path: Path, some_secondary_group_name: str  # pylint: disable=redefined-outer-name
 ) -> None:
@@ -113,6 +118,7 @@ def test_set_rights_recursive(  # pylint: disable=too-many-locals
 	assert os.stat(dir4).st_mode & 0o7777 == 0o700
 
 
+@pytest.mark.linux
 def test_set_rights_modify_file_exe(tmp_path: Path) -> None:
 	registry = PermissionRegistry()
 
@@ -166,6 +172,7 @@ def test_set_rights_modify_file_exe(tmp_path: Path) -> None:
 	assert os.stat(fil3).st_mode & 0o7777 == 0o660
 
 
+@pytest.mark.linux
 def test_set_rights_file_in_dir(tmp_path: Path) -> None:
 	registry = PermissionRegistry()
 	registry.remove_permissions()

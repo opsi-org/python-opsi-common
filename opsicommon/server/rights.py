@@ -6,10 +6,8 @@
 server rights
 """
 
-import grp
 import os
-import pwd
-import stat
+import platform
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -17,6 +15,12 @@ from opsicommon.config import OpsiConfig
 from opsicommon.logging import get_logger
 from opsicommon.system.info import linux_distro_id_like_contains
 from opsicommon.utils import Singleton
+
+if platform.system().lower() == "linux":
+	import grp
+	import pwd
+	import stat
+
 
 OPSICONFD_USER = "opsiconfd"
 _HAS_ROOT_RIGHTS = os.geteuid() == 0
