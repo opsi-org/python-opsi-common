@@ -232,7 +232,7 @@ def set_rights(start_path: str = "/") -> None:  # pylint: disable=too-many-branc
 			isinstance(permission, DirPermission) and permission.recursive and os.path.isdir(path)  # pylint: disable=dotted-import-in-loop
 		)
 
-		logger.notice("Setting rights %son '%s'", "recursively " if recursive else "", path)  # pylint: disable=loop-global-usage
+		logger.info("Setting rights %son '%s'", "recursively " if recursive else "", path)  # pylint: disable=loop-global-usage
 		permission.apply(path)
 
 		if not recursive:
