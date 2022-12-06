@@ -30,6 +30,12 @@ DISPATCH_CONF = "/etc/opsi/backendManager/dispatch.conf"
 JSONRPC_CONF = "/etc/opsi/backends/jsonrpc.conf"
 MYSQL_CONF = "/etc/opsi/backends/mysql.conf"
 
+DEFAULT_ADMIN_GROUP = "opsiadmin"
+DEFAULT_FILEADMIN_GROUP = "opsifileadmins"
+DEFAULT_READONLY_GROUP = ""
+DEFAULT_DEPOT_USER = "pcpatch"
+DEFAULT_DEPOT_USER_HOME = "/var/lib/opsi"
+
 
 def read_backend_config_file(file: Path) -> dict[str, Any]:
 	if not file.exists():
@@ -127,7 +133,12 @@ class OpsiConfig(metaclass=Singleton):
 	default_config = {
 		"host": {"id": "", "key": "", "server-role": ""},
 		"service": {"url": ""},
-		"groups": {"fileadmingroup": "opsifileadmins", "admingroup": "opsiadmin", "readonly": ""},
+		"groups": {
+			"fileadmingroup": DEFAULT_FILEADMIN_GROUP,
+			"admingroup": DEFAULT_ADMIN_GROUP,
+			"readonly": DEFAULT_READONLY_GROUP,
+		},
+		"depot_user": {"username": DEFAULT_DEPOT_USER, "home": DEFAULT_DEPOT_USER_HOME},
 		"packages": {"use_pigz": True},
 		"ldap_auth": {"ldap_url": "", "bind_user": ""},
 	}
