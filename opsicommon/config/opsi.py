@@ -103,7 +103,7 @@ def get_host_key(server_role: str) -> str:
 	) as proc:
 		out = proc.communicate(input=f"[client]\nuser={mysql_conf['username']}\npassword={mysql_conf['password']}\n".encode())
 		if proc.returncode != 0:
-			raise RuntimeError(f"mysql command failed ({proc.returncode}): {out[1].decode()}")
+			return ""
 		return out[0].decode().strip()
 
 
