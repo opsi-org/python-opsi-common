@@ -34,6 +34,7 @@ def some_secondary_group_name() -> str:
 	return ""
 
 
+@pytest.mark.linux
 def test_permission_registry() -> None:
 	registry = PermissionRegistry()
 	permission_count = len(registry.permissions)
