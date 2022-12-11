@@ -6,6 +6,8 @@
 logging
 """
 
+from __future__ import annotations
+
 import codecs
 import contextvars
 import logging
@@ -26,7 +28,7 @@ from logging import (
 )
 from logging.handlers import RotatingFileHandler
 from traceback import format_stack, format_tb
-from typing import IO, Any, Dict, Generator, List, Set, Union
+from typing import IO, Any, Generator
 from urllib.parse import quote
 
 from colorlog import ColoredFormatter
@@ -45,11 +47,11 @@ from .constants import (
 	TRACE,
 )
 
-context: contextvars.ContextVar[Dict[str, Any]] = contextvars.ContextVar("context", default={})
+context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("context", default={})
 
 
 class OPSILogger(logging.Logger):
-	def __init__(self, name: str, level: Union[int, str] = NOTSET) -> None:  # pylint: disable=useless-super-delegation
+	def __init__(self, name: str, level: int | str = NOTSET) -> None:  # pylint: disable=useless-super-delegation
 		super().__init__(name, level)
 
 	def secret(self, msg: Any, *args: Any, **kwargs: Any) -> None:
@@ -136,7 +138,7 @@ def logrecord_init(  # pylint: disable=too-many-arguments
 	msg: str,
 	args: Any,
 	exc_info: Any,
-	func: str = None,
+	func: str | None = None,
 	sinfo: Any = None,
 	**kwargs: Any
 ) -> None:
@@ -168,7 +170,7 @@ logging.LogRecord.__init__ = logrecord_init  # type: ignore[assignment]
 
 
 def handle_log_exception(
-	exc: Exception, record: logging.LogRecord = None, stderr: bool = True, temp_file: bool = False, log: bool = False
+	exc: Exception, record: logging.LogRecord | None = None, stderr: bool = True, temp_file: bool = False, log: bool = False
 ) -> None:
 	"""
 	Handles an exception in logging process.
@@ -211,9 +213,9 @@ def handle_log_exception(
 
 
 class Singleton(type):
-	_instances: Dict[type, type] = {}
+	_instances: dict[type, type] = {}
 
-	def __call__(cls: "Singleton", *args: Any, **kwargs: Any) -> type:
+	def __call__(cls: Singleton, *args: Any, **kwargs: Any) -> type:
 		if cls not in cls._instances:
 			cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
 		return cls._instances[cls]
@@ -227,7 +229,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 	for a single thread/task.
 	"""
 
-	def __init__(self, filter_dict: Dict[str, Any] = None):
+	def __init__(self, filter_dict: dict[str, Any] | None = None):
 		"""
 		ContextFilter Constructor
 
@@ -239,10 +241,10 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		:type filter_dict: Dict
 		"""
 		super().__init__()
-		self.filter_dict: Dict[str, Any] = {}
+		self.filter_dict: dict[str, Any] = {}
 		self.set_filter(filter_dict)
 
-	def get_context(self) -> Dict[str, Any]:
+	def get_context(self) -> dict[str, Any]:
 		"""
 		Returns context of current thread/task.
 
@@ -254,7 +256,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		"""
 		return context.get()
 
-	def set_filter(self, filter_dict: Dict[str, Any] = None) -> None:
+	def set_filter(self, filter_dict: dict[str, Any] | None = None) -> None:
 		"""
 		Sets a new filter dictionary.
 
@@ -416,7 +418,7 @@ class SecretFilter(metaclass=Singleton):
 		:type min_length: int
 		"""
 		self._min_length = min_length
-		self.secrets: Set[str] = set()
+		self.secrets: set[str] = set()
 
 	def _initialize_handlers(self) -> None:
 		"""
@@ -485,7 +487,7 @@ class SecretFilter(metaclass=Singleton):
 class ObservableHandler(StreamHandler, metaclass=Singleton):
 	def __init__(self) -> None:
 		StreamHandler.__init__(self)
-		self._observers: List[Any] = []
+		self._observers: list[Any] = []
 
 	def attach_observer(self, observer: Any) -> None:
 		if observer not in self._observers:
@@ -514,16 +516,17 @@ last_file_format = None  # pylint: disable=invalid-name
 
 
 def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-statements
-	stderr_level: int = None,
-	stderr_format: str = None,
-	log_file: str = None,
-	file_level: int = None,
-	file_format: str = None,
+	*,
+	stderr_level: int | None = None,
+	stderr_format: str | None = None,
+	log_file: str | None = None,
+	file_level: int | None = None,
+	file_format: str | None = None,
 	file_rotate_max_bytes: int = 0,
 	file_rotate_backup_count: int = 0,
 	remove_handlers: bool = False,
 	stderr_file: IO = sys.stderr,
-	logger_levels: dict = None
+	logger_levels: dict | None = None
 ) -> None:
 	"""
 	Initialize logging.
@@ -626,17 +629,33 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 
 	if stderr_format and stderr_format.find("(log_color)") != -1 and not stderr_file.isatty():
 		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")
-	set_format(file_format, stderr_format)
+	set_format(file_format=file_format, stderr_format=stderr_format)
 
 
 def init_logging(
-	stderr_level: int = None, stderr_format: str = None, log_file: str = None, file_level: int = None, file_format: str = None
+	*,
+	stderr_level: int | None = None,
+	stderr_format: str | None = None,
+	log_file: str | None = None,
+	file_level: int | None = None,
+	file_format: str | None = None
 ) -> None:
-	logging_config(stderr_level, stderr_format, log_file, file_level, file_format, True)
+	logging_config(
+		stderr_level=stderr_level,
+		stderr_format=stderr_format,
+		log_file=log_file,
+		file_level=file_level,
+		file_format=file_format,
+		remove_handlers=True
+	)
 
 
 def set_format(
-	file_format: str = DEFAULT_FORMAT, stderr_format: str = DEFAULT_COLORED_FORMAT, datefmt: str = DATETIME_FORMAT, log_colors: Dict = None
+	*,
+	file_format: str = DEFAULT_FORMAT,
+	stderr_format: str = DEFAULT_COLORED_FORMAT,
+	datefmt: str = DATETIME_FORMAT,
+	log_colors: dict[str, str] | None = None
 ) -> None:
 	"""
 	Assigns ContextSecretFormatter to all Handlers.
@@ -672,7 +691,7 @@ def set_format(
 
 
 @contextmanager
-def log_context(new_context: Dict) -> Generator[None, None, None]:
+def log_context(new_context: dict[str, Any]) -> Generator[None, None, None]:
 	"""
 	Contextmanager to set a context.
 
@@ -691,7 +710,7 @@ def log_context(new_context: Dict) -> Generator[None, None, None]:
 			context.reset(token)
 
 
-def set_context(new_context: Dict) -> contextvars.Token:
+def set_context(new_context: dict[str, Any]) -> contextvars.Token:
 	"""
 	Sets a context.
 
@@ -718,7 +737,7 @@ def add_context_filter_to_loggers() -> None:
 		add_context_filter_to_logger(_logger)
 
 
-def set_filter(filter_dict: Dict[str, Any]) -> None:
+def set_filter(filter_dict: dict[str, Any]) -> None:
 	"""
 	Sets a new filter dictionary.
 
@@ -734,7 +753,7 @@ def set_filter(filter_dict: Dict[str, Any]) -> None:
 	context_filter.set_filter(filter_dict)
 
 
-def set_filter_from_string(filter_string: Union[str, List[str]]) -> None:
+def set_filter_from_string(filter_string: str | list[str]) -> None:
 	"""
 	Parses string and sets filter dictionary.
 
@@ -749,7 +768,7 @@ def set_filter_from_string(filter_string: Union[str, List[str]]) -> None:
 	:param filter_string: String to parse for a filter statement.
 	:type filter_string: str
 	"""
-	filter_dict: Dict[str, Any] = {}
+	filter_dict: dict[str, Any] = {}
 	if filter_string is None:
 		set_filter(None)
 		return
@@ -768,7 +787,7 @@ def set_filter_from_string(filter_string: Union[str, List[str]]) -> None:
 	set_filter(filter_dict)
 
 
-def get_all_loggers() -> List[Union[logging.Logger, logging.RootLogger]]:
+def get_all_loggers() -> list[logging.Logger | logging.RootLogger]:
 	"""
 		Gets list of all loggers.
 
@@ -781,7 +800,7 @@ def get_all_loggers() -> List[Union[logging.Logger, logging.RootLogger]]:
 	return [logging.root] + [lg for lg in logging.Logger.manager.loggerDict.values() if not isinstance(lg, PlaceHolder)]
 
 
-def get_all_handlers(handler_type: type = None, handler_name: str = None) -> List[logging.Handler]:
+def get_all_handlers(handler_type: type | None = None, handler_name: str | None = None) -> list[logging.Handler]:
 	"""
 	Gets list of all handlers.
 
@@ -810,7 +829,7 @@ def get_all_handlers(handler_type: type = None, handler_name: str = None) -> Lis
 	return handlers
 
 
-def remove_all_handlers(handler_type: type = None, handler_name: str = None) -> None:
+def remove_all_handlers(handler_type: type | None = None, handler_name: str | None = None) -> None:
 	"""
 	Removes all handlers (of a certain type).
 
@@ -877,7 +896,7 @@ secret_filter = SecretFilter()
 context_filter = ContextFilter()
 
 
-def get_logger(name: str = None) -> OPSILogger:
+def get_logger(name: str | None = None) -> OPSILogger:
 	_logger = orig_getLogger(name)
 	add_context_filter_to_logger(_logger)
 	return _logger  # type: ignore[return-value]
