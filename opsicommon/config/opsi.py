@@ -143,10 +143,11 @@ class OpsiConfig(metaclass=Singleton):
 		"ldap_auth": {"ldap_url": "", "bind_user": ""},
 	}
 
-	def __init__(self) -> None:
+	def __init__(self, upgrade_config: bool = True) -> None:
 		self._config_file_mtime = 0.0
 		self._config: dict[str, Any] = self.default_config
 		self._config_file_read = False
+		self._upgrade_config = upgrade_config
 		self._upgrade_done = False
 
 	@staticmethod
@@ -191,7 +192,7 @@ class OpsiConfig(metaclass=Singleton):
 			self.write_config_file()
 
 	def upgrade_config_file(self) -> None:  # pylint: disable=too-many-branches
-		if self._upgrade_done:
+		if self._upgrade_done or not self._upgrade_config:
 			return
 		# Convert ini (opsi < 4.3) to toml (opsi >= 4.3)
 		file = Path(self.config_file)
