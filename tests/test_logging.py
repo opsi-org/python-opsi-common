@@ -14,10 +14,10 @@ import tempfile
 import threading
 import time
 import warnings
+from typing import Any
 
 import pytest
 import requests
-
 from opsicommon.logging import (
 	ContextSecretFormatter,
 	context_filter,
@@ -52,7 +52,7 @@ OTHER_FORMAT = "[%(opsilevel)d] [%(asctime)s.%(msecs)03d] [%(contextstring)s] %(
 logger = get_logger()
 
 
-def test_levels():  # pylint: disable=redefined-outer-name
+def test_levels() -> None:  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_SECRET, format="%(message)s") as stream:
 		expected = ""
 		print_logger_info()
@@ -66,7 +66,7 @@ def test_levels():  # pylint: disable=redefined-outer-name
 		assert expected in stream.read()
 
 
-def test_log_file(tmpdir):
+def test_log_file(tmpdir: str) -> None:
 	log_file1 = tmpdir + "/log1"
 	log_file2 = tmpdir + "/log2"
 	log_file3 = tmpdir + "/log3"
@@ -88,8 +88,8 @@ def test_log_file(tmpdir):
 	logging_config(log_file=None, remove_handlers=True)
 
 
-def test_log_exception_handler():
-	log_record = logging.LogRecord(name=None, level=logging.ERROR, pathname=None, lineno=1, msg="t", args=None, exc_info=None)
+def test_log_exception_handler() -> None:
+	log_record = logging.LogRecord(name="", level=logging.ERROR, pathname="", lineno=1, msg="t", args=None, exc_info=None)
 
 	filename = os.path.join(tempfile.gettempdir(), f"log_exception_{os.getpid()}.txt")
 	if os.path.exists(filename):
@@ -104,13 +104,13 @@ def test_log_exception_handler():
 			assert "'levelname': 'ERROR'" in data
 
 
-def test_secret_formatter_attr():
-	log_record = logging.LogRecord(name=None, level=logging.ERROR, pathname=None, lineno=1, msg="t", args=None, exc_info=None)
+def test_secret_formatter_attr() -> None:
+	log_record = logging.LogRecord(name="", level=logging.ERROR, pathname="", lineno=1, msg="t", args=None, exc_info=None)
 	csf = ContextSecretFormatter(logging.Formatter())
 	csf.format(log_record)
 
 
-def test_secret_filter():  # pylint: disable=redefined-outer-name
+def test_secret_filter() -> None:  # pylint: disable=redefined-outer-name
 	secret_filter.set_min_length(7)
 	secret_filter.add_secrets("PASSWORD", "2SHORT", "SECRETSTRING")
 
@@ -164,7 +164,7 @@ def test_secret_filter():  # pylint: disable=redefined-outer-name
 		assert "SECRETSTRING1" in log
 
 
-def test_context():  # pylint: disable=redefined-outer-name
+def test_context() -> None:  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_SECRET) as stream:
 		set_format(
 			stderr_format=(
@@ -185,14 +185,14 @@ def test_context():  # pylint: disable=redefined-outer-name
 		assert "second-context" in log
 
 
-def test_context_threads():  # pylint: disable=redefined-outer-name
-	def common_work():
+def test_context_threads() -> None:  # pylint: disable=redefined-outer-name
+	def common_work() -> None:
 		time.sleep(0.2)
 		logger.info("common_work")
 		time.sleep(0.2)
 
 	class Main:  # pylint: disable=too-few-public-methods
-		def run(self):
+		def run(self) -> None:
 			AsyncMain().start()
 			for _ in range(5):  # perform 5 iterations
 				threads = []
@@ -205,26 +205,26 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 				time.sleep(1)  # pylint: disable=dotted-import-in-loop
 
 	class AsyncMain(threading.Thread):
-		def __init__(self):
+		def __init__(self) -> None:
 			super().__init__()
 			self._should_stop = False
 
-		def stop(self):
+		def stop(self) -> None:
 			self._should_stop = True
 
-		def run(self):
+		def run(self) -> None:
 			loop = asyncio.new_event_loop()
 			loop.run_until_complete(self.arun())
 			loop.close()
 
-		async def handle_client(self, client: str):
+		async def handle_client(self, client: str) -> None:
 			with log_context({"whoami": "handler for " + str(client)}):
 				logger.essential("handling client %s", client)
 				seconds = random.random() * 1
 				await asyncio.sleep(seconds)
 				logger.essential("client %s handled after %0.3f seconds", client, seconds)
 
-		async def arun(self):
+		async def arun(self) -> None:
 			while not self._should_stop:
 				tasks = []
 				for i in range(2):  # pylint: disable=use-list-copy
@@ -238,7 +238,7 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 			self.client = client
 			logger.essential("initializing client: %s", client)
 
-		def run(self):
+		def run(self) -> None:
 			with log_context({"whoami": "module " + str(self.client)}):
 				logger.essential("MyModule.run")
 				common_work()
@@ -262,12 +262,12 @@ def test_context_threads():  # pylint: disable=redefined-outer-name
 			assert re.search(r"handler for client Client-0.*handling client Client-1", log) is None
 
 
-def test_observable_handler():  # pylint: disable=redefined-outer-name
+def test_observable_handler() -> None:  # pylint: disable=redefined-outer-name
 	class LogObserver:  # pylint: disable=too-few-public-methods
-		def __init__(self):
-			self.messages = []
+		def __init__(self) -> None:
+			self.messages: list[str] = []
 
-		def messageChanged(self, handler, message):  # pylint: disable=unused-argument,invalid-name
+		def messageChanged(self, handler: logging.Handler, message: Any) -> None:  # pylint: disable=unused-argument,invalid-name
 			self.messages.append(message)
 
 	with log_stream(LOG_SECRET):
@@ -285,7 +285,7 @@ def test_observable_handler():  # pylint: disable=redefined-outer-name
 		assert log_observer.messages == ["error", "warning", "info"]
 
 
-def test_simple_colored():  # pylint: disable=redefined-outer-name
+def test_simple_colored() -> None:  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_WARNING, format=MY_FORMAT) as stream:
 		with log_context({"firstcontext": "asdf", "secondcontext": "jkl"}):
 			logger.error("test message")
@@ -294,7 +294,7 @@ def test_simple_colored():  # pylint: disable=redefined-outer-name
 		assert "asdf" in log and "jkl" in log
 
 
-def test_simple_plain():  # pylint: disable=redefined-outer-name
+def test_simple_plain() -> None:  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_WARNING, format=OTHER_FORMAT) as stream:
 		with log_context({"firstcontext": "asdf", "secondcontext": "jkl"}):
 			logger.error("test message")
@@ -303,7 +303,7 @@ def test_simple_plain():  # pylint: disable=redefined-outer-name
 		assert "asdf" in log and "jkl" in log
 
 
-def test_set_context():  # pylint: disable=redefined-outer-name
+def test_set_context() -> None:  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_WARNING, format=MY_FORMAT) as stream:
 		set_context({"firstcontext": "asdf", "secondcontext": "jkl"})
 		logger.error("test message")
@@ -329,16 +329,16 @@ def test_set_context():  # pylint: disable=redefined-outer-name
 
 		stream.seek(0)
 		stream.truncate()
-		set_context("suddenly a string")
+		set_context("suddenly a string")  # type: ignore[arg-type]
 		logger.error("test message")
 		stream.seek(0)
 		log = stream.read()
 		assert "suddenly a string" not in log  # must be given as dictionary
 
-		set_context(None)
+		set_context(None)  # type: ignore[arg-type]
 
 
-def test_foreign_logs():  # pylint: disable=redefined-outer-name
+def test_foreign_logs() -> None:  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_DEBUG, format="%(message)s") as stream:
 		logger.error("message before request")
 
@@ -350,7 +350,7 @@ def test_foreign_logs():  # pylint: disable=redefined-outer-name
 		assert "www.uib.de" in log
 
 
-def test_filter():  # pylint: disable=redefined-outer-name
+def test_filter() -> None:  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_WARNING, format="%(message)s") as stream:
 		set_filter({"testkey": ["t1", "t3"]})
 		with log_context({"testkey": "t1"}):
@@ -370,10 +370,10 @@ def test_filter():  # pylint: disable=redefined-outer-name
 		assert "test2 that should not appear" not in log
 
 		with pytest.raises(ValueError):
-			set_filter("invalid")
+			set_filter("invalid")  # type: ignore[arg-type]
 
 
-def test_filter_from_string():  # pylint: disable=redefined-outer-name
+def test_filter_from_string() -> None:  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_WARNING, format="%(message)s") as stream:
 		# as one string (like --log-filter "")
 		set_filter_from_string("testkey = t1 , t3 ; alsotest = a1")
@@ -405,10 +405,10 @@ def test_filter_from_string():  # pylint: disable=redefined-outer-name
 		assert "test that should appear after filter reset" in log
 
 		with pytest.raises(ValueError):
-			set_filter_from_string({"testkey": ["t1", "t3"]})
+			set_filter_from_string({"testkey": ["t1", "t3"]})  # type: ignore[arg-type]
 
 
-def test_log_devel():  # pylint: disable=redefined-outer-name
+def test_log_devel() -> None:  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_ERROR) as stream:
 		logger.warning("warning")
 		logger.devel("devel")
@@ -421,7 +421,7 @@ def test_log_devel():  # pylint: disable=redefined-outer-name
 		assert "debug" not in log
 
 
-def test_multi_call_init_logging(tmpdir):
+def test_multi_call_init_logging(tmpdir: str) -> None:
 	log_file = tmpdir.join("opsi.log")
 	init_logging(stderr_level=logging.INFO, log_file=log_file, file_level=logging.INFO, file_format="%(message)s")
 	print_logger_info()
@@ -430,7 +430,7 @@ def test_multi_call_init_logging(tmpdir):
 	logger.info("LINE2")
 	init_logging(stderr_level=logging.INFO, log_file=log_file, file_level=logging.ERROR, file_format="%(message)s")
 	logger.info("LINE3")
-	init_logging(stderr_level=logging.NONE, file_level=logging.INFO)
+	init_logging(stderr_level=logging.NONE, file_level=logging.INFO)  # type: ignore[attr-defined]
 	logger.info("LINE4")
 
 	with open(log_file, encoding="utf-8") as file:
@@ -438,7 +438,7 @@ def test_multi_call_init_logging(tmpdir):
 		assert data == "LINE1\nLINE2\nLINE4\n"
 
 
-def test_log_warnings():
+def test_log_warnings() -> None:
 	init_warnings_capture()
 	with log_stream(LOG_WARNING) as stream:
 		warnings.showwarning("test warning should be logged", DeprecationWarning, "test.py", 1)
@@ -448,7 +448,7 @@ def test_log_warnings():
 		assert "test warning should be logged" in log
 
 
-def test_sub_logger():  # pylint: disable=redefined-outer-name
+def test_sub_logger() -> None:  # pylint: disable=redefined-outer-name
 	sub_logger = get_logger("sub")
 
 	with log_stream(LOG_WARNING, format="%(message)s") as stream:

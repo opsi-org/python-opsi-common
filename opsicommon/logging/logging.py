@@ -772,7 +772,7 @@ def add_context_filter_to_loggers() -> None:
 		add_context_filter_to_logger(_logger)
 
 
-def set_filter(filter_dict: dict[str, Any]) -> None:
+def set_filter(filter_dict: dict[str, Any] | None) -> None:
 	"""
 	Sets a new filter dictionary.
 
@@ -788,7 +788,7 @@ def set_filter(filter_dict: dict[str, Any]) -> None:
 	context_filter.set_filter(filter_dict)
 
 
-def set_filter_from_string(filter_string: str | list[str]) -> None:
+def set_filter_from_string(filter_string: str | list[str] | None) -> None:
 	"""
 	Parses string and sets filter dictionary.
 
