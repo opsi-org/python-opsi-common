@@ -634,7 +634,7 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 				shandler = StreamHandler(stream=stderr_file)
 			shandler.name = "opsi_stderr_handler"
 			logging.root.addHandler(shandler)
-		for hdlr in get_all_handlers(StreamHandler):
+		for hdlr in get_all_handlers((StreamHandler, RichConsoleHandler)):  # pylint: disable=loop-invariant-statement
 			hdlr.setLevel(stderr_level)
 
 	if observable_handler not in get_all_handlers(ObservableHandler):
@@ -835,7 +835,7 @@ def get_all_loggers() -> list[logging.Logger | logging.RootLogger]:
 	return [logging.root] + [lg for lg in logging.Logger.manager.loggerDict.values() if not isinstance(lg, PlaceHolder)]
 
 
-def get_all_handlers(handler_type: type | None = None, handler_name: str | None = None) -> list[logging.Handler]:
+def get_all_handlers(handler_type: type | tuple[type, ...] | None = None, handler_name: str | None = None) -> list[logging.Handler]:
 	"""
 	Gets list of all handlers.
 
@@ -849,14 +849,16 @@ def get_all_handlers(handler_type: type | None = None, handler_name: str | None 
 	:rtype: List
 	"""
 	handlers = []
+	if handler_type and not isinstance(handler_type, tuple):
+		handler_type = (handler_type,)
 	for _logger in get_all_loggers():
 		if not isinstance(_logger, PlaceHolder):
 			for _handler in _logger.handlers:  # pylint: disable=use-list-comprehension
 				if (
 					(not isinstance(_handler, NullHandler))
 					and (
-						not handler_type
-						or type(_handler) == handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
+						not isinstance(handler_type, tuple)
+						or type(_handler) in handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
 					)
 					and (not handler_name or _handler.name == handler_name)
 				):
