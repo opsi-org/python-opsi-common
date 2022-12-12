@@ -66,6 +66,16 @@ def test_levels() -> None:  # pylint: disable=redefined-outer-name
 		assert expected in stream.read()
 
 
+def test_caller_filename() -> None:  # pylint: disable=redefined-outer-name
+	with log_stream(LOG_SECRET, format="%(levelname)s %(filename)s") as stream:
+		for level in ("secret", "trace", "debug", "info", "notice", "warning", "error", "critical", "essential"):
+			func = getattr(logger, level)  # pylint: disable=loop-global-usage
+			func("")
+		stream.seek(0)
+		for line in stream.read().strip().split("\n"):
+			assert line.split()[-1] == "test_logging.py"
+
+
 def test_log_file(tmpdir: str) -> None:
 	log_file1 = tmpdir + "/log1"
 	log_file2 = tmpdir + "/log2"

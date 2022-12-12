@@ -115,6 +115,23 @@ class OPSILogger(logging.Logger):
 	comment = essential
 	devel = essential
 
+	def findCaller(self, stack_info: bool = False, stacklevel: int = 1) -> tuple[str, int, str, None]:  # pylint: disable=invalid-name,unused-argument
+		"""
+		Find the stack frame of the caller so that we can note the source
+		file name, line number and function name.
+		"""
+		frame = sys._getframe(1)  # pylint: disable=protected-access
+		try:
+			while frame:
+				if frame.f_code.co_name == "_log":
+					caller = frame.f_back.f_back  # type: ignore[union-attr]
+					code = caller.f_code  # type: ignore[union-attr]
+					return code.co_filename, caller.f_lineno, code.co_name, None  # type: ignore[union-attr]
+				frame = frame.f_back  # type: ignore[assignment]
+		except AttributeError:
+			pass
+		raise ValueError("Failed to find caller")
+
 
 logging.Logger.secret = OPSILogger.secret  # type: ignore[attr-defined]
 logging.Logger.confidential = OPSILogger.confidential  # type: ignore[attr-defined]
@@ -124,6 +141,7 @@ logging.Logger.notice = OPSILogger.notice  # type: ignore[attr-defined]
 logging.Logger.essential = OPSILogger.essential  # type: ignore[attr-defined]
 logging.Logger.comment = OPSILogger.comment  # type: ignore[attr-defined]
 logging.Logger.devel = OPSILogger.devel  # type: ignore[attr-defined]
+logging.Logger.findCaller = OPSILogger.findCaller  # type: ignore[assignment]
 
 
 logging.setLoggerClass(OPSILogger)
