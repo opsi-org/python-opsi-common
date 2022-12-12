@@ -41,7 +41,6 @@ from .constants import (
 	DEFAULT_FORMAT,
 	ESSENTIAL,
 	LOG_COLORS,
-	LOG_COLORS_RICH,
 	NONE,
 	NOTICE,
 	OPSI_LEVEL_TO_LEVEL,
@@ -491,12 +490,25 @@ class RichConsoleHandler(Handler):
 	def __init__(self, console: Console) -> None:
 		super().__init__()
 		self._console = console
+		self._styles: dict[str, tuple[str, str]] = {}
+		for level, color in LOG_COLORS.items():
+			if "thin" in color:
+				if color == "thin_white":
+					color = "rgb(48,48,48)"
+				elif color == "thin_yellow":
+					color = "rgb(128,128,0)"
+				else:
+					color = color.replace("thin_", "")
+				self._styles[level] = (f"[not bold][{color}]", f"[/{color}][/not bold]")
+			elif "bold" in color:
+				color = color.replace("bold_", "bright_")
+				self._styles[level] = (f"[bold][{color}]", f"[/{color}][/bold]")
+			else :
+				self._styles[level] = (f"[not bold][{color}]", f"[/{color}][/not bold]")
 
 	def emit(self, record: LogRecord) -> None:
 		try:
-			color = LOG_COLORS_RICH[record.levelname]
-			record.log_color = f"[{color}]"
-			record.reset = f"[/{color}]"
+			record.log_color, record.reset = self._styles[record.levelname]
 			msg = self.format(record)
 			self._console.print(msg)
 		except Exception:  # pylint: disable=broad-except
