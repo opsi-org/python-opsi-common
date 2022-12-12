@@ -21,6 +21,7 @@ from logging import (
 	NOTSET,
 	FileHandler,
 	Formatter,
+	Handler,
 	LogRecord,
 	NullHandler,
 	PlaceHolder,
@@ -32,6 +33,7 @@ from typing import IO, Any, Generator
 from urllib.parse import quote
 
 from colorlog import ColoredFormatter
+from rich.console import Console
 
 from .constants import (
 	DATETIME_FORMAT,
@@ -39,6 +41,7 @@ from .constants import (
 	DEFAULT_FORMAT,
 	ESSENTIAL,
 	LOG_COLORS,
+	LOG_COLORS_RICH,
 	NONE,
 	NOTICE,
 	OPSI_LEVEL_TO_LEVEL,
@@ -484,9 +487,25 @@ class SecretFilter(metaclass=Singleton):
 				pass
 
 
-class ObservableHandler(StreamHandler, metaclass=Singleton):
+class RichConsoleHandler(Handler):
+	def __init__(self, console: Console) -> None:
+		super().__init__()
+		self._console = console
+
+	def emit(self, record: LogRecord) -> None:
+		try:
+			color = LOG_COLORS_RICH[record.levelname]
+			record.log_color = f"[{color}]"
+			record.reset = f"[/{color}]"
+			msg = self.format(record)
+			self._console.print(msg)
+		except Exception:  # pylint: disable=broad-except
+			self.handleError(record)
+
+
+class ObservableHandler(Handler, metaclass=Singleton):
 	def __init__(self) -> None:
-		StreamHandler.__init__(self)
+		Handler.__init__(self)
 		self._observers: list[Any] = []
 
 	def attach_observer(self, observer: Any) -> None:
@@ -525,7 +544,7 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 	file_rotate_max_bytes: int = 0,
 	file_rotate_backup_count: int = 0,
 	remove_handlers: bool = False,
-	stderr_file: IO = sys.stderr,
+	stderr_file: IO | Console = sys.stderr,
 	logger_levels: dict | None = None
 ) -> None:
 	"""
@@ -596,7 +615,11 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 		else:
 			remove_all_handlers(handler_name="opsi_stderr_handler")
 		if stderr_level != 0:
-			shandler = StreamHandler(stream=stderr_file)
+			shandler: Handler
+			if isinstance(stderr_file, Console):
+				shandler = RichConsoleHandler(console=stderr_file)
+			else:
+				shandler = StreamHandler(stream=stderr_file)
 			shandler.name = "opsi_stderr_handler"
 			logging.root.addHandler(shandler)
 		for hdlr in get_all_handlers(StreamHandler):
@@ -627,7 +650,7 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 						level = OPSI_LEVEL_TO_LEVEL[level]
 					logger_.setLevel(level)  # type: ignore[union-attr]
 
-	if stderr_format and stderr_format.find("(log_color)") != -1 and not stderr_file.isatty():
+	if stderr_format and "(log_color)" in stderr_format and not isinstance(stderr_file, Console) and not stderr_file.isatty():
 		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")
 	set_format(file_format=file_format, stderr_format=stderr_format)
 
@@ -674,11 +697,11 @@ def set_format(
 		If omitted, a default Color dictionary is used.
 	:type log_colors: Dict
 	"""
-	for handler_type in (StreamHandler, FileHandler, RotatingFileHandler):
-		fmt = stderr_format if handler_type is StreamHandler else file_format
+	for handler_type in (StreamHandler, FileHandler, RotatingFileHandler, RichConsoleHandler):
+		fmt = stderr_format if handler_type is StreamHandler or handler_type is RichConsoleHandler else file_format
 		for handler in get_all_handlers(handler_type):
 			formatter: Formatter
-			if fmt.find("(log_color)") >= 0:
+			if handler_type != RichConsoleHandler and fmt.find("(log_color)") >= 0:  # pylint: disable=loop-invariant-statement
 				formatter = ColoredFormatter(fmt, datefmt=datefmt, log_colors=log_colors or LOG_COLORS)
 			else:
 				formatter = Formatter(fmt, datefmt=datefmt)

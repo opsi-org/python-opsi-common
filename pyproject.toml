@@ -29,6 +29,7 @@ requests = "^2.26"
 websocket-client = "^1.4.0"
 orjson = "^3.8.0"
 msgspec = "^0.9.1"
+rich = "^12.6.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^5.0"

@@ -23,6 +23,17 @@ LOG_COLORS = {
 	"CRITICAL": "bold_red",
 	"ESSENTIAL": "bold_cyan",
 }
+LOG_COLORS_RICH = {
+	"SECRET": "yellow1",
+	"TRACE": "grey74",
+	"DEBUG": "white",
+	"INFO": "bright_white",
+	"NOTICE": "bright_green",
+	"WARNING": "bright_yellow",
+	"ERROR": "red",
+	"CRITICAL": "bright_red",
+	"ESSENTIAL": "bright_cyan",
+}
 SECRET_REPLACEMENT_STRING = "***secret***"
 
 LOG_SECRET = 9
