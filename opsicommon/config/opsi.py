@@ -12,7 +12,7 @@ import socket
 from pathlib import Path
 from subprocess import PIPE, Popen
 from threading import Lock
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 from tomlkit import dumps, loads
@@ -164,13 +164,13 @@ class OpsiConfig(metaclass=Singleton):
 		if not self._config_file_read or Path(self.config_file).stat().st_mtime != self._config_file_mtime:
 			self.read_config_file()
 
-	def _assert_category_and_config(self, category: str, config: str = None) -> None:
+	def _assert_category_and_config(self, category: str, config: Optional[str] = None) -> None:
 		if category not in self._config:
 			raise ValueError(f"Invalid category {category!r}")
 		if config is not None and config not in self._config[category]:
 			raise ValueError(f"Invalid config {config!r} for category {category!r}", config, category)
 
-	def get(self, category: str, config: str = None) -> Any:
+	def get(self, category: str, config: Optional[str] = None) -> Any:
 		self._assert_config_read()
 		self._assert_category_and_config(category, config)
 		if config is None:

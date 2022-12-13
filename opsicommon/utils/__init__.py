@@ -121,7 +121,7 @@ json_decoder = msgspec.json.Decoder()
 json_encoder = msgspec.json.Encoder()
 
 
-def from_json(obj: Union[str, bytes], object_type: str = None, prevent_object_creation: bool = False) -> Any:
+def from_json(obj: Union[str, bytes], object_type: Optional[str] = None, prevent_object_creation: bool = False) -> Any:
 	if isinstance(obj, str):
 		obj = obj.encode("utf-8")
 	obj = json_decoder.decode(obj)

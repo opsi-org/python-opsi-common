@@ -129,12 +129,12 @@ def _hexstr2bytes(value: str) -> bytes:
 
 
 @overload
-def generate_key_pair(bits: int = 2048, return_pem: Literal[True] = True) -> Tuple[str, str]:
+def generate_key_pair(bits: int, return_pem: Literal[True]) -> Tuple[str, str]:
 	...
 
 
 @overload
-def generate_key_pair(bits: int = 2048, return_pem: Literal[False] = False) -> Tuple[RSA.RsaKey, RSA.RsaKey]:
+def generate_key_pair(bits: int, return_pem: Literal[False]) -> Tuple[RSA.RsaKey, RSA.RsaKey]:
 	...
 
 
@@ -360,7 +360,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 		self._cached_signature_valid = None
 		self._cached_state = OrderedDict()
 
-	def get_state(self, test_revoked: bool = True, at_date: date = None) -> str:
+	def get_state(self, test_revoked: bool = True, at_date: Optional[date] = None) -> str:
 		checksum = self.get_checksum(with_signature=True)
 		if checksum != self._checksum:
 			self.clear_cache()
@@ -392,7 +392,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 
 		return self._cached_signature_valid
 
-	def _get_state(self, test_revoked: bool = True, at_date: date = None) -> str:  # pylint: disable=too-many-return-statements
+	def _get_state(self, test_revoked: bool = True, at_date: Optional[date] = None) -> str:  # pylint: disable=too-many-return-statements
 		if not at_date:
 			at_date = date.today()
 
@@ -555,9 +555,9 @@ class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 class OpsiLicensePool:
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		license_file_path: str = None,
-		modules_file_path: str = None,
-		client_info: Union[dict, Callable] = None,
+		license_file_path: Optional[str] = None,
+		modules_file_path: Optional[str] = None,
+		client_info: Optional[Union[dict, Callable]] = None,
 		client_limit_warning_percent: Optional[int] = 95,
 		client_limit_warning_absolute: Optional[int] = 5,
 	) -> None:
@@ -612,11 +612,11 @@ class OpsiLicensePool:
 
 	def get_licenses(  # pylint: disable=too-many-arguments
 		self,
-		exclude_ids: List[str] = None,
+		exclude_ids: Optional[List[str]] = None,
 		valid_only: bool = False,
 		test_revoked: bool = True,
-		types: List[str] = None,
-		at_date: date = None,
+		types: Optional[List[str]] = None,
+		at_date: Optional[date] = None,
 	) -> Generator[OpsiLicense, None, None]:
 		if not at_date:
 			at_date = date.today()
@@ -646,7 +646,7 @@ class OpsiLicensePool:
 				del self._licenses[lic.id]
 		self.clear_license_state_cache()
 
-	def get_revoked_license_ids(self, at_date: date = None) -> Set[str]:
+	def get_revoked_license_ids(self, at_date: Optional[date] = None) -> Set[str]:
 		if not at_date:
 			at_date = date.today()
 		revoked_ids = set()
@@ -792,9 +792,9 @@ def set_default_opsi_license_pool(pool: Optional[OpsiLicensePool]) -> None:
 
 
 def get_default_opsi_license_pool(
-	license_file_path: str = None,
-	modules_file_path: str = None,
-	client_info: Union[dict, Callable] = None,
+	license_file_path: Optional[str] = None,
+	modules_file_path: Optional[str] = None,
+	client_info: Optional[Union[dict, Callable]] = None,
 	client_limit_warning_percent: Optional[int] = 95,
 	client_limit_warning_absolute: Optional[int] = 5,
 ) -> OpsiLicensePool:

@@ -9,6 +9,7 @@ This file is part of opsi - https://www.opsi.org
 # pyright: reportMissingImports=false
 import ctypes
 from contextlib import contextmanager
+from typing import Generator
 
 import win32crypt  # type: ignore[import] # pylint: disable=import-error
 from OpenSSL import crypto  # type: ignore[import]
@@ -67,7 +68,7 @@ logger = get_logger("opsicommon.general")
 
 
 @contextmanager
-def _open_cert_store(store_name: str, ctype: bool = False, force_close: bool = True):
+def _open_cert_store(store_name: str, ctype: bool = False, force_close: bool = True) -> Generator[win32crypt.PyCERTSTORE, None, None]:
 	_open = win32crypt.CertOpenStore
 	if ctype:
 		_open = crypt32.CertOpenStore
@@ -83,7 +84,7 @@ def _open_cert_store(store_name: str, ctype: bool = False, force_close: bool = T
 			store.CertCloseStore(flag)
 
 
-def install_ca(ca_cert: crypto.X509):
+def install_ca(ca_cert: crypto.X509) -> None:
 	store_name = "Root"
 
 	logger.info("Installing CA '%s' into '%s' store", ca_cert.get_subject().CN, store_name)
@@ -125,9 +126,13 @@ def remove_ca(subject_name: str) -> bool:
 			if p_cert_ctx == 0:
 				break
 
-			cbsize = crypt32.CertGetNameStringW(p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, None, 0)  # pylint: disable=loop-global-usage
+			cbsize = crypt32.CertGetNameStringW(
+				p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, None, 0
+			)  # pylint: disable=loop-global-usage
 			buf = ctypes.create_unicode_buffer(cbsize)  # pylint: disable=dotted-import-in-loop
-			cbsize = crypt32.CertGetNameStringW(p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, buf, cbsize)  # pylint: disable=loop-global-usage
+			cbsize = crypt32.CertGetNameStringW(
+				p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, buf, cbsize
+			)  # pylint: disable=loop-global-usage
 			logger.info("Removing CA '%s' (%s) from '%s' store", subject_name, buf.value, store_name)  # pylint: disable=loop-global-usage
 			crypt32.CertDeleteCertificateFromStore(p_cert_ctx)  # pylint: disable=loop-global-usage
 			crypt32.CertFreeCertificateContext(p_cert_ctx)  # pylint: disable=loop-global-usage

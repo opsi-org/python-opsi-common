@@ -29,7 +29,7 @@ SERVER_KEY_BITS = 4096
 logger = get_logger("opsicommon.general")
 
 
-def as_pem(cert_or_key: Union[X509, PKey], passphrase: str = None) -> str:
+def as_pem(cert_or_key: Union[X509, PKey], passphrase: Optional[str] = None) -> str:
 	if isinstance(cert_or_key, X509):
 		return dump_certificate(FILETYPE_PEM, cert_or_key).decode("ascii")
 	if isinstance(cert_or_key, PKey):
@@ -42,7 +42,7 @@ def as_pem(cert_or_key: Union[X509, PKey], passphrase: str = None) -> str:
 	raise TypeError(f"Invalid type: {cert_or_key}")
 
 
-def create_x590_name(subject: Dict[str, Optional[str]] = None) -> X509Name:
+def create_x590_name(subject: Optional[Dict[str, Optional[str]]] = None) -> X509Name:
 	subj: Dict[str, Optional[str]] = {
 		"C": "DE",
 		"ST": "RP",
@@ -66,7 +66,7 @@ def create_x590_name(subject: Dict[str, Optional[str]] = None) -> X509Name:
 	return x509_name
 
 
-def create_ca(subject: dict, valid_days: int, key: PKey = None, bits: int = CA_KEY_BITS) -> Tuple[X509, PKey]:
+def create_ca(subject: dict, valid_days: int, key: Optional[PKey] = None, bits: int = CA_KEY_BITS) -> Tuple[X509, PKey]:
 	common_name = subject.get("commonName", subject.get("CN"))
 	if not common_name:
 		raise ValueError("commonName missing in subject")
@@ -110,7 +110,7 @@ def create_server_cert(  # pylint: disable=too-many-arguments,too-many-locals
 	hostnames: set,
 	ca_key: PKey,
 	ca_cert: X509,
-	key: PKey = None,
+	key: Optional[PKey] = None,
 	bits: int = SERVER_KEY_BITS,
 ) -> Tuple[X509, PKey]:
 	common_name = subject.get("commonName", subject.get("CN"))

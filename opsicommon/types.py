@@ -16,7 +16,7 @@ import re
 import sys
 import time
 import types
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 
 from opsicommon.logging import get_logger
 
@@ -710,7 +710,7 @@ def forceUniqueList(_list: List[Any]) -> List[Any]:  # pylint: disable=invalid-n
 	return sorted(set(_list), key=_list.index)
 
 
-def args(*vars, **typeVars) -> Callable:  # pylint: disable=redefined-builtin
+def args(*vars: Any, **typeVars: Any) -> Callable:  # pylint: disable=redefined-builtin
 	"""Function to populate an object with passed on keyword args.
 	This is intended to be used as a decorator.
 	Classes using this decorator must explicitly inherit from object or a subclass of object.
@@ -735,8 +735,8 @@ def args(*vars, **typeVars) -> Callable:  # pylint: disable=redefined-builtin
 	"""
 	vars_list = list(vars)
 
-	def wrapper(cls):
-		def new(typ, *args, **kwargs):  # pylint: disable=redefined-builtin,redefined-outer-name
+	def wrapper(cls: Type) -> Any:
+		def new(typ: Type, *args: Any, **kwargs: Any) -> Any:  # pylint: disable=redefined-builtin,redefined-outer-name
 			if getattr(cls, "__base__", None) in (object, None):
 				obj = object.__new__(typ)  # Suppress deprecation warning
 			else:
@@ -762,7 +762,7 @@ def args(*vars, **typeVars) -> Callable:  # pylint: disable=redefined-builtin
 
 			return obj
 
-		cls.__new__ = staticmethod(new)
+		cls.__new__ = staticmethod(new)  # type: ignore[assignment]
 		return cls
 
 	return wrapper

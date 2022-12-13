@@ -138,7 +138,7 @@ class ServiceVerificationModes(str, Enum):
 
 
 class CallbackThread(Thread):
-	def __init__(self, callback: Callable, **kwargs: Any):
+	def __init__(self, callback: Callable, **kwargs: Any) -> None:
 		super().__init__()
 		self.daemon = True
 		self.callback = callback
@@ -195,14 +195,14 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self,
 		address: Union[Iterable[str], str],
 		*,
-		username: str = None,
-		password: str = None,
-		ca_cert_file: Union[str, Path] = None,
+		username: Optional[str] = None,
+		password: Optional[str] = None,
+		ca_cert_file: Optional[Union[str, Path]] = None,
 		verify: str = ServiceVerificationModes.STRICT_CHECK,
-		session_cookie: str = None,
+		session_cookie: Optional[str] = None,
 		session_lifetime: int = 150,
 		proxy_url: Optional[str] = "system",
-		user_agent: str = None,
+		user_agent: Optional[str] = None,
 		connect_timeout: float = 10.0,
 		max_time_diff: float = 5.0
 	) -> None:
@@ -558,7 +558,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		return f"{self.base_url}{path}"
 
 	def request(  # pylint: disable=too-many-arguments
-		self, method: str, path: str, headers: Optional[Dict[str, str]] = None, read_timeout: float = 60.0, data: bytes = None
+		self, method: str, path: str, headers: Optional[Dict[str, str]] = None, read_timeout: float = 60.0, data: Optional[bytes] = None
 	) -> Tuple[int, str, CaseInsensitiveDict, bytes]:
 		self._assert_connected()
 		try:
@@ -582,7 +582,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		return self.request("GET", path=path, headers=headers, read_timeout=read_timeout)
 
 	def post(
-		self, path: str, data: bytes = None, headers: Optional[Dict[str, str]] = None, read_timeout: float = 60.0
+		self, path: str, data: Optional[bytes] = None, headers: Optional[Dict[str, str]] = None, read_timeout: float = 60.0
 	) -> Tuple[int, str, CaseInsensitiveDict, bytes]:
 		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data)
 
@@ -729,7 +729,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 
 class MessagebusListener():  # pylint: disable=too-few-public-methods
-	def __init__(self, message_types: Iterable[Union[MessageType, str]] = None) -> None:
+	def __init__(self, message_types: Optional[Iterable[Union[MessageType, str]]] = None) -> None:
 		"""
 		message_types:
 		"""
@@ -846,9 +846,9 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			if listener in self._listener:
 				self._listener.remove(listener)
 
-	def wait_for_jsonrpc_response_message(self, rpc_id: str, timeout: float = None) -> JSONRPCResponseMessage:
+	def wait_for_jsonrpc_response_message(self, rpc_id: str, timeout: Optional[float] = None) -> JSONRPCResponseMessage:
 		class JSONRPCResponseListener(MessagebusListener):
-			def __init__(self, rpc_id: str, timeout: float = None) -> None:
+			def __init__(self, rpc_id: str, timeout: Optional[float] = None) -> None:
 				super().__init__((MessageType.JSONRPC_RESPONSE,))
 				self.rpc_id = rpc_id
 				self.timeout = timeout
