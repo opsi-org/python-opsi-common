@@ -1831,7 +1831,13 @@ class BoolProductProperty(ProductProperty):
 	sub_classes: Dict[str, type] = {}
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, productId: str, productVersion: str, packageVersion: str, propertyId: str, description: Optional[str] = None, defaultValues: Optional[List[Any]] = None
+		self,
+		productId: str,
+		productVersion: str,
+		packageVersion: str,
+		propertyId: str,
+		description: Optional[str] = None,
+		defaultValues: Optional[List[Any]] = None,
 	) -> None:
 
 		ProductProperty.__init__(
@@ -2276,7 +2282,13 @@ class ProductPropertyState(Relationship):
 	sub_classes: Dict[str, type] = {}
 	backend_method_prefix = "productPropertyState"
 
-	def __init__(self, productId: str, propertyId: str, objectId: str, values: Optional[List[Any]] = None) -> None:  # pylint: disable=invalid-name
+	def __init__(
+		self,
+		productId: str,  # pylint: disable=invalid-name
+		propertyId: str,  # pylint: disable=invalid-name
+		objectId: str,  # pylint: disable=invalid-name
+		values: Optional[List[Any]] = None
+	) -> None:
 		self.values: Optional[List[Any]] = None
 		self.setProductId(productId)
 		self.setPropertyId(propertyId)
@@ -2348,7 +2360,13 @@ class Group(Object):
 	foreign_id_attributes = Object.foreign_id_attributes + ["groupId"]
 	backend_method_prefix = "group"
 
-	def __init__(self, id: str, description: Optional[str] = None, notes: Optional[str] = None, parentGroupId: Optional[str] = None) -> None:  # pylint: disable=redefined-builtin
+	def __init__(
+		self,
+		id: str,  # pylint: disable=redefined-builtin
+		description: Optional[str] = None,
+		notes: Optional[str] = None,
+		parentGroupId: Optional[str] = None
+	) -> None:
 		Object.__init__(self, id, description, notes)
 		self.parentGroupId: Optional[str] = None  # pylint: disable=invalid-name
 		self.setId(id)
@@ -2394,7 +2412,13 @@ Object.sub_classes["Group"] = Group
 class HostGroup(Group):
 	sub_classes: Dict[str, type] = {}
 
-	def __init__(self, id: str, description: Optional[str] = None, notes: Optional[str] = None, parentGroupId: Optional[str] = None) -> None:  # pylint: disable=redefined-builtin
+	def __init__(
+		self,
+		id: str,  # pylint: disable=redefined-builtin
+		description: Optional[str] = None,
+		notes: Optional[str] = None,
+		parentGroupId: Optional[str] = None
+	) -> None:
 		Group.__init__(self, id, description, notes, parentGroupId)
 
 	def setDefaults(self) -> None:
@@ -2420,7 +2444,13 @@ Group.sub_classes["HostGroup"] = HostGroup
 class ProductGroup(Group):
 	sub_classes: Dict[str, type] = {}
 
-	def __init__(self, id: str, description: Optional[str] = None, notes: Optional[str] = None, parentGroupId: Optional[str] = None) -> None:  # pylint: disable=redefined-builtin
+	def __init__(
+		self,
+		id: str,  # pylint: disable=redefined-builtin
+		description: Optional[str] = None,
+		notes: Optional[str] = None,
+		parentGroupId: Optional[str] = None,
+	) -> None:
 		Group.__init__(self, id, description, notes, parentGroupId)
 
 	def setDefaults(self) -> None:

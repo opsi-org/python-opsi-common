@@ -128,13 +128,13 @@ def remove_ca(subject_name: str) -> bool:
 			if p_cert_ctx == 0:
 				break
 
-			cbsize = crypt32.CertGetNameStringW(
-				p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, None, 0
-			)  # pylint: disable=loop-global-usage
+			cbsize = crypt32.CertGetNameStringW(  # pylint: disable=loop-global-usage
+				p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, None, 0  # pylint: disable=loop-global-usage
+			)
 			buf = ctypes.create_unicode_buffer(cbsize)  # pylint: disable=dotted-import-in-loop
-			cbsize = crypt32.CertGetNameStringW(
-				p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, buf, cbsize
-			)  # pylint: disable=loop-global-usage
+			cbsize = crypt32.CertGetNameStringW(  # pylint: disable=loop-global-usage
+				p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, buf, cbsize  # pylint: disable=loop-global-usage
+			)
 			logger.info("Removing CA '%s' (%s) from '%s' store", subject_name, buf.value, store_name)  # pylint: disable=loop-global-usage
 			crypt32.CertDeleteCertificateFromStore(p_cert_ctx)  # pylint: disable=loop-global-usage
 			crypt32.CertFreeCertificateContext(p_cert_ctx)  # pylint: disable=loop-global-usage
