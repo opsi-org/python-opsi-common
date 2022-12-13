@@ -9,9 +9,8 @@ This file is part of opsi - https://www.opsi.org
 # pyright: reportMissingImports=false
 import ctypes
 from contextlib import contextmanager
-from typing import Generator
+from typing import Any, Generator
 
-import _win32typing  # type: ignore[import] # pylint: disable=import-error
 import win32crypt  # type: ignore[import] # pylint: disable=import-error
 from OpenSSL import crypto  # type: ignore[import]
 
@@ -69,7 +68,9 @@ logger = get_logger("opsicommon.general")
 
 
 @contextmanager
-def _open_cert_store(store_name: str, ctype: bool = False, force_close: bool = True) -> Generator[_win32typing.PyCERTSTORE, None, None]:
+def _open_cert_store(
+	store_name: str, ctype: bool = False, force_close: bool = True
+) -> Generator[Any, None, None]:  # should be _win32typing.PyCERTSTORE if present
 	_open = win32crypt.CertOpenStore
 	if ctype:
 		_open = crypt32.CertOpenStore
