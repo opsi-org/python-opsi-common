@@ -369,7 +369,7 @@ def decode_ident(_class: Type[BaseObject], _hash: Dict[str, Any]) -> Dict[str, A
 	return _hash
 
 
-def objects_differ(obj1: Any, obj2: Any, exclude_attributes: List[str] = None) -> bool:  # pylint: disable=too-many-return-statements,too-many-branches
+def objects_differ(obj1: Any, obj2: Any, exclude_attributes: Optional[List[str]] = None) -> bool:  # pylint: disable=too-many-return-statements,too-many-branches
 	if exclude_attributes is None:
 		exclude_attributes = []  # pylint: disable=use-tuple-over-list
 	else:
@@ -503,7 +503,9 @@ class Object(Entity):
 	sub_classes: Dict[str, type] = {}
 	foreign_id_attributes = Entity.foreign_id_attributes + ["objectId"]
 
-	def __init__(self, id: str, description: str = None, notes: str = None) -> None:  # pylint: disable=redefined-builtin,invalid-name
+	def __init__(
+		self, id: str, description: Optional[str] = None, notes: Optional[str] = None  # pylint: disable=redefined-builtin,invalid-name
+	) -> None:
 		self.description: Optional[str] = None
 		self.notes: Optional[str] = None
 		self.setId(id)
@@ -562,11 +564,11 @@ class Host(Object):
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		id: str,  # pylint: disable=redefined-builtin
-		description: str = None,
-		notes: str = None,
-		hardwareAddress: str = None,
-		ipAddress: str = None,
-		inventoryNumber: str = None,
+		description: Optional[str] = None,
+		notes: Optional[str] = None,
+		hardwareAddress: Optional[str] = None,
+		ipAddress: Optional[str] = None,
+		inventoryNumber: Optional[str] = None,
 	) -> None:
 		Object.__init__(self, id, description, notes)
 		self.hardwareAddress: Optional[str] = None  # pylint: disable=invalid-name
@@ -635,15 +637,15 @@ class OpsiClient(Host):
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		id: str,  # pylint: disable=redefined-builtin
-		opsiHostKey: str = None,
-		description: str = None,
-		notes: str = None,
-		hardwareAddress: str = None,
-		ipAddress: str = None,
-		inventoryNumber: str = None,
-		oneTimePassword: str = None,
-		created: str = None,
-		lastSeen: str = None,
+		opsiHostKey: Optional[str] = None,
+		description: Optional[str] = None,
+		notes: Optional[str] = None,
+		hardwareAddress: Optional[str] = None,
+		ipAddress: Optional[str] = None,
+		inventoryNumber: Optional[str] = None,
+		oneTimePassword: Optional[str] = None,
+		created: Optional[str] = None,
+		lastSeen: Optional[str] = None,
 	) -> None:
 
 		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber)
@@ -718,23 +720,23 @@ class OpsiDepotserver(Host):  # pylint: disable=too-many-instance-attributes,too
 	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
 		self,
 		id: str,  # pylint: disable=redefined-builtin
-		opsiHostKey: str = None,
-		depotLocalUrl: str = None,
-		depotRemoteUrl: str = None,
-		depotWebdavUrl: str = None,
-		repositoryLocalUrl: str = None,
-		repositoryRemoteUrl: str = None,
-		description: str = None,
-		notes: str = None,
-		hardwareAddress: str = None,
-		ipAddress: str = None,
-		inventoryNumber: str = None,
-		networkAddress: str = None,
-		maxBandwidth: int = None,
-		isMasterDepot: bool = None,
-		masterDepotId: str = None,
-		workbenchLocalUrl: str = None,
-		workbenchRemoteUrl: str = None,
+		opsiHostKey: Optional[str] = None,
+		depotLocalUrl: Optional[str] = None,
+		depotRemoteUrl: Optional[str] = None,
+		depotWebdavUrl: Optional[str] = None,
+		repositoryLocalUrl: Optional[str] = None,
+		repositoryRemoteUrl: Optional[str] = None,
+		description: Optional[str] = None,
+		notes: Optional[str] = None,
+		hardwareAddress: Optional[str] = None,
+		ipAddress: Optional[str] = None,
+		inventoryNumber: Optional[str] = None,
+		networkAddress: Optional[str] = None,
+		maxBandwidth: Optional[int] = None,
+		isMasterDepot: Optional[bool] = None,
+		masterDepotId: Optional[str] = None,
+		workbenchLocalUrl: Optional[str] = None,
+		workbenchRemoteUrl: Optional[str] = None,
 	) -> None:
 
 		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber)
@@ -892,23 +894,23 @@ class OpsiConfigserver(OpsiDepotserver):
 	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
 		self,
 		id: str,  # pylint: disable=redefined-builtin
-		opsiHostKey: str = None,
-		depotLocalUrl: str = None,
-		depotRemoteUrl: str = None,
-		depotWebdavUrl: str = None,
-		repositoryLocalUrl: str = None,
-		repositoryRemoteUrl: str = None,
-		description: str = None,
-		notes: str = None,
-		hardwareAddress: str = None,
-		ipAddress: str = None,
-		inventoryNumber: str = None,
-		networkAddress: str = None,
-		maxBandwidth: int = None,
-		isMasterDepot: bool = None,
-		masterDepotId: str = None,
-		workbenchLocalUrl: str = None,
-		workbenchRemoteUrl: str = None,
+		opsiHostKey: Optional[str] = None,
+		depotLocalUrl: Optional[str] = None,
+		depotRemoteUrl: Optional[str] = None,
+		depotWebdavUrl: Optional[str] = None,
+		repositoryLocalUrl: Optional[str] = None,
+		repositoryRemoteUrl: Optional[str] = None,
+		description: Optional[str] = None,
+		notes: Optional[str] = None,
+		hardwareAddress: Optional[str] = None,
+		ipAddress: Optional[str] = None,
+		inventoryNumber: Optional[str] = None,
+		networkAddress: Optional[str] = None,
+		maxBandwidth: Optional[int] = None,
+		isMasterDepot: Optional[bool] = None,
+		masterDepotId: Optional[str] = None,
+		workbenchLocalUrl: Optional[str] = None,
+		workbenchRemoteUrl: Optional[str] = None,
 	) -> None:
 		OpsiDepotserver.__init__(
 			self,
@@ -963,11 +965,11 @@ class Config(Entity):
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		id: str,  # pylint: disable=redefined-builtin,invalid-name
-		description: str = None,
-		possibleValues: List[Any] = None,  # pylint: disable=invalid-name
-		defaultValues: List[Any] = None,  # pylint: disable=invalid-name
-		editable: bool = None,
-		multiValue: bool = None,  # pylint: disable=invalid-name
+		description: Optional[str] = None,
+		possibleValues: Optional[List[Any]] = None,  # pylint: disable=invalid-name
+		defaultValues: Optional[List[Any]] = None,  # pylint: disable=invalid-name
+		editable: Optional[bool] = None,
+		multiValue: Optional[bool] = None,  # pylint: disable=invalid-name
 	) -> None:
 		self.description: Optional[str] = None
 		self.possibleValues: Optional[List[Any]] = None  # pylint: disable=invalid-name
@@ -1089,10 +1091,10 @@ class UnicodeConfig(Config):
 		self,
 		id: str,  # pylint: disable=redefined-builtin
 		description: str = "",
-		possibleValues: List[Any] = None,
-		defaultValues: List[Any] = None,
-		editable: bool = None,
-		multiValue: bool = None,
+		possibleValues: Optional[List[Any]] = None,
+		defaultValues: Optional[List[Any]] = None,
+		editable: Optional[bool] = None,
+		multiValue: Optional[bool] = None,
 	) -> None:
 
 		Config.__init__(self, id, description, possibleValues, defaultValues, editable, multiValue)
@@ -1127,7 +1129,9 @@ Config.sub_classes["UnicodeConfig"] = UnicodeConfig
 class BoolConfig(Config):
 	sub_classes: Dict[str, type] = {}
 
-	def __init__(self, id: str, description: str = None, defaultValues: List[bool] = None) -> None:  # pylint: disable=redefined-builtin
+	def __init__(
+		self, id: str, description: Optional[str] = None, defaultValues: Optional[List[bool]] = None  # pylint: disable=redefined-builtin
+	) -> None:
 		Config.__init__(self, id, description, [True, False], defaultValues, False, False)
 
 	def setDefaults(self) -> None:
@@ -1168,7 +1172,7 @@ class ConfigState(Relationship):
 	sub_classes: Dict[str, type] = {}
 	backend_method_prefix = "configState"
 
-	def __init__(self, configId: str, objectId: str, values: List[Any] = None) -> None:  # pylint: disable=invalid-name
+	def __init__(self, configId: str, objectId: str, values: Optional[List[Any]] = None) -> None:  # pylint: disable=invalid-name
 		self.values: Optional[List[Any]] = None
 		self.setConfigId(configId)
 		self.setObjectId(objectId)
@@ -1229,21 +1233,21 @@ class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-
 		id: str,  # pylint: disable=redefined-builtin,invalid-name
 		productVersion: str,  # pylint: disable=invalid-name
 		packageVersion: str,  # pylint: disable=invalid-name
-		name: str = None,
-		licenseRequired: bool = None,  # pylint: disable=invalid-name
-		setupScript: str = None,  # pylint: disable=invalid-name
-		uninstallScript: str = None,  # pylint: disable=invalid-name
-		updateScript: str = None,  # pylint: disable=invalid-name
-		alwaysScript: str = None,  # pylint: disable=invalid-name
-		onceScript: str = None,  # pylint: disable=invalid-name
-		customScript: str = None,  # pylint: disable=invalid-name
-		userLoginScript: str = None,  # pylint: disable=invalid-name
-		priority: int = None,  # pylint: disable=invalid-name
-		description: str = None,
-		advice: str = None,
-		changelog: str = None,  # pylint: disable=invalid-name
-		productClassIds: List[str] = None,  # pylint: disable=invalid-name
-		windowsSoftwareIds: List[str] = None,  # pylint: disable=invalid-name
+		name: Optional[str] = None,
+		licenseRequired: Optional[bool] = None,  # pylint: disable=invalid-name
+		setupScript: Optional[str] = None,  # pylint: disable=invalid-name
+		uninstallScript: Optional[str] = None,  # pylint: disable=invalid-name
+		updateScript: Optional[str] = None,  # pylint: disable=invalid-name
+		alwaysScript: Optional[str] = None,  # pylint: disable=invalid-name
+		onceScript: Optional[str] = None,  # pylint: disable=invalid-name
+		customScript: Optional[str] = None,  # pylint: disable=invalid-name
+		userLoginScript: Optional[str] = None,  # pylint: disable=invalid-name
+		priority: Optional[int] = None,  # pylint: disable=invalid-name
+		description: Optional[str] = None,
+		advice: Optional[str] = None,
+		changelog: Optional[str] = None,  # pylint: disable=invalid-name
+		productClassIds: Optional[List[str]] = None,  # pylint: disable=invalid-name
+		windowsSoftwareIds: Optional[List[str]] = None,  # pylint: disable=invalid-name
 	):
 		self.name: Optional[str] = None
 		self.licenseRequired: Optional[bool] = None  # pylint: disable=invalid-name
@@ -1473,21 +1477,21 @@ class LocalbootProduct(Product):
 		id: str,  # pylint: disable=redefined-builtin
 		productVersion: str,
 		packageVersion: str,
-		name: str = None,
-		licenseRequired: bool = None,
-		setupScript: str = None,
-		uninstallScript: str = None,
-		updateScript: str = None,
-		alwaysScript: str = None,
-		onceScript: str = None,
-		customScript: str = None,
-		userLoginScript: str = None,
-		priority: int = None,
-		description: str = None,
-		advice: str = None,
-		changelog: str = None,
-		productClassIds: List[str] = None,
-		windowsSoftwareIds: List[str] = None,
+		name: Optional[str] = None,
+		licenseRequired: Optional[bool] = None,
+		setupScript: Optional[str] = None,
+		uninstallScript: Optional[str] = None,
+		updateScript: Optional[str] = None,
+		alwaysScript: Optional[str] = None,
+		onceScript: Optional[str] = None,
+		customScript: Optional[str] = None,
+		userLoginScript: Optional[str] = None,
+		priority: Optional[int] = None,
+		description: Optional[str] = None,
+		advice: Optional[str] = None,
+		changelog: Optional[str] = None,
+		productClassIds: Optional[List[str]] = None,
+		windowsSoftwareIds: Optional[List[str]] = None,
 	):
 
 		Product.__init__(
@@ -1540,20 +1544,20 @@ class NetbootProduct(Product):
 		id: str,  # pylint: disable=redefined-builtin
 		productVersion: str,
 		packageVersion: str,
-		name: str = None,
-		licenseRequired: bool = None,
-		setupScript: str = None,
-		uninstallScript: str = None,
-		updateScript: str = None,
-		alwaysScript: str = None,
-		onceScript: str = None,
-		customScript: str = None,
-		priority: int = None,
-		description: str = None,
-		advice: str = None,
-		changelog: str = None,
-		productClassIds: List[str] = None,
-		windowsSoftwareIds: List[str] = None,
+		name: Optional[str] = None,
+		licenseRequired: Optional[bool] = None,
+		setupScript: Optional[str] = None,
+		uninstallScript: Optional[str] = None,
+		updateScript: Optional[str] = None,
+		alwaysScript: Optional[str] = None,
+		onceScript: Optional[str] = None,
+		customScript: Optional[str] = None,
+		priority: Optional[int] = None,
+		description: Optional[str] = None,
+		advice: Optional[str] = None,
+		changelog: Optional[str] = None,
+		productClassIds: Optional[List[str]] = None,
+		windowsSoftwareIds: Optional[List[str]] = None,
 		pxeConfigTemplate: str = "",
 	) -> None:
 
@@ -1621,11 +1625,11 @@ class ProductProperty(Entity):  # pylint: disable=too-many-instance-attributes,t
 		productVersion: str,  # pylint: disable=invalid-name
 		packageVersion: str,  # pylint: disable=invalid-name
 		propertyId: str,  # pylint: disable=invalid-name
-		description: str = None,
-		possibleValues: List[Any] = None,  # pylint: disable=invalid-name
-		defaultValues: List[Any] = None,  # pylint: disable=invalid-name
-		editable: bool = None,
-		multiValue: bool = None,  # pylint: disable=invalid-name
+		description: Optional[str] = None,
+		possibleValues: Optional[List[Any]] = None,  # pylint: disable=invalid-name
+		defaultValues: Optional[List[Any]] = None,  # pylint: disable=invalid-name
+		editable: Optional[bool] = None,
+		multiValue: Optional[bool] = None,  # pylint: disable=invalid-name
 	):
 		self.description: Optional[str] = None
 		self.possibleValues: Optional[List[Any]] = None  # pylint: disable=invalid-name
@@ -1782,11 +1786,11 @@ class UnicodeProductProperty(ProductProperty):
 		productVersion: str,
 		packageVersion: str,
 		propertyId: str,
-		description: str = None,
-		possibleValues: List[Any] = None,
-		defaultValues: List[Any] = None,
-		editable: bool = None,
-		multiValue: bool = None,
+		description: Optional[str] = None,
+		possibleValues: Optional[List[Any]] = None,
+		defaultValues: Optional[List[Any]] = None,
+		editable: Optional[bool] = None,
+		multiValue: Optional[bool] = None,
 	):
 
 		ProductProperty.__init__(
@@ -1827,7 +1831,13 @@ class BoolProductProperty(ProductProperty):
 	sub_classes: Dict[str, type] = {}
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, productId: str, productVersion: str, packageVersion: str, propertyId: str, description: str = None, defaultValues: List[Any] = None
+		self,
+		productId: str,
+		productVersion: str,
+		packageVersion: str,
+		propertyId: str,
+		description: Optional[str] = None,
+		defaultValues: Optional[List[Any]] = None,
 	) -> None:
 
 		ProductProperty.__init__(
@@ -1896,11 +1906,11 @@ class ProductDependency(Relationship):  # pylint: disable=too-many-instance-attr
 		packageVersion: str,  # pylint: disable=invalid-name
 		productAction: str,  # pylint: disable=invalid-name
 		requiredProductId: str,  # pylint: disable=invalid-name
-		requiredProductVersion: str = None,  # pylint: disable=invalid-name
-		requiredPackageVersion: str = None,  # pylint: disable=invalid-name
-		requiredAction: str = None,  # pylint: disable=invalid-name
-		requiredInstallationStatus: str = None,  # pylint: disable=invalid-name
-		requirementType: str = None,  # pylint: disable=invalid-name
+		requiredProductVersion: Optional[str] = None,  # pylint: disable=invalid-name
+		requiredPackageVersion: Optional[str] = None,  # pylint: disable=invalid-name
+		requiredAction: Optional[str] = None,  # pylint: disable=invalid-name
+		requiredInstallationStatus: Optional[str] = None,  # pylint: disable=invalid-name
+		requirementType: Optional[str] = None,  # pylint: disable=invalid-name
 	):
 		self.requiredProductVersion: Optional[str] = None  # pylint: disable=invalid-name
 		self.requiredPackageVersion: Optional[str] = None  # pylint: disable=invalid-name
@@ -2022,7 +2032,7 @@ class ProductOnDepot(Relationship):
 		productVersion: str,  # pylint: disable=invalid-name
 		packageVersion: str,  # pylint: disable=invalid-name
 		depotId: str,  # pylint: disable=invalid-name
-		locked: bool = None,  # pylint: disable=invalid-name
+		locked: Optional[bool] = None,  # pylint: disable=invalid-name
 	):
 		self.locked: Optional[bool] = None
 		self.setProductId(productId)
@@ -2104,16 +2114,16 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 		productId: str,  # pylint: disable=invalid-name
 		productType: str,  # pylint: disable=invalid-name
 		clientId: str,  # pylint: disable=invalid-name
-		targetConfiguration: str = None,  # pylint: disable=invalid-name
-		installationStatus: str = None,  # pylint: disable=invalid-name
-		actionRequest: str = None,  # pylint: disable=invalid-name
-		lastAction: str = None,  # pylint: disable=invalid-name
-		actionProgress: str = None,  # pylint: disable=invalid-name
-		actionResult: str = None,  # pylint: disable=invalid-name
-		productVersion: str = None,  # pylint: disable=invalid-name
-		packageVersion: str = None,  # pylint: disable=invalid-name
-		modificationTime: str = None,  # pylint: disable=invalid-name
-		actionSequence: int = None,  # pylint: disable=invalid-name
+		targetConfiguration: Optional[str] = None,  # pylint: disable=invalid-name
+		installationStatus: Optional[str] = None,  # pylint: disable=invalid-name
+		actionRequest: Optional[str] = None,  # pylint: disable=invalid-name
+		lastAction: Optional[str] = None,  # pylint: disable=invalid-name
+		actionProgress: Optional[str] = None,  # pylint: disable=invalid-name
+		actionResult: Optional[str] = None,  # pylint: disable=invalid-name
+		productVersion: Optional[str] = None,  # pylint: disable=invalid-name
+		packageVersion: Optional[str] = None,  # pylint: disable=invalid-name
+		modificationTime: Optional[str] = None,  # pylint: disable=invalid-name
+		actionSequence: Optional[int] = None,  # pylint: disable=invalid-name
 	):
 		self.targetConfiguration: Optional[str] = None  # pylint: disable=invalid-name
 		self.installationStatus: Optional[str] = None  # pylint: disable=invalid-name
@@ -2272,7 +2282,13 @@ class ProductPropertyState(Relationship):
 	sub_classes: Dict[str, type] = {}
 	backend_method_prefix = "productPropertyState"
 
-	def __init__(self, productId: str, propertyId: str, objectId: str, values: List[Any] = None) -> None:  # pylint: disable=invalid-name
+	def __init__(
+		self,
+		productId: str,  # pylint: disable=invalid-name
+		propertyId: str,  # pylint: disable=invalid-name
+		objectId: str,  # pylint: disable=invalid-name
+		values: Optional[List[Any]] = None
+	) -> None:
 		self.values: Optional[List[Any]] = None
 		self.setProductId(productId)
 		self.setPropertyId(propertyId)
@@ -2344,7 +2360,13 @@ class Group(Object):
 	foreign_id_attributes = Object.foreign_id_attributes + ["groupId"]
 	backend_method_prefix = "group"
 
-	def __init__(self, id: str, description: str = None, notes: str = None, parentGroupId: str = None) -> None:  # pylint: disable=redefined-builtin
+	def __init__(
+		self,
+		id: str,  # pylint: disable=redefined-builtin
+		description: Optional[str] = None,
+		notes: Optional[str] = None,
+		parentGroupId: Optional[str] = None
+	) -> None:
 		Object.__init__(self, id, description, notes)
 		self.parentGroupId: Optional[str] = None  # pylint: disable=invalid-name
 		self.setId(id)
@@ -2390,7 +2412,13 @@ Object.sub_classes["Group"] = Group
 class HostGroup(Group):
 	sub_classes: Dict[str, type] = {}
 
-	def __init__(self, id: str, description: str = None, notes: str = None, parentGroupId: str = None) -> None:  # pylint: disable=redefined-builtin
+	def __init__(
+		self,
+		id: str,  # pylint: disable=redefined-builtin
+		description: Optional[str] = None,
+		notes: Optional[str] = None,
+		parentGroupId: Optional[str] = None
+	) -> None:
 		Group.__init__(self, id, description, notes, parentGroupId)
 
 	def setDefaults(self) -> None:
@@ -2416,7 +2444,13 @@ Group.sub_classes["HostGroup"] = HostGroup
 class ProductGroup(Group):
 	sub_classes: Dict[str, type] = {}
 
-	def __init__(self, id: str, description: str = None, notes: str = None, parentGroupId: str = None) -> None:  # pylint: disable=redefined-builtin
+	def __init__(
+		self,
+		id: str,  # pylint: disable=redefined-builtin
+		description: Optional[str] = None,
+		notes: Optional[str] = None,
+		parentGroupId: Optional[str] = None,
+	) -> None:
 		Group.__init__(self, id, description, notes, parentGroupId)
 
 	def setDefaults(self) -> None:
@@ -2494,12 +2528,12 @@ class LicenseContract(Entity):
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		id: str,  # pylint: disable=redefined-builtin,invalid-name
-		description: str = None,
-		notes: str = None,
-		partner: str = None,
-		conclusionDate: str = None,  # pylint: disable=invalid-name
-		notificationDate: str = None,  # pylint: disable=invalid-name
-		expirationDate: str = None,  # pylint: disable=invalid-name
+		description: Optional[str] = None,
+		notes: Optional[str] = None,
+		partner: Optional[str] = None,
+		conclusionDate: Optional[str] = None,  # pylint: disable=invalid-name
+		notificationDate: Optional[str] = None,  # pylint: disable=invalid-name
+		expirationDate: Optional[str] = None,  # pylint: disable=invalid-name
 	):
 		self.description: Optional[str] = None
 		self.notes: Optional[str] = None
@@ -2621,9 +2655,9 @@ class SoftwareLicense(Entity):
 		self,
 		id: str,  # pylint: disable=redefined-builtin,invalid-name
 		licenseContractId: str,  # pylint: disable=invalid-name
-		maxInstallations: int = None,  # pylint: disable=invalid-name
-		boundToHost: str = None,  # pylint: disable=invalid-name
-		expirationDate: str = None,  # pylint: disable=invalid-name
+		maxInstallations: Optional[int] = None,  # pylint: disable=invalid-name
+		boundToHost: Optional[str] = None,  # pylint: disable=invalid-name
+		expirationDate: Optional[str] = None,  # pylint: disable=invalid-name
 	):
 		self.maxInstallations: Optional[int] = None  # pylint: disable=invalid-name
 		self.boundToHost: Optional[str] = None  # pylint: disable=invalid-name
@@ -2707,7 +2741,12 @@ class RetailSoftwareLicense(SoftwareLicense):
 	sub_classes: Dict[str, type] = {}
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id: str, licenseContractId: str, maxInstallations: int = None, boundToHost: str = None, expirationDate: str = None  # pylint: disable=redefined-builtin
+		self,
+		id: str,  # pylint: disable=redefined-builtin
+		licenseContractId: str,
+		maxInstallations: Optional[int] = None,
+		boundToHost: Optional[str] = None,
+		expirationDate: Optional[str] = None,
 	) -> None:
 
 		SoftwareLicense.__init__(self, id, licenseContractId, maxInstallations, boundToHost, expirationDate)
@@ -2736,7 +2775,12 @@ class OEMSoftwareLicense(SoftwareLicense):
 	sub_classes: Dict[str, type] = {}
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id: str, licenseContractId: str, maxInstallations: int = None, boundToHost: str = None, expirationDate: str = None  # pylint: disable=redefined-builtin,unused-argument
+		self,
+		id: str,  # pylint: disable=redefined-builtin
+		licenseContractId: str,
+		maxInstallations: Optional[int] = None,  # pylint: disable=unused-argument
+		boundToHost: Optional[str] = None,
+		expirationDate: Optional[str] = None,
 	) -> None:
 		SoftwareLicense.__init__(self, id, licenseContractId, 1, boundToHost, expirationDate)
 
@@ -2775,7 +2819,12 @@ class VolumeSoftwareLicense(SoftwareLicense):
 	sub_classes: Dict[str, type] = {}
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id: str, licenseContractId: str, maxInstallations: int = None, boundToHost: str = None, expirationDate: str = None  # pylint: disable=redefined-builtin
+		self,
+		id: str,  # pylint: disable=redefined-builtin
+		licenseContractId: str,
+		maxInstallations: Optional[int] = None,
+		boundToHost: Optional[str] = None,
+		expirationDate: Optional[str] = None,
 	) -> None:
 		SoftwareLicense.__init__(self, id, licenseContractId, maxInstallations, boundToHost, expirationDate)
 
@@ -2805,7 +2854,12 @@ class ConcurrentSoftwareLicense(SoftwareLicense):
 	sub_classes: Dict[str, type] = {}
 
 	def __init__(  # pylint: disable=too-many-arguments
-		self, id: str, licenseContractId: str, maxInstallations: int = None, boundToHost: str = None, expirationDate: str = None  # pylint: disable=redefined-builtin
+		self,
+		id: str,  # pylint: disable=redefined-builtin
+		licenseContractId: str,
+		maxInstallations: Optional[int] = None,
+		boundToHost: Optional[str] = None,
+		expirationDate: Optional[str] = None,
 	) -> None:
 		SoftwareLicense.__init__(self, id, licenseContractId, maxInstallations, boundToHost, expirationDate)
 
@@ -2834,7 +2888,7 @@ class LicensePool(Entity):
 	foreign_id_attributes = Entity.foreign_id_attributes + ["licensePoolId"]
 	backend_method_prefix = "licensePool"
 
-	def __init__(self, id: str, description: str = None, productIds: List[str] = None):  # pylint: disable=redefined-builtin,invalid-name
+	def __init__(self, id: str, description: Optional[str] = None, productIds: Optional[List[str]] = None):  # pylint: disable=redefined-builtin,invalid-name
 		self.description: Optional[str] = None
 		self.productIds: Optional[List[str]] = None  # pylint: disable=invalid-name
 		self.setId(id)
@@ -2996,7 +3050,7 @@ class SoftwareLicenseToLicensePool(Relationship):
 	sub_classes: Dict[str, type] = {}
 	backend_method_prefix = "softwareLicenseToLicensePool"
 
-	def __init__(self, softwareLicenseId: str, licensePoolId: str, licenseKey: str = None) -> None:  # pylint: disable=invalid-name
+	def __init__(self, softwareLicenseId: str, licensePoolId: str, licenseKey: Optional[str] = None) -> None:  # pylint: disable=invalid-name
 		self.licenseKey: Optional[str] = None  # pylint: disable=invalid-name
 		self.setSoftwareLicenseId(softwareLicenseId)
 		self.setLicensePoolId(licensePoolId)
@@ -3054,8 +3108,8 @@ class LicenseOnClient(Relationship):
 		softwareLicenseId: str,  # pylint: disable=invalid-name
 		licensePoolId: str,  # pylint: disable=invalid-name
 		clientId: str,  # pylint: disable=invalid-name
-		licenseKey: str = None,  # pylint: disable=invalid-name
-		notes: str = None,  # pylint: disable=invalid-name
+		licenseKey: Optional[str] = None,  # pylint: disable=invalid-name
+		notes: Optional[str] = None,  # pylint: disable=invalid-name
 	):
 		self.licenseKey: Optional[str] = None  # pylint: disable=invalid-name
 		self.notes: Optional[str] = None
@@ -3135,10 +3189,10 @@ class AuditSoftware(Entity):  # pylint: disable=too-many-instance-attributes,too
 		subVersion: str,  # pylint: disable=invalid-name
 		language: str,
 		architecture: str,  # pylint: disable=invalid-name
-		windowsSoftwareId: str = None,  # pylint: disable=invalid-name
-		windowsDisplayName: str = None,  # pylint: disable=invalid-name
-		windowsDisplayVersion: str = None,  # pylint: disable=invalid-name
-		installSize: int = None,  # pylint: disable=invalid-name
+		windowsSoftwareId: Optional[str] = None,  # pylint: disable=invalid-name
+		windowsDisplayName: Optional[str] = None,  # pylint: disable=invalid-name
+		windowsDisplayVersion: Optional[str] = None,  # pylint: disable=invalid-name
+		installSize: Optional[int] = None,  # pylint: disable=invalid-name
 	):
 		self.windowsSoftwareId: Optional[str] = None  # pylint: disable=invalid-name
 		self.windowsDisplayName: Optional[str] = None  # pylint: disable=invalid-name
@@ -3253,14 +3307,14 @@ class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-
 		language: str,
 		architecture: str,  # pylint: disable=invalid-name
 		clientId: str,  # pylint: disable=invalid-name
-		uninstallString: str = None,  # pylint: disable=invalid-name
-		binaryName: str = None,  # pylint: disable=invalid-name
-		firstseen: str = None,
-		lastseen: str = None,
-		state: int = None,  # pylint: disable=invalid-name
-		usageFrequency: int = None,  # pylint: disable=invalid-name
-		lastUsed: str = None,  # pylint: disable=invalid-name
-		licenseKey: str = None,  # pylint: disable=invalid-name
+		uninstallString: Optional[str] = None,  # pylint: disable=invalid-name
+		binaryName: Optional[str] = None,  # pylint: disable=invalid-name
+		firstseen: Optional[str] = None,
+		lastseen: Optional[str] = None,
+		state: Optional[int] = None,  # pylint: disable=invalid-name
+		usageFrequency: Optional[int] = None,  # pylint: disable=invalid-name
+		lastUsed: Optional[str] = None,  # pylint: disable=invalid-name
+		licenseKey: Optional[str] = None,  # pylint: disable=invalid-name
 	):
 		self.uninstallString: Optional[str] = None  # pylint: disable=invalid-name
 		self.binaryName: Optional[str] = None  # pylint: disable=invalid-name
@@ -3598,7 +3652,13 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 	hardware_attributes: Dict[str, Dict[str, Any]] = {}
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-branches,too-many-statements
-		self, hardwareClass: str, hostId: str, firstseen: str = None, lastseen: str = None, state: int = None, **kwargs: Any  # pylint: disable=invalid-name
+		self,
+		hardwareClass: str,  # pylint: disable=invalid-name
+		hostId: str,  # pylint: disable=invalid-name
+		firstseen: Optional[str] = None,
+		lastseen: Optional[str] = None,
+		state: Optional[int] = None,
+		**kwargs: Any,
 	) -> None:
 		self.firstseen: Optional[str] = None
 		self.lastseen: Optional[str] = None

@@ -9,8 +9,10 @@ system
 import os
 import platform
 from collections import namedtuple
+from typing import Optional
 
 import psutil  # type: ignore[import]
+
 from opsicommon.logging import get_logger
 
 Session = namedtuple("Session", ["id", "type", "username", "terminal", "login_pid", "started"])
@@ -28,7 +30,7 @@ elif SYSTEM == "darwin":
 logger = get_logger("opsicommon.general")
 
 
-def ensure_not_already_running(process_name: str = None) -> None:
+def ensure_not_already_running(process_name: Optional[str] = None) -> None:
 	our_pid = os.getpid()
 	other_pid = None
 	try:

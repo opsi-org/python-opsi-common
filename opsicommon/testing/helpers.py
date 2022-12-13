@@ -184,7 +184,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			file.close()
 			raise
 
-	def send_response(self, code: int, message: str = None) -> None:
+	def send_response(self, code: int, message: Optional[str] = None) -> None:
 		self.log_request(code)
 		self.send_response_only(code, message)
 		self.send_header('Server', self.version_string())
@@ -536,19 +536,19 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		*,
-		log_file: str = None,
-		ip_version: str = None,
-		server_key: str = None,
-		server_cert: str = None,
+		log_file: Optional[str] = None,
+		ip_version: Optional[str] = None,
+		server_key: Optional[str] = None,
+		server_cert: Optional[str] = None,
 		generate_cert: bool = False,
-		response_headers: Dict[str, str] = None,
-		response_status: Tuple[int, str] = None,
-		response_body: bytes = None,
-		response_delay: float = None,
-		ws_connect_callback: Callable = None,
-		ws_message_callback: Callable = None,
-		serve_directory: Union[str, Path] = None,
-		send_max_bytes: int = None
+		response_headers: Optional[Dict[str, str]] = None,
+		response_status: Optional[Tuple[int, str]] = None,
+		response_body: Optional[bytes] = None,
+		response_delay: Optional[float] = None,
+		ws_connect_callback: Optional[Callable] = None,
+		ws_message_callback: Optional[Callable] = None,
+		serve_directory: Optional[Union[str, Path]] = None,
+		send_max_bytes: Optional[int] = None
 	) -> None:
 		super().__init__()
 		self.log_file = str(log_file) if log_file else None
@@ -671,19 +671,19 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 @contextmanager
 def http_test_server(  # pylint: disable=too-many-arguments,too-many-locals
 	*,
-	log_file: str = None,
-	ip_version: str = None,
-	server_key: str = None,
-	server_cert: str = None,
+	log_file: Optional[str] = None,
+	ip_version: Optional[str] = None,
+	server_key: Optional[str] = None,
+	server_cert: Optional[str] = None,
 	generate_cert: bool = False,
-	response_headers: Dict[str, str] = None,
-	response_status: Tuple[int, str] = None,
-	response_body: bytes = None,
-	response_delay: float = None,
-	ws_connect_callback: Callable = None,
-	ws_message_callback: Callable = None,
-	serve_directory: Union[str, Path] = None,
-	send_max_bytes: int = None
+	response_headers: Optional[Dict[str, str]] = None,
+	response_status: Optional[Tuple[int, str]] = None,
+	response_body: Optional[bytes] = None,
+	response_delay: Optional[float] = None,
+	ws_connect_callback: Optional[Callable] = None,
+	ws_message_callback: Optional[Callable] = None,
+	serve_directory: Optional[Union[str, Path]] = None,
+	send_max_bytes: Optional[int] = None
 ) -> Generator[HTTPTestServer, None, None]:
 	server = HTTPTestServer(
 		log_file=log_file,

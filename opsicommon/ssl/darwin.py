@@ -20,7 +20,7 @@ __all__ = ("install_ca", "load_ca", "remove_ca")
 logger = get_logger("opsicommon.general")
 
 
-def install_ca(ca_cert: crypto.X509):
+def install_ca(ca_cert: crypto.X509) -> None:
 	logger.info("Installing CA '%s' into system store", ca_cert.get_subject().CN)
 
 	pem_file = tempfile.NamedTemporaryFile(mode="wb", delete=False)  # pylint: disable=consider-using-with
@@ -65,7 +65,9 @@ def remove_ca(subject_name: str) -> bool:
 		sha1_hash = ca_cert.digest("sha1").decode("ascii").replace(":", "")
 		if removed_sha1_hash and sha1_hash == removed_sha1_hash:
 			raise RuntimeError(f"Failed to remove certficate {removed_sha1_hash}")
-		subprocess.check_call(["security", "delete-certificate", "-Z", sha1_hash, "/Library/Keychains/System.keychain", "-t"], shell=False)  # pylint: disable=dotted-import-in-loop
+		subprocess.check_call(  # pylint: disable=dotted-import-in-loop
+			["security", "delete-certificate", "-Z", sha1_hash, "/Library/Keychains/System.keychain", "-t"], shell=False
+		)
 		removed_sha1_hash = sha1_hash
 		ca_cert = load_ca(subject_name)
 	return True

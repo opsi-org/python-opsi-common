@@ -13,7 +13,7 @@ import os
 import pwd
 import subprocess
 from datetime import datetime
-from typing import Generator, List
+from typing import Generator, List, Optional
 
 import psutil  # type: ignore[import]
 
@@ -33,7 +33,7 @@ def set_system_datetime(utc_datetime: datetime) -> None:
 		) from err
 
 
-def get_user_sessions(username: str = None, session_type: str = None) -> Generator[Session, None, None]:
+def get_user_sessions(username: Optional[str] = None, session_type: Optional[str] = None) -> Generator[Session, None, None]:
 	for user in psutil.users():  # pylint: disable=dotted-import-in-loop
 		if username is not None and user.name != username:  # pylint: disable=loop-invariant-statement
 			continue
