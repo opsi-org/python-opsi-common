@@ -143,10 +143,11 @@ class OpsiConfig(metaclass=Singleton):
 		"ldap_auth": {"ldap_url": "", "bind_user": ""},
 	}
 
-	def __init__(self) -> None:
+	def __init__(self, upgrade_config: bool = True) -> None:
 		self._config_file_mtime = 0.0
 		self._config: dict[str, Any] = self.default_config
 		self._config_file_read = False
+		self._upgrade_config = upgrade_config
 		self._upgrade_done = False
 
 	@staticmethod
@@ -164,13 +165,13 @@ class OpsiConfig(metaclass=Singleton):
 		if not self._config_file_read or Path(self.config_file).stat().st_mtime != self._config_file_mtime:
 			self.read_config_file()
 
-	def _assert_category_and_config(self, category: str, config: Optional[str] = None) -> None:
+	def _assert_category_and_config(self, category: str, config: str | None = None) -> None:
 		if category not in self._config:
 			raise ValueError(f"Invalid category {category!r}")
 		if config is not None and config not in self._config[category]:
 			raise ValueError(f"Invalid config {config!r} for category {category!r}", config, category)
 
-	def get(self, category: str, config: Optional[str] = None) -> Any:
+	def get(self, category: str, config: str | None = None) -> Any:
 		self._assert_config_read()
 		self._assert_category_and_config(category, config)
 		if config is None:
@@ -191,7 +192,7 @@ class OpsiConfig(metaclass=Singleton):
 			self.write_config_file()
 
 	def upgrade_config_file(self) -> None:  # pylint: disable=too-many-branches
-		if self._upgrade_done:
+		if self._upgrade_done or not self._upgrade_config:
 			return
 		# Convert ini (opsi < 4.3) to toml (opsi >= 4.3)
 		file = Path(self.config_file)

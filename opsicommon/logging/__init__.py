@@ -36,6 +36,7 @@ from .logging import (
 	ContextFilter,
 	ContextSecretFormatter,
 	ObservableHandler,
+	RichConsoleHandler,
 	SecretFilter,
 	add_context_filter_to_loggers,
 	context,
