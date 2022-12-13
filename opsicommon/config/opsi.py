@@ -12,7 +12,7 @@ import socket
 from pathlib import Path
 from subprocess import PIPE, Popen
 from threading import Lock
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 from tomlkit import dumps, loads
