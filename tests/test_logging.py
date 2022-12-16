@@ -120,7 +120,7 @@ def test_secret_formatter_attr() -> None:
 	csf.format(log_record)
 
 
-def test_secret_filter() -> None:  # pylint: disable=redefined-outer-name
+def test_secret_filter() -> None:  # pylint: disable=redefined-outer-name,too-many-statements
 	secret_filter.set_min_length(7)
 	secret_filter.add_secrets("PASSWORD", "2SHORT", "SECRETSTRING")
 
@@ -165,13 +165,15 @@ def test_secret_filter() -> None:  # pylint: disable=redefined-outer-name
 		assert "SECRETSTRING2" in log
 		assert "SECRETSTRING3" not in log
 
+	# If log level is secret, log all secrets in all log levels (disable filter)
 	secret_filter.clear_secrets()
-	secret_filter.add_secrets("SECRETSTRING1")
+	secret_filter.add_secrets("VISIBLE_SECRETSTRING")
 	with log_stream(LOG_SECRET) as stream:
-		logger.info("SECRETSTRING1")
+		logger.trace("VISIBLE_SECRETSTRING")
+		logger.secret("VISIBLE_SECRETSTRING")
 		stream.seek(0)
 		log = stream.read()
-		assert "SECRETSTRING1" in log
+		assert log.count("VISIBLE_SECRETSTRING") == 2
 
 
 def test_context() -> None:  # pylint: disable=redefined-outer-name
