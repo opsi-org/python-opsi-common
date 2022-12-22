@@ -41,7 +41,7 @@ def create_user(username: str, primary_groupname: str, home: str, shell: str, sy
 	subprocess.check_output(cmd, stderr=subprocess.STDOUT)
 
 
-def modify_user(username: str, home: str | None, shell: str | None) -> None:
+def modify_user(username: str, home: str | None = None, shell: str | None = None) -> None:
 	if not home and not shell:
 		return
 	logger.notice("Modifying user: %s (home=%s, shell=%s)", username, home, shell)
