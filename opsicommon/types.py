@@ -9,6 +9,8 @@ This module contains various methods to ensure force a special type
 on an object.
 """
 
+from __future__ import annotations
+
 import datetime
 import ipaddress
 import os
