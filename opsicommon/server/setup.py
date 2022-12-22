@@ -41,6 +41,20 @@ def create_user(username: str, primary_groupname: str, home: str, shell: str, sy
 	subprocess.check_output(cmd, stderr=subprocess.STDOUT)
 
 
+def modify_user(username: str, home: str | None, shell: str | None) -> None:
+	if not home and not shell:
+		return
+	logger.notice("Modifying user: %s (home=%s, shell=%s)", username, home, shell)
+	cmd = ["usermod"]
+	if home:
+		cmd += ["-d", home]
+	if shell:
+		cmd += ["-s", shell]
+	cmd.append(username)
+	logger.info("Running command: %s", cmd)
+	subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+
+
 def add_user_to_group(username: str, groupname: str) -> None:
 	logger.notice("Adding user '%s' to group '%s'", username, groupname)
 	cmd = ["usermod", "-a", "-G", groupname, username]  # pylint: disable=use-tuple-over-list
