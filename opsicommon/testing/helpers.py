@@ -536,7 +536,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		self,
 		*,
 		log_file: Path | str | None = None,
-		ip_version: str | None = None,
+		ip_version: str | int | None = None,
 		server_key: Path | str | None = None,
 		server_cert: Path | str | None = None,
 		generate_cert: bool = False,
@@ -551,7 +551,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 	) -> None:
 		super().__init__()
 		self.log_file = str(log_file) if log_file else None
-		self.ip_version = 6 if ip_version == 6 else 4
+		self.ip_version = 6 if int(ip_version or 4) == 6 else 4
 		self.server_key = str(server_key) if server_key else None
 		self.server_cert = str(server_cert) if server_cert else None
 		self.generate_cert = generate_cert
@@ -671,7 +671,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 def http_test_server(  # pylint: disable=too-many-arguments,too-many-locals
 	*,
 	log_file: Path | str | None = None,
-	ip_version: str | None = None,
+	ip_version: str | int | None = None,
 	server_key: Path | str | None = None,
 	server_cert: Path | str | None = None,
 	generate_cert: bool = False,
