@@ -1200,7 +1200,7 @@ class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-
 	def setProductVersion(self, productVersion: str) -> None:  # pylint: disable=invalid-name
 		self.productVersion = forceProductVersion(productVersion)  # pylint: disable=invalid-name
 
-	def getPackageVersion(self) -> Optional[str]:  # pylint: disable=invalid-name
+	def getPackageVersion(self) -> str:  # pylint: disable=invalid-name
 		return self.packageVersion
 
 	def setPackageVersion(self, packageVersion: str) -> None:  # pylint: disable=invalid-name
