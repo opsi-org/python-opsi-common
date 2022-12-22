@@ -544,8 +544,7 @@ def test_get() -> None:
 
 	class ReqThread(Thread):
 		def __init__(self, client: ServiceClient) -> None:
-			super().__init__()
-			self.daemon = True
+			super().__init__(daemon=True)
 			self.client = client
 			self.response: Tuple[int, str, dict, bytes] = (0, "", {}, b"")
 

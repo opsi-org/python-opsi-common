@@ -10,6 +10,7 @@ import os
 import re
 import socket
 from pathlib import Path
+from shutil import chown
 from subprocess import PIPE, Popen
 from threading import Lock
 from typing import Any
@@ -35,6 +36,7 @@ DEFAULT_FILEADMIN_GROUP = "opsifileadmins"
 DEFAULT_READONLY_GROUP = ""
 DEFAULT_DEPOT_USER = "pcpatch"
 DEFAULT_DEPOT_USER_HOME = "/var/lib/opsi"
+DEFAULT_OPSICONFD_USER = "opsiconfd"
 
 
 def read_backend_config_file(file: Path) -> dict[str, Any]:
@@ -198,6 +200,11 @@ class OpsiConfig(metaclass=Singleton):
 		file = Path(self.config_file)
 		if not file.exists():
 			file.touch(mode=0o660)
+			chown(file, group=DEFAULT_ADMIN_GROUP)
+			try:
+				chown(file, user=DEFAULT_OPSICONFD_USER)
+			except Exception:  # pylint: disable=broad-except
+				pass
 		data = file.read_text(encoding="utf-8")
 		key_val_regex = re.compile(r"([^=]+)=(\s*)(.+)")
 		lines = data.split("\n")
