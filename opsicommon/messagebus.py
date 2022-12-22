@@ -163,7 +163,7 @@ class JSONRPCResponseMessage(Message):
 
 # Terminal
 @dataclass(slots=True, kw_only=True, repr=False)
-class TerminalOpenRequest(Message):
+class TerminalOpenRequestMessage(Message):
 	type: str = MessageType.TERMINAL_OPEN_REQUEST.value
 	terminal_id: str
 	rows: Optional[int] = None
@@ -172,7 +172,7 @@ class TerminalOpenRequest(Message):
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
-class TerminalOpenEvent(Message):
+class TerminalOpenEventMessage(Message):
 	type: str = MessageType.TERMINAL_OPEN_EVENT.value
 	terminal_id: str
 	rows: int
@@ -181,21 +181,21 @@ class TerminalOpenEvent(Message):
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
-class TerminalDataRead(Message):
+class TerminalDataReadMessage(Message):
 	type: str = MessageType.TERMINAL_DATA_READ.value
 	terminal_id: str
 	data: bytes
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
-class TerminalDataWrite(Message):
+class TerminalDataWriteMessage(Message):
 	type: str = MessageType.TERMINAL_DATA_WRITE.value
 	terminal_id: str
 	data: bytes
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
-class TerminalResizeRequest(Message):
+class TerminalResizeRequestMessage(Message):
 	type: str = MessageType.TERMINAL_RESIZE_REQUEST.value
 	terminal_id: str
 	rows: int
@@ -203,7 +203,7 @@ class TerminalResizeRequest(Message):
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
-class TerminalResizeEvent(Message):
+class TerminalResizeEventMessage(Message):
 	type: str = MessageType.TERMINAL_RESIZE_EVENT.value
 	terminal_id: str
 	rows: int
@@ -212,13 +212,13 @@ class TerminalResizeEvent(Message):
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
-class TerminalCloseRequest(Message):
+class TerminalCloseRequestMessage(Message):
 	type: str = MessageType.TERMINAL_CLOSE_REQUEST.value
 	terminal_id: str
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
-class TerminalCloseEvent(Message):
+class TerminalCloseEventMessage(Message):
 	type: str = MessageType.TERMINAL_CLOSE_EVENT.value
 	terminal_id: str
 	error: Optional[Error] = None
@@ -264,14 +264,14 @@ MESSAGE_TYPE_TO_CLASS = {
 	MessageType.TRACE_RESPONSE.value: TraceResponseMessage,
 	MessageType.JSONRPC_REQUEST.value: JSONRPCRequestMessage,
 	MessageType.JSONRPC_RESPONSE.value: JSONRPCResponseMessage,
-	MessageType.TERMINAL_OPEN_REQUEST.value: TerminalOpenRequest,
-	MessageType.TERMINAL_OPEN_EVENT.value: TerminalOpenEvent,
-	MessageType.TERMINAL_DATA_READ.value: TerminalDataRead,
-	MessageType.TERMINAL_DATA_WRITE.value: TerminalDataWrite,
-	MessageType.TERMINAL_RESIZE_REQUEST.value: TerminalResizeRequest,
-	MessageType.TERMINAL_RESIZE_EVENT.value: TerminalResizeEvent,
-	MessageType.TERMINAL_CLOSE_REQUEST.value: TerminalCloseRequest,
-	MessageType.TERMINAL_CLOSE_EVENT.value: TerminalCloseEvent,
+	MessageType.TERMINAL_OPEN_REQUEST.value: TerminalOpenRequestMessage,
+	MessageType.TERMINAL_OPEN_EVENT.value: TerminalOpenEventMessage,
+	MessageType.TERMINAL_DATA_READ.value: TerminalDataReadMessage,
+	MessageType.TERMINAL_DATA_WRITE.value: TerminalDataWriteMessage,
+	MessageType.TERMINAL_RESIZE_REQUEST.value: TerminalResizeRequestMessage,
+	MessageType.TERMINAL_RESIZE_EVENT.value: TerminalResizeEventMessage,
+	MessageType.TERMINAL_CLOSE_REQUEST.value: TerminalCloseRequestMessage,
+	MessageType.TERMINAL_CLOSE_EVENT.value: TerminalCloseEventMessage,
 	MessageType.FILE_UPLOAD_REQUEST.value: FileUploadRequestMessage,
 	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
 	MessageType.FILE_CHUNK.value: FileChunkMessage,
