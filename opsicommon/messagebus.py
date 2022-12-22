@@ -11,7 +11,7 @@ opsicommon.messagebus
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from time import time
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
+from typing import Any, Optional, Type, TypeVar
 from uuid import uuid4
 
 import msgspec
@@ -52,8 +52,8 @@ class MessageType(str, Enum):
 @dataclass(slots=True, kw_only=True)
 class Error:
 	message: str
-	code: Optional[int] = None
-	details: Optional[str] = None
+	code: int | None = None
+	details: str | None = None
 
 
 MessageT = TypeVar('MessageT', bound='Message')
@@ -64,14 +64,14 @@ class Message:  # pylint: disable=too-many-instance-attributes
 	type: str  # Custom message types are allowed
 	sender: str
 	channel: str
-	back_channel: Optional[str] = None
+	back_channel: str | None = None
 	id: str = field(default_factory=message_id)  # pylint: disable=invalid-name
 	created: int = field(default_factory=timestamp)
 	expires: int = field(default_factory=lambda: timestamp() + 60000)
-	ref_id: Optional[str] = None
+	ref_id: str | None = None
 
 	@classmethod
-	def from_dict(cls: Type[MessageT], data: Dict[str, Any]) -> MessageT:
+	def from_dict(cls: Type[MessageT], data: dict[str, Any]) -> MessageT:
 		_cls = cls
 		if _cls is Message:
 			_type = data.get("type")
@@ -81,7 +81,7 @@ class Message:  # pylint: disable=too-many-instance-attributes
 				_cls = MESSAGE_TYPE_TO_CLASS.get(_type, Message)
 		return _cls(**data)
 
-	def to_dict(self, none_values: bool = False) -> Dict[str, Any]:
+	def to_dict(self, none_values: bool = False) -> dict[str, Any]:
 		_dict = asdict(self)
 		if none_values:
 			return _dict
@@ -105,7 +105,7 @@ class Message:  # pylint: disable=too-many-instance-attributes
 @dataclass(slots=True, kw_only=True, repr=False)
 class GeneralErrorMessage(Message):
 	type: str = MessageType.GENERAL_ERROR.value
-	error: Optional[Error]
+	error: Error | None
 
 
 class ChannelSubscriptionOperation(str, Enum):
@@ -117,30 +117,30 @@ class ChannelSubscriptionOperation(str, Enum):
 @dataclass(slots=True, kw_only=True, repr=False)
 class ChannelSubscriptionRequestMessage(Message):
 	type: str = MessageType.CHANNEL_SUBSCRIPTION_REQUEST.value
-	channels: List[str]
+	channels: list[str]
 	operation: str = ChannelSubscriptionOperation.SET.value
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
 class ChannelSubscriptionEventMessage(Message):
 	type: str = MessageType.CHANNEL_SUBSCRIPTION_EVENT.value
-	error: Optional[Error] = None
-	subscribed_channels: Optional[List[str]] = None
+	error: Error | None = None
+	subscribed_channels: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
 class TraceRequestMessage(Message):
 	type: str = MessageType.TRACE_REQUEST.value
-	trace: Optional[Dict[str, Any]] = field(default_factory=dict)  # type: ignore[assignment]
-	payload: Optional[bytes] = None
+	trace: dict[str, Any] = field(default_factory=dict)  # type: ignore[assignment]
+	payload: bytes | None = None
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
 class TraceResponseMessage(Message):
 	type: str = MessageType.TRACE_RESPONSE.value
-	req_trace: Dict[str, Any]
-	trace: Dict[str, Any]
-	payload: Optional[bytes] = None
+	req_trace: dict[str, Any]
+	trace: dict[str, Any]
+	payload: bytes | None = None
 
 
 # JSONRPC
@@ -150,7 +150,7 @@ class JSONRPCRequestMessage(Message):
 	api_version: str = "1"
 	rpc_id: str = field(default_factory=lambda: str(uuid4()))
 	method: str
-	params: Optional[Tuple[Any, ...]] = tuple()
+	params: tuple[Any, ...] = tuple()
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
@@ -168,7 +168,7 @@ class TerminalOpenRequest(Message):
 	terminal_id: str
 	rows: Optional[int] = None
 	cols: Optional[int] = None
-	shell: Optional[str] = None
+	shell: str | None = None
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
@@ -230,10 +230,10 @@ class FileUploadRequestMessage(Message):
 	type: str = MessageType.FILE_UPLOAD_REQUEST.value
 	file_id: str
 	content_type: str
-	name: Optional[str] = None
+	name: str | None = None
 	size: Optional[int] = None
-	destination_dir: Optional[str] = None
-	terminal_id: Optional[str] = None
+	destination_dir: str | None = None
+	terminal_id: str | None = None
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
@@ -241,7 +241,7 @@ class FileUploadResultMessage(Message):
 	type: str = MessageType.FILE_UPLOAD_RESULT.value
 	file_id: str
 	error: Optional[Error] = None
-	path: Optional[str] = None
+	path: str | None = None
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
