@@ -200,7 +200,10 @@ class OpsiConfig(metaclass=Singleton):
 		file = Path(self.config_file)
 		if not file.exists():
 			file.touch(mode=0o660)
-			chown(file, group=DEFAULT_ADMIN_GROUP)
+			try:
+				chown(file, group=DEFAULT_ADMIN_GROUP)
+			except Exception:  # pylint: disable=broad-except
+				pass
 			try:
 				chown(file, user=DEFAULT_OPSICONFD_USER)
 			except Exception:  # pylint: disable=broad-except

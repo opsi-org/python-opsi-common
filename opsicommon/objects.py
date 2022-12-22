@@ -9,6 +9,7 @@ As an example this contains classes for hosts, products, configurations.
 """
 
 # pylint: disable=too-many-lines
+from __future__ import annotations
 
 from datetime import date, datetime
 from inspect import getfullargspec
@@ -374,7 +375,7 @@ def decode_ident(_class: Type[BaseObject], _hash: dict[str, Any]) -> dict[str, A
 			ident_values = ident  # type: ignore[assignment]
 
 		if len(ident_values) != len(ident_keys):
-			raise ValueError(f"Ident {ident} does not match class '{_class}' constructor arguments {ident_keys}")
+			raise ValueError(f"Ident {ident_values} does not match class '{_class}' constructor arguments {ident_keys}")
 		ident = dict(zip(ident_keys, ident_values))
 
 	_hash.update(ident)
@@ -3113,6 +3114,11 @@ class AuditHardware(Entity):
 		attributes.insert(0, "hardwareClass")
 		return tuple(attributes)
 
+	@classmethod
+	def fromHash(cls, _hash: dict[str, Any]) -> AuditHardware:
+		init_hash = {key: value for key, value in _hash.items() if key != "type"}
+		return AuditHardware(**init_hash)
+
 	def __str__(self) -> str:
 		infos = []
 		hardware_class = self.getHardwareClass()
@@ -3329,6 +3335,11 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 		attributes.insert(0, "hostId")
 		attributes.insert(0, "hardwareClass")
 		return tuple(attributes)
+
+	@classmethod
+	def fromHash(cls, _hash: dict[str, Any]) -> AuditHardwareOnHost:
+		init_hash = {key: value for key, value in _hash.items() if key != "type"}
+		return AuditHardwareOnHost(**init_hash)
 
 	def __str__(self) -> str:
 		additional = [f"hostId='{self.hostId}'"]
