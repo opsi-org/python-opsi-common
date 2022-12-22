@@ -28,12 +28,11 @@ from io import BufferedReader, BytesIO
 from pathlib import Path
 from socketserver import BaseServer, ThreadingMixIn
 from tempfile import NamedTemporaryFile
-from typing import Any, Callable, Dict, Generator, Optional, Tuple, Union
+from typing import Any, Callable, Generator
 from urllib.parse import urlsplit, urlunsplit
 
 import lz4  # type: ignore[import]
 import msgspec
-
 from opsicommon.ssl import as_pem, create_ca, create_server_cert  # type: ignore[import]
 
 
@@ -88,7 +87,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 				self.send_header(name, value)
 		super().end_headers()
 
-	def send_head(self) -> Union[None, BufferedReader, BytesIO]:  # pylint: disable=too-many-branches,too-many-statements
+	def send_head(self) -> BufferedReader | BytesIO | None:  # pylint: disable=too-many-branches,too-many-statements
 		"""Common code for GET and HEAD commands.
 
 		This sends the response code and MIME headers.
@@ -184,7 +183,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			file.close()
 			raise
 
-	def send_response(self, code: int, message: Optional[str] = None) -> None:
+	def send_response(self, code: int, message: str | None = None) -> None:
 		self.log_request(code)
 		self.send_response_only(code, message)
 		self.send_header('Server', self.version_string())
@@ -489,46 +488,46 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):  # pylint: disable=too-ma
 	daemon_threads = False
 	allow_reuse_address = True
 
-	def __init__(self, test_server: "HTTPTestServer", server_address: Tuple[str, int], address_family: int = socket.AF_INET) -> None:
+	def __init__(self, test_server: "HTTPTestServer", server_address: tuple[str, int], address_family: int = socket.AF_INET) -> None:
 		self.address_family = address_family
 		super().__init__(server_address, HTTPTestServerRequestHandler)
 		self.test_server = test_server
 		self.stopping = False
 
 	@property
-	def log_file(self) -> Optional[str]:
+	def log_file(self) -> str | None:
 		return self.test_server.log_file
 
 	@property
-	def response_headers(self) -> Optional[Dict[str, str]]:
+	def response_headers(self) -> dict[str, str] | None:
 		return self.test_server.response_headers
 
 	@property
-	def response_status(self) -> Optional[Tuple[int, str]]:
+	def response_status(self) -> tuple[int, str] | None:
 		return self.test_server.response_status
 
 	@property
-	def response_body(self) -> Optional[bytes]:
+	def response_body(self) -> bytes | None:
 		return self.test_server.response_body
 
 	@property
-	def response_delay(self) -> Optional[float]:
+	def response_delay(self) -> float | None:
 		return self.test_server.response_delay
 
 	@property
-	def ws_connect_callback(self) -> Optional[Callable]:
+	def ws_connect_callback(self) -> Callable | None:
 		return self.test_server.ws_connect_callback
 
 	@property
-	def ws_message_callback(self) -> Optional[Callable]:
+	def ws_message_callback(self) -> Callable | None:
 		return self.test_server.ws_message_callback
 
 	@property
-	def serve_directory(self) -> Union[str, Path, None]:
+	def serve_directory(self) -> str | Path | None:
 		return self.test_server.serve_directory
 
 	@property
-	def send_max_bytes(self) -> Optional[int]:
+	def send_max_bytes(self) -> int | None:
 		return self.test_server.send_max_bytes
 
 
@@ -536,25 +535,25 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		*,
-		log_file: Optional[str] = None,
-		ip_version: Optional[str] = None,
-		server_key: Optional[str] = None,
-		server_cert: Optional[str] = None,
+		log_file: Path | str | None = None,
+		ip_version: str | None = None,
+		server_key: Path | str | None = None,
+		server_cert: Path | str | None = None,
 		generate_cert: bool = False,
-		response_headers: Optional[Dict[str, str]] = None,
-		response_status: Optional[Tuple[int, str]] = None,
-		response_body: Optional[bytes] = None,
-		response_delay: Optional[float] = None,
-		ws_connect_callback: Optional[Callable] = None,
-		ws_message_callback: Optional[Callable] = None,
-		serve_directory: Optional[Union[str, Path]] = None,
-		send_max_bytes: Optional[int] = None
+		response_headers: dict[str, str] | None = None,
+		response_status: tuple[int, str] | None = None,
+		response_body: bytes | None = None,
+		response_delay: float | None = None,
+		ws_connect_callback: Callable | None = None,
+		ws_message_callback: Callable | None = None,
+		serve_directory: str | Path | None = None,
+		send_max_bytes: int | None = None
 	) -> None:
 		super().__init__()
 		self.log_file = str(log_file) if log_file else None
 		self.ip_version = 6 if ip_version == 6 else 4
-		self.server_key = server_key if server_key else None
-		self.server_cert = server_cert if server_cert else None
+		self.server_key = str(server_key) if server_key else None
+		self.server_cert = str(server_cert) if server_cert else None
 		self.generate_cert = generate_cert
 		self.response_headers = response_headers if response_headers else {}
 		self.response_status = response_status if response_status else None
@@ -571,7 +570,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 			sock.bind(("", 0))
 			sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 			self.port = sock.getsockname()[1]
-		self.server: Optional[ThreadingHTTPServer] = None
+		self.server: ThreadingHTTPServer | None = None
 
 	def run(self) -> None:
 		while True:
@@ -601,7 +600,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 
 		# Use 2048 bits for speedup
 		ca_cert, ca_key = create_ca({"CN": "http_test_server ca"}, 3, bits=2048)
-		kwargs = {
+		kwargs: dict[str, Any] = {
 			"subject": {"CN": "http_test_server server cert"},
 			"valid_days": 3,
 			"ip_addresses": {"172.0.0.1", "::1"},
@@ -671,19 +670,19 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 @contextmanager
 def http_test_server(  # pylint: disable=too-many-arguments,too-many-locals
 	*,
-	log_file: Optional[str] = None,
-	ip_version: Optional[str] = None,
-	server_key: Optional[str] = None,
-	server_cert: Optional[str] = None,
+	log_file: Path | str | None = None,
+	ip_version: str | None = None,
+	server_key: Path | str | None = None,
+	server_cert: Path | str | None = None,
 	generate_cert: bool = False,
-	response_headers: Optional[Dict[str, str]] = None,
-	response_status: Optional[Tuple[int, str]] = None,
-	response_body: Optional[bytes] = None,
-	response_delay: Optional[float] = None,
-	ws_connect_callback: Optional[Callable] = None,
-	ws_message_callback: Optional[Callable] = None,
-	serve_directory: Optional[Union[str, Path]] = None,
-	send_max_bytes: Optional[int] = None
+	response_headers: dict[str, str] | None = None,
+	response_status: tuple[int, str] | None = None,
+	response_body: bytes | None = None,
+	response_delay: float | None = None,
+	ws_connect_callback: Callable | None = None,
+	ws_message_callback: Callable | None = None,
+	serve_directory: str | Path | None = None,
+	send_max_bytes: int | None = None
 ) -> Generator[HTTPTestServer, None, None]:
 	server = HTTPTestServer(
 		log_file=log_file,
@@ -711,7 +710,7 @@ def http_test_server(  # pylint: disable=too-many-arguments,too-many-locals
 
 
 @contextmanager
-def environment(env_vars: Dict[str, str]) -> Generator[Dict[str, str], None, None]:
+def environment(env_vars: dict[str, str]) -> Generator[dict[str, str], None, None]:
 	old_environ = os.environ.copy()
 	os.environ.update(env_vars)
 	try:

@@ -5,32 +5,70 @@ This file is part of opsi - https://www.opsi.org
 """
 
 
-import time
 import datetime
+import time
+from typing import Any, Generator, Type
 
 import pytest
-
-from opsicommon.objects import OpsiClient, Host, ProductOnClient
+from opsicommon.objects import Host, OpsiClient, ProductOnClient
 from opsicommon.types import (
-	args, forceActionRequest, forceActionRequestList, forceActionProgress, forceActionResult,
+	args,
+	forceActionProgress,
+	forceActionRequest,
+	forceActionRequestList,
+	forceActionResult,
+	forceArchitecture,
+	forceBool,
+	forceBoolList,
+	forceConfigId,
+	forceDict,
+	forceEmailAddress,
+	forceFilename,
+	forceFloat,
+	forceFqdn,
+	forceGroupType,
+	forceHardwareAddress,
+	forceHardwareDeviceId,
+	forceHardwareVendorId,
+	forceHostAddress,
+	forceHostId,
+	forceInstallationStatus,
+	forceInt,
+	forceIntList,
+	forceIPAddress,
+	forceLanguageCode,
+	forceList,
+	forceNetmask,
+	forceNetworkAddress,
+	forceObjectClass,
+	forceOct,
+	forceOpsiHostKey,
+	forceOpsiTimestamp,
+	forcePackageCustomName,
+	forcePackageVersion,
+	forcePackageVersionList,
+	forceProductId,
+	forceProductIdList,
+	forceProductPriority,
+	forceProductPropertyId,
+	forceProductPropertyType,
+	forceProductTargetConfiguration,
+	forceProductType,
+	forceProductVersion,
+	forceProductVersionList,
 	forceRequirementType,
-	forceArchitecture, forceBool, forceDict, forceBoolList, forceEmailAddress,
-	forceFilename, forceFloat, forceFqdn, forceGroupType, forceHardwareAddress,
-	forceHostId, forceInstallationStatus, forceInt, forceUnsignedInt, forceIntList,
-	forceIPAddress, forceHostAddress, forceNetmask,
-	forceNetworkAddress, forceLanguageCode, forceList, forceObjectClass,
-	forceOct, forceOpsiHostKey, forceOpsiTimestamp, forcePackageVersion, forcePackageVersionList,
-	forceProductId, forceProductIdList, forcePackageCustomName, forceProductType,
-	forceProductVersion, forceProductVersionList, forceProductPropertyId, forceConfigId,
-	forceProductPropertyType, forceProductPriority, forceProductTargetConfiguration,
-	forceTime, forceHardwareVendorId, forceHardwareDeviceId,
-	forceUnicode, forceUnicodeList, forceUnicodeLowerList, forceUniqueList,
-	forceUrl
+	forceTime,
+	forceUnicode,
+	forceUnicodeList,
+	forceUnicodeLowerList,
+	forceUniqueList,
+	forceUnsignedInt,
+	forceUrl,
 )
 
 
 @pytest.fixture
-def opsi_client():
+def opsi_client() -> OpsiClient:
 	return OpsiClient(
 		id='test1.test.invalid',
 		description='Test client 1',
@@ -43,11 +81,11 @@ def opsi_client():
 
 
 @pytest.mark.parametrize("cls", [Host, OpsiClient])
-def test_force_object_class_to_host_from_json(opsi_client, cls):  # pylint: disable=redefined-outer-name
+def test_force_object_class_to_host_from_json(opsi_client: OpsiClient, cls: type) -> None:  # pylint: disable=redefined-outer-name
 	assert isinstance(forceObjectClass(opsi_client.toJson(), cls), cls)
 
 
-def test_forcing_object_class_from_product_on_client_json():
+def test_forcing_object_class_from_product_on_client_json() -> None:
 	json = {
 		"clientId": "dolly.janus.vater",
 		"action_request": "setup",
@@ -61,7 +99,7 @@ def test_forcing_object_class_from_product_on_client_json():
 	assert isinstance(poc, ProductOnClient)
 
 
-def test_forcing_object_class_from_json_has_good_error_description():
+def test_forcing_object_class_from_json_has_good_error_description() -> None:
 	incomplete_json = {
 		"clientId": "Nellie*",
 		"action_request": "setup",
@@ -83,17 +121,17 @@ def test_forcing_object_class_from_json_has_good_error_description():
 		assert "Invalid object type: NotValid" in str(error)
 
 
-def test_forcing_object_class_from_invalid_json():
+def test_forcing_object_class_from_invalid_json() -> None:
 	with pytest.raises(ValueError):
 		forceObjectClass('{"id":"x"', ProductOnClient)
 
 
 @pytest.mark.parametrize("cls", [Host, OpsiClient])
-def test_force_object_class_from_hash(opsi_client, cls):  # pylint: disable=redefined-outer-name
+def test_force_object_class_from_hash(opsi_client: OpsiClient, cls: type) -> None:  # pylint: disable=redefined-outer-name
 	assert isinstance(forceObjectClass(opsi_client.toHash(), cls), cls)
 
 
-def funky_generator():
+def funky_generator() -> Generator[str, None, None]:
 	yield "y"
 	yield "u"
 	yield "so"
@@ -109,13 +147,13 @@ def funky_generator():
 	(['x', 'a'], ['x', 'a']),
 	(funky_generator(), ['y', 'u', 'so', 'funky']),
 ])
-def test_force_list(inp, expected):
+def test_force_list(inp: Any, expected: Any) -> None:
 	result = forceList(inp)
 	assert isinstance(result, list)
 	assert expected == result
 
 
-def test_force_list_converting_set():
+def test_force_list_converting_set() -> None:
 	inputset = set('abc')
 	result_list = forceList(inputset)
 
@@ -129,13 +167,13 @@ def test_force_list_converting_set():
 	('x', 'x'),
 	(b'bff69c0d457adb884dafbe8b55a56258', 'bff69c0d457adb884dafbe8b55a56258')
 ])
-def test_force_unicode_results_in_unicode(value, expected):
+def test_force_unicode_results_in_unicode(value: Any, expected: Any) -> None:
 	result = forceUnicode(value)
 	assert isinstance(result, str)
 	assert result == expected
 
 
-def test_force_unicode_list_results_in_list_of_unicode():
+def test_force_unicode_list_results_in_list_of_unicode() -> None:
 	returned = forceUnicodeList([None, 1, 'x', 'y'])
 	assert isinstance(returned, list)
 
@@ -143,31 +181,31 @@ def test_force_unicode_list_results_in_list_of_unicode():
 		assert isinstance(i, str)
 
 
-def test_force_unicode_lower_list_results_in_lowercase():
+def test_force_unicode_lower_list_results_in_lowercase() -> None:
 	assert forceUnicodeLowerList(['X', 'YES']) == ['x', 'yes']
 
 
-def test_force_unicode_lower_list_results_in_unicode():
+def test_force_unicode_lower_list_results_in_unicode() -> None:
 	for i in forceUnicodeLowerList([None, 1, 'X', 'y']):
 		assert isinstance(i, str)
 
 
 @pytest.mark.parametrize("value", ("on", "oN", 'YeS', 1, '1', 'x', True, 'true', 'TRUE'))
-def test_force_bool_with_true_values(value):
+def test_force_bool_with_true_values(value: Any) -> None:
 	assert forceBool(value) is True
 
 
 @pytest.mark.parametrize("value", ("off", "oFF", 'no', 0, '0', False, 'false', 'FALSE'))
-def test_force_bool_with_falsy_values(value):
+def test_force_bool_with_falsy_values(value: Any) -> None:
 	assert forceBool(value) is False
 
 
-def test_force_bool_with_positive_list():
+def test_force_bool_with_positive_list() -> None:
 	for i in forceBoolList([1, 'yes', 'on', '1', True]):
 		assert i is True
 
 
-def test_force_bool_with_negative_list():
+def test_force_bool_with_negative_list() -> None:
 	for i in forceBoolList([None, 'no', 'false', '0', False]):
 		assert i is False
 
@@ -177,7 +215,7 @@ def test_force_bool_with_negative_list():
 	('-100', -100),
 	(int(1000000000000000), 1000000000000000)
 ))
-def test_force_int(value, expected):
+def test_force_int(value: Any, expected: Any) -> None:
 	assert expected == forceInt(value)
 
 
@@ -185,17 +223,17 @@ def test_force_int(value, expected):
 	('100', 100),
 	('-100', 100)
 ))
-def test_force_unsigned_int(value, expected):
+def test_force_unsigned_int(value: Any, expected: Any) -> None:
 	assert expected == forceUnsignedInt(value)
 
 
 @pytest.mark.parametrize("value", ("abc", ))
-def test_force_int_raises_value_error_if_no_conversion_possible(value):
+def test_force_int_raises_value_error_if_no_conversion_possible(value: Any) -> None:
 	with pytest.raises(ValueError):
 		forceInt(value)
 
 
-def test_force_int_list():
+def test_force_int_list() -> None:
 	assert [100, 1, 2] == forceIntList(['100', 1, '2'])
 
 
@@ -205,12 +243,12 @@ def test_force_int_list():
 	('666', 0o666),
 	('0666', 0o666),
 ))
-def test_force_oct(value, expected):
+def test_force_oct(value: Any, expected: Any) -> None:
 	assert expected == forceOct(value)
 
 
 @pytest.mark.parametrize("value", ('abc', '8'))
-def test_force_oct_raising_errors_on_invalid_value(value):
+def test_force_oct_raising_errors_on_invalid_value(value: Any) -> None:
 	with pytest.raises(ValueError):
 		forceOct(value)
 
@@ -224,14 +262,14 @@ def test_force_oct_raising_errors_on_invalid_value(value):
 	(datetime.datetime(2013, 9, 11, 10, 54, 23), '2013-09-11 10:54:23'),
 	(datetime.datetime(2013, 9, 11, 10, 54, 23, 123123), '2013-09-11 10:54:23'),
 ))
-def test_force_opsi_timestamp(value, expected):
+def test_force_opsi_timestamp(value: Any, expected: Any) -> None:
 	result = forceOpsiTimestamp(value)
 	assert expected == result
 	assert isinstance(result, str)
 
 
 @pytest.mark.parametrize("value", ('abc', '8'))
-def test_force_opsi_timestamp_raises_errors_on_wrong_input(value):
+def test_force_opsi_timestamp_raises_errors_on_wrong_input(value: Any) -> None:
 	with pytest.raises(ValueError):
 		forceOpsiTimestamp(value)
 
@@ -240,12 +278,12 @@ def test_force_opsi_timestamp_raises_errors_on_wrong_input(value):
 	('client.test.invalid', 'client.test.invalid'),
 	('CLIENT.test.invalid', 'client.test.invalid')
 ))
-def test_force_host_id(host_id, expected):
+def test_force_host_id(host_id: str, expected: str) -> None:
 	assert expected == forceHostId(host_id)
 
 
 @pytest.mark.parametrize("host_id", ('abc', '8', 'abc.def', '.test.invalid', 'abc.uib.x'))
-def test_force_host_id_raises_exception_if_invalid(host_id):
+def test_force_host_id_raises_exception_if_invalid(host_id: str) -> None:
 	with pytest.raises(ValueError):
 		forceHostId(host_id)
 
@@ -257,7 +295,7 @@ def test_force_host_id_raises_exception_if_invalid(host_id):
 	('12-34-56:78AB-CD', '12:34:56:78:ab:cd'),
 	('', ''),
 ))
-def test_forcing_returns_address_seperated_by_colons(address, expected):
+def test_forcing_returns_address_seperated_by_colons(address: str, expected: str) -> None:
 	result = forceHardwareAddress(address)
 	assert expected == result
 	assert isinstance(result, str)
@@ -270,7 +308,7 @@ def test_forcing_returns_address_seperated_by_colons(address, expected):
 	None,
 	True,
 ))
-def test_forcing_invalid_addresses_raise_exceptions(address):
+def test_forcing_invalid_addresses_raise_exceptions(address: Any) -> None:
 	with pytest.raises(ValueError):
 		forceHardwareAddress(address)
 
@@ -283,7 +321,7 @@ def test_forcing_invalid_addresses_raise_exceptions(address):
 	('2001:db8:85a3:0000:0000:8a2e:0370:7334', '2001:db8:85a3::8a2e:370:7334'),
 	('::FFFF:129.144.52.38', '129.144.52.38')
 ])
-def test_force_ip_address(inp, expected):
+def test_force_ip_address(inp: str, expected: str) -> None:
 	output = forceIPAddress(inp)
 	assert expected == output
 	assert isinstance(output, str)
@@ -297,7 +335,7 @@ def test_force_ip_address(inp, expected):
 	'2.2.2.2.2',
 	'a.2.3.4',
 ])
-def test_force_ip_address_fails_on_invalid_input(malformed_input):
+def test_force_ip_address_fails_on_invalid_input(malformed_input: Any) -> None:
 	with pytest.raises(ValueError):
 		forceIPAddress(malformed_input)
 
@@ -309,7 +347,7 @@ def test_force_ip_address_fails_on_invalid_input(malformed_input):
 	('hostName', 'hostname', None),
 	('192.168.1.1.2', None, ValueError),
 ))
-def test_force_host_address(value, expected, exc):
+def test_force_host_address(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceHostAddress(value)
@@ -322,7 +360,7 @@ def test_force_host_address(value, expected, exc):
 	('255.255.255.256', None, ValueError),
 	('24', None, ValueError),
 ))
-def test_force_netmask(value, expected, exc):
+def test_force_netmask(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceNetmask(value)
@@ -334,7 +372,7 @@ def test_force_netmask(value, expected, exc):
 	('192.168.0.0/16', '192.168.0.0/16'),
 	('10.10.10.10/32', '10.10.10.10/32'),
 ))
-def test_force_network_address(address, expected):
+def test_force_network_address(address: str, expected: str) -> None:
 	result = forceNetworkAddress(address)
 	assert expected == result
 	assert isinstance(result, str)
@@ -348,7 +386,7 @@ def test_force_network_address(address, expected):
 	'10.10.1/24',
 	'a.2.3.4/0',
 ))
-def test_force_network_address_with_invalid_addresses_raises_exceptions(address):
+def test_force_network_address_with_invalid_addresses_raises_exceptions(address: Any) -> None:
 	with pytest.raises(ValueError):
 		forceNetworkAddress(address)
 
@@ -359,7 +397,7 @@ def test_force_network_address_with_invalid_addresses_raises_exceptions(address)
 	('smb://server/path', 'smb://server/path'),
 	('https://x:y@server.domain.tld:4447/resource', 'https://x:y@server.domain.tld:4447/resource'),
 ))
-def test_force_url(url, expected):
+def test_force_url(url: str, expected: str) -> None:
 	result = forceUrl(url)
 	assert expected == result
 	assert isinstance(result, str)
@@ -369,7 +407,7 @@ def test_force_url(url, expected):
 	('https://X:YY12ZZ@SERVER.DOMAIN.TLD:4447/resource', 'https://X:YY12ZZ@SERVER.DOMAIN.TLD:4447/resource'),
 	('https://X:Y@server.domain.tld:4447/resource', 'https://X:Y@server.domain.tld:4447/resource'),
 ))
-def test_force_url_does_not_force_lowercase(url, expected):
+def test_force_url_does_not_force_lowercase(url: str, expected: str) -> None:
 	"""
 	Complete URLs must not be forced to lowercase because they could \
 	include an username / password combination for an proxy.
@@ -385,7 +423,7 @@ def test_force_url_does_not_force_lowercase(url, expected):
 	True,
 	None,
 ))
-def test_force_url_with_invalid_urls_raises_exceptions(url):
+def test_force_url_with_invalid_urls_raises_exceptions(url: Any) -> None:
 	with pytest.raises(ValueError):
 		forceUrl(url)
 
@@ -393,7 +431,7 @@ def test_force_url_with_invalid_urls_raises_exceptions(url):
 @pytest.mark.parametrize("host_key", (
 	'abcdef78901234567890123456789012',
 ))
-def test_force_opsi_host_key(host_key):
+def test_force_opsi_host_key(host_key: str) -> None:
 	result = forceOpsiHostKey(host_key)
 	assert host_key.lower() == result
 	assert isinstance(result, str)
@@ -404,7 +442,7 @@ def test_force_opsi_host_key(host_key):
 	'abCdeF78901234567890123456789012b',  # too long
 	'GbCdeF78901234567890123456789012',
 ))
-def test_force_opsi_host_key_with_invalid_host_keys_raises_exceptions(host_key):
+def test_force_opsi_host_key_with_invalid_host_keys_raises_exceptions(host_key: str) -> None:
 	with pytest.raises(ValueError):
 		forceOpsiHostKey(host_key)
 
@@ -413,7 +451,7 @@ def test_force_opsi_host_key_with_invalid_host_keys_raises_exceptions(host_key):
 	('1.0', '1.0', None),
 	('2 3 4', None, ValueError),
 ))
-def test_force_product_version(version, expected, exc):
+def test_force_product_version(version: str, expected: str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductVersion(version)
@@ -428,7 +466,7 @@ def test_force_product_version(version, expected, exc):
 	('3.1k', ['3.1k'], None),
 	(['1 1 1'], None, ValueError)
 ))
-def test_force_product_version_list(version, expected, exc):
+def test_force_product_version_list(version: list[str] | str, expected: list[str], exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductVersionList(version)
@@ -441,7 +479,7 @@ def test_force_product_version_list(version, expected, exc):
 	(8, '8', None),
 	('x_3_f', None, ValueError),
 ))
-def test_force_package_version(version, expected, exc):
+def test_force_package_version(version: int | str, expected: str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forcePackageVersion(version)
@@ -456,7 +494,7 @@ def test_force_package_version(version, expected, exc):
 	('ver1', ['ver1'], None),
 	('___', None, ValueError)
 ))
-def test_force_package_version_list(version, expected, exc):
+def test_force_package_version_list(version: Any, expected: Any, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forcePackageVersionList(version)
@@ -467,14 +505,14 @@ def test_force_package_version_list(version, expected, exc):
 @pytest.mark.parametrize("product_id, expected_product_id", (
 	('testProduct1', 'testproduct1'),
 ))
-def test_force_product_id(product_id, expected_product_id):
+def test_force_product_id(product_id: str, expected_product_id: str) -> None:
 	result = forceProductId(product_id)
 	assert expected_product_id == result
 	assert isinstance(result, str)
 
 
 @pytest.mark.parametrize("product_id", ('äöü', 'product test'))
-def test_force_product_id_with_invalid_product_id_raises_exceptions(product_id):
+def test_force_product_id_with_invalid_product_id_raises_exceptions(product_id: str) -> None:
 	with pytest.raises(ValueError):
 		forceProductId(product_id)
 
@@ -484,7 +522,7 @@ def test_force_product_id_with_invalid_product_id_raises_exceptions(product_id):
 	(['testproduct1', 'testproduct2'], ['testproduct1', 'testproduct2'], None),
 	('ööö', None, ValueError),
 ))
-def test_force_product_id_list(value, expected, exc):
+def test_force_product_id_list(value: Any, expected: Any, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductIdList(value)
@@ -496,7 +534,7 @@ def test_force_product_id_list(value, expected, exc):
 	('cust', 'cust', None),
 	('xy-', None, ValueError),
 ))
-def test_force_package_custom_name(value, expected, exc):
+def test_force_package_custom_name(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forcePackageCustomName(value)
@@ -507,26 +545,26 @@ def test_force_package_custom_name(value, expected, exc):
 @pytest.mark.parametrize("path, expected", (
 	('c:\\tmp\\test.txt', 'c:\\tmp\\test.txt'),
 ))
-def testforce_filename(path, expected):
+def testforce_filename(path: str, expected: str) -> None:
 	result = forceFilename(path)
 	assert expected == result
 	assert isinstance(expected, str)
 
 
 @pytest.mark.parametrize("status", ('installed', 'not_installed', 'unknown'))
-def test_force_installation_status(status):
+def test_force_installation_status(status: str) -> None:
 	result = forceInstallationStatus(status)
 	assert result == status
 	assert isinstance(result, str)
 
 
 @pytest.mark.parametrize("status", ('none', 'abc'))
-def testforce_installation_status_with_invalid_status_raises_exceptions(status):
+def testforce_installation_status_with_invalid_status_raises_exceptions(status: str) -> None:
 	with pytest.raises(ValueError):
 		forceInstallationStatus(status)
 
 
-def test_force_unicode_with_invalid_status_raises_exceptions():
+def test_force_unicode_with_invalid_status_raises_exceptions() -> None:
 	with pytest.raises(ValueError):
 		forceActionRequest('installed')
 
@@ -540,13 +578,13 @@ def test_force_unicode_with_invalid_status_raises_exceptions():
 	'none',
 	None
 ))
-def test_force_action_request(action_request):
+def test_force_action_request(action_request: str) -> None:
 	returned = forceActionRequest(action_request)
 	assert returned == str(action_request).lower()
 	assert isinstance(returned, str)
 
 
-def test_force_action_request_returns_none_on_undefined():
+def test_force_action_request_returns_none_on_undefined() -> None:
 	assert forceActionRequest("undefined") is None
 
 
@@ -556,7 +594,7 @@ def test_force_action_request_returns_none_on_undefined():
 	(["invalid"], None, ValueError),
 	("INVALID", None, ValueError)
 ))
-def test_force_action_request_list(value, expected, exc):
+def test_force_action_request_list(value: list[str] | str, expected: list[str] | str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceActionRequestList(value)
@@ -573,7 +611,7 @@ def test_force_action_request_list(value, expected, exc):
 	("x", None, ValueError),
 	("-", None, ValueError)
 ))
-def test_force_action_result(value, expected, exc):
+def test_force_action_result(value: str | None, expected: str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceActionResult(value)
@@ -587,7 +625,7 @@ def test_force_action_result(value, expected, exc):
 	("", None, None),
 	("-", None, ValueError)
 ))
-def test_force_requirement_type(value, expected, exc):
+def test_force_requirement_type(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceRequirementType(value)
@@ -595,7 +633,7 @@ def test_force_requirement_type(value, expected, exc):
 		assert forceRequirementType(value) == expected
 
 
-def test_force_action_progress():
+def test_force_action_progress() -> None:
 	returned = forceActionProgress('installing 50%')
 	assert returned == 'installing 50%'
 	assert isinstance(returned, str)
@@ -606,7 +644,7 @@ def test_force_action_progress():
 	('yy_yy', 'yy-YY'),
 	('zz_ZZZZ', 'zz-Zzzz'),
 ))
-def test_force_language_code_normalises_casing(code, expected):
+def test_force_language_code_normalises_casing(code: str, expected: str) -> None:
 	assert expected == forceLanguageCode(code)
 
 
@@ -614,11 +652,11 @@ def test_force_language_code_normalises_casing(code, expected):
 	('dE', 'de'),
 	('en-us', 'en-US')
 ))
-def test_force_language_code(code, expected):
+def test_force_language_code(code: str, expected: str) -> None:
 	assert forceLanguageCode(code) == expected
 
 
-def test_force_language_code_raises_exception_on_invalid_code():
+def test_force_language_code_raises_exception_on_invalid_code() -> None:
 	with pytest.raises(ValueError):
 		forceLanguageCode('de-DEU')
 
@@ -627,11 +665,11 @@ def test_force_language_code_raises_exception_on_invalid_code():
 	('X86', 'x86'),
 	('X64', 'x64'),
 ))
-def test_forcing_returns_lowercase(architecture, expected):
+def test_forcing_returns_lowercase(architecture: str, expected: str) -> None:
 	assert expected == forceArchitecture(architecture)
 
 
-def test_force_time_fails_if_no_time_given():
+def test_force_time_fails_if_no_time_given() -> None:
 	with pytest.raises(ValueError):
 		forceTime('Hello World!')
 
@@ -641,7 +679,7 @@ def test_force_time_fails_if_no_time_given():
 	time.localtime(),
 	datetime.datetime.now(),
 ))
-def test_force_time_returns_time_struct(time_info):
+def test_force_time_returns_time_struct(time_info: Any) -> None:
 	assert isinstance(forceTime(time_info), time.struct_time)
 
 
@@ -651,7 +689,7 @@ def test_force_time_returns_time_struct(time_info):
 	("invalid", None, ValueError),
 	("INVA", None, ValueError)
 ))
-def test_force_hardware_vendor_id(value, expected, exc):
+def test_force_hardware_vendor_id(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceHardwareVendorId(value)
@@ -665,7 +703,7 @@ def test_force_hardware_vendor_id(value, expected, exc):
 	("----", None, ValueError),
 	("", None, ValueError)
 ))
-def test_force_hardware_device_id(value, expected, exc):
+def test_force_hardware_device_id(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceHardwareDeviceId(value)
@@ -674,7 +712,7 @@ def test_force_hardware_device_id(value, expected, exc):
 
 
 @pytest.mark.parametrize("invalid_mail_address", ('infouib.de',))
-def test_force_email_address_raises_an_exception_on_invalid_mail_address(invalid_mail_address):
+def test_force_email_address_raises_an_exception_on_invalid_mail_address(invalid_mail_address: tuple[str]) -> None:
 	with pytest.raises(ValueError):
 		forceEmailAddress(invalid_mail_address)
 
@@ -687,23 +725,23 @@ def test_force_email_address_raises_an_exception_on_invalid_mail_address(invalid
 	('some.name@company.travelersinsurance', 'some.name@company.travelersinsurance'),
 ))
 # A large list of TLDs can be found at https://publicsuffix.org/
-def test_force_email_address(address, expected):
+def test_force_email_address(address: str, expected: str) -> None:
 	assert expected == forceEmailAddress(address)
 
 
 @pytest.mark.parametrize("invalid_type", ('TrolololoProduct', None))
-def testforce_product_type_raises_exception_on_unknown_type(invalid_type):
+def testforce_product_type_raises_exception_on_unknown_type(invalid_type: str | None) -> None:
 	with pytest.raises(ValueError):
 		forceProductType(invalid_type)
 
 
 @pytest.mark.parametrize("inp", ('LocalBootProduct', 'LOCALBOOT'))
-def testforce_product_type_to_localboot_product(inp):
+def testforce_product_type_to_localboot_product(inp: str) -> None:
 	assert 'LocalbootProduct' == forceProductType(inp)
 
 
 @pytest.mark.parametrize("inp", ('NetbOOtProduct', 'nETbOOT'))
-def testforce_product_type_to_netboot_product(inp):
+def testforce_product_type_to_netboot_product(inp: str) -> None:
 	assert 'NetbootProduct' == forceProductType(inp)
 
 
@@ -712,7 +750,7 @@ def testforce_product_type_to_netboot_product(inp):
 	("PROP2", "prop2", None),
 	("inv alid", None, ValueError)
 ))
-def test_force_product_property_id(value, expected, exc):
+def test_force_product_property_id(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductPropertyId(value)
@@ -725,7 +763,7 @@ def test_force_product_property_id(value, expected, exc):
 	("CONF.NAme", "conf.name", None),
 	("not valid", None, ValueError)
 ))
-def test_force_config_id(value, expected, exc):
+def test_force_config_id(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceConfigId(value)
@@ -739,7 +777,7 @@ def test_force_config_id(value, expected, exc):
 	("BoolProductProperty", "BoolProductProperty", None),
 	("ProductProperty", None, ValueError)
 ))
-def test_force_product_property_type(value, expected, exc):
+def test_force_product_property_type(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductPropertyType(value)
@@ -754,7 +792,7 @@ def test_force_product_property_type(value, expected, exc):
 	(0.0, 0, None),
 	("high", None, ValueError)
 ))
-def test_force_product_priority(value, expected, exc):
+def test_force_product_priority(value: int | float | str, expected: int | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductPriority(value)
@@ -769,7 +807,7 @@ def test_force_product_priority(value, expected, exc):
 	("undefineD", "undefined", None),
 	("other", None, ValueError)
 ))
-def test_force_product_target_configuration(value, expected, exc):
+def test_force_product_target_configuration(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductTargetConfiguration(value)
@@ -781,12 +819,12 @@ def test_force_product_target_configuration(value, expected, exc):
 	(None, {}),
 	({'a': 1}, {'a': 1}),
 ])
-def test_force_dict_returns_dict(inp, expected):
+def test_force_dict_returns_dict(inp: dict | None, expected: dict) -> None:
 	assert forceDict(inp) == expected
 
 
 @pytest.mark.parametrize("inp", ['asdg', ['asdfg', 'asd']])
-def test_force_dict_fails_if_conversion_impossible(inp):
+def test_force_dict_fails_if_conversion_impossible(inp: str | list[str]) -> None:
 	with pytest.raises(ValueError):
 		forceDict(inp)
 
@@ -795,52 +833,52 @@ def test_force_dict_fails_if_conversion_impossible(inp):
 	([1], [1, 1]),
 	([1, 2, 3], (1, 2, 2, 3)),
 ))
-def test_after_forcing_items_in_list_are_unique(before, expected):
+def test_after_forcing_items_in_list_are_unique(before: list[int], expected: list[int] | tuple[int, ...]) -> None:
 	assert expected == forceUniqueList(before)
 
 
-def test_force_unique_list_does_not_change_order():
+def test_force_unique_list_does_not_change_order() -> None:
 	assert [2, 1, 3, 5, 4] == forceUniqueList([2, 2, 1, 3, 5, 4, 1])
 
 
-def test_args_decorator_arguments_default_to_none():
+def test_args_decorator_arguments_default_to_none() -> None:
 	@args("somearg", "someOtherArg")
 	class SomeClass:  # pylint: disable=too-few-public-methods
-		def __init__(self, **kwargs):
+		def __init__(self, **kwargs: Any) -> None:
 			pass
 
 	some_obj = SomeClass()
-	assert some_obj.somearg is None  # pylint: disable=no-member
-	assert some_obj.someOtherArg is None  # pylint: disable=no-member
+	assert some_obj.somearg is None  # type: ignore[attr-defined] # pylint: disable=no-member
+	assert some_obj.someOtherArg is None  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
-def test_args_decorator_takes_keyword_arguments():
+def test_args_decorator_takes_keyword_arguments() -> None:
 
 	@args("somearg", someOtherArg=forceInt)
 	class SomeOtherClass:  # pylint: disable=too-few-public-methods
-		def __init__(self, **kwargs):
+		def __init__(self, **kwargs: Any) -> None:
 			pass
 
 	some_other_obj = SomeOtherClass(someOtherArg="5")
 
-	assert some_other_obj.somearg is None  # pylint: disable=no-member
-	assert 5 == some_other_obj.someOtherArg  # pylint: disable=no-member
+	assert some_other_obj.somearg is None  # type: ignore[attr-defined] # pylint: disable=no-member
+	assert 5 == some_other_obj.someOtherArg  # type: ignore[attr-defined] # pylint: disable=no-member
 
 
-def test_args_decorator_creates_private_args():
+def test_args_decorator_creates_private_args() -> None:
 
 	@args("_somearg", "_someOtherArg")
 	class SomeClass:  # pylint: disable=too-few-public-methods
-		def __init__(self, **kwargs):
+		def __init__(self, **kwargs: Any) -> None:
 			pass
 
 	some_obj = SomeClass(somearg=5)
 
-	assert 5 == some_obj._somearg  # pylint: disable=no-member,protected-access
-	assert some_obj._someOtherArg is None  # pylint: disable=no-member,protected-access
+	assert 5 == some_obj._somearg  # type: ignore[attr-defined]  # pylint: disable=no-member,protected-access
+	assert some_obj._someOtherArg is None  # type: ignore[attr-defined] # pylint: disable=no-member,protected-access
 
 
-def test_force_fqdn_removes_trailing_dot():
+def test_force_fqdn_removes_trailing_dot() -> None:
 	assert 'abc.example.local' == forceFqdn('abc.example.local.')
 
 
@@ -849,7 +887,7 @@ def test_force_fqdn_removes_trailing_dot():
 	pytest.param('host_name.rootzone.tld', marks=pytest.mark.xfail),  # underscore
 	pytest.param('hostname.tld', marks=pytest.mark.xfail),  # only domain
 ])
-def test_force_fqdn_requires_hostname_root_zone_and_top_level_domain(hostname):
+def test_force_fqdn_requires_hostname_root_zone_and_top_level_domain(hostname: str) -> None:
 	forceFqdn(hostname)
 
 
@@ -857,12 +895,12 @@ def test_force_fqdn_requires_hostname_root_zone_and_top_level_domain(hostname):
 	'BLA.domain.invalid',
 	'bla.doMAIN.invalid',
 	'bla.domain.iNVAlid'])
-def test_force_fqdn_always_returns_lowercase(domain):
+def test_force_fqdn_always_returns_lowercase(domain: str) -> None:
 	assert 'bla.domain.invalid' == forceFqdn(domain)
 
 
 @pytest.mark.parametrize("inp", ['asdf', None])
-def test_force_group_fails_on_invalid_input(inp):
+def test_force_group_fails_on_invalid_input(inp: str | None) -> None:
 	with pytest.raises(ValueError):
 		forceGroupType(inp)
 
@@ -872,7 +910,7 @@ def test_force_group_fails_on_invalid_input(inp):
 	('HostgROUp', 'HostGroup'),
 	('PrOdUcTgRoUp', 'ProductGroup'),
 ])
-def test_force_group_type_standardises_case(inp, expected):
+def test_force_group_type_standardises_case(inp: str, expected: str) -> None:
 	assert forceGroupType(inp) == expected
 
 
@@ -883,7 +921,7 @@ def test_force_group_type_standardises_case(inp, expected):
 	("1.3", 1.3),
 	("	1.4   ", 1.4),
 ])
-def test_force_float(inp, expected):
+def test_force_float(inp: str | float | int, expected: float) -> None:
 	assert expected == forceFloat(inp)
 
 
@@ -893,6 +931,6 @@ def test_force_float(inp, expected):
 	"No float",
 	"text",
 ])
-def test_force_float_fails_with_invalid_input(invalid_input):
+def test_force_float_fails_with_invalid_input(invalid_input: Any) -> None:
 	with pytest.raises(ValueError):
 		forceFloat(invalid_input)

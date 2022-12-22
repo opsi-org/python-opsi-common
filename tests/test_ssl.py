@@ -8,12 +8,11 @@ import ipaddress
 import platform
 import subprocess
 from pathlib import Path
-from typing import Optional, Type
+from typing import Any, Optional, Type
 from unittest import mock
 
 import pytest
 from OpenSSL.crypto import X509, PKey  # type: ignore[import]
-
 from opsicommon.ssl import (
 	as_pem,
 	create_ca,
@@ -54,7 +53,7 @@ def test_get_cert_path_and_cmd(
 
 
 def test_create_x590_name() -> None:
-	subject = {"emailAddress": "test@test.de"}
+	subject: dict[str, str | None] = {"emailAddress": "test@test.de"}
 	x590_name = create_x590_name(subject)
 	assert x590_name.emailAddress == subject["emailAddress"]
 	assert x590_name.CN == "opsi"
@@ -85,7 +84,7 @@ def test_create_server_cert() -> None:
 		"emailAddress": "opsi@opsi.org"
 	}
 	ca_cert, ca_key = create_ca(subject, 1000)
-	kwargs = {
+	kwargs: dict[str, Any] = {
 		"subject": {"emailAddress": "opsi@opsi.org"},
 		"valid_days": 100,
 		"ip_addresses": {"172.0.0.1", "::1", "192.168.1.1"},
@@ -136,7 +135,7 @@ def test_as_pem() -> None:
 	pem = as_pem(key, "password")
 	assert pem.startswith("-----BEGIN ENCRYPTED PRIVATE KEY-----")
 	with pytest.raises(TypeError):
-		as_pem(create_x590_name({}))
+		as_pem(create_x590_name({}))  # type: ignore[arg-type]
 
 
 @pytest.mark.admin_permissions
@@ -162,7 +161,7 @@ def test_install_load_remove_ca() -> None:
 @pytest.mark.admin_permissions
 def test_wget(tmp_path: Path) -> None:  # pylint: disable=redefined-outer-name, unused-argument
 	ca_cert, ca_key = create_ca({"CN": "python-opsi-common test ca"}, 3)
-	kwargs = {
+	kwargs: dict[str, Any] = {
 		"subject": {"CN": "python-opsi-common test server cert"},
 		"valid_days": 3,
 		"ip_addresses": {"172.0.0.1", "::1"},

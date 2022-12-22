@@ -264,7 +264,7 @@ def test_context_threads() -> None:  # pylint: disable=redefined-outer-name
 				pass
 			for _thread in threading.enumerate():  # pylint: disable=dotted-import-in-loop
 				if hasattr(_thread, "stop"):
-					_thread.stop()
+					_thread.stop()  # type: ignore[attr-defined]
 					_thread.join()
 
 			stream.seek(0)

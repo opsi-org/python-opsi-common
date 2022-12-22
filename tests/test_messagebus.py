@@ -10,7 +10,6 @@ import time
 from typing import Type, Union
 
 import pytest
-
 from opsicommon.messagebus import (
 	ChannelSubscriptionEventMessage,
 	ChannelSubscriptionRequestMessage,
@@ -22,14 +21,14 @@ from opsicommon.messagebus import (
 	JSONRPCResponseMessage,
 	Message,
 	MessageType,
-	TerminalCloseEvent,
-	TerminalCloseRequest,
-	TerminalDataRead,
-	TerminalDataWrite,
-	TerminalOpenEvent,
-	TerminalOpenRequest,
-	TerminalResizeEvent,
-	TerminalResizeRequest,
+	TerminalCloseEventMessage,
+	TerminalCloseRequestMessage,
+	TerminalDataReadMessage,
+	TerminalDataWriteMessage,
+	TerminalOpenEventMessage,
+	TerminalOpenRequestMessage,
+	TerminalResizeEventMessage,
+	TerminalResizeRequestMessage,
 )
 
 
@@ -145,7 +144,7 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
-			TerminalCloseEvent,
+			TerminalCloseEventMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "user:admin",
@@ -154,7 +153,7 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
-			TerminalCloseRequest,
+			TerminalCloseRequestMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "service_worker:localhost:1",
@@ -163,7 +162,7 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
-			TerminalDataRead,
+			TerminalDataReadMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "user:admin",
@@ -173,7 +172,7 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
-			TerminalDataWrite,
+			TerminalDataWriteMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "service_worker:localhost:1",
@@ -183,7 +182,7 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
-			TerminalOpenEvent,
+			TerminalOpenEventMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "user:admin",
@@ -195,7 +194,7 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
-			TerminalOpenRequest,
+			TerminalOpenRequestMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "service_node:localhost",
@@ -206,7 +205,7 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
-			TerminalResizeRequest,
+			TerminalResizeRequestMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "service_node:localhost",
@@ -217,7 +216,7 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
-			TerminalResizeEvent,
+			TerminalResizeEventMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "user:admin",

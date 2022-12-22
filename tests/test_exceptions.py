@@ -6,9 +6,16 @@ Testing behaviour of exceptions.
 
 
 import time
+from typing import TYPE_CHECKING, Generator, Type
 
 import pytest
 from hypothesis import given, strategies
+
+if TYPE_CHECKING:
+
+	class FixtureRequest:  # pylint: disable=too-few-public-methods
+		param: str
+
 
 exception_classes = []  # pylint: disable=use-tuple-over-list
 pre_globals = list(globals())
@@ -47,7 +54,7 @@ exception_classes = [obj for name, obj in dict(globals()).items() if name not in
 @pytest.fixture(
 	params=exception_classes,
 )
-def exception_class(request):
+def exception_class(request: FixtureRequest) -> Generator[str, None, None]:
 	yield request.param
 
 
@@ -65,20 +72,22 @@ def exception_class(request):
 	],
 	ids=["empty", "int", "bool", "time", "unicode", "utf8-encoded", "windows-1258-encoded", "utf16-encoded", "latin1-encoded"],
 )
-def exception_parameter(request):
+def exception_parameter(request: FixtureRequest) -> Generator[str, None, None]:
 	yield request.param
 
 
 @pytest.fixture
-def exception(exception_class, exception_parameter):  # pylint: disable=redefined-outer-name
+def exception(
+	exception_class: Type[Exception], exception_parameter: str  # pylint: disable=redefined-outer-name
+) -> Generator[Exception, None, None]:
 	yield exception_class(exception_parameter)
 
 
-def test_exception_can_be_printed(exception):  # pylint: disable=redefined-outer-name
+def test_exception_can_be_printed(exception: Exception) -> None:  # pylint: disable=redefined-outer-name
 	print(exception)
 
 
-def test_exception_has__repr__(exception):  # pylint: disable=redefined-outer-name
+def test_exception_has__repr__(exception: Exception) -> None:  # pylint: disable=redefined-outer-name
 	_repr = repr(exception)
 	assert _repr.startswith("<")
 	assert exception.__class__.__name__ in _repr
@@ -95,7 +104,7 @@ def test_exception_has__repr__(exception):  # pylint: disable=redefined-outer-na
 		("", ["requirement1", "requirement2"]),
 	),
 )
-def test_opsi_product_ordering_exception(message, problematic_requirements):
+def test_opsi_product_ordering_exception(message: str, problematic_requirements: list[str] | None) -> None:
 	exc = OpsiProductOrderingError(message, problematic_requirements)
 	_repr = repr(exc)
 	assert _repr.startswith("<")
@@ -104,17 +113,17 @@ def test_opsi_product_ordering_exception(message, problematic_requirements):
 		assert ":" in str(exc)
 
 
-def test_opsi_product_ordering_error_ordering_is_accessible():
-	error = OpsiProductOrderingError("message", [3, 4, 5])
-	assert [3, 4, 5] == error.problematicRequirements
+def test_opsi_product_ordering_error_ordering_is_accessible() -> None:
+	error = OpsiProductOrderingError("message", ["3", "4", "5"])
+	assert ["3", "4", "5"] == error.problematicRequirements
 
 
-def test_exception_is_sub_class_of_opsi_error(exception_class):  # pylint: disable=redefined-outer-name
+def test_exception_is_sub_class_of_opsi_error(exception_class: Type[Exception]) -> None:  # pylint: disable=redefined-outer-name
 	with pytest.raises(OpsiError):
 		raise exception_class("message")
 
 
 @given(strategies.text())
-def test_exception_constuctor_hypothesis(message):
+def test_exception_constuctor_hypothesis(message: str) -> None:
 	for cls in exception_classes:  # pylint: disable=loop-global-usage
 		cls(message)

@@ -18,7 +18,6 @@ from unittest import mock
 
 import pytest
 from Crypto.PublicKey import RSA
-
 from opsicommon.license import (
 	MAX_STATE_CACHE_VALUES,
 	OPSI_FREE_MODULE_IDS,

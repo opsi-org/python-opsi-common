@@ -36,7 +36,6 @@ from typing import (
 )
 
 import attr
-
 from opsicommon.logging import logger
 
 try:
@@ -129,16 +128,16 @@ def _hexstr2bytes(value: str) -> bytes:
 
 
 @overload
-def generate_key_pair(bits: int, return_pem: Literal[True]) -> Tuple[str, str]:
+def generate_key_pair(return_pem: Literal[True], bits: int = 2048) -> Tuple[str, str]:
 	...
 
 
 @overload
-def generate_key_pair(bits: int, return_pem: Literal[False]) -> Tuple[RSA.RsaKey, RSA.RsaKey]:
+def generate_key_pair(return_pem: Literal[False], bits: int = 2048) -> Tuple[RSA.RsaKey, RSA.RsaKey]:
 	...
 
 
-def generate_key_pair(bits: int = 2048, return_pem: bool = False) -> Union[Tuple[str, str], Tuple[RSA.RsaKey, RSA.RsaKey]]:
+def generate_key_pair(return_pem: bool = False, bits: int = 2048) -> Union[Tuple[str, str], Tuple[RSA.RsaKey, RSA.RsaKey]]:
 	key = RSA.generate(bits=bits)
 	if not return_pem:
 		return key, key.publickey()
@@ -207,7 +206,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	schema_version: int = attr.ib(default=2, converter=int)
 
 	@schema_version.validator
-	def validate_schema_version(self, attribute: str, value: Any) -> None:
+	def validate_schema_version(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
 		if not isinstance(value, int) or value <= 0:
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -216,21 +215,21 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	customer_id: str = attr.ib(default=None)
 
 	@customer_id.validator
-	def validate_customer_id(self, attribute: str, value: Any) -> None:
+	def validate_customer_id(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
 		if self.schema_version > 1 and self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^[a-zA-Z0-9\-_]{3,}$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
 	customer_name: str = attr.ib()
 
 	@customer_name.validator
-	def validate_customer_name(self, attribute: str, value: Any) -> None:
+	def validate_customer_name(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
 		if self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^\S.*\S$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
 	customer_address: str = attr.ib(default=None)
 
 	@customer_address.validator
-	def validate_customer_address(self, attribute: str, value: Any) -> None:
+	def validate_customer_address(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
 		if self.schema_version > 1 and self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^\S.*\S$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -243,7 +242,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	)
 
 	@service_id.validator
-	def validate_service_id(self, attribute: str, value: Any) -> None:
+	def validate_service_id(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
 		if value is not None and not re.match(r"^[a-z0-9\-\.]+$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -252,7 +251,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	client_number: int = attr.ib(converter=int, validator=attr.validators.instance_of(int))
 
 	@client_number.validator
-	def validate_client_number(self, attribute: str, value: Any) -> None:
+	def validate_client_number(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
 		if value <= 0:
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -265,7 +264,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	revoked_ids: List[str] = attr.ib(default=[])
 
 	@revoked_ids.validator
-	def validate_revoked_ids(self, attribute: str, value: Any) -> None:
+	def validate_revoked_ids(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
 		if not isinstance(value, list):
 			raise ValueError(f"Invalid value for {attribute}", value)
 		for val in value:

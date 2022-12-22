@@ -7,12 +7,13 @@ Helpers for testing opsi.
 import io
 import os
 from contextlib import contextmanager
+from typing import Generator
 
 from opsicommon.logging import logging_config
 
 
 @contextmanager
-def log_stream(new_level, format=None):  # pylint: disable=redefined-builtin
+def log_stream(new_level: int, format: str | None = None) -> Generator[io.StringIO, None, None]:  # pylint: disable=redefined-builtin
 	stream = io.StringIO()
 	logging_config(stderr_level=new_level, stderr_format=format, stderr_file=stream)
 	try:
@@ -23,11 +24,11 @@ def log_stream(new_level, format=None):  # pylint: disable=redefined-builtin
 
 
 @contextmanager
-def environment(**env_vars):
+def environment(**env_vars: str) -> Generator[None, None, None]:
 	env_bak = os.environ.copy()
 	try:
 		os.environ.clear()
 		os.environ.update(env_vars)
 		yield
 	finally:
-		os.environ = env_bak
+		os.environ = env_bak  # type: ignore[assignment]
