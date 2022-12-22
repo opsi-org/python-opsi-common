@@ -47,13 +47,7 @@ def disable_insecure_request_warning() -> None:
 
 
 def running_in_docker() -> bool:
-	if not os.path.exists("/proc/self/cgroup"):
-		return False
-	with open("/proc/self/cgroup", encoding="utf-8") as file:
-		for line in file.readlines():
-			if line.split(":")[2].startswith("/docker/"):
-				return True
-	return False
+	return os.path.exists("/.dockerenv")
 
 
 def admin_permissions() -> bool:

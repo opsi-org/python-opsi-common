@@ -9,12 +9,10 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import Any
 from urllib.parse import unquote
 
 import pytest
-from requests.exceptions import ConnectionError as RConnectionError
-from requests.exceptions import HTTPError, ReadTimeout
-
 from opsicommon.client.jsonrpc import (
 	BackendAuthenticationError,
 	BackendPermissionDeniedError,
@@ -27,6 +25,8 @@ from opsicommon.testing.helpers import (  # type: ignore[import]
 	environment,
 	http_test_server,
 )
+from requests.exceptions import ConnectionError as RConnectionError
+from requests.exceptions import HTTPError, ReadTimeout
 
 from .helpers import log_stream
 
@@ -214,7 +214,7 @@ def test_cookie_handling(tmp_path: Path) -> None:
 
 def test_force_ip_version_4(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
-	with http_test_server(ip_version=4, log_file=log_file) as server:
+	with http_test_server(ip_version="4", log_file=log_file) as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}", ip_version=4)
 		client.get("/")
 		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
@@ -225,7 +225,7 @@ def test_force_ip_version_4(tmp_path: Path) -> None:
 @pytest.mark.not_in_docker
 def test_force_ip_version_6(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
-	with http_test_server(ip_version=6, log_file=log_file) as server:
+	with http_test_server(ip_version="6", log_file=log_file) as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}", ip_version=6)
 		client.get("/")
 		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
@@ -373,15 +373,15 @@ def test_get_path(tmp_path: Path) -> None:
 
 
 def test_error_handling() -> None:
-	with http_test_server(response_status=[500, "internal server error"]) as server:
+	with http_test_server(response_status=(500, "internal server error")) as server:
 		with pytest.raises(OpsiRpcError):
 			JSONRPCClient(f"http://localhost:{server.port}")
 
-	with http_test_server(response_status=[401, "auth error"]) as server:
+	with http_test_server(response_status=(401, "auth error")) as server:
 		with pytest.raises(BackendAuthenticationError):
 			JSONRPCClient(f"http://localhost:{server.port}")
 
-	with http_test_server(response_status=[403, "permission denied"]) as server:
+	with http_test_server(response_status=(403, "permission denied")) as server:
 		with pytest.raises(BackendPermissionDeniedError):
 			JSONRPCClient(f"http://localhost:{server.port}")
 
@@ -426,7 +426,7 @@ def test_interface_and_exit(tmp_path: Path) -> None:
 
 def test_env_requests_ca_bundle(tmp_path: Path) -> None:
 	ca_cert, ca_key = create_ca({"CN": "python-opsi-common test ca"}, 3)
-	kwargs = {
+	kwargs: dict[str, Any] = {
 		"subject": {"CN": "python-opsi-common test server cert"},
 		"valid_days": 3,
 		"ip_addresses": {"172.0.0.1", "::1"},

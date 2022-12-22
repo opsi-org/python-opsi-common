@@ -6,15 +6,14 @@ Testing behaviour of exceptions.
 
 
 import time
-from typing import TYPE_CHECKING, Generator, Type
+from typing import Generator, Type
 
 import pytest
 from hypothesis import given, strategies
 
-if TYPE_CHECKING:
 
-	class FixtureRequest:  # pylint: disable=too-few-public-methods
-		param: str
+class FixtureRequest:  # pylint: disable=too-few-public-methods
+	param: str
 
 
 exception_classes = []  # pylint: disable=use-tuple-over-list
