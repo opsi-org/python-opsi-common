@@ -13,6 +13,9 @@ from typing import Any
 from urllib.parse import unquote
 
 import pytest
+from requests.exceptions import ConnectionError as RConnectionError
+from requests.exceptions import HTTPError, ReadTimeout
+
 from opsicommon.client.jsonrpc import (
 	BackendAuthenticationError,
 	BackendPermissionDeniedError,
@@ -25,8 +28,6 @@ from opsicommon.testing.helpers import (  # type: ignore[import]
 	environment,
 	http_test_server,
 )
-from requests.exceptions import ConnectionError as RConnectionError
-from requests.exceptions import HTTPError, ReadTimeout
 
 from .helpers import log_stream
 
