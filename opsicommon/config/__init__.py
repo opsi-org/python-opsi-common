@@ -6,4 +6,4 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-from .opsi import OpsiConfig  # pylint: disable=unused-import
+from .opsi import DEFAULT_OPSICONFD_USER, OpsiConfig  # pylint: disable=unused-import
