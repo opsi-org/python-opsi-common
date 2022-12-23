@@ -30,6 +30,7 @@ def message_id() -> str:
 
 class MessageType(str, Enum):
 	GENERAL_ERROR = "general_error"
+	EVENT = "event"
 	CHANNEL_SUBSCRIPTION_REQUEST = "channel_subscription_request"
 	CHANNEL_SUBSCRIPTION_EVENT = "channel_subscription_event"
 	TRACE_REQUEST = "trace_request"
@@ -106,6 +107,14 @@ class Message:  # pylint: disable=too-many-instance-attributes
 class GeneralErrorMessage(Message):
 	type: str = MessageType.GENERAL_ERROR.value
 	error: Error | None
+
+
+# Event
+@dataclass(slots=True, kw_only=True, repr=False)
+class EventMessage(Message):
+	type: str = MessageType.EVENT.value
+	event: str
+	data: dict[str, Any] = field(default_factory=dict)
 
 
 class ChannelSubscriptionOperation(str, Enum):
@@ -253,11 +262,9 @@ class FileChunkMessage(Message):
 	data: bytes
 
 
-FileChunk = FileChunkMessage
-
-
 MESSAGE_TYPE_TO_CLASS = {
 	MessageType.GENERAL_ERROR.value: GeneralErrorMessage,
+	MessageType.EVENT.value: EventMessage,
 	MessageType.CHANNEL_SUBSCRIPTION_REQUEST.value: ChannelSubscriptionRequestMessage,
 	MessageType.CHANNEL_SUBSCRIPTION_EVENT.value: ChannelSubscriptionEventMessage,
 	MessageType.TRACE_REQUEST.value: TraceRequestMessage,
