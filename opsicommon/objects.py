@@ -1800,9 +1800,9 @@ class ProductOnDepot(Relationship):
 		packageVersion: str | None = None,  # pylint: disable=invalid-name
 		locked: bool | None = None,  # pylint: disable=invalid-name
 	):
-		self.productType: str | None = None
-		self.productVersion: str | None = None
-		self.packageVersion: str | None = None
+		self.productType: str | None = None  # pylint: disable=invalid-name
+		self.productVersion: str | None = None  # pylint: disable=invalid-name
+		self.packageVersion: str | None = None  # pylint: disable=invalid-name
 		self.locked: bool | None = None
 
 		self.setProductId(productId)
@@ -1828,19 +1828,19 @@ class ProductOnDepot(Relationship):
 	def setProductId(self, productId: str) -> None:  # pylint: disable=invalid-name
 		self.productId = forceProductId(productId)  # pylint: disable=invalid-name
 
-	def getProductType(self) -> str:  # pylint: disable=invalid-name
+	def getProductType(self) -> str | None:  # pylint: disable=invalid-name
 		return self.productType
 
 	def setProductType(self, productType: str) -> None:  # pylint: disable=invalid-name
 		self.productType = forceProductType(productType)  # pylint: disable=invalid-name
 
-	def getProductVersion(self) -> str:  # pylint: disable=invalid-name
+	def getProductVersion(self) -> str | None:  # pylint: disable=invalid-name
 		return self.productVersion
 
 	def setProductVersion(self, productVersion: str) -> None:  # pylint: disable=invalid-name
 		self.productVersion = forceProductVersion(productVersion)  # pylint: disable=invalid-name
 
-	def getPackageVersion(self) -> str:  # pylint: disable=invalid-name
+	def getPackageVersion(self) -> str | None:  # pylint: disable=invalid-name
 		return self.packageVersion
 
 	def setPackageVersion(self, packageVersion: str) -> None:  # pylint: disable=invalid-name
@@ -1939,7 +1939,7 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 	def setProductId(self, productId: str) -> None:  # pylint: disable=invalid-name
 		self.productId = forceProductId(productId)  # pylint: disable=invalid-name
 
-	def getProductType(self) -> str:  # pylint: disable=invalid-name
+	def getProductType(self) -> str | None:  # pylint: disable=invalid-name
 		return self.productType
 
 	def setProductType(self, productType: str) -> None:  # pylint: disable=invalid-name
