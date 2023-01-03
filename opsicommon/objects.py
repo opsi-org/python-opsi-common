@@ -11,6 +11,7 @@ As an example this contains classes for hosts, products, configurations.
 # pylint: disable=too-many-lines
 
 from datetime import date, datetime
+from functools import lru_cache
 from inspect import getfullargspec
 from typing import Any, Callable, Generator, Type, TypeVar
 
@@ -3354,3 +3355,8 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 Relationship.sub_classes["AuditHardwareOnHost"] = AuditHardwareOnHost
 
 OBJECT_CLASSES = {name: cls for (name, cls) in globals().items() if isinstance(cls, type) and issubclass(cls, BaseObject)}
+
+
+@lru_cache(maxsize=0)
+def get_object_type(object_type: str) -> Type[BaseObject]:
+	return OBJECT_CLASSES[object_type]

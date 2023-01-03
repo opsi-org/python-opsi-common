@@ -107,6 +107,8 @@ __all__ = (
 
 logger = get_logger("opsicommon.general")
 encoding = sys.getfilesystemencoding()
+get_object_type: Callable | None = None
+from_json: Callable | None = None
 
 _HARDWARE_ID_REGEX = re.compile(r"^[a-fA-F0-9]{4}$")
 _OPSI_TIMESTAMP_REGEX = re.compile(r"^(\d{4})-?(\d{2})-?(\d{2})\s?(\d{2}):?(\d{2}):?(\d{2})\.?\d*$")
@@ -543,42 +545,39 @@ def forceRequirementType(var: Any) -> Optional[str]:  # pylint: disable=invalid-
 
 
 def forceObjectClass(var: Any, objectClass: Type[BaseObjectT]) -> BaseObjectT:  # pylint: disable=invalid-name
+	global get_object_type  # pylint: disable=invalid-name, global-statement
+	global from_json  # pylint: disable=invalid-name, global-statement
+
 	if isinstance(var, objectClass):
 		return var
 
-	exception = None
-	if isinstance(var, str) and var.lstrip().startswith("{"):
-		from opsicommon.utils import from_json  # pylint: disable=import-outside-toplevel
+	if isinstance(var, str) and var.startswith("{"):
+		if not from_json:
+			from opsicommon.utils import (  # pylint: disable=import-outside-toplevel,redefined-outer-name
+				from_json,
+			)
 
 		try:
-			var = from_json(var)
+			var = from_json(var)  # type: ignore[misc]
 		except Exception as err:  # pylint: disable=broad-except
-			exception = err
-			logger.debug("Failed to get object from json %s: %s", var, err)
+			raise ValueError(f"{var!r} is not a {objectClass}: {err}") from err
 
 	if isinstance(var, dict):
-		if "type" not in var:
-			raise ValueError(f"Key 'type' missing in hash {var}")
-
-		import opsicommon.objects  # pylint: disable=import-outside-toplevel,unused-import
-
+		if not get_object_type:
+			from opsicommon.objects import (  # pylint: disable=import-outside-toplevel,redefined-outer-name
+				get_object_type,
+			)
 		try:
-			_class = getattr(opsicommon.objects, var["type"])
-			if issubclass(_class, objectClass):
-				var = _class.fromHash(var)
-		except AttributeError as err:
-			logger.debug("Failed to get object from dict %s: %s", var, err)
-			exception = ValueError(f"Invalid object type: {var['type']}")
+			_class = objectClass
+			if "type" in var:
+				_class = get_object_type(var["type"])  # type: ignore[misc]
+				if not issubclass(_class, objectClass):
+					raise ValueError(type(_class))
+			return _class.fromHash(var)
 		except Exception as err:  # pylint: disable=broad-except
-			exception = err
-			logger.debug("Failed to get object from dict %s: %s", var, err)
+			raise ValueError(f"{var!r} is not a {objectClass}: {err}") from err
 
-	if not isinstance(var, objectClass):
-		if exception is None:
-			raise ValueError(f"'{var}' is not a {objectClass}")
-		raise ValueError(f"'{var}' is not a {objectClass}: {exception}")
-
-	return var
+	raise ValueError(f"{var!r} is not a {objectClass}")
 
 
 def forceObjectClassList(var: Any, objectClass: Type[BaseObjectT]) -> list[BaseObjectT]:  # pylint: disable=invalid-name
