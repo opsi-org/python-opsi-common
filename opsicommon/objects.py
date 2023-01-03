@@ -3122,10 +3122,7 @@ class AuditHardware(Entity):
 		return self.hardwareClass
 
 	def getIdentAttributes(self) -> tuple[str, ...]:
-		attributes = list(self.hardware_attributes.get(self.hardwareClass, {}).keys())
-		attributes.sort()
-		attributes.insert(0, "hardwareClass")
-		return tuple(attributes)
+		return ("hardwareClass", ) + tuple(sorted(self.hardware_attributes.get(self.hardwareClass, {})))
 
 	def __str__(self) -> str:
 		infos = []
@@ -3338,11 +3335,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 		return AuditHardware.fromHash(audit_hardware_hash)
 
 	def getIdentAttributes(self) -> tuple[str, ...]:
-		attributes = list(self.hardware_attributes.get(self.hardwareClass, {}).keys())
-		attributes.sort()
-		attributes.insert(0, "hostId")
-		attributes.insert(0, "hardwareClass")
-		return tuple(attributes)
+		return ("hostId", "hardwareClass") + tuple(sorted(self.hardware_attributes.get(self.hardwareClass, {})))
 
 	def __str__(self) -> str:
 		additional = [f"hostId='{self.hostId}'"]
