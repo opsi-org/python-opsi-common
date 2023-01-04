@@ -238,16 +238,13 @@ class BaseObject:
 	def fromHash(cls: Type[BaseObjectT], _hash: dict[str, Any]) -> BaseObjectT:  # pylint: disable=invalid-name
 		_cls = cls
 		try:
-			_cls = eval(_hash["type"])  # pylint: disable=eval-used
+			_cls = get_object_type(_hash.pop("type"))
 		except KeyError:
 			pass
 
-		kwargs = {}
+		possible_attributes = get_possible_class_attributes(_cls)
 		decode_ident(_cls, _hash)
-		for varname in _cls.__init__.__code__.co_varnames[1:]:  # pylint: disable=use-dict-comprehension
-			if varname in _hash:
-				kwargs[varname] = _hash[varname]
-
+		kwargs = {attr: val for attr, val in _hash.items() if attr in possible_attributes}
 		return _cls(**kwargs)
 
 	@classmethod
@@ -338,6 +335,7 @@ def get_foreign_id_attributes(_class: Type[BaseObject]) -> Any:
 	return _class.foreign_id_attributes
 
 
+@lru_cache(maxsize=500)
 def get_possible_class_attributes(_class: Type[BaseObject]) -> set[str]:
 	"""
 	Returns the possible attributes of a class.
@@ -3127,9 +3125,8 @@ class AuditHardware(Entity):
 
 	@staticmethod
 	def fromHash(_hash: dict[str, Any]) -> Any:
-		init_hash = {key: value for key, value in _hash.items() if key != "type"}
-
-		return AuditHardware(**init_hash)
+		_hash.pop("type", None)
+		return AuditHardware(**_hash)
 
 	def __str__(self) -> str:
 		infos = []
@@ -3346,9 +3343,8 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 
 	@staticmethod
 	def fromHash(_hash: dict[str, Any]) -> Any:
-		init_hash = {key: value for key, value in _hash.items() if key != "type"}
-
-		return AuditHardwareOnHost(**init_hash)
+		_hash.pop("type", None)
+		return AuditHardwareOnHost(**_hash)
 
 	def __str__(self) -> str:
 		additional = [f"hostId='{self.hostId}'"]
