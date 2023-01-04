@@ -13,7 +13,8 @@ import pytest
 from opsicommon.messagebus import (
 	ChannelSubscriptionEventMessage,
 	ChannelSubscriptionRequestMessage,
-	FileChunk,
+	EventMessage,
+	FileChunkMessage,
 	FileUploadRequestMessage,
 	FileUploadResultMessage,
 	GeneralErrorMessage,
@@ -252,7 +253,7 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
-			FileChunk,
+			FileChunkMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "user:admin",
@@ -260,6 +261,24 @@ def test_message_to_from_msgpack() -> None:
 				"number": 12,
 				"last": True,
 				"data": b"data"
+			},
+			None,
+		),
+		(
+			EventMessage,
+			{
+				"sender": "service_worker:node:1",
+				"channel": "event:host_connected",
+				"event": "host_connected",
+				"data": {
+					"client_address": "172.18.0.4",
+					"client_port": 49542,
+					"worker": "node:1",
+					"host": {
+						"type": "OpsiClient",
+						"id": "opsi-client.domain.tld"
+					}
+				}
 			},
 			None,
 		),
