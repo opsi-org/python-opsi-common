@@ -23,13 +23,13 @@ lz4 = "^4.0"
 msgpack = "^1.0"
 psutil = "^5.8"
 pycryptodome = "^3.10"
-pyopenssl = "^22.0"
+pyopenssl = "^23.0"
 pywin32 = {platform = "win32", version = "^303"}
 requests = "^2.26"
-websocket-client = "^1.4.0"
-orjson = "^3.8.0"
-msgspec = "^0.9.1"
-rich = "^12.6.0"
+websocket-client = "^1.4"
+orjson = "^3.8"
+msgspec = "^0.11"
+rich = "^13.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^6.0"
