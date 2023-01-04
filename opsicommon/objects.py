@@ -238,11 +238,11 @@ class BaseObject:
 	def fromHash(cls: Type[BaseObjectT], _hash: dict[str, Any]) -> BaseObjectT:  # pylint: disable=invalid-name
 		_cls = cls
 		try:
-			_cls = get_object_type(_hash.pop("type"))
+			_cls = get_object_type(_hash.pop("type"))  # type: ignore
 		except KeyError:
 			pass
 
-		possible_attributes = get_possible_class_attributes(_cls)
+		possible_attributes = get_possible_class_attributes(_cls)  # type: ignore
 		decode_ident(_cls, _hash)
 		kwargs = {attr: val for attr, val in _hash.items() if attr in possible_attributes}
 		return _cls(**kwargs)
