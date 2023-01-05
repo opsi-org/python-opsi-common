@@ -107,18 +107,12 @@ def test_forcing_object_class_from_json_has_good_error_description() -> None:
 		"type": "ProductOnClient"
 	}
 
-	try:
+	with pytest.raises(ValueError, match="missing 1 required positional argument: 'productId'"):
 		forceObjectClass(incomplete_json, ProductOnClient)
-		pytest.fail("No error from incomplete json.")
-	except ValueError as error:
-		assert "missing 1 required positional argument: 'productId'" in str(error)
 
 	incomplete_json['type'] = "NotValid"
-	try:
+	with pytest.raises(ValueError, match="Invalid object type: NotValid"):
 		forceObjectClass(incomplete_json, ProductOnClient)
-		pytest.fail("No error from invalid type.")
-	except ValueError as error:
-		assert "Invalid object type: NotValid" in str(error)
 
 
 def test_forcing_object_class_from_invalid_json() -> None:

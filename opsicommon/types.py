@@ -558,7 +558,7 @@ def forceObjectClass(var: Any, objectClass: Type[BaseObjectT]) -> BaseObjectT:  
 			)
 
 		try:
-			var = from_json(var)  # type: ignore[misc]
+			return from_json(var)  # type: ignore[misc]
 		except Exception as err:  # pylint: disable=broad-except
 			raise ValueError(f"{var!r} is not a {objectClass}: {err}") from err
 
@@ -570,7 +570,10 @@ def forceObjectClass(var: Any, objectClass: Type[BaseObjectT]) -> BaseObjectT:  
 		try:
 			_class = objectClass
 			if "type" in var:
-				_class = get_object_type(var["type"])  # type: ignore[misc]
+				try:
+					_class = get_object_type(var["type"])  # type: ignore[misc]
+				except KeyError as err:  # pylint: disable=broad-except
+					raise ValueError(f"Invalid object type: {var['type']}") from err
 				if not issubclass(_class, objectClass):
 					raise ValueError(type(_class))
 			return _class.fromHash(var)
