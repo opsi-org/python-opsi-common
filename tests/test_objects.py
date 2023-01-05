@@ -10,7 +10,6 @@ from typing import Any, Dict, Generator, Optional, Type
 from unittest import mock
 
 import pytest
-
 from opsicommon.objects import (
 	Entity,
 	decode_ident,
@@ -239,7 +238,7 @@ def test_object_classes() -> None:
 		assert isinstance(obj.serialize(), dict)
 
 		_class.fromHash(_dict)
-		del _dict["type"]
+		_dict.pop("type", None)
 		assert isinstance(_class.fromHash(_dict), _class)
 		assert isinstance(_class.from_json(json.dumps(_dict)), _class)  # pylint: disable=dotted-import-in-loop
 
