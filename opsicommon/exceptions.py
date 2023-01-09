@@ -102,7 +102,7 @@ class OpsiRpcError(OpsiError):
 class OpsiProductOrderingError(OpsiError):
 	ExceptionShortDescription = "A condition for ordering cannot be fulfilled"
 
-	def __init__(self, message: str = "", problematicRequirements: Optional[List[str]] = None) -> None:
+	def __init__(self, message: str = "", problematicRequirements: Optional[List[int]] = None) -> None:
 		super().__init__(message)
 		self.problematicRequirements = problematicRequirements or []  # pylint: disable=invalid-name
 
