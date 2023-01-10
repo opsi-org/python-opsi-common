@@ -53,6 +53,8 @@ except (ImportError, OSError):
 	from Cryptodome.Util.number import bytes_to_long  # type: ignore[import,no-redef]
 
 
+OPSI_CLIENT_INACTIVE_AFTER = 365
+
 OPSI_LICENCE_ID_REGEX = re.compile(r"^[a-zA-Z0-9\-_]{10,}$")
 
 OPSI_LICENSE_TYPE_CORE = "core"
