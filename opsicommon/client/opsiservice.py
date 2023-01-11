@@ -531,7 +531,6 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					self.server_version = version.parse(match.group(1))
 					self._messagebus_available = self.server_version >= MIN_VERSION_MESSAGEBUS
 
-
 			if "x-opsi-new-host-id" in response.headers:
 				try:
 					self.new_host_id = forceHostId(response.headers["x-opsi-new-host-id"])
