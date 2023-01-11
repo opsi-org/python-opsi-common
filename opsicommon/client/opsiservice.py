@@ -63,6 +63,7 @@ from ..messagebus import (
 	MessageType,
 )
 from ..system import set_system_datetime
+from ..types import forceHostId, forceOpsiHostKey
 from ..utils import prepare_proxy_environment, serialize
 
 warnings.simplefilter("ignore", InsecureRequestWarning)
@@ -226,6 +227,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self._address_index = 0
 		self.server_name = ""
 		self.server_version = version.parse("0")
+		self.new_host_id: str | None = None
+		self.new_host_key: str | None = None
 		self._messagebus_available = False
 		self._connected = False
 		self._max_time_diff = max_time_diff
@@ -527,6 +530,19 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				if match:
 					self.server_version = version.parse(match.group(1))
 					self._messagebus_available = self.server_version >= MIN_VERSION_MESSAGEBUS
+
+
+			if "x-opsi-new-host-id" in response.headers:
+				try:
+					self.new_host_id = forceHostId(response.headers["x-opsi-new-host-id"])
+				except ValueError as error:
+					logger.error("Could not get HostId from header: %s", error, exc_info=True)
+
+			if "x-opsi-new-host-key" in response.headers:
+				try:
+					self.new_host_key = forceOpsiHostKey(response.headers["x-opsi-new-host-key"])
+				except ValueError as error:
+					logger.error("Could not get OpsiHostKey from header: %s", error, exc_info=True)
 
 			if self._max_time_diff >= 0 and "date" in response.headers:
 				try:
