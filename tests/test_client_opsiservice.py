@@ -3,6 +3,7 @@
 """
 This file is part of opsi - https://www.opsi.org
 """
+# pylint: disable=too-many-lines
 
 import json
 import platform
@@ -46,6 +47,7 @@ from opsicommon.messagebus import (
 	Message,
 	MessageType,
 )
+from opsicommon.objects import OpsiClient
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
 from opsicommon.system import set_system_datetime
 from opsicommon.testing.helpers import (  # type: ignore[import]
@@ -295,12 +297,16 @@ def test_cookie_handling(tmp_path: Path) -> None:
 			assert unquote(req1["headers"].get("Cookie")) == session_cookie
 
 			req2 = json.loads(lines[1])
-			assert req2["method"] == "GET"
+			assert req2["method"] == "POST"
 			assert unquote(req2["headers"].get("Cookie")) == session_cookie
 
 			req3 = json.loads(lines[2])
-			assert req3["headers"]["Upgrade"] == "websocket"
+			assert req3["method"] == "GET"
 			assert unquote(req3["headers"].get("Cookie")) == session_cookie
+
+			req4 = json.loads(lines[3])
+			assert req4["headers"]["Upgrade"] == "websocket"
+			assert unquote(req4["headers"].get("Cookie")) == session_cookie
 
 
 def test_proxy(tmp_path: Path) -> None:
@@ -381,9 +387,11 @@ def test_proxy(tmp_path: Path) -> None:
 					assert reqs[0]["method"] == "HEAD"
 					assert reqs[0]["path"] == "/"
 
-					assert reqs[1]["method"] == "GET"
-					assert reqs[1]["path"] == "/messagebus/v1"
-					assert reqs[1]["headers"]["Upgrade"] == "websocket"
+					assert reqs[1]["method"] == "POST"
+
+					assert reqs[2]["method"] == "GET"
+					assert reqs[2]["path"] == "/messagebus/v1"
+					assert reqs[2]["headers"]["Upgrade"] == "websocket"
 
 					log_file.write_bytes(b"")
 
@@ -424,19 +432,22 @@ def test_server_name_handling(  # pylint: disable=too-many-arguments
 		# Connect request
 		assert reqs[0]["method"] == "HEAD"
 
-		# JSONRPC request
+		# get interface
 		assert reqs[1]["method"] == "POST"
-		assert reqs[1]["path"] == "/rpc"
-		assert reqs[1]["headers"].get("Content-Type") == expected_content_type
-		assert reqs[1]["headers"].get("Content-Encoding") == expected_content_encoding
+
+		# JSONRPC request
+		assert reqs[2]["method"] == "POST"
+		assert reqs[2]["path"] == "/rpc"
+		assert reqs[2]["headers"].get("Content-Type") == expected_content_type
+		assert reqs[2]["headers"].get("Content-Encoding") == expected_content_encoding
 
 		# Close session request
-		assert reqs[2]["method"] == "POST"
+		assert reqs[3]["method"] == "POST"
 		if server_version and server_version >= MIN_VERSION_SESSION_API:
-			assert reqs[2]["path"] == "/session/logout"
+			assert reqs[3]["path"] == "/session/logout"
 		else:
-			assert reqs[2]["path"] == "/rpc"
-			assert reqs[2]["request"]["method"] == "backend_exit"
+			assert reqs[3]["path"] == "/rpc"
+			assert reqs[3]["request"]["method"] == "backend_exit"
 
 		# Clear log
 		log_file.write_bytes(b"")
@@ -670,16 +681,81 @@ def test_jsonrpc(tmp_path: Path) -> None:
 			client.jsonrpc("reconnect")
 
 			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+			# connect
 			assert reqs[0]["method"] == "HEAD"
+			# get interface
+			assert reqs[1]["method"] == "POST"
 			for idx in range(len(params)):  # pylint: disable=consider-using-enumerate
-				assert reqs[idx + 1]["path"] == "/rpc"
-				assert reqs[idx + 1]["method"] == "POST"
-				assert reqs[idx + 1]["request"]["method"] == "method"
-				assert reqs[idx + 1]["request"]["jsonrpc"] == "2.0"
-				assert reqs[idx + 1]["request"]["params"] == list(params[idx] or [])
+				assert reqs[idx + 2]["path"] == "/rpc"
+				assert reqs[idx + 2]["method"] == "POST"
+				assert reqs[idx + 2]["request"]["method"] == "method"
+				assert reqs[idx + 2]["request"]["jsonrpc"] == "2.0"
+				assert reqs[idx + 2]["request"]["params"] == list(params[idx] or [])
 
 			assert reqs[-1]["method"] == "POST"
 			assert reqs[-1]["request"]["method"] == "reconnect"
+
+
+def test_jsonrpc_dict_params(tmp_path: Path) -> None:
+	log_file = tmp_path / "request.log"
+	interface = [  # pylint: disable=use-tuple-over-list
+		{"name": "test_method", "params": ["arg1", "*arg2", "**arg3"], "defaults": ["default2"]}
+	]
+	with http_test_server(
+		generate_cert=True,
+		log_file=log_file,
+		response_headers={"server": "opsiconfd 4.2.0.0 (uvicorn)"},
+	) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			server.response_body = json.dumps({"jsonrpc": "2.0", "result": interface}).encode("utf-8")
+			server.response_headers["Content-Type"] = "application/json"
+			client.connect()
+			assert len(client.jsonrpc_interface) == 1
+			with pytest.raises(ValueError, match="Method 'invalid' not found in interface description"):
+				client.jsonrpc(method="invalid", params={"arg1": "test"})
+			with pytest.raises(ValueError, match="Invalid param 'invalid' for method 'test_method'"):
+				client.jsonrpc(method="test_method", params={"invalid": "test"})
+			client.jsonrpc(method="test_method", params={"arg1": 1})
+			client.jsonrpc(method="test_method", params={"arg1": 1, "arg3": "3"})
+			client.jsonrpc(method="test_method", params={"arg2": 2})
+			client.jsonrpc(method="test_method", params={"arg3": "3"})
+
+			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+			assert reqs[0]["method"] == "HEAD"
+			assert reqs[1]["method"] == "POST"
+			assert reqs[1]["request"]["method"] == "backend_getInterface"
+			assert reqs[2]["request"]["method"] == "test_method"
+			assert reqs[2]["request"]["params"] == [1]
+			assert reqs[3]["request"]["params"] == [1, "default2", "3"]
+			assert reqs[4]["request"]["params"] == [None, 2]
+			assert reqs[5]["request"]["params"] == [None, "default2", "3"]
+
+
+def test_jsonrpc_objects(tmp_path: Path) -> None:
+	log_file = tmp_path / "request.log"
+	obj = {
+		"type": "OpsiClient",
+		"ident": "test-client.opsi.org",
+		"id": "test-client.opsi.org",
+		"hardwareAddress": "01:02:03:04:05:06",
+		"inventoryNumber": "",
+		"opsiHostKey": "f86aaf59a1774f39f0b21c466663ed30",
+		"created": "2022-03-06 13:50:08",
+		"lastSeen": "2022-03-06 13:50:08",
+		"oneTimePassword": None,
+	}
+	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.0.0 (uvicorn)"}) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			server.response_headers["Content-Type"] = "application/json"
+			server.response_body = b'{"jsonrpc": "2.0", "result": []}'
+			client.connect()
+			server.response_headers["Content-Type"] = "application/json"
+			server.response_body = json.dumps({"jsonrpc": "2.0", "result": obj}).encode("utf-8")
+			res = client.jsonrpc(method="host_getObjects")
+			assert res == obj
+			client.jsonrpc_create_objects = True
+			res = client.jsonrpc(method="host_getObjects")
+			assert res == OpsiClient.fromHash(obj)
 
 
 def test_jsonrpc_error_handling() -> None:

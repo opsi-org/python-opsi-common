@@ -62,9 +62,10 @@ from ..messagebus import (
 	Message,
 	MessageType,
 )
+from ..objects import deserialize, serialize
 from ..system import set_system_datetime
 from ..types import forceHostId, forceOpsiHostKey
-from ..utils import prepare_proxy_environment, serialize
+from ..utils import prepare_proxy_environment
 
 warnings.simplefilter("ignore", InsecureRequestWarning)
 
@@ -197,7 +198,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		proxy_url: str | None = "system",
 		user_agent: str | None = None,
 		connect_timeout: float = 10.0,
-		max_time_diff: float = 5.0
+		max_time_diff: float = 5.0,
+		jsonrpc_create_objects: bool = False
 	) -> None:
 		"""
 		proxy_url:
@@ -229,6 +231,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self.server_version = version.parse("0")
 		self.new_host_id: str | None = None
 		self.new_host_key: str | None = None
+		self.jsonrpc_create_objects = bool(jsonrpc_create_objects)
+		self.jsonrpc_interface: list[dict[str, Any]] = []
+		self._jsonrpc_method_params: dict[str, dict[str, Any]] = {}
 		self._messagebus_available = False
 		self._connected = False
 		self._max_time_diff = max_time_diff
@@ -471,7 +476,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			logger.warning(err, exc_info=True)
 		return ca_certs
 
-	def connect(self) -> None:  # pylint: disable=too-many-branches,too-many-statements
+	def connect(self) -> None:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		if self._connect_lock.locked():
 			return
 
@@ -561,8 +566,28 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			if self._ca_cert_file:
 				self.fetch_opsi_ca(skip_verify=not verify)
 
-			for listener in self._listener:
-				CallbackThread(listener.connection_established, service_client=self).start()
+		try:
+			self.jsonrpc_interface = self.jsonrpc("backend_getInterface")
+		except Exception as err:  # pylint: disable=broad-except
+			logger.error("Failed to get interface description: %s", err, exc_info=True)
+
+		self._jsonrpc_method_params = {}
+		for method in self.jsonrpc_interface:
+			self._jsonrpc_method_params[method["name"]] = {}
+			def_idx = 0
+			for param in method["params"]:
+				default = None
+				if param[0] == "*":
+					param = param.lstrip("*")
+					try:  # pylint: disable=loop-try-except-usage
+						default = method["defaults"][def_idx]  # pylint: disable=loop-invariant-statement
+					except IndexError:
+						pass
+					def_idx += 1
+				self._jsonrpc_method_params[method["name"]][param] = default  # pylint: disable=loop-invariant-statement
+
+		for listener in self._listener:
+			CallbackThread(listener.connection_established, service_client=self).start()
 
 	def disconnect(self) -> None:
 		self.disconnect_messagebus()
@@ -630,11 +655,31 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data)
 
 	def jsonrpc(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
-		self, method: str, params: tuple[Any, ...] | list[Any] | None = None, read_timeout: float | None = None, return_result_only: bool = True
+		self,
+		method: str,
+		params: tuple[Any, ...] | list[Any] | dict[str, Any] | None = None,
+		read_timeout: float | None = None,
+		return_result_only: bool = True
 	) -> Any:
 		params = params or []
 		if isinstance(params, tuple):
 			params = list(params)
+		if isinstance(params, dict):
+			m_params = self._jsonrpc_method_params.get(method)
+			if m_params is None:
+				raise ValueError(f"Method {method!r} not found in interface description")
+
+			m_param_names = list(m_params)
+			new_params = list(m_params.values())
+			max_idx = 0
+			for name, val in params.items():
+				try:  # pylint: disable=loop-try-except-usage
+					idx = m_param_names.index(name)
+				except ValueError as err:
+					raise ValueError(f"Invalid param {name!r} for method {method!r}") from err  # pylint: disable=loop-invariant-statement
+				new_params[idx] = val
+				max_idx = max(max_idx, idx)
+			params = [p for i, p in enumerate(new_params) if i <= max_idx]
 
 		headers = {"Accept-Encoding": "deflate, gzip, lz4"}
 
@@ -732,6 +777,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		if error_cls:
 			raise error_cls(error_msg)
+
+		if self.jsonrpc_create_objects:
+			return deserialize(rpc.get("result"))
 
 		return rpc.get("result")
 
