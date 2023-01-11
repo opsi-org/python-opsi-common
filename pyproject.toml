@@ -18,8 +18,6 @@ secondary = true
 [tool.poetry.dependencies]
 python = ">=3.10,<3.12"
 colorlog = "^6.6"
-# cryptography pinned (AttributeError: module 'lib' has no attribute 'OpenSSL_add_all_algorithms')
-cryptography = "38.0.4"
 distro = "^1.6"
 lz4 = "^4.0"
 msgpack = "^1.0"
