@@ -611,7 +611,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	) -> tuple[int, str, CaseInsensitiveDict, bytes]:
 		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data)
 
-	def jsonrpc(self, method: str, params: tuple[Any, ...] | list[Any] | None = None, return_result_only: bool = True) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+	def jsonrpc(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+		self, method: str, params: tuple[Any, ...] | list[Any] | None = None, read_timeout: float | None = None, return_result_only: bool = True
+	) -> Any:
 		params = params or []
 		if isinstance(params, tuple):
 			params = list(params)
@@ -646,7 +648,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			headers["Content-Encoding"] = headers["Accept-Encoding"] = "gzip"
 			data = gzip.compress(data)
 
-		read_timeout = float(RPC_TIMEOUTS.get(method, 300))
+		if not read_timeout:
+			read_timeout = float(RPC_TIMEOUTS.get(method, 300))
+
 		logger.info(
 			"JSONRPC request to %s: id=%r, method=%s, Content-Type=%s, Content-Encoding=%s, timeout=%r",
 			self.base_url,
