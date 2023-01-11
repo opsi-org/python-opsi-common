@@ -7,6 +7,8 @@ This file is part of opsi - https://www.opsi.org
 """
 # pylint: disable=too-many-lines
 
+from __future__ import annotations
+
 import gzip
 import os
 import re
@@ -145,28 +147,28 @@ class CallbackThread(Thread):
 
 
 class ServiceConnectionListener():  # pylint: disable=too-few-public-methods
-	def connection_open(self, service_client: "ServiceClient") -> None:
+	def connection_open(self, service_client: ServiceClient) -> None:
 		"""
 		Called when the connection to the service is opened.
 		"""
 
-	def connection_established(self, service_client: "ServiceClient") -> None:
+	def connection_established(self, service_client: ServiceClient) -> None:
 		"""
 		Called when the connection to the service is established.
 		"""
 
-	def connection_closed(self, service_client: "ServiceClient") -> None:
+	def connection_closed(self, service_client: ServiceClient) -> None:
 		"""
 		Called when the connection to the service is close.
 		"""
 
-	def connection_failed(self, service_client: "ServiceClient", exception: Exception) -> None:
+	def connection_failed(self, service_client: ServiceClient, exception: Exception) -> None:
 		"""
 		Called when a connection to the service failed.
 		"""
 
 	@contextmanager
-	def register(self, service_client: "ServiceClient") -> Generator[None, None, None]:
+	def register(self, service_client: ServiceClient) -> Generator[None, None, None]:
 		"""
 		Context manager for register this listener on and off the message bus.
 		"""
