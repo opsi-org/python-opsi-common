@@ -680,7 +680,7 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 						level = OPSI_LEVEL_TO_LEVEL[level]
 					logger_.setLevel(level)  # type: ignore[union-attr]
 
-	if stderr_format and "(log_color)" in stderr_format and not isinstance(stderr_file, Console) and not stderr_file.isatty():
+	if stderr_format and "(log_color)" in stderr_format and stderr_file and not isinstance(stderr_file, Console) and not stderr_file.isatty():
 		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")
 	set_format(file_format=file_format, stderr_format=stderr_format)
 
