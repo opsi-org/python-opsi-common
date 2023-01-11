@@ -18,18 +18,20 @@ secondary = true
 [tool.poetry.dependencies]
 python = ">=3.10,<3.12"
 colorlog = "^6.6"
+# cryptography pinned (AttributeError: module 'lib' has no attribute 'OpenSSL_add_all_algorithms')
+cryptography = "38.0.4"
 distro = "^1.6"
 lz4 = "^4.0"
 msgpack = "^1.0"
+msgspec = "^0.12"
+orjson = "^3.8"
 psutil = "^5.8"
 pycryptodome = "^3.10"
 pyopenssl = "^23.0"
 pywin32 = {platform = "win32", version = "^303"}
 requests = "^2.26"
-websocket-client = "^1.4"
-orjson = "^3.8"
-msgspec = "^0.12"
 rich = "^13.0"
+websocket-client = "^1.4"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^6.0"
