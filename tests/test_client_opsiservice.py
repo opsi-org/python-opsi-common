@@ -10,7 +10,7 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Thread
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable
 from unittest import mock
 from urllib.parse import unquote
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -31,7 +31,7 @@ from opsicommon.client.opsiservice import (
 	OpsiTimeoutError,
 	ServiceClient,
 	ServiceConnectionListener,
-	ServiceVerificationModes,
+	ServiceVerificationFlags,
 	WebSocketApp,
 )
 from opsicommon.exceptions import (
@@ -58,7 +58,7 @@ from opsicommon.testing.helpers import (  # type: ignore[import]
 class MyConnectionListener(ServiceConnectionListener):
 	def __init__(self) -> None:
 		super().__init__()
-		self.events: List[Tuple[str, ServiceClient, Optional[Exception]]] = []
+		self.events: list[tuple[str, ServiceClient, Exception | None]] = []
 
 	def connection_open(self, service_client: ServiceClient) -> None:
 		self.events.append(("open", service_client, None))
@@ -128,10 +128,16 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 	assert ServiceClient("::1", ca_cert_file=Path("/x/cacert.pem"))._ca_cert_file == Path(  # pylint: disable=protected-access
 		"/x/cacert.pem"
 	)
-	for mode in ServiceVerificationModes:
-		assert ServiceClient("::1", ca_cert_file="ca.pem", verify=mode)._verify == mode  # pylint: disable=protected-access
-		assert ServiceClient("::1", ca_cert_file="ca.pem", verify=mode.value)._verify == mode  # pylint: disable=protected-access
-	for mode in ServiceVerificationModes.OPSI_CA, ServiceVerificationModes.UIB_OPSI_CA:
+	for mode in ServiceVerificationFlags:
+		assert mode in ServiceClient("::1", ca_cert_file="ca.pem", verify=mode)._verify  # pylint: disable=protected-access
+		assert mode in ServiceClient("::1", ca_cert_file="ca.pem", verify=mode.value)._verify  # pylint: disable=protected-access
+		assert mode in ServiceClient("::1", ca_cert_file="ca.pem", verify=[mode])._verify  # pylint: disable=protected-access
+		assert mode in ServiceClient("::1", ca_cert_file="ca.pem", verify=[mode.value])._verify  # pylint: disable=protected-access
+	assert ServiceClient(  # pylint: disable=protected-access
+		"::1", ca_cert_file="ca.pem", verify=ServiceVerificationFlags.STRICT_CHECK
+	)._verify == [ServiceVerificationFlags.STRICT_CHECK]
+
+	for mode in ServiceVerificationFlags.OPSI_CA, ServiceVerificationFlags.UIB_OPSI_CA:
 		with pytest.raises(ValueError, match="ca_cert_file required"):  # pylint: disable=dotted-import-in-loop
 			ServiceClient("::1", verify=mode)
 	with pytest.raises(ValueError, match="bad_mode"):  # pylint: disable=dotted-import-in-loop
@@ -248,6 +254,23 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="uib_opsi_ca") as client:
 			client.connect()
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + "\n" + UIB_OPSI_CA
+
+		# expired
+		orig_ca_cert_as_pem = as_pem(ca_cert)
+		now = datetime.now()
+		ca_cert.set_notBefore((now - timedelta(days=100)).strftime("%Y%m%d%H%M%SZ").encode("utf-8"))
+		ca_cert.set_notAfter((now - timedelta(days=1)).strftime("%Y%m%d%H%M%SZ").encode("utf-8"))
+		opsi_ca_file_on_client.write_text(as_pem(ca_cert), encoding="utf-8")
+
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="opsi_ca") as client:
+			with pytest.raises(OpsiServiceVerificationError, match="certificate has expired"):
+				client.connect()
+
+		with ServiceClient(
+			f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify=["opsi_ca", "replace_expired_ca"]
+		) as client:
+			client.connect()
+			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == orig_ca_cert_as_pem
 
 
 def test_cookie_handling(tmp_path: Path) -> None:
@@ -381,7 +404,7 @@ def test_server_name_handling(  # pylint: disable=too-many-arguments
 	server_name: str,
 	expected_version: tuple,
 	expected_content_type: str,
-	expected_content_encoding: Optional[str],
+	expected_content_encoding: str | None,
 	expected_messagebus_available: bool,
 ) -> None:
 	log_file = tmp_path / f"{server_name}.log"
@@ -546,7 +569,7 @@ def test_get() -> None:
 		def __init__(self, client: ServiceClient) -> None:
 			super().__init__(daemon=True)
 			self.client = client
-			self.response: Tuple[int, str, dict, bytes] = (0, "", {}, b"")
+			self.response: tuple[int, str, dict, bytes] = (0, "", {}, b"")
 
 		def run(self) -> None:
 			self.client.get("/")
@@ -628,7 +651,7 @@ def test_jsonrpc(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.0.0 (uvicorn)"}) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
-			params: List[Union[Tuple[Any, ...], List[Any], None]] = [
+			params: list[tuple[Any, ...] | list[Any] | None] = [
 				[1],
 				(1, 2),
 				["1", "2", 3],
@@ -734,7 +757,7 @@ def test_messagebus_jsonrpc() -> None:
 	) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			messagebus = client.connect_messagebus()
-			params: List[Union[Tuple[Any, ...], List[Any], None]] = [
+			params: list[tuple[Any, ...] | list[Any] | None] = [
 				[1],
 				(1, 2),
 				["1", "2", 3],
@@ -802,10 +825,10 @@ def test_messagebus_multi_thread() -> None:
 
 def test_messagebus_listener() -> None:
 	class StoringListener(MessagebusListener):
-		def __init__(self, message_types: Iterable[Union[MessageType, str]] = None) -> None:
+		def __init__(self, message_types: Iterable[MessageType | str] | None = None) -> None:
 			super().__init__(message_types)
-			self.messages_received: List[Message] = []
-			self.expired_messages_received: List[Message] = []
+			self.messages_received: list[Message] = []
+			self.expired_messages_received: list[Message] = []
 
 		def message_received(self, message: Message) -> None:
 			self.messages_received.append(message)

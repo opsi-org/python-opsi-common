@@ -23,18 +23,7 @@ from pathlib import Path
 from threading import Event, Lock, Thread
 from traceback import TracebackException
 from types import TracebackType
-from typing import (
-	Any,
-	Callable,
-	Dict,
-	Generator,
-	Iterable,
-	List,
-	Optional,
-	Tuple,
-	Type,
-	Union,
-)
+from typing import Any, Callable, Generator, Iterable, Type
 from urllib.parse import quote, unquote, urlparse
 from uuid import uuid4
 
@@ -130,11 +119,12 @@ kGOsCMSImzajpmtonx3ccPgSOyEWyoEaGij6u80QtFkj9g==
 logger = get_logger("opsicommon.general")
 
 
-class ServiceVerificationModes(str, Enum):
+class ServiceVerificationFlags(str, Enum):
 	STRICT_CHECK = "strict_check"
 	OPSI_CA = "opsi_ca"
 	UIB_OPSI_CA = "uib_opsi_ca"
 	ACCEPT_ALL = "accept_all"
+	REPLACE_EXPIRED_CA = "replace_expired_ca"
 
 
 class CallbackThread(Thread):
@@ -193,16 +183,16 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 	def __init__(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		self,
-		address: Union[Iterable[str], str],
+		address: Iterable[str] | str,
 		*,
-		username: Optional[str] = None,
-		password: Optional[str] = None,
-		ca_cert_file: Optional[Union[str, Path]] = None,
-		verify: str = ServiceVerificationModes.STRICT_CHECK,
-		session_cookie: Optional[str] = None,
+		username: str | None = None,
+		password: str | None = None,
+		ca_cert_file: str | Path | None = None,
+		verify: str | Iterable[str] = ServiceVerificationFlags.STRICT_CHECK,
+		session_cookie: str | None = None,
 		session_lifetime: int = 150,
-		proxy_url: Optional[str] = "system",
-		user_agent: Optional[str] = None,
+		proxy_url: str | None = "system",
+		user_agent: str | None = None,
 		connect_timeout: float = 10.0,
 		max_time_diff: float = 5.0
 	) -> None:
@@ -220,14 +210,17 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				If ca_cert_file missing or empty, accept every certificate once.
 				Fetch opsi ca from service after each successful connection.
 			uib_opsi_ca:
-				Like opsi_ca, but also accept server certficates signed by uib.
+				Accept server certficates signed by uib.
 			accept_all:
 				Do not check server certificate.
 				Fetch opsi ca from service and update ca_cert_file if provided.
+			replace_expired_ca:
+				To use in combination with opsi_ca.
+				If opsi_ca from ca_cert_file is expired, accept every certificate once.
 		"""
 		self._messagebus = Messagebus(self)
 
-		self._addresses: List[str] = []
+		self._addresses: list[str] = []
 		self._address_index = 0
 		self.server_name = ""
 		self.server_version = version.parse("0")
@@ -237,7 +230,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self._connect_lock = Lock()
 		self._messagebus_connect_lock = Lock()
 		self._listener_lock = Lock()
-		self._listener: List[ServiceConnectionListener] = []
+		self._listener: list[ServiceConnectionListener] = []
 		self._username = username
 		self._password = password
 
@@ -254,14 +247,26 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				ca_cert_file = Path(ca_cert_file)
 			self._ca_cert_file = ca_cert_file
 
-		if verify and not isinstance(verify, ServiceVerificationModes):
-			verify = ServiceVerificationModes(verify)
-		if verify not in ServiceVerificationModes:
-			raise ValueError("Invalid verification mode")
-		if verify in (ServiceVerificationModes.OPSI_CA, ServiceVerificationModes.UIB_OPSI_CA) and not self._ca_cert_file:
-			raise ValueError("ca_cert_file required for selected verification mode")
-		if verify and isinstance(verify, ServiceVerificationModes):
-			self._verify: ServiceVerificationModes = verify
+		verify = verify or []
+		if isinstance(verify, (str, ServiceVerificationFlags)):
+			verify = [verify]  # type: ignore[list-item]  # pylint: disable=use-tuple-over-list
+
+		self._verify: list[ServiceVerificationFlags] = []
+		for verify_flag in list(verify):
+			if not isinstance(verify_flag, ServiceVerificationFlags):
+				verify_flag = ServiceVerificationFlags(verify_flag)
+			if verify_flag not in ServiceVerificationFlags:
+				raise ValueError(f"Invalid verification mode {verify_flag}")
+			self._verify.append(verify_flag)
+
+		if ServiceVerificationFlags.STRICT_CHECK in self._verify:
+			self._verify = [ServiceVerificationFlags.STRICT_CHECK]
+
+		if ServiceVerificationFlags.UIB_OPSI_CA in verify and ServiceVerificationFlags.OPSI_CA not in self._verify:
+			self._verify.append(ServiceVerificationFlags.OPSI_CA)
+
+		if ServiceVerificationFlags.OPSI_CA in self._verify and not self._ca_cert_file:
+			raise ValueError(f"ca_cert_file required for selected {ServiceVerificationFlags.OPSI_CA}")
 
 		if session_cookie and "=" not in session_cookie:
 			raise ValueError("Invalid session cookie, <name>=<value> is needed")
@@ -306,12 +311,12 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			session=self._session,
 		)
 
-		if self._verify == ServiceVerificationModes.ACCEPT_ALL:
+		if ServiceVerificationFlags.ACCEPT_ALL in self._verify:
 			self._session.verify = False
 		else:
 			self._session.verify = str(self._ca_cert_file) if self._ca_cert_file else True
 
-	def set_addresses(self, address: Union[Iterable[str], str]) -> None:
+	def set_addresses(self, address: Iterable[str] | str) -> None:
 		self._addresses = []
 		self._address_index = 0
 
@@ -351,11 +356,11 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		return self._addresses[self._address_index]
 
 	@property
-	def verify(self) -> ServiceVerificationModes:
+	def verify(self) -> list[ServiceVerificationFlags]:
 		return self._verify
 
 	@property
-	def ca_cert_file(self) -> Optional[Path]:
+	def ca_cert_file(self) -> Path | None:
 		return self._ca_cert_file
 
 	@property
@@ -363,19 +368,19 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		return self._connected
 
 	@property
-	def username(self) -> Optional[str]:
+	def username(self) -> str | None:
 		return self._username
 
 	@property
-	def password(self) -> Optional[str]:
+	def password(self) -> str | None:
 		return self._password
 
 	@property
-	def proxy_url(self) -> Optional[str]:
+	def proxy_url(self) -> str | None:
 		return self._proxy_url
 
 	@property
-	def session_cookie(self) -> Optional[str]:
+	def session_cookie(self) -> str | None:
 		if not self._session.cookies or not self._session.cookies._cookies:  # type: ignore[attr-defined] # pylint: disable=protected-access
 			return None
 		for tmp1 in self._session.cookies._cookies.values():  # type: ignore[attr-defined] # pylint: disable=protected-access
@@ -422,14 +427,32 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			raise OpsiServiceError("Failed to fetch opsi-ca-cert.pem: No certificates in response")
 
 		data = "\n".join([dump_certificate(FILETYPE_PEM, cert).decode("utf-8") for cert in ca_certs])
-		if self._verify == ServiceVerificationModes.UIB_OPSI_CA:
+		if ServiceVerificationFlags.UIB_OPSI_CA in self._verify:
 			data += "\n" + UIB_OPSI_CA
 		self._ca_cert_file.write_text(data, encoding="utf-8")
 
 		logger.info("CA cert file '%s' successfully updated", self._ca_cert_file)
 
-	def get_opsi_ca_certs(self) -> List[X509]:
-		ca_certs: List[X509] = []
+	def opsi_ca_certs_expired(self) -> bool:
+		if not self._ca_cert_file or not self._ca_cert_file.exists():
+			return False
+
+		data = self._ca_cert_file.read_text(encoding="utf-8")
+		now = datetime.now()
+		for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):  # pylint: disable=dotted-import-in-loop
+			try:  # pylint: disable=loop-try-except-usage
+				cert = load_certificate(FILETYPE_PEM, match.group(1).encode("utf-8"))
+				enddate = datetime.strptime((cert.get_notAfter() or b"").decode("utf-8"), "%Y%m%d%H%M%SZ")
+				if enddate <= now:
+					logger.notice("Expired certificate found: %r", cert)  # pylint: disable=loop-global-usage
+					return True
+			except Exception as err:  # pylint: disable=broad-except
+				logger.error(err, exc_info=True)  # pylint: disable=loop-global-usage
+				return True
+		return False
+
+	def get_opsi_ca_certs(self) -> list[X509]:
+		ca_certs: list[X509] = []
 		if not self._ca_cert_file or not self._ca_cert_file.exists() or self._ca_cert_file.stat().st_size == 0:
 			return ca_certs
 		try:
@@ -451,13 +474,15 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		with self._connect_lock:
 			ca_cert_file_exists = self._ca_cert_file and self._ca_cert_file.exists()
 			verify = self._session.verify
-			if (
-				self._verify in (ServiceVerificationModes.OPSI_CA, ServiceVerificationModes.UIB_OPSI_CA)
-				and self._ca_cert_file
-				and (not ca_cert_file_exists or self._ca_cert_file.stat().st_size == 0)
-			):
-				logger.info("Service verification enabled, but CA cert file %r does not exist or is empty, skipping verification", self._ca_cert_file)
-				verify = False
+			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file:
+				if not ca_cert_file_exists or self._ca_cert_file.stat().st_size == 0:
+					logger.info("Service verification enabled, but CA cert file %r does not exist or is empty, skipping verification", self._ca_cert_file)
+					verify = False
+				elif ServiceVerificationFlags.REPLACE_EXPIRED_CA in self._verify and self.opsi_ca_certs_expired():
+					logger.info(
+						"Service verification enabled, but a certificate from CA cert file %r is expired, skipping verification", self._ca_cert_file
+					)
+					verify = False
 
 			if self._ca_cert_file and verify and not ca_cert_file_exists:
 				# Prevent OSError invalid path
@@ -558,8 +583,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		return f"{self.base_url}{path}"
 
 	def request(  # pylint: disable=too-many-arguments
-		self, method: str, path: str, headers: Optional[Dict[str, str]] = None, read_timeout: float = 60.0, data: Optional[bytes] = None
-	) -> Tuple[int, str, CaseInsensitiveDict, bytes]:
+		self, method: str, path: str, headers: dict[str, str] | None = None, read_timeout: float = 60.0, data: bytes | None = None
+	) -> tuple[int, str, CaseInsensitiveDict, bytes]:
 		self._assert_connected()
 		try:
 			response = self._session.request(
@@ -577,16 +602,16 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		return (response.status_code, response.reason, response.headers, response.content)
 
 	def get(
-		self, path: str, headers: Optional[Dict[str, str]] = None, read_timeout: float = 60.0
-	) -> Tuple[int, str, CaseInsensitiveDict, bytes]:
+		self, path: str, headers: dict[str, str] | None = None, read_timeout: float = 60.0
+	) -> tuple[int, str, CaseInsensitiveDict, bytes]:
 		return self.request("GET", path=path, headers=headers, read_timeout=read_timeout)
 
 	def post(
-		self, path: str, data: Optional[bytes] = None, headers: Optional[Dict[str, str]] = None, read_timeout: float = 60.0
-	) -> Tuple[int, str, CaseInsensitiveDict, bytes]:
+		self, path: str, data: bytes | None = None, headers: dict[str, str] | None = None, read_timeout: float = 60.0
+	) -> tuple[int, str, CaseInsensitiveDict, bytes]:
 		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data)
 
-	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any], None] = None, return_result_only: bool = True) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+	def jsonrpc(self, method: str, params: tuple[Any, ...] | list[Any] | None = None, return_result_only: bool = True) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		params = params or []
 		if isinstance(params, tuple):
 			params = list(params)
@@ -650,7 +675,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			logger.trace("Decompressing data with lz4")
 			data = lz4.frame.decompress(data)
 
-		error_cls: Optional[Type[Exception]] = None
+		error_cls: Type[Exception] | None = None
 		error_msg = None
 		if status_code != 200:
 			error_msg = reason
@@ -729,7 +754,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 
 class MessagebusListener():  # pylint: disable=too-few-public-methods
-	def __init__(self, message_types: Optional[Iterable[Union[MessageType, str]]] = None) -> None:
+	def __init__(self, message_types: Iterable[MessageType | str] | None = None) -> None:
 		"""
 		message_types:
 		"""
@@ -766,15 +791,15 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self.daemon = True
 		self._context = copy_context()
 		self._client = opsi_service_client
-		self._app: Optional[WebSocketApp] = None
+		self._app: WebSocketApp | None = None
 		self._should_stop = Event()
 		self._should_be_connected = False
 		self._connected = False
 		self._connected_result = Event()
-		self._connect_exception: Optional[Exception] = None
+		self._connect_exception: Exception | None = None
 		self._disconnected_result = Event()
 		self._send_lock = Lock()
-		self._listener: List[MessagebusListener] = []
+		self._listener: list[MessagebusListener] = []
 		self._listener_lock = Lock()
 		self._connect_timeout = 10.0
 		self.ping_interval = 15.0  # Send ping every specified period in seconds.
@@ -846,14 +871,14 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			if listener in self._listener:
 				self._listener.remove(listener)
 
-	def wait_for_jsonrpc_response_message(self, rpc_id: str, timeout: Optional[float] = None) -> JSONRPCResponseMessage:
+	def wait_for_jsonrpc_response_message(self, rpc_id: str, timeout: float | None = None) -> JSONRPCResponseMessage:
 		class JSONRPCResponseListener(MessagebusListener):
-			def __init__(self, rpc_id: str, timeout: Optional[float] = None) -> None:
+			def __init__(self, rpc_id: str, timeout: float | None = None) -> None:
 				super().__init__((MessageType.JSONRPC_RESPONSE,))
 				self.rpc_id = rpc_id
 				self.timeout = timeout
 				self.message_received_event = Event()
-				self.message: Optional[JSONRPCResponseMessage] = None
+				self.message: JSONRPCResponseMessage | None = None
 
 			def wait_for_message(self) -> JSONRPCResponseMessage:
 				if self.message_received_event.wait(self.timeout) and self.message:
@@ -869,7 +894,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		with listener.register(self):
 			return listener.wait_for_message()
 
-	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any], None] = None, return_result_only: bool = True) -> Any:
+	def jsonrpc(self, method: str, params: tuple[Any, ...] | list[Any] | None = None, return_result_only: bool = True) -> Any:
 		params = params or tuple()
 		if isinstance(params, list):
 			params = tuple(params)
@@ -931,8 +956,8 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self._connected_result.clear()
 		self._connect_exception = None
 
-		sslopt: Dict[str, Union[str, ssl.VerifyMode]] = {}  # pylint: disable=no-member
-		if self._client.verify == ServiceVerificationModes.ACCEPT_ALL:
+		sslopt: dict[str, str | ssl.VerifyMode] = {}  # pylint: disable=no-member
+		if ServiceVerificationFlags.ACCEPT_ALL in self._client.verify:
 			sslopt["cert_reqs"] = ssl.CERT_NONE
 		if self._client.ca_cert_file:
 			sslopt["ca_certs"] = str(self._client.ca_cert_file)
