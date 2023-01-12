@@ -478,63 +478,64 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			logger.warning(err, exc_info=True)
 		return ca_certs
 
-	def backend_getInterface(self) -> list[dict[str, Any]]:  # pylint: disable=invalid-name
-		return self.jsonrpc_interface
-
 	def create_jsonrpc_methods(self, instance: Any = None) -> None:  # pylint: disable=too-many-locals
 		if self.jsonrpc_interface is None:
 			raise ValueError("Interface description not available")
 
 		instance = instance or self
 
-		for method in self.jsonrpc_interface:
-			try:  # pylint: disable=loop-try-except-usage
+		def backend_getInterface(self: ServiceClient) -> list[dict[str, Any]]:  # pylint: disable=invalid-name,unused-variable
+			return self.jsonrpc_interface
+
+		def backend_exit(self: ServiceClient) -> None:  # pylint: disable=unused-variable
+			return self.disconnect()
+
+		for method in self.jsonrpc_interface:  # pylint: disable=too-many-nested-blocks
+			try:  # pylint: disable=loop-try-except-usage,too-many-nested-blocks
 				method_name = method["name"]
 
-				if method_name == "backend_getInterface":
-					continue
+				if method_name not in ("backend_getInterface", "backend_exit"):
+					logger.debug("Creating instance method: %s", method_name)  # pylint: disable=loop-global-usage
 
-				logger.debug("Creating instance method: %s", method_name)  # pylint: disable=loop-global-usage
+					args = method["args"]
+					varargs = method["varargs"]
+					keywords = method["keywords"]
+					defaults = method["defaults"]
 
-				args = method["args"]
-				varargs = method["varargs"]
-				keywords = method["keywords"]
-				defaults = method["defaults"]
+					arg_list = []
+					call_list = []
+					for i, argument in enumerate(args):
+						if argument == "self":
+							continue
 
-				arg_list = []
-				call_list = []
-				for i, argument in enumerate(args):
-					if argument == "self":
-						continue
+						if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):  # pylint: disable=loop-invariant-statement
+							default = defaults[len(defaults) - len(args) + i]  # pylint: disable=loop-invariant-statement
+							if isinstance(default, str):
+								default = repr(default)
+							arg_list.append(f"{argument}={default}")
+						else:
+							arg_list.append(argument)
+						call_list.append(argument)
 
-					if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):  # pylint: disable=loop-invariant-statement
-						default = defaults[len(defaults) - len(args) + i]  # pylint: disable=loop-invariant-statement
-						if isinstance(default, str):
-							default = repr(default)
-						arg_list.append(f"{argument}={default}")
-					else:
-						arg_list.append(argument)
-					call_list.append(argument)
+					if varargs:
+						for vararg in varargs:
+							arg_list.append(f"*{vararg}")
+							call_list.append(vararg)
 
-				if varargs:
-					for vararg in varargs:
-						arg_list.append(f"*{vararg}")
-						call_list.append(vararg)
+					if keywords:
+						arg_list.append(f"**{keywords}")
+						call_list.append(keywords)
 
-				if keywords:
-					arg_list.append(f"**{keywords}")
-					call_list.append(keywords)
+					arg_string = ", ".join(arg_list)
+					call_string = ", ".join(call_list)
 
-				arg_string = ", ".join(arg_list)
-				call_string = ", ".join(call_list)
-
-				logger.trace("%s: arg string is: %s", method_name, arg_string)  # pylint: disable=loop-global-usage
-				logger.trace("%s: call string is: %s", method_name, call_string)  # pylint: disable=loop-global-usage
-				with warnings.catch_warnings():  # pylint: disable=dotted-import-in-loop
-					exec(  # pylint: disable=exec-used
-						f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])'
-					)
-					setattr(instance, method_name, MethodType(eval(method_name), self))  # pylint: disable=eval-used,dotted-import-in-loop
+					logger.trace("%s: arg string is: %s", method_name, arg_string)  # pylint: disable=loop-global-usage
+					logger.trace("%s: call string is: %s", method_name, call_string)  # pylint: disable=loop-global-usage
+					with warnings.catch_warnings():  # pylint: disable=dotted-import-in-loop
+						exec(  # pylint: disable=exec-used
+							f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])'
+						)
+				setattr(instance, method_name, MethodType(eval(method_name), self))  # pylint: disable=eval-used,dotted-import-in-loop
 			except Exception as err:  # pylint: disable=broad-except
 				logger.error("Failed to create instance method '%s': %s", method, err)  # pylint: disable=loop-global-usage
 

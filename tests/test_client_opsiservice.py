@@ -710,14 +710,38 @@ def test_jsonrpc_interface(tmp_path: Path) -> None:
 			"alternative_method": None,
 			"doc": None,
 			"annotations": {},
-		}
+		},
+		{
+			"name": "backend_getInterface",
+			"params": [],
+			"args": ["self"],
+			"varargs": None,
+			"keywords": None,
+			"defaults": None,
+			"deprecated": False,
+			"alternative_method": None,
+			"doc": None,
+			"annotations": {},
+		},
+		{
+			"name": "backend_exit",
+			"params": [],
+			"args": ["self"],
+			"varargs": None,
+			"keywords": None,
+			"defaults": None,
+			"deprecated": False,
+			"alternative_method": None,
+			"doc": None,
+			"annotations": {},
+		},
 	]
-	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.0.0 (uvicorn)"}) as server:
+	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.0.285 (uvicorn)"}) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", jsonrpc_create_methods=True) as client:
 			server.response_body = json.dumps({"jsonrpc": "2.0", "result": interface}).encode("utf-8")
 			server.response_headers["Content-Type"] = "application/json"
 			client.connect()
-			assert len(client.jsonrpc_interface) == 1
+			assert len(client.jsonrpc_interface) == 3
 			with pytest.raises(ValueError, match="Method 'invalid' not found in interface description"):
 				client.jsonrpc(method="invalid", params={"arg1": "test"})
 			with pytest.raises(ValueError, match="Invalid param 'invalid' for method 'test_method'"):
@@ -741,12 +765,19 @@ def test_jsonrpc_interface(tmp_path: Path) -> None:
 			assert reqs[6]["request"]["params"] == [1, 2, {"x": 3, "y": 4}]
 			assert reqs[7]["request"]["params"] == [1, "default2", {"x": "y"}]
 
-			class Test:
+			class Test:  # pylint: disable=too-few-public-methods
 				pass
 
+			log_file.unlink()
 			test_obj = Test()
 			client.create_jsonrpc_methods(test_obj)
-			test_obj.test_method(1, x="y")
+			test_obj.backend_getInterface()  # type: ignore[attr-defined]  # pylint: disable=no-member
+			test_obj.test_method(1, x="y")  # type: ignore[attr-defined]  # pylint: disable=no-member
+			test_obj.backend_exit()  # type: ignore[attr-defined]  # pylint: disable=no-member
+			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+			assert reqs[0]["request"]["method"] == "test_method"
+			assert reqs[1]["method"] == "POST"
+			assert reqs[1]["path"] == "/session/logout"
 
 
 def test_jsonrpc_objects(tmp_path: Path) -> None:
