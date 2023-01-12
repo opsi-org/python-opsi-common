@@ -24,7 +24,7 @@ from ipaddress import IPv6Address, ip_address
 from pathlib import Path
 from threading import Event, Lock, Thread
 from traceback import TracebackException
-from types import TracebackType
+from types import MethodType, TracebackType
 from typing import Any, Callable, Generator, Iterable, Type
 from urllib.parse import quote, unquote, urlparse
 from uuid import uuid4
@@ -199,7 +199,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		user_agent: str | None = None,
 		connect_timeout: float = 10.0,
 		max_time_diff: float = 5.0,
-		jsonrpc_create_objects: bool = False
+		jsonrpc_create_objects: bool = False,
+		jsonrpc_create_methods: bool = False
 	) -> None:
 		"""
 		proxy_url:
@@ -232,6 +233,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self.new_host_id: str | None = None
 		self.new_host_key: str | None = None
 		self.jsonrpc_create_objects = bool(jsonrpc_create_objects)
+		self.jsonrpc_create_methods = bool(jsonrpc_create_methods)
 		self.jsonrpc_interface: list[dict[str, Any]] = []
 		self._jsonrpc_method_params: dict[str, dict[str, Any]] = {}
 		self._messagebus_available = False
@@ -476,6 +478,64 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			logger.warning(err, exc_info=True)
 		return ca_certs
 
+	def backend_getInterface(self) -> list[dict[str, Any]]:  # pylint: disable=invalid-name
+		return self.jsonrpc_interface
+
+	def _create_jsonrpc_methods(self) -> None:  # pylint: disable=too-many-locals
+		if self.jsonrpc_interface is None:
+			raise ValueError("Interface description not available")
+
+		for method in self.jsonrpc_interface:
+			try:  # pylint: disable=loop-try-except-usage
+				method_name = method["name"]
+
+				if method_name == "backend_getInterface":
+					continue
+
+				logger.debug("Creating instance method: %s", method_name)  # pylint: disable=loop-global-usage
+
+				args = method["args"]
+				varargs = method["varargs"]
+				keywords = method["keywords"]
+				defaults = method["defaults"]
+
+				arg_list = []
+				call_list = []
+				for i, argument in enumerate(args):
+					if argument == "self":
+						continue
+
+					if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):  # pylint: disable=loop-invariant-statement
+						default = defaults[len(defaults) - len(args) + i]  # pylint: disable=loop-invariant-statement
+						if isinstance(default, str):
+							default = repr(default)
+						arg_list.append(f"{argument}={default}")
+					else:
+						arg_list.append(argument)
+					call_list.append(argument)
+
+				if varargs:
+					for vararg in varargs:
+						arg_list.append(f"*{vararg}")
+						call_list.append(vararg)
+
+				if keywords:
+					arg_list.append(f"**{keywords}")
+					call_list.append(keywords)
+
+				arg_string = ", ".join(arg_list)
+				call_string = ", ".join(call_list)
+
+				logger.trace("%s: arg string is: %s", method_name, arg_string)  # pylint: disable=loop-global-usage
+				logger.trace("%s: call string is: %s", method_name, call_string)  # pylint: disable=loop-global-usage
+				with warnings.catch_warnings():  # pylint: disable=dotted-import-in-loop
+					exec(  # pylint: disable=exec-used
+						f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])'
+					)
+					setattr(self, method_name, MethodType(eval(method_name), self))  # pylint: disable=eval-used,dotted-import-in-loop
+			except Exception as err:  # pylint: disable=broad-except
+				logger.error("Failed to create instance method '%s': %s", method, err)  # pylint: disable=loop-global-usage
+
 	def connect(self) -> None:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		if self._connect_lock.locked():
 			return
@@ -585,6 +645,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 						pass
 					def_idx += 1
 				self._jsonrpc_method_params[method["name"]][param] = default  # pylint: disable=loop-invariant-statement
+
+		if self.jsonrpc_create_methods:
+			self._create_jsonrpc_methods()
 
 		for listener in self._listener:
 			CallbackThread(listener.connection_established, service_client=self).start()

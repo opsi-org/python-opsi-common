@@ -696,17 +696,24 @@ def test_jsonrpc(tmp_path: Path) -> None:
 			assert reqs[-1]["request"]["method"] == "reconnect"
 
 
-def test_jsonrpc_dict_params(tmp_path: Path) -> None:
+def test_jsonrpc_interface(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
-	interface = [  # pylint: disable=use-tuple-over-list
-		{"name": "test_method", "params": ["arg1", "*arg2", "**arg3"], "defaults": ["default2"]}
+	interface: list[dict[str, Any]] = [  # pylint: disable=use-tuple-over-list
+		{
+			"name": "test_method",
+			"params": ["arg1", "*arg2", "**arg3"],
+			"args": ["arg1", "arg2"],
+			"varargs": None,
+			"keywords": "arg4",
+			"defaults": ["default2"],
+			"deprecated": False,
+			"alternative_method": None,
+			"doc": None,
+			"annotations": {},
+		}
 	]
-	with http_test_server(
-		generate_cert=True,
-		log_file=log_file,
-		response_headers={"server": "opsiconfd 4.2.0.0 (uvicorn)"},
-	) as server:
-		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.0.0 (uvicorn)"}) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", jsonrpc_create_methods=True) as client:
 			server.response_body = json.dumps({"jsonrpc": "2.0", "result": interface}).encode("utf-8")
 			server.response_headers["Content-Type"] = "application/json"
 			client.connect()
@@ -719,6 +726,8 @@ def test_jsonrpc_dict_params(tmp_path: Path) -> None:
 			client.jsonrpc(method="test_method", params={"arg1": 1, "arg3": "3"})
 			client.jsonrpc(method="test_method", params={"arg2": 2})
 			client.jsonrpc(method="test_method", params={"arg3": "3"})
+			client.test_method(1, 2, x=3, y=4)  # type: ignore[attr-defined]  # pylint: disable=no-member
+			client.test_method(1, x="y")  # type: ignore[attr-defined]  # pylint: disable=no-member
 
 			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
 			assert reqs[0]["method"] == "HEAD"
@@ -729,6 +738,8 @@ def test_jsonrpc_dict_params(tmp_path: Path) -> None:
 			assert reqs[3]["request"]["params"] == [1, "default2", "3"]
 			assert reqs[4]["request"]["params"] == [None, 2]
 			assert reqs[5]["request"]["params"] == [None, "default2", "3"]
+			assert reqs[6]["request"]["params"] == [1, 2, {"x": 3, "y": 4}]
+			assert reqs[7]["request"]["params"] == [1, "default2", {"x": "y"}]
 
 
 def test_jsonrpc_objects(tmp_path: Path) -> None:
