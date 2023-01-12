@@ -481,9 +481,11 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	def backend_getInterface(self) -> list[dict[str, Any]]:  # pylint: disable=invalid-name
 		return self.jsonrpc_interface
 
-	def _create_jsonrpc_methods(self) -> None:  # pylint: disable=too-many-locals
+	def create_jsonrpc_methods(self, instance: Any = None) -> None:  # pylint: disable=too-many-locals
 		if self.jsonrpc_interface is None:
 			raise ValueError("Interface description not available")
+
+		instance = instance or self
 
 		for method in self.jsonrpc_interface:
 			try:  # pylint: disable=loop-try-except-usage
@@ -532,7 +534,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					exec(  # pylint: disable=exec-used
 						f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])'
 					)
-					setattr(self, method_name, MethodType(eval(method_name), self))  # pylint: disable=eval-used,dotted-import-in-loop
+					setattr(instance, method_name, MethodType(eval(method_name), self))  # pylint: disable=eval-used,dotted-import-in-loop
 			except Exception as err:  # pylint: disable=broad-except
 				logger.error("Failed to create instance method '%s': %s", method, err)  # pylint: disable=loop-global-usage
 
@@ -647,7 +649,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				self._jsonrpc_method_params[method["name"]][param] = default  # pylint: disable=loop-invariant-statement
 
 		if self.jsonrpc_create_methods:
-			self._create_jsonrpc_methods()
+			self.create_jsonrpc_methods()
 
 		for listener in self._listener:
 			CallbackThread(listener.connection_established, service_client=self).start()

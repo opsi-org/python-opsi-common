@@ -741,6 +741,13 @@ def test_jsonrpc_interface(tmp_path: Path) -> None:
 			assert reqs[6]["request"]["params"] == [1, 2, {"x": 3, "y": 4}]
 			assert reqs[7]["request"]["params"] == [1, "default2", {"x": "y"}]
 
+			class Test:
+				pass
+
+			test_obj = Test()
+			client.create_jsonrpc_methods(test_obj)
+			test_obj.test_method(1, x="y")
+
 
 def test_jsonrpc_objects(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
