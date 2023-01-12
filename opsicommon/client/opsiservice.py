@@ -644,10 +644,11 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				default = None
 				if param[0] == "*":
 					param = param.lstrip("*")
-					try:  # pylint: disable=loop-try-except-usage
-						default = method["defaults"][def_idx]  # pylint: disable=loop-invariant-statement
-					except IndexError:
-						pass
+					if method["defaults"]:
+						try:  # pylint: disable=loop-try-except-usage
+							default = method["defaults"][def_idx]  # pylint: disable=loop-invariant-statement
+						except IndexError:
+							pass
 					def_idx += 1
 				self._jsonrpc_method_params[method["name"]][param] = default  # pylint: disable=loop-invariant-statement
 
