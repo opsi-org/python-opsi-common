@@ -570,7 +570,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					try:  # pylint: disable=loop-try-except-usage
 						timeout = (self._connect_timeout, self._connect_timeout)
 						response = self._session.head(self.base_url, timeout=timeout, verify=verify)
-						response.raise_for_status()
+						# Accept status 405 for older opsiconfd versions
+						if response.status_code not in (200, 405):
+							response.raise_for_status()
 						break
 					except SSLError as err:  # pylint: disable=loop-invariant-statement
 						try:  # pylint: disable=loop-try-except-usage
