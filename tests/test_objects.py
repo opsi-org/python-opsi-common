@@ -5,9 +5,7 @@ test_objects
 """
 
 import json
-from contextlib import contextmanager
-from typing import Any, Dict, Generator, Optional, Type
-from unittest import mock
+from typing import Any, Dict, Optional, Type
 
 import pytest
 from opsicommon.objects import (
