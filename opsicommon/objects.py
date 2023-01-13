@@ -10,6 +10,8 @@ As an example this contains classes for hosts, products, configurations.
 
 # pylint: disable=too-many-lines
 
+from __future__ import annotations
+
 from datetime import date, datetime
 from functools import lru_cache
 from inspect import getfullargspec
@@ -118,14 +120,10 @@ __all__ = (
 	"mandatory_constructor_args",
 	"objects_differ",
 	"OBJECT_CLASSES",
-	"serialize",
-	"deserialize"
 )
 
 
 logger = get_logger("opsicommon.general")
-
-_MANDATORY_CONSTRUCTOR_ARGS_CACHE = {}
 
 
 BaseObjectT = TypeVar('BaseObjectT', bound='BaseObject')
@@ -140,6 +138,7 @@ class classproperty:  # pylint: disable=invalid-name,too-few-public-methods
 
 
 class BaseObject:
+	copy_from_hash = False
 	sub_classes: dict[str, type] = {}
 	ident_separator = ";"
 	foreign_id_attributes: list[str] = []
@@ -238,6 +237,8 @@ class BaseObject:
 
 	@classmethod
 	def fromHash(cls: Type[BaseObjectT], _hash: dict[str, Any]) -> BaseObjectT:  # pylint: disable=invalid-name
+		if cls.copy_from_hash:
+			_hash = _hash.copy()
 		_cls = cls
 		try:
 			_cls = get_object_type(_hash.pop("type"))  # type: ignore
@@ -312,32 +313,33 @@ class BaseObject:
 		return self.__str__()
 
 
+@lru_cache(maxsize=0)
 def mandatory_constructor_args(_class: Type[BaseObject]) -> list[str]:
 	cache_key = _class.__name__  # type: ignore[attr-defined]
-	if cache_key not in _MANDATORY_CONSTRUCTOR_ARGS_CACHE:
-		spec = getfullargspec(_class.__init__)  # type: ignore[misc]
-		args = spec.args
-		defaults = spec.defaults
-		mandatory = None
-		if defaults is None:
-			mandatory = args[1:]
-		else:
-			last = len(defaults) * -1
-			mandatory = args[1:][:last]
-		logger.trace("mandatory_constructor_args for %s: %s", cache_key, mandatory)
-		_MANDATORY_CONSTRUCTOR_ARGS_CACHE[cache_key] = mandatory
-	return _MANDATORY_CONSTRUCTOR_ARGS_CACHE[cache_key]
+	spec = getfullargspec(_class.__init__)  # type: ignore[misc]
+	args = spec.args
+	defaults = spec.defaults
+	mandatory = None
+	if defaults is None:
+		mandatory = args[1:]
+	else:
+		last = len(defaults) * -1
+		mandatory = args[1:][:last]
+	logger.trace("mandatory_constructor_args for %s: %s", cache_key, mandatory)
+	return mandatory
 
 
+@lru_cache(maxsize=0)
 def get_ident_attributes(_class: Type[BaseObject]) -> tuple[str, ...]:
 	return tuple(mandatory_constructor_args(_class))
 
 
+@lru_cache(maxsize=0)
 def get_foreign_id_attributes(_class: Type[BaseObject]) -> Any:
 	return _class.foreign_id_attributes
 
 
-@lru_cache(maxsize=500)
+@lru_cache(maxsize=0)
 def get_possible_class_attributes(_class: Type[BaseObject]) -> set[str]:
 	"""
 	Returns the possible attributes of a class.
@@ -357,6 +359,7 @@ def get_possible_class_attributes(_class: Type[BaseObject]) -> set[str]:
 	return attributes_set
 
 
+@lru_cache(maxsize=0)
 def get_backend_method_prefix(_class: Type[BaseObject]) -> Any:
 	return _class.backend_method_prefix
 
@@ -1795,20 +1798,26 @@ class ProductOnDepot(Relationship):
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		productId: str,  # pylint: disable=invalid-name
-		productType: str,  # pylint: disable=invalid-name
-		productVersion: str,  # pylint: disable=invalid-name
-		packageVersion: str,  # pylint: disable=invalid-name
 		depotId: str,  # pylint: disable=invalid-name
+		productType: str | None = None,  # pylint: disable=invalid-name
+		productVersion: str | None = None,  # pylint: disable=invalid-name
+		packageVersion: str | None = None,  # pylint: disable=invalid-name
 		locked: bool | None = None,  # pylint: disable=invalid-name
 	):
+		self.productType: str | None = None  # pylint: disable=invalid-name
+		self.productVersion: str | None = None  # pylint: disable=invalid-name
+		self.packageVersion: str | None = None  # pylint: disable=invalid-name
 		self.locked: bool | None = None
 
 		self.setProductId(productId)
-		self.setProductType(productType)
-		self.setProductVersion(productVersion)
-		self.setPackageVersion(packageVersion)
 		self.setDepotId(depotId)
 
+		if productType is not None:
+			self.setProductType(productType)
+		if productVersion is not None:
+			self.setProductVersion(productVersion)
+		if packageVersion is not None:
+			self.setPackageVersion(packageVersion)
 		if locked is not None:
 			self.setLocked(locked)
 
@@ -1868,8 +1877,8 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		productId: str,  # pylint: disable=invalid-name
-		productType: str,  # pylint: disable=invalid-name
 		clientId: str,  # pylint: disable=invalid-name
+		productType: str | None = None,  # pylint: disable=invalid-name
 		targetConfiguration: str | None = None,  # pylint: disable=invalid-name
 		installationStatus: str | None = None,  # pylint: disable=invalid-name
 		actionRequest: str | None = None,  # pylint: disable=invalid-name
@@ -1881,6 +1890,7 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 		modificationTime: str | None = None,  # pylint: disable=invalid-name
 		actionSequence: int | None = None,  # pylint: disable=invalid-name
 	):
+		self.productType: str | None = None  # pylint: disable=invalid-name
 		self.targetConfiguration: str | None = None  # pylint: disable=invalid-name
 		self.installationStatus: str | None = None  # pylint: disable=invalid-name
 		self.actionRequest: str | None = None  # pylint: disable=invalid-name
@@ -1893,9 +1903,10 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 		self.actionSequence: int | None = -1  # pylint: disable=invalid-name
 
 		self.setProductId(productId)
-		self.setProductType(productType)
 		self.setClientId(clientId)
 
+		if productType is not None:
+			self.setProductType(productType)
 		if targetConfiguration is not None:
 			self.setTargetConfiguration(targetConfiguration)
 		if installationStatus is not None:
@@ -3117,8 +3128,10 @@ class AuditHardware(Entity):
 	def getIdentAttributes(self) -> tuple[str, ...]:
 		return ("hardwareClass", ) + tuple(sorted(self.hardware_attributes.get(self.hardwareClass, {})))
 
-	@staticmethod
-	def fromHash(_hash: dict[str, Any]) -> Any:
+	@classmethod
+	def fromHash(cls, _hash: dict[str, Any]) -> AuditHardware:
+		if cls.copy_from_hash:
+			_hash = _hash.copy()
 		_hash.pop("type", None)
 		return AuditHardware(**_hash)
 
@@ -3335,8 +3348,10 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 	def getIdentAttributes(self) -> tuple[str, ...]:
 		return ("hostId", "hardwareClass") + tuple(sorted(self.hardware_attributes.get(self.hardwareClass, {})))
 
-	@staticmethod
-	def fromHash(_hash: dict[str, Any]) -> Any:
+	@classmethod
+	def fromHash(cls, _hash: dict[str, Any]) -> AuditHardwareOnHost:
+		if cls.copy_from_hash:
+			_hash = _hash.copy()
 		_hash.pop("type", None)
 		return AuditHardwareOnHost(**_hash)
 
@@ -3362,36 +3377,3 @@ OBJECT_CLASSES = {name: cls for (name, cls) in globals().items() if isinstance(c
 @lru_cache(maxsize=0)
 def get_object_type(object_type: str) -> Type[BaseObject]:
 	return OBJECT_CLASSES[object_type]
-
-
-def serialize(obj: Any, deep: bool = False) -> Any:
-	# This is performance critical!
-	if isinstance(obj, list):
-		return [serialize(o, deep) for o in obj]
-	if isinstance(obj, BaseObject):
-		return obj.serialize()
-	if not deep:
-		return obj
-	if isinstance(obj, dict):
-		return {k: serialize(v, deep) for k, v in obj.items()}
-	return obj
-
-
-def deserialize(obj: Any, deep: bool = False) -> Any:  # pylint: disable=invalid-name
-	# This is performance critical!
-	if isinstance(obj, list):
-		return [deserialize(o) for o in obj]
-	if isinstance(obj, dict):
-		try:
-			obj_type = get_object_type(obj["type"])
-			return obj_type.fromHash(obj)  # type: ignore[union-attr]
-		except KeyError:
-			pass
-		except Exception as err:  # pylint: disable=broad-except
-			logger.error(err, exc_info=True)
-			raise ValueError(f"Failed to create object from dict {obj}: {err}") from err
-	if not deep:
-		return obj
-	if isinstance(obj, dict):
-		return {k: deserialize(v) for k, v in obj.items()}
-	return obj
