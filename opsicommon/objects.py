@@ -331,7 +331,10 @@ def mandatory_constructor_args(_class: Type[BaseObject]) -> list[str]:
 
 @lru_cache(maxsize=0)
 def get_ident_attributes(_class: Type[BaseObject]) -> tuple[str, ...]:
-	return tuple(mandatory_constructor_args(_class))  # type: ignore[arg-type]
+	ident_attributes = tuple(mandatory_constructor_args(_class))  # type: ignore[arg-type]
+	if "hardwareClass" in ident_attributes:
+		ident_attributes = tuple([a for a in ident_attributes if a != "hardwareClass"])  # pylint: disable=consider-using-generator
+	return ident_attributes
 
 
 @lru_cache(maxsize=0)
