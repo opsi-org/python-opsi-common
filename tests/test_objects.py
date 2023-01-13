@@ -7,6 +7,7 @@ test_objects
 import json
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, Optional, Type
+from unittest import mock
 
 import pytest
 from opsicommon.objects import (
@@ -575,6 +576,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_no_arguments() -> 
 			pass
 
 	obj = NoArgs()
+	assert mandatory_constructor_args(obj.__class__) == []
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_only_mandatory_arguments() -> None:
@@ -583,8 +585,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_only_mandatory_arg
 			pass
 
 	obj = OnlyMandatory(1, 1, 1)
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == ['arg1', 'arg2', 'arg3']
+	assert mandatory_constructor_args(obj.__class__) == ['arg1', 'arg2', 'arg3']
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_only_optional_arguments() -> None:
@@ -593,6 +594,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_only_optional_argu
 			pass
 
 	obj = OnlyOptional()
+	assert mandatory_constructor_args(obj.__class__) == []
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_mixed_arguments() -> None:
@@ -601,8 +603,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_mixed_arguments() 
 			pass
 
 	obj = MixedArgs(True, True)
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == ["arg1", "arg2"]
+	assert mandatory_constructor_args(obj.__class__) == ["arg1", "arg2"]
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_wildcard_arguments() -> None:
@@ -611,6 +612,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_wildcard_arguments
 			pass
 
 	obj = WildcardOnly("yeah", "great", "thing")
+	assert mandatory_constructor_args(obj.__class__) == []
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_keyword_arguments() -> None:
@@ -619,6 +621,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_keyword_arguments(
 			pass
 
 	obj = Kwargz(goand=1, get="asdf", them=[], girl=True)
+	assert mandatory_constructor_args(obj.__class__) == []
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_mixed_with_args_and_kwargs() -> None:
@@ -627,8 +630,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_mixed_with_args_an
 			pass
 
 	obj = KwargzAndMore(False, True, "some", "more", things="here")
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == ["crosseyed", "heart"]
+	assert mandatory_constructor_args(obj.__class__) == ["crosseyed", "heart"]
 
 
 def test_product_name_can_be_very_long() -> None:
