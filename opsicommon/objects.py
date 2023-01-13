@@ -168,7 +168,7 @@ class BaseObject:
 		return self.foreign_id_attributes
 
 	def getIdentAttributes(self) -> tuple[str, ...]:  # pylint: disable=invalid-name
-		return get_ident_attributes(self.__class__)
+		return get_ident_attributes(self.__class__)  # type: ignore[arg-type]
 
 	def getIdent(self, returnType: str = "unicode") -> list[str] | tuple[str, ...] | dict[str, str] | str:  # pylint: disable=invalid-name
 		returnType = forceUnicodeLower(returnType)
@@ -331,7 +331,7 @@ def mandatory_constructor_args(_class: Type[BaseObject]) -> list[str]:
 
 @lru_cache(maxsize=0)
 def get_ident_attributes(_class: Type[BaseObject]) -> tuple[str, ...]:
-	return tuple(mandatory_constructor_args(_class))
+	return tuple(mandatory_constructor_args(_class))  # type: ignore[arg-type]
 
 
 @lru_cache(maxsize=0)
@@ -370,7 +370,7 @@ def decode_ident(_class: Type[BaseObject], _hash: dict[str, Any]) -> dict[str, A
 
 	ident = _hash.pop("ident")
 	if not isinstance(ident, dict):
-		ident_keys = mandatory_constructor_args(_class)
+		ident_keys = mandatory_constructor_args(_class)  # type: ignore[arg-type]
 		ident_values = []  # pylint: disable=use-tuple-over-list
 		if isinstance(ident, str):
 			ident_values = ident.split(_class.ident_separator)
