@@ -644,7 +644,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				default = None
 				if param[0] == "*":
 					param = param.lstrip("*")
-					if method["defaults"]:
+					if method["defaults"]:  # pylint: disable=loop-invariant-statement
 						try:  # pylint: disable=loop-try-except-usage
 							default = method["defaults"][def_idx]  # pylint: disable=loop-invariant-statement
 						except IndexError:
