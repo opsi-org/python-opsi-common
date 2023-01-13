@@ -70,8 +70,8 @@ object_classes = [
 
 @contextmanager
 def empty_mandatory_constructor_args_cache() -> Generator[None, None, None]:
-	with mock.patch('opsicommon.objects._MANDATORY_CONSTRUCTOR_ARGS_CACHE', {}):
-		yield
+	#with mock.patch('opsicommon.objects._MANDATORY_CONSTRUCTOR_ARGS_CACHE', {}):
+	yield
 
 
 def test_object_classes() -> None:

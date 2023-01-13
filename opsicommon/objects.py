@@ -1798,26 +1798,20 @@ class ProductOnDepot(Relationship):
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		productId: str,  # pylint: disable=invalid-name
+		productType: str,  # pylint: disable=invalid-name
+		productVersion: str,  # pylint: disable=invalid-name
+		packageVersion: str,  # pylint: disable=invalid-name
 		depotId: str,  # pylint: disable=invalid-name
-		productType: str | None = None,  # pylint: disable=invalid-name
-		productVersion: str | None = None,  # pylint: disable=invalid-name
-		packageVersion: str | None = None,  # pylint: disable=invalid-name
 		locked: bool | None = None,  # pylint: disable=invalid-name
 	):
-		self.productType: str | None = None  # pylint: disable=invalid-name
-		self.productVersion: str | None = None  # pylint: disable=invalid-name
-		self.packageVersion: str | None = None  # pylint: disable=invalid-name
 		self.locked: bool | None = None
 
 		self.setProductId(productId)
+		self.setProductType(productType)
+		self.setProductVersion(productVersion)
+		self.setPackageVersion(packageVersion)
 		self.setDepotId(depotId)
 
-		if productType is not None:
-			self.setProductType(productType)
-		if productVersion is not None:
-			self.setProductVersion(productVersion)
-		if packageVersion is not None:
-			self.setPackageVersion(packageVersion)
 		if locked is not None:
 			self.setLocked(locked)
 
@@ -1877,8 +1871,8 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
 		productId: str,  # pylint: disable=invalid-name
+		productType: str,  # pylint: disable=invalid-name
 		clientId: str,  # pylint: disable=invalid-name
-		productType: str | None = None,  # pylint: disable=invalid-name
 		targetConfiguration: str | None = None,  # pylint: disable=invalid-name
 		installationStatus: str | None = None,  # pylint: disable=invalid-name
 		actionRequest: str | None = None,  # pylint: disable=invalid-name
@@ -1890,7 +1884,6 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 		modificationTime: str | None = None,  # pylint: disable=invalid-name
 		actionSequence: int | None = None,  # pylint: disable=invalid-name
 	):
-		self.productType: str | None = None  # pylint: disable=invalid-name
 		self.targetConfiguration: str | None = None  # pylint: disable=invalid-name
 		self.installationStatus: str | None = None  # pylint: disable=invalid-name
 		self.actionRequest: str | None = None  # pylint: disable=invalid-name
@@ -1903,10 +1896,9 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 		self.actionSequence: int | None = -1  # pylint: disable=invalid-name
 
 		self.setProductId(productId)
+		self.setProductType(productType)
 		self.setClientId(clientId)
 
-		if productType is not None:
-			self.setProductType(productType)
 		if targetConfiguration is not None:
 			self.setTargetConfiguration(targetConfiguration)
 		if installationStatus is not None:
