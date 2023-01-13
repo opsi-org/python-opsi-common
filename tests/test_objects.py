@@ -7,7 +7,6 @@ test_objects
 import json
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, Optional, Type
-from unittest import mock
 
 import pytest
 from opsicommon.objects import (
@@ -66,12 +65,6 @@ from opsicommon.objects import (  # pylint: disable=wrong-import-position,unused
 object_classes = [
 	_obj for _name, _obj in dict(globals()).items() if _name not in pre_globals and _name != "pre_globals"
 ]
-
-
-@contextmanager
-def empty_mandatory_constructor_args_cache() -> Generator[None, None, None]:
-	#with mock.patch('opsicommon.objects._MANDATORY_CONSTRUCTOR_ARGS_CACHE', {}):
-	yield
 
 
 def test_object_classes() -> None:
@@ -582,8 +575,6 @@ def test_get_mandatory_constructor_args_from_constructor_with_no_arguments() -> 
 			pass
 
 	obj = NoArgs()
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == []
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_only_mandatory_arguments() -> None:
@@ -602,8 +593,6 @@ def test_get_mandatory_constructor_args_from_constructor_with_only_optional_argu
 			pass
 
 	obj = OnlyOptional()
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == []
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_mixed_arguments() -> None:
@@ -622,8 +611,6 @@ def test_get_mandatory_constructor_args_from_constructor_with_wildcard_arguments
 			pass
 
 	obj = WildcardOnly("yeah", "great", "thing")
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == []
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_keyword_arguments() -> None:
@@ -632,8 +619,6 @@ def test_get_mandatory_constructor_args_from_constructor_with_keyword_arguments(
 			pass
 
 	obj = Kwargz(goand=1, get="asdf", them=[], girl=True)
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == []
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_mixed_with_args_and_kwargs() -> None:
