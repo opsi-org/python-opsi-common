@@ -7,7 +7,9 @@ This file is part of opsi - https://www.opsi.org
 
 import datetime
 import time
+from contextlib import nullcontext
 from typing import Any, Generator, Type
+from uuid import UUID
 
 import pytest
 from opsicommon.objects import Host, OpsiClient, ProductOnClient
@@ -64,6 +66,8 @@ from opsicommon.types import (
 	forceUniqueList,
 	forceUnsignedInt,
 	forceUrl,
+	forceUUID,
+	forceUUIDString,
 )
 
 
@@ -928,3 +932,23 @@ def test_force_float(inp: str | float | int, expected: float) -> None:
 def test_force_float_fails_with_invalid_input(invalid_input: Any) -> None:
 	with pytest.raises(ValueError):
 		forceFloat(invalid_input)
+
+
+@pytest.mark.parametrize("value, expected_value, exception", (
+	("cff3f1dc-c135-4e51-8094-5b4589f66ddc", UUID("cff3f1dc-c135-4e51-8094-5b4589f66ddc"), None),
+	("cff3f1dc-c135-4e51-8094-5b4589f66", None, ValueError),
+	(b"cff3f1dc-c135-4e51-8094-5b4589f66ddc", UUID("cff3f1dc-c135-4e51-8094-5b4589f66ddc"), None),
+	(UUID("cff3f1dc-c135-4e51-8094-5b4589f66ddc"), UUID("cff3f1dc-c135-4e51-8094-5b4589f66ddc"), None),
+	(None, None, ValueError),
+	(123, None, ValueError),
+))
+def test_force_uuid(value: Any, expected_value: UUID | None, exception: Type[Exception] | None) -> None:
+	with pytest.raises(exception) if exception else nullcontext():  # type: ignore[attr-defined]
+		value = forceUUID(value)
+	if not exception:
+		assert value == expected_value
+
+	with pytest.raises(exception) if exception else nullcontext():  # type: ignore[attr-defined]
+		value = forceUUIDString(value)
+	if not exception:
+		assert value == str(expected_value)
