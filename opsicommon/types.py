@@ -19,6 +19,7 @@ import sys
 import time
 import types
 from typing import TYPE_CHECKING, Any, Callable, Optional, Type, Union
+from uuid import UUID
 
 from opsicommon.logging import get_logger
 
@@ -147,7 +148,7 @@ def forceList(var: Any) -> list[Any]:  # pylint: disable=invalid-name
 	return list(var)
 
 
-def forceUnicode(var: Any) -> str:  # pylint: disable=too-many-return-statements,invalid-name
+def forceString(var: Any) -> str:  # pylint: disable=too-many-return-statements,invalid-name
 	if isinstance(var, str):
 		return var
 	if os.name == "nt" and isinstance(var, WindowsError):
@@ -172,16 +173,28 @@ def forceUnicode(var: Any) -> str:  # pylint: disable=too-many-return-statements
 	return str(var)
 
 
-def forceUnicodeLower(var: Any) -> str:  # pylint: disable=invalid-name
-	return forceUnicode(var).lower()
+forceUnicode = forceString
 
 
-def forceUnicodeUpper(var: Any) -> str:  # pylint: disable=invalid-name
-	return forceUnicode(var).upper()
+def forceStringLower(var: Any) -> str:  # pylint: disable=invalid-name
+	return forceString(var).lower()
 
 
-def forceUnicodeList(var: Any) -> list[str]:  # pylint: disable=invalid-name
-	return [forceUnicode(element) for element in forceList(var)]
+forceUnicodeLower = forceStringLower
+
+
+def forceStringUpper(var: Any) -> str:  # pylint: disable=invalid-name
+	return forceString(var).upper()
+
+
+forceUnicodeUpper = forceStringUpper
+
+
+def forceStringList(var: Any) -> list[str]:  # pylint: disable=invalid-name
+	return [forceStringList(element) for element in forceList(var)]
+
+
+forceUnicodeList = forceStringList
 
 
 def forceDictList(var: Any) -> list[dict]:  # pylint: disable=invalid-name
@@ -190,6 +203,16 @@ def forceDictList(var: Any) -> list[dict]:  # pylint: disable=invalid-name
 
 def forceUnicodeLowerList(var: Any) -> list[str]:  # pylint: disable=invalid-name
 	return [forceUnicodeLower(element) for element in forceList(var)]
+
+
+def forceUUID(var: Any) -> UUID:
+	if isinstance(var, UUID):
+		return var
+	return UUID(forceString(var))
+
+
+def forceUUIDString(var: Any) -> str:
+	return str(forceUUID(var))
 
 
 def forceBool(var: Any) -> bool:  # pylint: disable=invalid-name
