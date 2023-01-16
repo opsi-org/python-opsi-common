@@ -62,6 +62,7 @@ from opsicommon.types import (
 	forceUnicodeLower,
 	forceUnsignedInt,
 	forceUrl,
+	forceUUIDString,
 )
 from opsicommon.utils import (
 	combine_versions,
@@ -138,7 +139,7 @@ class classproperty:  # pylint: disable=invalid-name,too-few-public-methods
 
 
 class BaseObject:
-	copy_from_hash = False
+	adapt_attributes_in_from_hash = False
 	sub_classes: dict[str, type] = {}
 	ident_separator = ";"
 	foreign_id_attributes: list[str] = []
@@ -237,7 +238,7 @@ class BaseObject:
 
 	@classmethod
 	def fromHash(cls: Type[BaseObjectT], _hash: dict[str, Any]) -> BaseObjectT:  # pylint: disable=invalid-name
-		if cls.copy_from_hash:
+		if cls.adapt_attributes_in_from_hash:
 			_hash = _hash.copy()
 		_cls = cls
 		try:
@@ -535,11 +536,13 @@ class Host(Object):
 		hardwareAddress: str | None = None,
 		ipAddress: str | None = None,
 		inventoryNumber: str | None = None,
+		systemUUID: str | None = None
 	) -> None:
 		Object.__init__(self, id, description, notes)
 		self.hardwareAddress: str | None = None  # pylint: disable=invalid-name
 		self.ipAddress: str | None = None  # pylint: disable=invalid-name
 		self.inventoryNumber: str | None = None  # pylint: disable=invalid-name
+		self.systemUUID: str | None = None  # pylint: disable=invalid-name
 		self.setId(id)
 
 		if hardwareAddress is not None:
@@ -548,6 +551,8 @@ class Host(Object):
 			self.setIpAddress(ipAddress)
 		if inventoryNumber is not None:
 			self.setInventoryNumber(inventoryNumber)
+		if systemUUID is not None:
+			self.setSystemUUID(systemUUID)
 
 	def setDefaults(self) -> None:
 		Object.setDefaults(self)
@@ -579,6 +584,12 @@ class Host(Object):
 	def setInventoryNumber(self, inventoryNumber: str) -> None:  # pylint: disable=invalid-name
 		self.inventoryNumber = forceUnicode(inventoryNumber)
 
+	def getSystemUUID(self) -> str | None:  # pylint: disable=invalid-name
+		return self.systemUUID
+
+	def setSystemUUID(self, systemUUID: str) -> None:  # pylint: disable=invalid-name
+		self.systemUUID = forceUUIDString(systemUUID)
+
 
 Object.sub_classes["Host"] = Host
 
@@ -599,9 +610,10 @@ class OpsiClient(Host):
 		oneTimePassword: str | None = None,
 		created: str | None = None,
 		lastSeen: str | None = None,
+		systemUUID: str | None = None
 	) -> None:
 
-		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber)
+		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber, systemUUID)
 		self.opsiHostKey: str | None = None  # pylint: disable=invalid-name
 		self.created: str | None = None  # pylint: disable=invalid-name
 		self.lastSeen: str | None = None  # pylint: disable=invalid-name
@@ -677,9 +689,10 @@ class OpsiDepotserver(Host):  # pylint: disable=too-many-instance-attributes,too
 		masterDepotId: str | None = None,
 		workbenchLocalUrl: str | None = None,
 		workbenchRemoteUrl: str | None = None,
+		systemUUID: str | None = None
 	) -> None:
 
-		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber)
+		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber, systemUUID)
 
 		self.opsiHostKey: str | None = None  # pylint: disable=invalid-name
 		self.depotLocalUrl: str | None = None  # pylint: disable=invalid-name
@@ -839,6 +852,7 @@ class OpsiConfigserver(OpsiDepotserver):
 		masterDepotId: str | None = None,
 		workbenchLocalUrl: str | None = None,
 		workbenchRemoteUrl: str | None = None,
+		systemUUID: str | None = None
 	) -> None:
 		OpsiDepotserver.__init__(
 			self,
@@ -860,6 +874,7 @@ class OpsiConfigserver(OpsiDepotserver):
 			masterDepotId,
 			workbenchLocalUrl,
 			workbenchRemoteUrl,
+			systemUUID
 		)
 
 	def setDefaults(self) -> None:
@@ -3125,7 +3140,7 @@ class AuditHardware(Entity):
 
 	@classmethod
 	def fromHash(cls, _hash: dict[str, Any]) -> AuditHardware:
-		if cls.copy_from_hash:
+		if cls.adapt_attributes_in_from_hash:
 			_hash = _hash.copy()
 		_hash.pop("type", None)
 		return AuditHardware(**_hash)
@@ -3345,7 +3360,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 
 	@classmethod
 	def fromHash(cls, _hash: dict[str, Any]) -> AuditHardwareOnHost:
-		if cls.copy_from_hash:
+		if cls.adapt_attributes_in_from_hash:
 			_hash = _hash.copy()
 		_hash.pop("type", None)
 		return AuditHardwareOnHost(**_hash)
