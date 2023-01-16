@@ -6,8 +6,6 @@
 OPSI Exceptions.
 """
 
-from typing import List, Optional
-
 __all__ = (
 	"BackendAuthenticationError",
 	"BackendBadValueError",
