@@ -104,7 +104,7 @@ def test_exception_has__repr__(exception: Exception) -> None:  # pylint: disable
 	),
 )
 def test_opsi_product_ordering_exception(message: str, problematic_requirements: list[str] | None) -> None:
-	exc = OpsiProductOrderingError(message, problematic_requirements)
+	exc = OpsiProductOrderingError(message, problematic_requirements)  # type: ignore[arg-type]
 	_repr = repr(exc)
 	assert _repr.startswith("<")
 	assert _repr.endswith(">")
@@ -113,8 +113,8 @@ def test_opsi_product_ordering_exception(message: str, problematic_requirements:
 
 
 def test_opsi_product_ordering_error_ordering_is_accessible() -> None:
-	error = OpsiProductOrderingError("message", ["3", "4", "5"])
-	assert ["3", "4", "5"] == error.problematicRequirements
+	error = OpsiProductOrderingError("message", [3, 4, 5])
+	assert [3, 4, 5] == error.problematicRequirements
 
 
 def test_exception_is_sub_class_of_opsi_error(exception_class: Type[Exception]) -> None:  # pylint: disable=redefined-outer-name
