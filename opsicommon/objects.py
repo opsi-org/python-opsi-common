@@ -139,7 +139,7 @@ class classproperty:  # pylint: disable=invalid-name,too-few-public-methods
 
 
 class BaseObject:
-	adapt_attributes_in_from_hash = False
+	copy_from_hash = False
 	sub_classes: dict[str, type] = {}
 	ident_separator = ";"
 	foreign_id_attributes: list[str] = []
@@ -238,7 +238,7 @@ class BaseObject:
 
 	@classmethod
 	def fromHash(cls: Type[BaseObjectT], _hash: dict[str, Any]) -> BaseObjectT:  # pylint: disable=invalid-name
-		if cls.adapt_attributes_in_from_hash:
+		if cls.copy_from_hash:
 			_hash = _hash.copy()
 		_cls = cls
 		try:
@@ -3140,7 +3140,7 @@ class AuditHardware(Entity):
 
 	@classmethod
 	def fromHash(cls, _hash: dict[str, Any]) -> AuditHardware:
-		if cls.adapt_attributes_in_from_hash:
+		if cls.copy_from_hash:
 			_hash = _hash.copy()
 		_hash.pop("type", None)
 		return AuditHardware(**_hash)
@@ -3360,7 +3360,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 
 	@classmethod
 	def fromHash(cls, _hash: dict[str, Any]) -> AuditHardwareOnHost:
-		if cls.adapt_attributes_in_from_hash:
+		if cls.copy_from_hash:
 			_hash = _hash.copy()
 		_hash.pop("type", None)
 		return AuditHardwareOnHost(**_hash)
