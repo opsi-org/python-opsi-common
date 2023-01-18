@@ -260,6 +260,17 @@ flake8 = ["flake8"]
 tests = ["psutil", "pytest (!=3.3.0)", "pytest-cov"]
 
 [[package]]
+name = "magicfile"
+version = "0.4.27"
+description = "File type identification using libmagic"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+cffi = ">=1.0.0"
+
+[[package]]
 name = "mccabe"
 version = "0.7.0"
 description = "McCabe checker, plugin for flake8"
@@ -675,7 +686,7 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.12"
-content-hash = "1c285903828afee7503dea0a42414fd928cbc999bec72578826f666dcbcc2ed7"
+content-hash = "5e5fbc6486baf186913ddc1ff572737f63f922fa41a3aaa4da05db60c7bcf23e"
 
 [metadata.files]
 astroid = [
@@ -960,6 +971,17 @@ lz4 = [
     {file = "lz4-4.3.2-cp39-cp39-win32.whl", hash = "sha256:ec6755cacf83f0c5588d28abb40a1ac1643f2ff2115481089264c7630236618a"},
     {file = "lz4-4.3.2-cp39-cp39-win_amd64.whl", hash = "sha256:4caedeb19e3ede6c7a178968b800f910db6503cb4cb1e9cc9221157572139b49"},
     {file = "lz4-4.3.2.tar.gz", hash = "sha256:e1431d84a9cfb23e6773e72078ce8e65cad6745816d4cbf9ae67da5ea419acda"},
+]
+magicfile = [
+    {file = "magicfile-0.4.27-cp310-cp310-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:dbd07816497dbb769b81a2dc0bb9a5addec13c803d90e34d1bb00d801d60dd95"},
+    {file = "magicfile-0.4.27-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:c119b660baeb91e167c7cfd54cf3dedebcc14cfa8ed57fdcff074beef2388935"},
+    {file = "magicfile-0.4.27-cp36-cp36m-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:578d577c5730aa000edbd03691f0f3d31a679cd2d1bf6faa87e472baec8a7e08"},
+    {file = "magicfile-0.4.27-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "sha256:3d55827f0f51a6fb25384b7066ad7588609155c85816f3d4bbeca2349b328c00"},
+    {file = "magicfile-0.4.27-cp37-cp37m-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:b7531c947cb487ccd80a116c5427e762744b6daf062454294e4c9224b44691cd"},
+    {file = "magicfile-0.4.27-cp38-cp38-macosx_10_14_x86_64.whl", hash = "sha256:99d94205ce66631f1fe1117b56b3a3734f4be20e3938fc5d2694e21d9d40c166"},
+    {file = "magicfile-0.4.27-cp38-cp38-macosx_12_0_arm64.whl", hash = "sha256:ef66e7ee687988ee830a95259c5a62cae48ff39694c421182de0e7e6b69eec4c"},
+    {file = "magicfile-0.4.27-cp38-cp38-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:2bf4fabb2a166648cd2704a312e5573e4f50ade54bbb2c052894795c23171dcf"},
+    {file = "magicfile-0.4.27-cp39-cp39-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:32a4dda8f947ede2d0f228671e7d5c21339f8ef1998d25d82d0640145108810f"},
 ]
 mccabe = [
     {file = "mccabe-0.7.0-py2.py3-none-any.whl", hash = "sha256:6c2d30ab6be0e4a46919781807b4f0d834ebdd6c6e3dca0bda5a15f863427b6e"},
