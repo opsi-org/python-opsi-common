@@ -50,8 +50,8 @@ pytest-linux:
   #when: manual
   stage: test
   script:
-    - tar --version
-    - cpio --version
+    - cat tests/data/package/localboot_legacy_42.0-1337.opsi > /dev/null
+    - cat tests/data/package/localboot_legacy_42.0-1337.opsi | cpio -u --extract --quiet --no-preserve-owner --no-absolute-filenames --directory /tmp 'OPSI.*'
     - poetry install
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_linux1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_linux2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py

@@ -2,6 +2,7 @@
 opsi package class and associated methods
 """
 
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -23,6 +24,8 @@ from opsicommon.package.legacy_control_file import LegacyControlFile
 
 CPIO_COMMAND = "cpio -u --extract --quiet --no-preserve-owner --no-absolute-filenames"
 TAR_COMMAND = "tar xf - --wildcards"
+EXCLUDE_DIRS_ON_PACK_REGEX = re.compile(r"(^\.svn$)|(^\.git$)")
+EXCLUDE_FILES_ON_PACK_REGEX = re.compile(r"(~$)|(^[Tt]humbs\.db$)|(^\.[Dd][Ss]_[Ss]tore$)")
 
 
 def pigz_available() -> bool:
@@ -75,14 +78,13 @@ def extract_command(archive: Path) -> str:
 
 
 # Warning: this is specific for linux!
-def deserialize(archive: Path, destination: Path, file_pattern: Optional[str] = None) -> Generator[Path, None, None]:
+def deserialize(archive: Path, destination: Path, file_pattern: Optional[str] = None) -> None:
 	if archive.suffixes and archive.suffixes[-1] in ("zst", ".gz", ".bzip2"):
 		create_input = extract_command(archive)
 	else:
 		create_input = f"cat {archive}"
 	process_archive = deserialize_command(archive, destination, file_pattern=file_pattern)
 	subprocess.check_call(f"{create_input} | {process_archive}", shell=True)
-	return destination.glob(file_pattern or "*")
 
 
 class OpsiPackage:
@@ -103,18 +105,26 @@ class OpsiPackage:
 		with tempfile.TemporaryDirectory() as temp_dir_name:
 			temp_dir = Path(temp_dir_name)
 			logger.debug("Deserializing archive %s", package_archive)
-			content = list(deserialize(package_archive, temp_dir, file_pattern="OPSI.*"))
+			deserialize(package_archive, temp_dir, file_pattern="OPSI.*")
+			content = list(temp_dir.glob("OPSI.*"))
 			if len(content) == 0:
 				raise RuntimeError(f"No OPSI directory in archive '{package_archive}'")
 			if len(content) > 1:
 				raise RuntimeError(f"Multiple OPSI directories in archive '{package_archive}'.")
-			content = list(deserialize(content[0], temp_dir, file_pattern="control*"))
-			if temp_dir / "control.toml" in content:
-				self.parse_control_file(temp_dir / "control.toml")
-			elif temp_dir / "control" in content:
-				self.parse_control_file_legacy(temp_dir / "control")
-			else:
-				raise RuntimeError(f"No control file in package archive '{package_archive}'")
+			deserialize(content[0], temp_dir, file_pattern="control*")
+			self.find_and_parse_control_file(temp_dir)
+
+	def find_and_parse_control_file(self, base_dir: Path) -> None:
+		content = list(base_dir.iterdir())  # IDEA: glob for specific patterns?
+		for path in (base_dir / "control.toml", base_dir / "OPSI" / "control.toml"):
+			if path in content:
+				self.parse_control_file(path)
+				return
+		for path in (base_dir / "control", base_dir / "OPSI" / "control"):
+			if path in content:
+				self.parse_control_file_legacy(path)
+				return
+		raise RuntimeError("No control file found.")
 
 	def parse_control_file_legacy(self, control_file: Path) -> None:
 		legacy_control_file = LegacyControlFile(control_file)
@@ -143,3 +153,67 @@ class OpsiPackage:
 			data_dict["Package"]["version"],
 			data_dict.get("ProductProperty", []),
 		)
+
+	# compression zstd or bz2
+	def create_package_archive(self, base_dir: Path, compression: str = "zstd") -> Path:
+		self.find_and_parse_control_file(base_dir)
+
+		archives = []
+		dirs = [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
+		if not (base_dir / "OPSI").exists():
+			raise FileNotFoundError(f"Did not find OPSI directory at {base_dir}")
+		dereference = False  # do not follow symlinks by default.
+
+		with tempfile.TemporaryDirectory() as temp_dir_name:
+			temp_dir = Path(temp_dir_name)
+			# TODO: customName stuff?
+			"""
+			if self.customName:
+				found = False
+				for i, currentDir in enumerate(dirs):
+					customDir = f"{currentDir}.{self.customName}"
+					if os.path.exists(os.path.join(self.packageSourceDir, customDir)):
+						found = True
+						if self.customOnly:
+							dirs[i] = customDir
+						else:
+							dirs.append(customDir)
+				if not found:
+					raise RuntimeError(f"No custom dirs found for '{self.customName}'")
+			"""
+			for _dir in dirs:
+				if not _dir.exists():
+					logger.info("Directory '%s' does not exist", _dir)
+					continue
+				file_list = [  # TODO: behaviour for symlinks
+					file
+					for file in _dir.iterdir()
+					if not EXCLUDE_DIRS_ON_PACK_REGEX.match(file.name) and not EXCLUDE_FILES_ON_PACK_REGEX.match(file.name)
+				]
+				# TODO: SERVER_DATA stuff
+				"""
+				if _dir.startswith("SERVER_DATA"):
+					# Never change permissions of existing directories in /
+					tmp = []
+					for file in fileList:
+						if file.find(os.sep) == -1:
+							logger.info("Skipping dir '%s'", file)
+							continue
+						tmp.append(file)
+
+					fileList = tmp
+				"""
+				if not file_list:
+					logger.notice("Skipping empty dir '%s'", _dir)
+					continue
+				filename = temp_dir / f"{_dir.name}.tar.{compression}"
+				archive = Archive(filename, format=self.format, compression=self.compression, progressSubject=progressSubject)
+				# TODO: progress tracking
+				logger.info("Creating archive %s", filename)
+				archive.create(fileList=fileList, baseDir=os.path.join(self.packageSourceDir, _dir), dereference=dereference)
+				archives.append(filename)
+
+			archive = Archive(self.packageFile, format=self.format, compression=None, progressSubject=progressSubject)
+			logger.info("Creating archive %s", archive)
+			archive.create(fileList=archives, baseDir=self.tmpPackDir)
+			return archive.getFilename()
