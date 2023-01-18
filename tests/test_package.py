@@ -19,6 +19,7 @@ def print_info(package: OpsiPackage) -> None:
 	print(package.package_dependencies)
 
 
+@pytest.mark.linux
 def test_control_toml() -> None:
 	package = OpsiPackage()
 	package.parse_control_file(TEST_DATA / "control.toml")
@@ -47,6 +48,7 @@ def test_control_toml() -> None:
 	assert package.product_dependencies[0].requirementType == "before"
 
 
+@pytest.mark.linux
 @pytest.mark.parametrize(
 	"product_type, form",
 	(
