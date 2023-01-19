@@ -22,19 +22,22 @@ __all__ = (
 	"CanceledException",
 	"LicenseConfigurationError",
 	"LicenseMissingError",
-	"OpsiAuthenticationError",
+	"OpsiServiceAuthenticationError",
 	"OpsiBackupBackendNotFound",
 	"OpsiBackupFileError",
 	"OpsiBackupFileNotFound",
 	"OpsiBadRpcError",
-	"OpsiConnectionError",
+	"OpsiServiceConnectionError",
 	"OpsiError",
 	"OpsiProductOrderingError",
 	"OpsiRpcError",
 	"OpsiServiceVerificationError",
-	"OpsiTimeoutError",
+	"OpsiServiceTimeoutError",
 	"RepositoryError",
 )
+
+
+from typing import Any
 
 
 class OpsiError(Exception):
@@ -72,21 +75,36 @@ class OpsiBackupBackendNotFound(OpsiBackupFileError):
 class OpsiServiceError(OpsiError):
 	ExceptionShortDescription = "Opsi service error"
 
+	def __init__(self, message: str = "", status_code: int | None = None, content: str | None = None) -> None:
+		super().__init__(message)
+		self.status_code = status_code
+		self.content = content
 
-class OpsiAuthenticationError(OpsiServiceError):
-	ExceptionShortDescription = "Opsi authentication error"
+
+class OpsiServiceAuthenticationError(OpsiServiceError):
+	ExceptionShortDescription = "Opsi service authentication error"
+
+
+BackendAuthenticationError = OpsiServiceAuthenticationError
+
+
+class OpsiServicePermissionError(OpsiServiceError):
+	ExceptionShortDescription = "Opsi service permission error"
+
+
+BackendPermissionDeniedError = OpsiServicePermissionError
 
 
 class OpsiServiceVerificationError(OpsiServiceError):
 	ExceptionShortDescription = "Opsi service verification error"
 
 
-class OpsiConnectionError(OpsiServiceError):
-	ExceptionShortDescription = "Opsi connection error"
+class OpsiServiceConnectionError(OpsiServiceError):
+	ExceptionShortDescription = "Opsi service connection error"
 
 
-class OpsiTimeoutError(OpsiServiceError):
-	ExceptionShortDescription = "Opsi timeout error"
+class OpsiServiceTimeoutError(OpsiServiceError):
+	ExceptionShortDescription = "Opsi service timeout error"
 
 
 class OpsiBadRpcError(OpsiError):
@@ -95,6 +113,10 @@ class OpsiBadRpcError(OpsiError):
 
 class OpsiRpcError(OpsiError):
 	ExceptionShortDescription = "Opsi rpc error"
+
+	def __init__(self, message: str = "", response: dict[str, Any] | None = None) -> None:
+		super().__init__(message)
+		self.response = response
 
 
 class OpsiProductOrderingError(OpsiError):
@@ -162,18 +184,6 @@ class BackendMissingDataError(OpsiError):
 	"""Exception raised if expected data not found."""
 
 	ExceptionShortDescription = "Backend missing data error"
-
-
-class BackendAuthenticationError(OpsiAuthenticationError):
-	"""Exception raised if authentication failes."""
-
-	ExceptionShortDescription = "Backend authentication error"
-
-
-class BackendPermissionDeniedError(OpsiError):
-	"""Exception raised if a permission is denied."""
-
-	ExceptionShortDescription = "Backend permission denied error"
 
 
 class BackendTemporaryError(OpsiError):

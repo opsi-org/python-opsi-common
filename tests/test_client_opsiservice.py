@@ -27,9 +27,12 @@ from opsicommon.client.opsiservice import (
 	UIB_OPSI_CA,
 	Messagebus,
 	MessagebusListener,
-	OpsiConnectionError,
+	OpsiServiceAuthenticationError,
+	OpsiServiceConnectionError,
+	OpsiServiceError,
+	OpsiServicePermissionError,
+	OpsiServiceTimeoutError,
 	OpsiServiceVerificationError,
-	OpsiTimeoutError,
 	ServiceClient,
 	ServiceConnectionListener,
 	ServiceVerificationFlags,
@@ -208,6 +211,8 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 			with pytest.raises(OpsiServiceVerificationError):
 				client.connect_messagebus()
 
+			assert client._request(method="HEAD", path="/", verify=False).status_code == 200  # pylint: disable=protected-access
+
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=ca_cert_file, verify="strict_check") as client:
 			client.connect()
 			client.connect_messagebus()
@@ -316,11 +321,11 @@ def test_proxy(tmp_path: Path) -> None:
 			f"https://localhost:{server.port+1}", proxy_url=f"http://localhost:{server.port}", verify="accept_all", connect_timeout=2
 		) as client:
 			# Proxy will not be used for localhost (no_proxy_addresses)
-			with pytest.raises(OpsiConnectionError):
+			with pytest.raises(OpsiServiceConnectionError):
 				client.connect()
 
 		proxy_env = {"http_proxy": f"http://localhost:{server.port}", "https_proxy": f"http://localhost:{server.port}"}
-		with environment(proxy_env), pytest.raises(OpsiConnectionError):
+		with environment(proxy_env), pytest.raises(OpsiServiceConnectionError):
 			with ServiceClient(f"https://localhost:{server.port+1}", proxy_url="system", verify="accept_all", connect_timeout=2) as client:
 				client.connect()
 
@@ -341,7 +346,7 @@ def test_proxy(tmp_path: Path) -> None:
 						verify="accept_all",
 						connect_timeout=2,
 					) as client:
-						with pytest.raises(OpsiConnectionError):  # pylint: disable=dotted-import-in-loop
+						with pytest.raises(OpsiServiceConnectionError):  # pylint: disable=dotted-import-in-loop
 							# HTTPTestServer sends error 501 on CONNECT requests
 							client.connect()
 						request = json.loads(log_file.read_text(encoding="utf-8"))  # pylint: disable=dotted-import-in-loop
@@ -362,7 +367,7 @@ def test_proxy(tmp_path: Path) -> None:
 					verify="accept_all",
 					connect_timeout=2,
 				) as client:
-					with pytest.raises(OpsiConnectionError):  # pylint: disable=dotted-import-in-loop
+					with pytest.raises(OpsiServiceConnectionError):  # pylint: disable=dotted-import-in-loop
 						# HTTPTestServer sends error 501 on CONNECT requests
 						client.connect()
 					request = json.loads(log_file.read_text(encoding="utf-8"))
@@ -522,6 +527,67 @@ def test_connect_disconnect() -> None:  # pylint: disable=too-many-statements
 		assert client.connected is False
 
 
+def test_requests() -> None:
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)"}) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.connect()
+
+			server.response_status = (201, "reason")
+			server.response_body = b"content"
+			response = client.get("/")
+
+			status_code, reason, headers, content = response
+			assert status_code == server.response_status[0]
+			assert reason == server.response_status[1]
+			assert headers["server"] == server.response_headers["server"]  # type: ignore  # pylint: disable=unsubscriptable-object
+			assert content == server.response_body
+
+			assert response[0] == server.response_status[0]
+			assert response[1] == server.response_status[1]
+			assert response[2]["server"] == server.response_headers["server"]  # type: ignore  # pylint: disable=unsubscriptable-object
+			assert response[3] == server.response_body
+
+			with pytest.raises(IndexError):
+				response[4]  # pylint: disable=pointless-statement
+
+			assert response.status_code == server.response_status[0]
+			assert response.reason == server.response_status[1]
+			assert response.headers["server"] == server.response_headers["server"]
+			assert response.content == server.response_body
+
+
+def test_request_exceptions() -> None:
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)"}) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			server.response_status = (200, "OK")
+			client.connect()
+			assert client.get("/")[0] == 200
+
+			server.response_status = (500, "Internal Server Error")
+			server.response_body = b"content"
+			with pytest.raises(OpsiServiceError) as exc_info:
+				client.get("/")
+			assert exc_info.value.content == "content"
+			assert exc_info.value.status_code == 500
+			assert client.get("/", allow_status_codes=[500])[0] == 500
+
+			server.response_status = (401, "Unauthorized")
+			with pytest.raises(OpsiServiceAuthenticationError) as exc_info:
+				client.get("/")
+			assert exc_info.value.content == "content"
+			assert exc_info.value.status_code == 401
+
+			server.response_status = (403, "Forbidden")
+			with pytest.raises(OpsiServicePermissionError) as exc_info:
+				client.get("/")
+			assert exc_info.value.content == "content"
+			assert exc_info.value.status_code == 403
+
+			server.response_status = (200, "OK")
+			with pytest.raises(OpsiServiceConnectionError) as exc_info:
+				client.get("/", read_timeout="FAIL")  # type: ignore[arg-type]
+
+
 def test_multi_address() -> None:
 	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
 		with ServiceClient((f"https://127.0.0.1:{server.port+1}", f"https://127.0.0.1:{server.port}"), verify="accept_all") as client:
@@ -610,7 +676,7 @@ def test_timeouts() -> None:
 	with http_test_server(generate_cert=True, response_delay=3) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port+1}", connect_timeout=4) as client:
 			client.register_connection_listener(listener)
-			with pytest.raises(OpsiConnectionError):
+			with pytest.raises(OpsiServiceConnectionError):
 				client.connect()
 			assert len(listener.events) == 2
 			assert listener.events[0][0] == "open"
@@ -621,7 +687,7 @@ def test_timeouts() -> None:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", connect_timeout=4, verify="accept_all") as client:
 			client.connect()
 			start = time.time()
-			with pytest.raises(OpsiTimeoutError):
+			with pytest.raises(OpsiServiceTimeoutError):
 				client.get("/", read_timeout=2)
 			assert round(time.time() - start) >= 2
 
@@ -899,7 +965,7 @@ def test_messagebus_jsonrpc() -> None:
 
 			delay = 3.0
 			with mock.patch("opsicommon.client.opsiservice.RPC_TIMEOUTS", {"test": 1}):
-				with pytest.raises(OpsiTimeoutError):
+				with pytest.raises(OpsiServiceTimeoutError):
 					res = messagebus.jsonrpc("test")
 
 			rpc_error = {"code": 0, "message": "error_message", "data": {"class": "BackendPermissionDeniedError", "details": "details"}}

@@ -18,6 +18,7 @@ import warnings
 from base64 import b64encode
 from contextlib import contextmanager
 from contextvars import copy_context
+from dataclasses import astuple, dataclass
 from datetime import datetime
 from enum import Enum
 from ipaddress import IPv6Address, ip_address
@@ -38,6 +39,8 @@ from OpenSSL.crypto import (  # type: ignore[import]
 	load_certificate,
 )
 from packaging import version
+from requests import HTTPError
+from requests import Response as RequestsResponse
 from requests import Session
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
@@ -47,13 +50,13 @@ from websocket._abnf import ABNF  # type: ignore[import]
 
 from .. import __version__
 from ..exceptions import (
-	BackendAuthenticationError,
-	BackendPermissionDeniedError,
-	OpsiConnectionError,
 	OpsiRpcError,
+	OpsiServiceAuthenticationError,
+	OpsiServiceConnectionError,
 	OpsiServiceError,
+	OpsiServicePermissionError,
+	OpsiServiceTimeoutError,
 	OpsiServiceVerificationError,
-	OpsiTimeoutError,
 )
 from ..logging import get_logger, secret_filter
 from ..messagebus import (
@@ -181,8 +184,22 @@ class ServiceConnectionListener():  # pylint: disable=too-few-public-methods
 			service_client.unregister_connection_listener(self)
 
 
-class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+@dataclass
+class Response:
+	status_code: int
+	reason: str
+	headers: CaseInsensitiveDict
+	content: bytes
 
+	def __getitem__(self, item: int) -> int | str | CaseInsensitiveDict | bytes:
+		return astuple(self)[item]
+
+	def __iter__(self) -> Generator[int | str | CaseInsensitiveDict | bytes, None, None]:
+		for item in astuple(self):
+			yield item
+
+
+class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
 	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]  # pylint: disable=use-tuple-over-list
 
 	def __init__(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
@@ -567,24 +584,16 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			for address_index in range(len(self._addresses)):
 				self._address_index = address_index
 				try:  # pylint: disable=loop-try-except-usage
-					try:  # pylint: disable=loop-try-except-usage
-						timeout = (self._connect_timeout, self._connect_timeout)
-						response = self._session.head(self.base_url, timeout=timeout, verify=verify)
+					response = self._request(
+						method="HEAD",
+						path="/",
+						timeout=(self._connect_timeout, self._connect_timeout),
+						verify=verify,
 						# Accept status 405 for older opsiconfd versions
-						if response.status_code not in (200, 405):
-							response.raise_for_status()
-						break
-					except SSLError as err:  # pylint: disable=loop-invariant-statement
-						try:  # pylint: disable=loop-try-except-usage
-							if err.args[0].reason.args[0].errno == 8:
-								# EOF occurred in violation of protocol
-								raise OpsiConnectionError(str(err)) from err  # pylint: disable=loop-invariant-statement
-						except (AttributeError, IndexError):
-							pass
-						raise OpsiServiceVerificationError(str(err)) from err  # pylint: disable=loop-invariant-statement
-					except Exception as err:  # pylint: disable=broad-except
-						raise OpsiConnectionError(str(err)) from err  # pylint: disable=loop-invariant-statement
-				except Exception as err:  # pylint: disable=broad-except,loop-invariant-statement
+						allow_status_codes=(200, 405)
+					)
+					break
+				except OpsiServiceError as err:  # pylint: disable=loop-invariant-statement
 					if self._address_index >= len(self._addresses) - 1:
 						for listener in self._listener:
 							CallbackThread(listener.connection_failed, service_client=self, exception=err).start()
@@ -694,34 +703,90 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			path = f"/{path}"
 		return f"{self.base_url}{path}"
 
-	def request(  # pylint: disable=too-many-arguments
-		self, method: str, path: str, headers: dict[str, str] | None = None, read_timeout: float = 60.0, data: bytes | None = None
-	) -> tuple[int, str, CaseInsensitiveDict, bytes]:
-		self._assert_connected()
+	def _request(  # pylint: disable=too-many-arguments
+		self,
+		method: str,
+		path: str,
+		headers: dict[str, str] | None = None,
+		timeout: float | tuple[float, float] = 60.0,
+		data: bytes | None = None,
+		verify: str | bool | None = None,
+		allow_status_codes: Iterable[int] | None = None
+	) -> RequestsResponse:
+		allow_status_codes = (200, 201, 202, 203, 204, 206, 207, 208) if allow_status_codes is None else allow_status_codes
 		try:
 			response = self._session.request(
 				method=method,
 				url=self._get_url(path),
 				headers=headers,
 				data=data,
-				timeout=(self._connect_timeout, read_timeout),
-				stream=True
+				timeout=timeout,
+				stream=True,
+				verify=verify
 			)
+			if allow_status_codes and allow_status_codes != ... and response.status_code not in allow_status_codes:
+				response.raise_for_status()
+			return response
+		except SSLError as err:  # pylint: disable=loop-invariant-statement
+			try:  # pylint: disable=loop-try-except-usage
+				if err.args[0].reason.args[0].errno == 8:
+					# EOF occurred in violation of protocol
+					raise OpsiServiceConnectionError(str(err)) from err  # pylint: disable=loop-invariant-statement
+			except (AttributeError, IndexError):
+				pass
+			raise OpsiServiceVerificationError(str(err)) from err  # pylint: disable=loop-invariant-statement
 		except Timeout as err:
-			raise OpsiTimeoutError(str(err)) from err
+			raise OpsiServiceTimeoutError(str(err)) from err
+		except HTTPError as err:
+			cls = OpsiServiceError
+			if err.response.status_code == 401:
+				cls = OpsiServiceAuthenticationError
+			elif err.response.status_code == 403:
+				cls = OpsiServicePermissionError
+			raise cls(str(err), status_code=err.response.status_code, content=err.response.text) from err
 		except Exception as err:  # pylint: disable=broad-except
-			raise OpsiConnectionError(str(err)) from err
-		return (response.status_code, response.reason, response.headers, response.content)
+			raise OpsiServiceConnectionError(str(err)) from err
+
+	def request(  # pylint: disable=too-many-arguments
+		self,
+		method: str,
+		path: str,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0, data: bytes | None = None,
+		allow_status_codes: Iterable[int] | None = None
+	) -> Response:
+		self._assert_connected()
+		response = self._request(
+			method=method, path=path, headers=headers, timeout=read_timeout, data=data, allow_status_codes=allow_status_codes
+		)
+		return Response(
+			status_code=response.status_code,
+			reason=response.reason,
+			headers=response.headers,
+			content=response.content
+		)
 
 	def get(
-		self, path: str, headers: dict[str, str] | None = None, read_timeout: float = 60.0
-	) -> tuple[int, str, CaseInsensitiveDict, bytes]:
-		return self.request("GET", path=path, headers=headers, read_timeout=read_timeout)
+		self,
+		path: str,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0,
+		allow_status_codes: Iterable[int] | None = None
+	) -> Response:
+		return self.request("GET", path=path, headers=headers, read_timeout=read_timeout, allow_status_codes=allow_status_codes)
 
 	def post(
-		self, path: str, data: bytes | None = None, headers: dict[str, str] | None = None, read_timeout: float = 60.0
-	) -> tuple[int, str, CaseInsensitiveDict, bytes]:
-		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data)
+		self,
+		path: str,
+		data: bytes | None = None,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0,
+		allow_status_codes: Iterable[int] | None = None
+	) -> Response:
+		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data, allow_status_codes=allow_status_codes)
 
 	def jsonrpc(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		self,
@@ -794,13 +859,16 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		)
 		start_time = time.time()
 
-		(status_code, reason, response_headers, data) = self.post("/rpc", headers=headers, data=data, read_timeout=read_timeout)
-
-		content_type = response_headers.get("Content-Type", "")
-		content_encoding = response_headers.get("Content-Encoding", "")
+		allow_status_codes = (200, 500) if return_result_only else ...
+		response = self.post(
+			"/rpc", headers=headers, data=data, read_timeout=read_timeout, allow_status_codes=allow_status_codes  # type: ignore[arg-type]
+		)
+		data = response.content
+		content_type = response.headers.get("Content-Type", "")
+		content_encoding = response.headers.get("Content-Encoding", "")
 		logger.info(
 			"Got response status=%s, Content-Type=%s, Content-Encoding=%s, duration=%0.3fs",
-			status_code,
+			response.status_code,
 			content_type,
 			content_encoding,
 			(time.time() - start_time),
@@ -813,14 +881,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		error_cls: Type[Exception] | None = None
 		error_msg = None
-		if status_code != 200:
-			error_msg = reason
+		if response.status_code != 200:
+			error_msg = response.reason
 			error_cls = OpsiRpcError
-			error_msg = f"{status_code} - {reason}"
-			if status_code == 401:
-				error_cls = BackendAuthenticationError
-			if status_code == 403:
-				error_cls = BackendPermissionDeniedError
+			error_msg = f"{response.status_code} - {response.reason}"
 
 		rpc = {}
 		try:
@@ -1022,7 +1086,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			def wait_for_message(self) -> JSONRPCResponseMessage:
 				if self.message_received_event.wait(self.timeout) and self.message:
 					return self.message
-				raise OpsiTimeoutError(f"Timed out waiting for JSONRPCResponseMessage with rpc_id={self.rpc_id}")
+				raise OpsiServiceTimeoutError(f"Timed out waiting for JSONRPCResponseMessage with rpc_id={self.rpc_id}")
 
 			def message_received(self, message: Message) -> None:
 				if isinstance(message, JSONRPCResponseMessage) and message.rpc_id == self.rpc_id:
@@ -1047,8 +1111,8 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		if res.error:
 			logger.debug("JSONRPC-response contains error: %s", res.error)
 			error_cls: Type[Exception] = OpsiRpcError
-			if res.error["data"]["class"] == "BackendPermissionDeniedError":
-				error_cls = BackendPermissionDeniedError
+			if res.error["data"]["class"] in ("BackendPermissionDeniedError", "OpsiServicePermissionError"):
+				error_cls = OpsiServicePermissionError
 			raise error_cls(res.error["message"])
 
 		return res.result
@@ -1071,7 +1135,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		if wait:
 			logger.debug("Waiting for connected result (timeout=%r)", self._connect_timeout)
 			if not self._connected_result.wait(self._connect_timeout):
-				self._connect_exception = TimeoutError(
+				self._connect_exception = OpsiServiceTimeoutError(
 					f"Timed out after {self._connect_timeout} seconds while waiting for connect result"
 				)
 			if self._connect_exception:
