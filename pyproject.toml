@@ -30,7 +30,6 @@ pywin32 = {platform = "win32", version = "^303"}
 requests = "^2.26"
 rich = "^13.0"
 websocket-client = "^1.4"
-magicfile = "^0.4.27"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^6.0"

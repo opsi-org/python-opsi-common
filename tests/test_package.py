@@ -2,6 +2,8 @@
 tests for opsicommon.package
 """
 
+import shutil
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -20,7 +22,7 @@ def print_info(package: OpsiPackage) -> None:
 
 
 @pytest.mark.linux
-def test_control_toml() -> None:
+def test_load_control_toml() -> None:
 	package = OpsiPackage()
 	package.parse_control_file(TEST_DATA / "control.toml")
 	print_info(package)
@@ -58,7 +60,7 @@ def test_control_toml() -> None:
 		("netboot", "new"),
 	),
 )
-def test_package(product_type: str, form: str) -> None:
+def test_load_package(product_type: str, form: str) -> None:
 	package = OpsiPackage(TEST_DATA / f"{product_type}_{form}_42.0-1337.opsi")
 	print_info(package)
 	assert package.product.id == f"{product_type}_{form}"
@@ -95,3 +97,39 @@ def test_package(product_type: str, form: str) -> None:
 	assert package.product_dependencies[0].requiredAction == "setup"
 	assert package.product_dependencies[0].requiredInstallationStatus == "installed"
 	assert package.product_dependencies[0].requirementType == "before"
+
+
+@pytest.mark.linux
+def test_extract_package() -> None:
+	with tempfile.TemporaryDirectory() as temp_dir_name:
+		temp_dir = Path(temp_dir_name)
+		OpsiPackage.extract_package_archive(TEST_DATA / "localboot_legacy_42.0-1337.opsi", temp_dir)
+		contents = list(temp_dir.rglob("*"))
+	for _file in (
+		temp_dir / "OPSI" / "control",
+		temp_dir / "OPSI" / "preinst",
+		temp_dir / "OPSI" / "postinst",
+		temp_dir / "CLIENT_DATA" / "setup.opsiscript",
+	):
+		assert _file in contents
+
+
+@pytest.mark.linux
+@pytest.mark.parametrize(
+	"compression",
+	("zstd", "bzip2"),
+)
+def test_create_package(compression: str) -> None:
+	package = OpsiPackage()
+	with tempfile.TemporaryDirectory() as temp_dir_name:
+		temp_dir = Path(temp_dir_name)
+		for _dir in (temp_dir / "OPSI", temp_dir / "CLIENT_DATA", temp_dir / "SERVER_DATA"):
+			_dir.mkdir()
+			shutil.copy(TEST_DATA / "control.toml", _dir)
+		package_archive = package.create_package_archive(temp_dir, compression=compression, destination=temp_dir)
+		with tempfile.TemporaryDirectory() as result_dir_name:
+			result_dir = Path(result_dir_name)
+			OpsiPackage.extract_package_archive(package_archive, result_dir)
+			result_contents = list((_dir.relative_to(result_dir) for _dir in result_dir.rglob("*")))
+			for part in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
+				assert (temp_dir / part).relative_to(temp_dir) in result_contents

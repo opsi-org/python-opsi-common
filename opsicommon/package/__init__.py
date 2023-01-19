@@ -3,13 +3,9 @@ opsi package class and associated methods
 """
 
 import re
-import subprocess
 import tempfile
 from pathlib import Path
-from typing import Generator, Optional
 
-import magicfile as magic  # type: ignore[import]
-import packaging.version
 import tomlkit
 
 from opsicommon.logging import logger
@@ -21,70 +17,10 @@ from opsicommon.package.control_file_handling import (
 	create_product_properties,
 )
 from opsicommon.package.legacy_control_file import LegacyControlFile
+from opsicommon.package.serialization import deserialize, serialize
 
-CPIO_COMMAND = "cpio -u --extract --quiet --no-preserve-owner --no-absolute-filenames"
-TAR_COMMAND = "tar xf - --wildcards"
 EXCLUDE_DIRS_ON_PACK_REGEX = re.compile(r"(^\.svn$)|(^\.git$)")
 EXCLUDE_FILES_ON_PACK_REGEX = re.compile(r"(~$)|(^[Tt]humbs\.db$)|(^\.[Dd][Ss]_[Ss]tore$)")
-
-
-def pigz_available() -> bool:
-	try:  # TODO: check if configured to use pigz? in opsiconf
-		pigz_version = subprocess.check_output("pigz --version", shell=True).decode("utf-8")
-		if packaging.version.parse(pigz_version) < packaging.version.parse("2.2.3"):
-			raise ValueError("pigz too old")
-		return True
-	except (subprocess.CalledProcessError, ValueError):
-		return False
-
-
-def deserialize_command(archive: Path, destination: Path, file_pattern: Optional[str] = None) -> str:
-	# Look for cpio and tar in last or second last position (for compressed archives like .tar.gz)
-	# It is assumed that the deserialize command gets data via stdin in an uncompressed way
-	if archive.suffixes and ".cpio" in archive.suffixes[-2:]:
-		cmd = f"{CPIO_COMMAND} --directory {destination}"
-	elif archive.suffixes and ".tar" in archive.suffixes[-2:]:
-		cmd = f"{TAR_COMMAND} --directory {destination}"
-	else:
-		magic_string = magic.from_file(str(archive))
-		if "cpio archive" in magic_string:
-			cmd = f"{CPIO_COMMAND} --directory {destination}"
-		elif "tar archive" in magic_string:
-			cmd = f"{TAR_COMMAND} --directory {destination}"
-		else:
-			raise TypeError(f"Archive to deserialize must be 'tar' or 'cpio', found: {magic_string}")
-	if file_pattern:
-		cmd += f" '{file_pattern}'"
-	return cmd
-
-
-def extract_command(archive: Path) -> str:
-	if archive.suffix in (".gzip", ".gz"):
-		if pigz_available():
-			cmd = f"pigz --stdout --decompress '{archive}'"
-		else:
-			cmd = f"zcat --stdout --decompress '{archive}'"
-	elif archive.suffix in (".bzip2", "bz2"):
-		cmd = f"bzcat --stdout --decompress '{archive}'"
-	elif archive.suffix == ".zstd":
-		try:
-			subprocess.check_call("zstdcat --version", shell=True)
-		except subprocess.CalledProcessError as error:
-			raise RuntimeError("Zstd not available.") from error
-		cmd = f"zstdcat --stdout --decompress '{archive}'"
-	else:
-		raise RuntimeError(f"Unknown compression of file '{archive}'")
-	return cmd
-
-
-# Warning: this is specific for linux!
-def deserialize(archive: Path, destination: Path, file_pattern: Optional[str] = None) -> None:
-	if archive.suffixes and archive.suffixes[-1] in ("zst", ".gz", ".bzip2"):
-		create_input = extract_command(archive)
-	else:
-		create_input = f"cat {archive}"
-	process_archive = deserialize_command(archive, destination, file_pattern=file_pattern)
-	subprocess.check_call(f"{create_input} | {process_archive}", shell=True)
 
 
 class OpsiPackage:
@@ -92,7 +28,16 @@ class OpsiPackage:
 	Basic class for opsi packages.
 	"""
 
-	def __init__(self, package_archive: Optional[Path] = None) -> None:
+	@classmethod
+	def extract_package_archive(cls, package_archive: Path, destination: Path) -> None:
+		with tempfile.TemporaryDirectory() as temp_dir_name:
+			temp_dir = Path(temp_dir_name)
+			logger.debug("Deserializing archive %s", package_archive)
+			deserialize(package_archive, temp_dir)
+			for archive in temp_dir.iterdir():
+				deserialize(archive, destination / archive.name.split(".")[0])
+
+	def __init__(self, package_archive: Path | None = None) -> None:
 		self.product: Product
 		self.product_properties: list[ProductProperty] = []
 		self.product_dependencies: list[ProductDependency] = []
@@ -115,7 +60,7 @@ class OpsiPackage:
 			self.find_and_parse_control_file(temp_dir)
 
 	def find_and_parse_control_file(self, base_dir: Path) -> None:
-		content = list(base_dir.iterdir())  # IDEA: glob for specific patterns?
+		content = list(base_dir.rglob("control*"))
 		for path in (base_dir / "control.toml", base_dir / "OPSI" / "control.toml"):
 			if path in content:
 				self.parse_control_file(path)
@@ -155,14 +100,14 @@ class OpsiPackage:
 		)
 
 	# compression zstd or bz2
-	def create_package_archive(self, base_dir: Path, compression: str = "zstd") -> Path:
+	def create_package_archive(self, base_dir: Path, compression: str = "zstd", destination: Path = Path()) -> Path:
 		self.find_and_parse_control_file(base_dir)
 
 		archives = []
 		dirs = [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
 		if not (base_dir / "OPSI").exists():
 			raise FileNotFoundError(f"Did not find OPSI directory at {base_dir}")
-		dereference = False  # do not follow symlinks by default.
+		# TODO: option to follow symlinks.
 
 		with tempfile.TemporaryDirectory() as temp_dir_name:
 			temp_dir = Path(temp_dir_name)
@@ -204,16 +149,15 @@ class OpsiPackage:
 					fileList = tmp
 				"""
 				if not file_list:
-					logger.notice("Skipping empty dir '%s'", _dir)
+					logger.debug("Skipping empty dir '%s'", _dir)
 					continue
 				filename = temp_dir / f"{_dir.name}.tar.{compression}"
-				archive = Archive(filename, format=self.format, compression=self.compression, progressSubject=progressSubject)
-				# TODO: progress tracking
 				logger.info("Creating archive %s", filename)
-				archive.create(fileList=fileList, baseDir=os.path.join(self.packageSourceDir, _dir), dereference=dereference)
+				serialize(filename, [_dir], base_dir, compression=compression)
+				# TODO: progress tracking
 				archives.append(filename)
 
-			archive = Archive(self.packageFile, format=self.format, compression=None, progressSubject=progressSubject)
-			logger.info("Creating archive %s", archive)
-			archive.create(fileList=archives, baseDir=self.tmpPackDir)
-			return archive.getFilename()
+			package_archive = destination / f"{self.product.id}_{self.product.productVersion}-{self.product.packageVersion}.opsi"
+			logger.info("Creating archive %s", package_archive)
+			serialize(package_archive, archives, temp_dir)
+		return package_archive
