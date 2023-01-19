@@ -5,12 +5,25 @@ handling of serialization and deserialization
 import os
 import re
 import subprocess
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Generator
 
 import packaging.version
 
+
+@contextmanager
+def chdir(new_dir: Path) -> Generator[None, None, None]:
+	old_path = os.getcwd()
+	try:
+		os.chdir(str(new_dir))
+		yield
+	finally:
+		os.chdir(old_path)
+
+
 # IDEA: tar can use --zstd
-CPIO_EXTRACT_COMMAND = "cpio -u --extract --quiet --no-preserve-owner --no-absolute-filenames"
+CPIO_EXTRACT_COMMAND = "cpio --unconditional --extract --quiet --no-preserve-owner --no-absolute-filenames"
 TAR_EXTRACT_COMMAND = "tar -xf - --wildcards"
 TAR_CREATE_COMMAND = "tar -cf"
 EXCLUDE_DIRS_ON_PACK_REGEX = re.compile(r"(^\.svn$)|(^\.git$)")
@@ -43,19 +56,19 @@ def get_file_type(filename: str | Path) -> str:
 	raise TypeError("get_file_type only accepts gz, bzip2, zstd, cpio and tar files.")
 
 
-def deserialize_command(archive: Path, destination: Path, file_pattern: str | None = None) -> str:
+def deserialize_command(archive: Path, file_pattern: str | None = None) -> str:
 	# Look for cpio and tar in last or second last position (for compressed archives like .tar.gz)
 	# It is assumed that the deserialize command gets data via stdin in an uncompressed state
 	if archive.suffixes and ".cpio" in archive.suffixes[-2:]:
-		cmd = f"{CPIO_EXTRACT_COMMAND} --directory {destination}"
+		cmd = CPIO_EXTRACT_COMMAND
 	elif archive.suffixes and ".tar" in archive.suffixes[-2:]:
-		cmd = f"{TAR_EXTRACT_COMMAND} --directory {destination}"
+		cmd = TAR_EXTRACT_COMMAND
 	else:
 		file_type = get_file_type(archive)
 		if file_type == "tar":
-			cmd = f"{TAR_EXTRACT_COMMAND} --directory {destination}"
+			cmd = TAR_EXTRACT_COMMAND
 		elif file_type == "cpio":
-			cmd = f"{CPIO_EXTRACT_COMMAND} --directory {destination}"
+			cmd = CPIO_EXTRACT_COMMAND
 		else:
 			raise TypeError(f"Archive to deserialize must be 'tar' or 'cpio', found: {file_type}")
 	if file_pattern:
@@ -84,11 +97,13 @@ def deserialize(archive: Path, destination: Path, file_pattern: str | None = Non
 	if not destination.exists():
 		destination.mkdir(parents=True)
 	if archive.suffixes and archive.suffixes[-1] in (".zstd", ".gz", ".gzip", ".bz2", ".bzip2"):
-		create_input = extract_command(archive)
+		create_input = extract_command(archive.absolute())
 	else:
-		create_input = f"cat {archive}"
-	process_archive = deserialize_command(archive, destination, file_pattern=file_pattern)
-	subprocess.check_call(f"{create_input} | {process_archive}", shell=True)
+		create_input = f"cat {archive.absolute()}"
+	process_archive = deserialize_command(archive.absolute(), file_pattern=file_pattern)
+	with chdir(destination):
+		print(f"{create_input} | {process_archive}")
+		subprocess.check_call(f"{create_input} | {process_archive}", shell=True)
 
 
 def compress_command(archive: Path, compression: str) -> str:
@@ -112,9 +127,5 @@ def serialize(archive: Path, sources: list[Path], base_dir: Path, compression: s
 		cmd = f"{TAR_CREATE_COMMAND} - {source_string} | {compress_command(archive, compression)}"
 	else:
 		cmd = f"{TAR_CREATE_COMMAND} {archive} {source_string}"
-	old_path = os.getcwd()
-	try:
-		os.chdir(str(base_dir))
+	with chdir(base_dir):
 		subprocess.check_call(cmd, shell=True)
-	finally:
-		os.chdir(old_path)
