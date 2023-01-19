@@ -205,13 +205,13 @@ def forceUnicodeLowerList(var: Any) -> list[str]:  # pylint: disable=invalid-nam
 	return [forceUnicodeLower(element) for element in forceList(var)]
 
 
-def forceUUID(var: Any) -> UUID:  # pylint: disable=invalid-name
+def forceUUID(var: Any) -> UUID:
 	if isinstance(var, UUID):
 		return var
 	return UUID(forceString(var))
 
 
-def forceUUIDString(var: Any) -> str:  # pylint: disable=invalid-name
+def forceUUIDString(var: Any) -> str:
 	return str(forceUUID(var))
 
 
@@ -259,7 +259,7 @@ def forceOct(var: Any) -> int:  # pylint: disable=invalid-name
 
 	try:
 		oct_value = ""
-		for idx, val_str in enumerate(forceString(var)):
+		for idx, val_str in enumerate(forceUnicode(var)):
 			val = forceInt(val_str)
 			if val > 7:
 				raise ValueError(f"{val} is too big")
