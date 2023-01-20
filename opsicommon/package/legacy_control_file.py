@@ -31,7 +31,7 @@ from opsicommon.types import (
 	forceUnicodeLower,
 	forceUniqueList,
 )
-from opsicommon.utils import from_json
+from opsicommon.utils import from_json, to_json
 
 
 class LegacyControlFile:
@@ -39,12 +39,15 @@ class LegacyControlFile:
 	valueContinuationRegex = re.compile(r"^\s(.*)$")
 	optionRegex = re.compile(r"^([^\:]+)\s*\:\s*(.*)$")
 
-	def __init__(self, control_file: Path) -> None:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+	def __init__(self, control_file: Path | None = None) -> None:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
 		self._sections: dict[str, str | list[dict[str, str]]] = {}
 		self.product = None
 		self.productDependencies = []  # pylint: disable=invalid-name
 		self.productProperties: list[ProductProperty] = []  # pylint: disable=invalid-name
 		self.packageDependencies: list[dict[str, str | None]] = []  # pylint: disable=invalid-name
+
+		if not control_file:
+			return
 
 		productAttributes = set(  # pylint: disable=invalid-name
 			[
@@ -398,3 +401,114 @@ class LegacyControlFile:
 				self.productProperties[-1].setMultiValue(productProperty["multivalue"])  # type: ignore
 
 		self.productProperties[-1].setDefaults()
+
+	def generate_control_file(self, control_file: Path) -> None:  # pylint: disable=too-many-branches,too-many-statements
+		if not self.product:
+			raise RuntimeError("No product to generate control file for.")
+		lines = ["[Package]"]
+		lines.append(f"version: {self.product.getPackageVersion()}")
+		depends = ""
+		for package_dependency in self.packageDependencies:
+			if depends:
+				depends += ", "
+
+			depends += package_dependency["package"]  # type: ignore
+			if package_dependency["version"]:
+				depends += f" ({package_dependency['condition']} {package_dependency['version']})"
+
+		lines.append(f"depends: {depends}")
+		lines.append("")
+
+		lines.append("[Product]")
+		productType = self.product.getType()  # pylint: disable=invalid-name
+		if productType == "LocalbootProduct":
+			productType = "localboot"  # pylint: disable=invalid-name
+		elif productType == "NetbootProduct":
+			productType = "netboot"  # pylint: disable=invalid-name
+		else:
+			raise ValueError(f"Unhandled product type '{productType}'")
+
+		lines.append(f"type: {productType}")
+		lines.append(f"id: {self.product.getId()}")
+		lines.append(f"name: {self.product.getName()}")
+		lines.append("description: ")
+		descLines = self.product.getDescription().split("\n")  # pylint: disable=invalid-name
+		if len(descLines) > 0:
+			lines[-1] += descLines[0]
+			if len(descLines) > 1:
+				for line in descLines[1:]:
+					lines.append(f" {line}")
+		lines.append(f"advice: {self.product.getAdvice()}")
+		lines.append(f"version: {self.product.getProductVersion()}")
+		lines.append(f"priority: {self.product.getPriority()}")
+		lines.append(f"licenseRequired: {self.product.getLicenseRequired()}")
+		if self.product.getProductClassIds() is not None:
+			lines.append(f'productClasses: {", ".join(self.product.getProductClassIds())}')
+		lines.append(f"setupScript: {self.product.getSetupScript()}")
+		lines.append(f"uninstallScript: {self.product.getUninstallScript()}")
+		lines.append(f"updateScript: {self.product.getUpdateScript()}")
+		lines.append(f"alwaysScript: {self.product.getAlwaysScript()}")
+		lines.append(f"onceScript: {self.product.getOnceScript()}")
+		lines.append(f"customScript: {self.product.getCustomScript()}")
+		if isinstance(self.product, LocalbootProduct):
+			lines.append(f"userLoginScript: {self.product.getUserLoginScript()}")
+		if isinstance(self.product, NetbootProduct):
+			pxeConfigTemplate = self.product.getPxeConfigTemplate() or ""  # pylint: disable=invalid-name
+			lines.append(f"pxeConfigTemplate: {pxeConfigTemplate}")
+		lines.append("")
+
+		if self.product.getWindowsSoftwareIds():
+			lines.append("[Windows]")
+			lines.append(f'softwareIds: {", ".join(self.product.getWindowsSoftwareIds())}')
+			lines.append("")
+
+		for dependency in self.productDependencies:
+			lines.append("[ProductDependency]")
+			lines.append(f"action: {dependency.getProductAction()}")
+			if dependency.getRequiredProductId():
+				lines.append(f"requiredProduct: {dependency.getRequiredProductId()}")
+			if dependency.getRequiredProductVersion():
+				lines.append(f"requiredProductVersion: {dependency.getRequiredProductVersion()}")
+			if dependency.getRequiredPackageVersion():
+				lines.append(f"requiredPackageVersion: {dependency.getRequiredPackageVersion()}")
+			if dependency.getRequiredAction():
+				lines.append(f"requiredAction: {dependency.getRequiredAction()}")
+			if dependency.getRequiredInstallationStatus():
+				lines.append(f"requiredStatus: {dependency.getRequiredInstallationStatus()}")
+			if dependency.getRequirementType():
+				lines.append(f"requirementType: {dependency.getRequirementType()}")
+			lines.append("")
+
+		for productProperty in self.productProperties:  # pylint: disable=invalid-name
+			lines.append("[ProductProperty]")
+			productPropertyType = "unicode"  # pylint: disable=invalid-name
+			if isinstance(productProperty, BoolProductProperty):
+				productPropertyType = "bool"  # pylint: disable=invalid-name
+			lines.append(f"type: {productPropertyType}")
+			lines.append(f"name: {productProperty.getPropertyId()}")
+			if not isinstance(productProperty, BoolProductProperty):
+				lines.append(f"multivalue: {productProperty.getMultiValue()}")
+				lines.append(f"editable: {productProperty.getEditable()}")
+			if productProperty.getDescription():
+				lines.append("description: ")
+				descLines = productProperty.getDescription().split("\n")  # type: ignore  # pylint: disable=invalid-name
+				if len(descLines) > 0:
+					lines[-1] += descLines[0]
+					if len(descLines) > 1:
+						for line in descLines[1:]:
+							lines.append(f" {line}")
+
+			if not isinstance(productProperty, BoolProductProperty) and productProperty.getPossibleValues() is not None:
+				lines.append(f"values: {to_json(productProperty.getPossibleValues())}")
+			if productProperty.getDefaultValues() is not None:
+				if isinstance(productProperty, BoolProductProperty):
+					lines.append(f"default: {productProperty.getDefaultValues()[0]}")  # type: ignore
+				else:
+					lines.append(f"default: {to_json(productProperty.getDefaultValues())}")
+			lines.append("")
+
+		if self.product.getChangelog():
+			lines.append("[Changelog]")
+			lines.extend(self.product.getChangelog().split("\n"))
+
+		control_file.write_text("\n".join(lines))

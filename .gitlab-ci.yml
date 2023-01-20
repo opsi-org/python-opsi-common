@@ -50,6 +50,7 @@ pytest-linux:
   #when: manual
   stage: test
   script:
+    - apt install zstd
     - poetry install
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_linux1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_linux2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py

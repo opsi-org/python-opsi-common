@@ -1,66 +1,47 @@
 [Package]
-version = 1
-# depends =
-incremental = false  # lowercase f!
+version = "1337"
+depends = []
 
 [Product]
-type = "localboot"
-id = "prod-1750"
-name = "Control file with path"
-description = """This is some test description
-spanning over multiple lines.
-
-# Some markdown
-
-* this
-* is
-* a
-* list
-
-and this is a [link](https://www.uib.de/)
-"""
-advice = ""
-version = "1.0"
+type = "LocalbootProduct"
+id = "localboot_new"
+name = "localboot new"
+description = """this is a localboot new test package"""
+advice = """use the new one"""
+version = "42.0"
 priority = 0
 licenseRequired = false
-# productClasses =
-setupScript = "setup.ins"
-# uninstallScript =
-# updateScript =
-# alwaysScript =
-# onceScript =
-# customScript =
-# userLoginScript =
+productClasses = []
+setupScript = "setup.opsiscript"
+uninstallScript = "uninstall.opsiscript"
+updateScript = "update.opsiscript"
+alwaysScript = "always.opsiscript"
+onceScript = "once.opsiscript"
+customScript = "custom.opsiscript"
+userLoginScript = "userlogin.opsiscript"
+windowsSoftwareIds = []
 
 [[ProductProperty]]
-type = "unicode"
-name = "target_path"
+type = "UnicodeProductProperty"
+name = "propname"
 multivalue = false
 editable = true
-description = "The target path"
-values = ["C:\\temp\\my_target"]
-default = ["C:\\temp\\my_target"]
+description = "this is a dummy property"
+values = ["a", "b"]
+default = ["a"]
 
 [[ProductProperty]]
-type = "unicode"
-name = "adminaccounts"
+type = "BoolProductProperty"
+name = "boolprop"
 multivalue = false
-editable = true
-description = "Windows account(s) to provision as administrators."
-values = ["Administrator", "domain.local\\Administrator", "BUILTIN\\ADMINISTRATORS"]
-default = ["Administrator"]
+editable = false
+description = "this is a bool property"
+values = [false, true]
+default = [false]
 
-[[ProductDependency]}
+[[ProductDependency]]
+requiredProduct = "hwaudit"
 action = "setup"
-requiredProduct = "l-system-update"
-requiredAction = "setup"
 requirementType = "before"
-
-[Changelog]
-changelog = """
-prod-1750 (1.0-1) testing; urgency=low
-
-  * Initial package
-
- -- Test User <unknown@example.test>  Sat, 27 May 2017 18:38:48 +0000
-"""
+requiredAction = "setup"
+requiredState = "installed"

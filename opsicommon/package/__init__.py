@@ -15,6 +15,9 @@ from opsicommon.package.control_file_handling import (
 	create_product,
 	create_product_dependencies,
 	create_product_properties,
+	dictify_product,
+	dictify_product_dependencies,
+	dictify_product_properties,
 )
 from opsicommon.package.legacy_control_file import LegacyControlFile
 from opsicommon.package.serialization import deserialize, serialize
@@ -80,6 +83,14 @@ class OpsiPackage:
 		self.product_dependencies = legacy_control_file.productDependencies
 		self.package_dependencies = legacy_control_file.packageDependencies
 
+	def generate_control_file_legacy(self, control_file: Path) -> None:
+		legacy_control_file = LegacyControlFile()
+		legacy_control_file.product = self.product
+		legacy_control_file.productDependencies = self.product_dependencies
+		legacy_control_file.productProperties = self.product_properties
+		legacy_control_file.packageDependencies = self.package_dependencies
+		legacy_control_file.generate_control_file(control_file)
+
 	def parse_control_file(self, control_file: Path) -> None:
 		data_dict = tomlkit.loads(control_file.read_text()).unwrap()
 		# changelog key in changelog section... better idea?
@@ -98,6 +109,21 @@ class OpsiPackage:
 			data_dict["Package"]["version"],
 			data_dict.get("ProductProperty", []),
 		)
+
+	def generate_control_file(self, control_file: Path) -> None:  # IDEA: assert .toml here? or only specify dir?
+		data_dict = tomlkit.document()
+		data_dict["Package"] = {
+			"version": self.product.getPackageVersion(),
+			"depends": self.package_dependencies,
+		}
+		data_dict["Product"] = dictify_product(self.product)
+		if self.product_properties:
+			data_dict["ProductProperty"] = dictify_product_properties(self.product_properties)
+		if self.product_dependencies:
+			data_dict["ProductDependency"] = dictify_product_dependencies(self.product_dependencies)
+		if self.product.getChangelog() is not None:
+			(control_file.parent / "changelog.txt").write_text(self.changelog.strip(), encoding="utf-8")
+		control_file.write_text(tomlkit.dumps(data_dict))
 
 	# compression zstd or bz2
 	def create_package_archive(self, base_dir: Path, compression: str = "zstd", destination: Path = Path()) -> Path:
