@@ -130,28 +130,24 @@ class OpsiPackage:
 		self.find_and_parse_control_file(base_dir)
 
 		archives = []
-		dirs = [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
+		dirs = [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]  # pylint: disable=use-tuple-over-list
 		if not (base_dir / "OPSI").exists():
 			raise FileNotFoundError(f"Did not find OPSI directory at {base_dir}")
 		# TODO: option to follow symlinks.
+		# TODO: custom_name stuff?
+		# if custom_name:
+		# 	found = False
+		# 	for _dir in dirs.copy():
+		# 		if Path(f"{_dir.name}.{custom_name}").exists():
+		# 			if custom_only:
+		# 				dirs.pop(_dir)
+		# 			dirs.append(Path(f"{_dir.name}.{custom_name}"))
+		# 			found = True
+		# 	if not found:
+		# 		raise RuntimeError(f"No custom dirs found for '{custom_name}'")
 
 		with tempfile.TemporaryDirectory() as temp_dir_name:
 			temp_dir = Path(temp_dir_name)
-			# TODO: customName stuff?
-			"""
-			if self.customName:
-				found = False
-				for i, currentDir in enumerate(dirs):
-					customDir = f"{currentDir}.{self.customName}"
-					if os.path.exists(os.path.join(self.packageSourceDir, customDir)):
-						found = True
-						if self.customOnly:
-							dirs[i] = customDir
-						else:
-							dirs.append(customDir)
-				if not found:
-					raise RuntimeError(f"No custom dirs found for '{self.customName}'")
-			"""
 			for _dir in dirs:
 				if not _dir.exists():
 					logger.info("Directory '%s' does not exist", _dir)
@@ -159,21 +155,20 @@ class OpsiPackage:
 				file_list = [  # TODO: behaviour for symlinks
 					file
 					for file in _dir.iterdir()
-					if not EXCLUDE_DIRS_ON_PACK_REGEX.match(file.name) and not EXCLUDE_FILES_ON_PACK_REGEX.match(file.name)
+					if not EXCLUDE_DIRS_ON_PACK_REGEX.match(file.name)  # pylint: disable=loop-global-usage
+					and not EXCLUDE_FILES_ON_PACK_REGEX.match(file.name)  # pylint: disable=loop-global-usage
 				]
 				# TODO: SERVER_DATA stuff
-				"""
-				if _dir.startswith("SERVER_DATA"):
-					# Never change permissions of existing directories in /
-					tmp = []
-					for file in fileList:
-						if file.find(os.sep) == -1:
-							logger.info("Skipping dir '%s'", file)
-							continue
-						tmp.append(file)
+				# if _dir.name == "SERVER_DATA":
+				# 	# Never change permissions of existing directories in / ???
+				# 	tmp = []
+				# 	for file in fileList:
+				# 		if str(file).find(os.sep) == -1:
+				# 			logger.info("Skipping dir '%s'", file)
+				# 			continue
+				# 		tmp.append(file)
+				# 	fileList = tmp
 
-					fileList = tmp
-				"""
 				if not file_list:
 					logger.debug("Skipping empty dir '%s'", _dir)
 					continue

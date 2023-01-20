@@ -2,9 +2,9 @@
 tests for opsicommon.package
 """
 
-import shutil
 import tempfile
 from pathlib import Path
+from shutil import copy
 
 import pytest
 
@@ -48,14 +48,14 @@ def test_load_control(form: str) -> None:
 			assert prop.editable is True
 			assert prop.defaultValues == ["a"]
 			assert prop.possibleValues
-			assert set(prop.possibleValues) == {"a", "b"}
+			assert set(prop.possibleValues) == {"a", "b"}  # pylint: disable=loop-invariant-statement
 		elif prop.propertyId == "boolprop":
 			assert prop.description == "this is a bool property"
 			assert prop.multiValue is False
 			assert prop.editable is False
 			assert prop.defaultValues == [False]
 			assert prop.possibleValues
-			assert set(prop.possibleValues) == {True, False}
+			assert set(prop.possibleValues) == {True, False}  # pylint: disable=loop-invariant-statement
 		else:
 			raise ValueError(f"Did not expect propertyId {prop.propertyId}")
 	assert len(package.product_dependencies) == 1
@@ -131,14 +131,14 @@ def test_load_package(product_type: str, form: str) -> None:
 			assert prop.editable is True
 			assert prop.defaultValues == ["a"]
 			assert prop.possibleValues
-			assert set(prop.possibleValues) == {"a", "b"}
+			assert set(prop.possibleValues) == {"a", "b"}  # pylint: disable=loop-invariant-statement
 		elif prop.propertyId == "boolprop":
 			assert prop.description == "this is a bool property"
 			assert prop.multiValue is False
 			assert prop.editable is False
 			assert prop.defaultValues == [False]
 			assert prop.possibleValues
-			assert set(prop.possibleValues) == {True, False}
+			assert set(prop.possibleValues) == {True, False}  # pylint: disable=loop-invariant-statement
 		else:
 			raise ValueError(f"Did not expect propertyId {prop.propertyId}")
 	assert len(package.product_dependencies) == 1
@@ -171,11 +171,12 @@ def test_extract_package() -> None:
 )
 def test_create_package(compression: str) -> None:
 	package = OpsiPackage()
+	test_data = TEST_DATA / "control.toml"
 	with tempfile.TemporaryDirectory() as temp_dir_name:
 		temp_dir = Path(temp_dir_name)
 		for _dir in (temp_dir / "OPSI", temp_dir / "CLIENT_DATA", temp_dir / "SERVER_DATA"):
 			_dir.mkdir()
-			shutil.copy(TEST_DATA / "control.toml", _dir)
+			copy(test_data, _dir)
 		package_archive = package.create_package_archive(temp_dir, compression=compression, destination=temp_dir)
 		with tempfile.TemporaryDirectory() as result_dir_name:
 			result_dir = Path(result_dir_name)

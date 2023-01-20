@@ -60,10 +60,11 @@ def create_product_dependencies(pid: str, prod_v: str, pack_v: str, pdeps: list[
 
 def create_product_properties(pid: str, prod_v: str, pack_v: str, props: list[dict[str, Any]]) -> list[ProductProperty]:
 	result = []
+	kwargs: dict[str, Any]
 	for prop in props:
 		pp_class: type = UnicodeProductProperty
 		p_type = str(prop.get("type", "")).lower()
-		kwargs: dict[str, Any] = {
+		kwargs = {
 			"productId": pid,
 			"productVersion": prod_v,
 			"packageVersion": pack_v,
@@ -140,7 +141,7 @@ def dictify_product_properties(product_properties: list[ProductProperty]) -> lis
 			"values": prop.getPossibleValues(),
 			"default": prop.getDefaultValues(),
 		}
-		properties_list.append({key: value for key, value in property_dict.items() if value is not None})
+		properties_list.append({key: value for key, value in property_dict.items() if value is not None})  # pylint: disable=loop-invariant-statement
 	return properties_list
 
 
@@ -156,5 +157,5 @@ def dictify_product_dependencies(product_dependencies: list[ProductDependency]) 
 			"requiredAction": dep.getRequiredAction(),
 			"requiredStatus": dep.getRequiredInstallationStatus(),
 		}
-		dependencies_list.append({key: value for key, value in dependency_dict.items() if value is not None})
+		dependencies_list.append({key: value for key, value in dependency_dict.items() if value is not None})  # pylint: disable=loop-invariant-statement
 	return dependencies_list
