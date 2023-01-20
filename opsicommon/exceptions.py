@@ -95,15 +95,15 @@ class OpsiServicePermissionError(OpsiServiceError):
 BackendPermissionDeniedError = OpsiServicePermissionError
 
 
-class OpsiServiceVerificationError(OpsiServiceError):
-	ExceptionShortDescription = "Opsi service verification error"
-
-
 class OpsiServiceConnectionError(OpsiServiceError):
 	ExceptionShortDescription = "Opsi service connection error"
 
 
-class OpsiServiceTimeoutError(OpsiServiceError):
+class OpsiServiceVerificationError(OpsiServiceConnectionError):
+	ExceptionShortDescription = "Opsi service verification error"
+
+
+class OpsiServiceTimeoutError(OpsiServiceConnectionError):
 	ExceptionShortDescription = "Opsi service timeout error"
 
 
