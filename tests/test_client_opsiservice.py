@@ -519,6 +519,11 @@ def test_connect_disconnect() -> None:  # pylint: disable=too-many-statements
 		assert client.messagebus_connected is False
 		assert client.connected is False
 
+		print("_connected", client.messagebus._connected)
+		print("_should_be_connected", client.messagebus._should_be_connected)
+		print("_connected_result", client.messagebus._connected_result.is_set())
+		print("is_alive", client.messagebus.is_alive())
+
 		client.connect_messagebus()
 		assert client.messagebus_connected is True
 
