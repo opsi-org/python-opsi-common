@@ -1,6 +1,6 @@
 [Package]
 version = "1337"
-depends = []
+depends = [{ package="mshotfix", condition=">=", version="202301-1" }]
 
 [Product]
 type = "LocalbootProduct"

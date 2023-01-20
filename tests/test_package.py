@@ -67,27 +67,32 @@ def test_load_control(form: str) -> None:
 
 
 @pytest.mark.parametrize(
-	"form",
-	("legacy", "new"),
+	("source", "destination"),
+	(
+		("legacy", "legacy"),
+		("legacy", "new"),
+		("new", "legacy"),
+		("new", "new"),
+	),
 )
-def test_generate_control(form: str) -> None:
+def test_generate_control(source: str, destination: str) -> None:
 	package = OpsiPackage()
-	if form == "new":
+	if source == "new":
 		control_file = TEST_DATA / "control.toml"
 		package.parse_control_file(control_file)
-	elif form == "legacy":
+	elif source == "legacy":
 		control_file = TEST_DATA / "control"
 		package.parse_control_file_legacy(control_file)
 	with tempfile.TemporaryDirectory() as temp_dir_name:
 		temp_dir = Path(temp_dir_name)
-		if form == "new":
+		if destination == "new":
 			package.generate_control_file(temp_dir / "control.toml")
-		elif form == "legacy":
+		elif destination == "legacy":
 			package.generate_control_file_legacy(temp_dir / "control")
 		regenerated_package = OpsiPackage()
-		if form == "new":
+		if destination == "new":
 			regenerated_package.parse_control_file(temp_dir / "control.toml")
-		elif form == "legacy":
+		elif destination == "legacy":
 			regenerated_package.parse_control_file_legacy(temp_dir / "control")
 	assert package.product == regenerated_package.product
 	assert package.package_dependencies == regenerated_package.package_dependencies

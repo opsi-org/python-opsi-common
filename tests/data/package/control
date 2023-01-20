@@ -1,6 +1,6 @@
 [Package]
 version: 1337
-depends: 
+depends: mshotfix (>= 202301-1)
 
 [Product]
 type: localboot
