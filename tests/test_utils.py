@@ -7,10 +7,13 @@ This file is part of opsi - https://www.opsi.org
 import datetime
 import os
 import subprocess
-from typing import Any, Type
+from contextlib import contextmanager
+from typing import Any, Generator, Type
 
 import psutil  # type: ignore[import]
 import pytest
+from opsicommon.logging.constants import LEVEL_TO_OPSI_LEVEL
+from opsicommon.logging.logging import StreamHandler, get_all_handlers, logging_config
 from opsicommon.objects import LocalbootProduct, Product
 from opsicommon.utils import (
 	Singleton,
@@ -131,3 +134,13 @@ def test_frozen_lru_cache() -> None:
 		assert result["a"] == 11 and result["b"] == 11
 		result = func({"a": 0, "b": 42})
 		assert result["a"] == 1 and result["b"] == 43
+
+
+@contextmanager
+def log_level_stderr(opsi_level: int) -> Generator[None, None, None]:
+	level = LEVEL_TO_OPSI_LEVEL[get_all_handlers(StreamHandler)[0].level]
+	logging_config(stderr_level=opsi_level)
+	try:
+		yield
+	finally:
+		logging_config(stderr_level=level)

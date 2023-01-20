@@ -59,6 +59,8 @@ from opsicommon.testing.helpers import (  # type: ignore[import]
 	http_test_server,
 )
 
+from .test_utils import log_level_stderr
+
 
 class MyConnectionListener(ServiceConnectionListener):
 	def __init__(self) -> None:
@@ -459,7 +461,8 @@ def test_server_name_handling(  # pylint: disable=too-many-arguments
 
 
 def test_connect_disconnect() -> None:  # pylint: disable=too-many-statements
-	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
+
+	with (log_level_stderr(9), http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server):
 		listener = MyConnectionListener()
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			with listener.register(client):
@@ -1163,4 +1166,5 @@ def test_server_date_update_max_diff() -> None:
 			client.connect()
 			cur = datetime.utcnow()
 			# Assert that local time was NOT set to server time
+			assert abs((server_dt - cur).total_seconds()) > 20
 			assert abs((server_dt - cur).total_seconds()) > 20
