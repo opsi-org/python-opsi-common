@@ -73,7 +73,8 @@ def test_run_process_in_session_linux() -> None:
 def test_ensure_not_already_running_linux(tmpdir: Path) -> None:
 	test_system_sleep = tmpdir / "test_system_sleep"
 	shutil.copy("/bin/sleep", test_system_sleep)
-	with subprocess.Popen([f"{test_system_sleep} 3 </dev/null &>/dev/null &"], shell=True):
+	with subprocess.Popen([f"{test_system_sleep} 5 </dev/null &>/dev/null &"], shell=True):
+		time.sleep(1)
 		with pytest.raises(RuntimeError):
 			ensure_not_already_running("test_system_sleep")
 
@@ -82,7 +83,8 @@ def test_ensure_not_already_running_linux(tmpdir: Path) -> None:
 def test_ensure_not_already_running_child_process_linux(tmpdir: Path) -> None:
 	test_system_sleep = tmpdir / "test_system_sleep_child"
 	shutil.copy("/bin/sleep", test_system_sleep)
-	with subprocess.Popen([test_system_sleep, "3"]):
+	with subprocess.Popen([test_system_sleep, "5"]):
+		time.sleep(1)
 		# test_system_sleep_child is our child => no Exception should be raised
 		ensure_not_already_running("test_system_sleep_child")
 
