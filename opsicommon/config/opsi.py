@@ -165,7 +165,10 @@ class OpsiConfig(metaclass=Singleton):
 
 	def _assert_config_read(self) -> None:
 		cf_path = Path(self.config_file)
-		if not self._config_file_read or not cf_path.exists() or not cf_path.stat().st_mtime != self._config_file_mtime:
+		if not cf_path.exists():
+			self._upgrade_done = False
+			self._config_file_read = False
+		if not self._config_file_read or not cf_path.stat().st_mtime != self._config_file_mtime:
 			self.read_config_file()
 
 	def _assert_category_and_config(self, category: str, config: str | None = None) -> None:
