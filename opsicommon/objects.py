@@ -314,7 +314,7 @@ class BaseObject:
 		return self.__str__()
 
 
-@lru_cache(maxsize=0)
+@lru_cache()
 def mandatory_constructor_args(_class: Type[BaseObject]) -> list[str]:
 	cache_key = _class.__name__  # type: ignore[attr-defined]
 	spec = getfullargspec(_class.__init__)  # type: ignore[misc]
@@ -330,7 +330,7 @@ def mandatory_constructor_args(_class: Type[BaseObject]) -> list[str]:
 	return mandatory
 
 
-@lru_cache(maxsize=0)
+@lru_cache()
 def get_ident_attributes(_class: Type[BaseObject]) -> tuple[str, ...]:
 	ident_attributes = tuple(mandatory_constructor_args(_class))  # type: ignore[arg-type]
 	if "hardwareClass" in ident_attributes:
@@ -338,12 +338,12 @@ def get_ident_attributes(_class: Type[BaseObject]) -> tuple[str, ...]:
 	return ident_attributes
 
 
-@lru_cache(maxsize=0)
+@lru_cache()
 def get_foreign_id_attributes(_class: Type[BaseObject]) -> Any:
 	return _class.foreign_id_attributes
 
 
-@lru_cache(maxsize=0)
+@lru_cache()
 def get_possible_class_attributes(_class: Type[BaseObject]) -> set[str]:
 	"""
 	Returns the possible attributes of a class.
@@ -363,7 +363,7 @@ def get_possible_class_attributes(_class: Type[BaseObject]) -> set[str]:
 	return attributes_set
 
 
-@lru_cache(maxsize=0)
+@lru_cache()
 def get_backend_method_prefix(_class: Type[BaseObject]) -> Any:
 	return _class.backend_method_prefix
 
@@ -3384,7 +3384,7 @@ Relationship.sub_classes["AuditHardwareOnHost"] = AuditHardwareOnHost
 OBJECT_CLASSES = {name: cls for (name, cls) in globals().items() if isinstance(cls, type) and issubclass(cls, BaseObject)}
 
 
-@lru_cache(maxsize=0)
+@lru_cache()
 def get_object_type(object_type: str) -> Type[BaseObject]:
 	return OBJECT_CLASSES[object_type]
 
