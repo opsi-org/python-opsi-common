@@ -107,6 +107,16 @@ class OpsiServiceTimeoutError(OpsiServiceConnectionError):
 	ExceptionShortDescription = "Opsi service timeout error"
 
 
+class OpsiServiceUnavailableError(OpsiServiceConnectionError):
+	ExceptionShortDescription = "Opsi service unavailable error"
+
+	def __init__(self, message: str = "", status_code: int | None = None, content: str | None = None, until: float | None = None) -> None:
+		super().__init__(message)
+		self.status_code = status_code
+		self.content = content
+		self.until = until
+
+
 class OpsiBadRpcError(OpsiError):
 	ExceptionShortDescription = "Opsi bad rpc error"
 

@@ -230,6 +230,11 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 	def do_GET(self) -> None:  # pylint: disable=invalid-name,too-many-branches
 		self._log({"method": "GET", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
 		if self.headers.get("Upgrade") == "websocket":
+			if self.server.response_status:
+				self.send_response(self.server.response_status[0], self.server.response_status[1])
+				self.end_headers()
+				return None
+
 			self._ws_handshake()
 			# This handler is in websocket mode now.
 			# do_GET only returns after client close or socket error.

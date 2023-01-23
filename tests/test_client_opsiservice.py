@@ -32,6 +32,7 @@ from opsicommon.client.opsiservice import (
 	OpsiServiceError,
 	OpsiServicePermissionError,
 	OpsiServiceTimeoutError,
+	OpsiServiceUnavailableError,
 	OpsiServiceVerificationError,
 	ServiceClient,
 	ServiceConnectionListener,
@@ -595,6 +596,49 @@ def test_request_exceptions() -> None:
 			with pytest.raises(OpsiServiceConnectionError) as exc_info:
 				client.get("/", read_timeout="FAIL")  # type: ignore[arg-type]
 
+			now = time.time()
+			server.response_status = (503, "Unavail")
+			server.response_headers["Retry-After"] = "5"
+			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
+				client.get("/")
+			assert exc_info.value.content == "content"
+			assert exc_info.value.status_code == 503
+			assert exc_info.value.until or 0 <= now + 7
+			assert exc_info.value.until or 0 >= now + 3
+
+			server.response_status = (200, "OK")
+			del server.response_headers["Retry-After"]
+			# OpsiServiceUnavailableError must persist until err.until reached
+			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
+				client.get("/")
+
+			time.sleep(6)
+			client.get("/")
+
+			server.response_status = (503, "Unavail")
+			server.response_headers["Retry-After"] = "invalid"
+			now = time.time()
+			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
+				client.get("/")
+			# 60 = default value
+			assert int((exc_info.value.until or -999) - now) in (59, 60)
+
+			client._service_unavailable = None  # pylint: disable=protected-access
+			server.response_headers["Retry-After"] = "-1"
+			now = time.time()
+			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
+				client.get("/")
+			# 1 = min
+			assert int((exc_info.value.until or -999) - now) in (0, 1)
+
+			client._service_unavailable = None  # pylint: disable=protected-access
+			server.response_headers["Retry-After"] = "999999"
+			now = time.time()
+			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
+				client.get("/")
+			# 7200 = max
+			assert int((exc_info.value.until or -999) - now) in (7199, 7200)
+
 
 def test_multi_address() -> None:
 	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
@@ -644,6 +688,41 @@ def test_messagebus_reconnect() -> None:
 			assert len(listener.messages) == expected_messages
 			rpc_ids = sorted([int(m.rpc_id) for m in listener.messages])  # type: ignore[attr-defined]
 			assert rpc_ids[:6] == list(range(1, expected_messages + 1))
+
+
+def test_messagebus_reconnect_exception() -> None:
+	class MBListener(MessagebusListener):
+		exceptions = []  # pylint: disable=use-tuple-over-list
+		next_connect_wait = []  # pylint: disable=use-tuple-over-list
+		established = 0
+
+		def connection_established(self, messagebus: Messagebus) -> None:
+			self.established += 1
+
+		def connection_failed(self, messagebus: Messagebus, exception: Exception) -> None:
+			self.exceptions.append(exception)
+			self.next_connect_wait.append(messagebus._next_connect_wait)  # pylint: disable=protected-access
+
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.messagebus.reconnect_wait = 5
+			listener = MBListener()
+
+			with listener.register(client.messagebus):
+				client.connect_messagebus()
+				time.sleep(3)
+				server.response_status = (503, "Unavail")
+				server.response_headers["Retry-After"] = "7"
+				server.restart()
+				time.sleep(10)
+
+			assert len(listener.exceptions) == 2
+			assert listener.exceptions[1].status_code == 503  # type: ignore[attr-defined]
+
+			assert listener.next_connect_wait[0] == 5
+			assert listener.next_connect_wait[1] == 7
+
+			assert listener.established == 1
 
 
 def test_get() -> None:
@@ -1022,12 +1101,28 @@ def test_messagebus_multi_thread() -> None:
 				assert res["error"] is None
 
 
-def test_messagebus_listener() -> None:
+def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 	class StoringListener(MessagebusListener):
 		def __init__(self, message_types: Iterable[MessageType | str] | None = None) -> None:
 			super().__init__(message_types)
 			self.messages_received: list[Message] = []
 			self.expired_messages_received: list[Message] = []
+			self.connection_open_calls = 0
+			self.connection_established_calls = 0
+			self.connection_closed_calls = 0
+			self.connection_failed_calls = 0
+
+		def connection_open(self, messagebus: Messagebus) -> None:
+			self.connection_open_calls += 1
+
+		def connection_established(self, messagebus: Messagebus) -> None:
+			self.connection_established_calls += 1
+
+		def connection_closed(self, messagebus: Messagebus) -> None:
+			self.connection_closed_calls += 1
+
+		def connection_failed(self, messagebus: Messagebus, exception: Exception) -> None:
+			self.connection_failed_calls += 1
 
 		def message_received(self, message: Message) -> None:
 			self.messages_received.append(message)
@@ -1102,10 +1197,24 @@ def test_messagebus_listener() -> None:
 				listener4.register(client.messagebus),
 			):
 				assert len(client.messagebus._listener) == 4  # pylint: disable=protected-access
+				client.messagebus.reconnect_wait = 2
+				client.messagebus._connect_timeout = 2  # pylint: disable=protected-access
 				client.connect_messagebus()
 				# Receive messages for 3 seconds
 				time.sleep(3)
+				# Stop server
+				server.stop()
+				# Wait for reconnect after 2 seconds (which will fail)
+				time.sleep(5)
+				client.disconnect()
+
 			assert len(client.messagebus._listener) == 0  # pylint: disable=protected-access
+
+			for listener in (listener1, listener2, listener3, listener4):
+				assert listener.connection_open_calls == 2
+				assert listener.connection_established_calls == 1
+				assert listener.connection_closed_calls == 1
+				assert listener.connection_failed_calls == 1
 
 	# listener1 / listener3: JSONRPC_RESPONSE + FILE_UPLOAD_RESULT
 	for listener in (listener1, listener3):

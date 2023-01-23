@@ -56,6 +56,7 @@ from ..exceptions import (
 	OpsiServiceError,
 	OpsiServicePermissionError,
 	OpsiServiceTimeoutError,
+	OpsiServiceUnavailableError,
 	OpsiServiceVerificationError,
 )
 from ..logging import get_logger, secret_filter
@@ -262,6 +263,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self._listener: list[ServiceConnectionListener] = []
 		self._username = username
 		self._password = password
+		self._service_unavailable: OpsiServiceUnavailableError | None = None
 
 		self._msgpack_decoder = msgspec.msgpack.Decoder()
 		self._msgpack_encoder = msgspec.msgpack.Encoder()
@@ -713,6 +715,11 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		verify: str | bool | None = None,
 		allow_status_codes: Iterable[int] | None = None
 	) -> RequestsResponse:
+		if self._service_unavailable and self._service_unavailable.until and self._service_unavailable.until >= time.time():
+			raise self._service_unavailable
+
+		self._service_unavailable = None
+
 		allow_status_codes = (200, 201, 202, 203, 204, 206, 207, 208) if allow_status_codes is None else allow_status_codes
 		try:
 			response = self._session.request(
@@ -738,6 +745,18 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		except Timeout as err:
 			raise OpsiServiceTimeoutError(str(err)) from err
 		except HTTPError as err:
+			if err.response.status_code == 503:
+				retry_after = 60
+				try:
+					retry_after = int(err.response.headers.get("Retry-After", ""))
+					retry_after = max(1, min(retry_after, 7200))
+				except ValueError:
+					pass
+				self._service_unavailable = OpsiServiceUnavailableError(
+					str(err), status_code=err.response.status_code, content=err.response.text, until=time.time() + retry_after
+				)
+				raise self._service_unavailable from err
+
 			cls = OpsiServiceError
 			if err.response.status_code == 401:
 				cls = OpsiServiceAuthenticationError
@@ -963,6 +982,26 @@ class MessagebusListener():  # pylint: disable=too-few-public-methods
 		"""
 		self.message_types = {MessageType(mt) for mt in message_types} if message_types else None
 
+	def connection_open(self, messagebus: Messagebus) -> None:
+		"""
+		Called when the connection to the messagebus is opened.
+		"""
+
+	def connection_established(self, messagebus: Messagebus) -> None:
+		"""
+		Called when the connection to the messagebus is established.
+		"""
+
+	def connection_closed(self, messagebus: Messagebus) -> None:
+		"""
+		Called when the connection to the messagebus is closed.
+		"""
+
+	def connection_failed(self, messagebus: Messagebus, exception: Exception) -> None:
+		"""
+		Called when a connection to the messagebus failed.
+		"""
+
 	def message_received(self, message: Message) -> None:
 		"""
 		Called when a valid message is received.
@@ -1008,7 +1047,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self.ping_interval = 15.0  # Send ping every specified period in seconds.
 		self.ping_timeout = 10.0  # Ping timeout in seconds.
 		self.reconnect_wait = 5.0  # After connection lost, reconnect after specified seconds.
-
+		self._next_connect_wait = 0.0
 		# from websocket import enableTrace
 		# enableTrace(True)
 
@@ -1024,17 +1063,34 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		logger.debug("Websocket opened")
 		if not self._connected:
 			logger.notice("Connected to opsi messagebus")
+		self._next_connect_wait = self.reconnect_wait
 		self._connected = True
 		self._connected_result.set()
+		for listener in self._listener:
+			CallbackThread(getattr(listener, "connection_established"), messagebus=self).start()
 
 	def _on_error(self, app: WebSocketApp, error: Exception) -> None:  # pylint: disable=unused-argument
-		logger.debug("Websocket error: %s", error)
+		status_code = getattr(error, "status_code", 0)
+		logger.error("Websocket error: %d - %s", status_code, error)
 		self._connect_exception = error
+		next_reconnect_wait = self._next_connect_wait or self.reconnect_wait
+		if status_code == 503:
+			next_reconnect_wait = 60
+			try:
+				next_reconnect_wait = int(getattr(error, "resp_headers", {}).get("retry-after", ""))
+				next_reconnect_wait = max(1, min(next_reconnect_wait, 7200))
+			except ValueError:
+				pass
+		self._next_connect_wait = next_reconnect_wait
 		self._connected_result.set()
+		for listener in self._listener:
+			CallbackThread(getattr(listener, "connection_failed"), messagebus=self, exception=error).start()
 
 	def _on_close(self, app: WebSocketApp, close_status_code: int, close_message: str) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket closed with status_code=%r and message %r", close_status_code, close_message)
-		# Websocket is doing reconnect, do not set self._connected = False
+		self._connected = False
+		for listener in self._listener:
+			CallbackThread(getattr(listener, "connection_closed"), messagebus=self).start()
 
 	def _on_message(self, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket message received")
@@ -1211,6 +1267,9 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			on_pong=self._on_pong
 		)
 
+		for listener in self._listener:
+			CallbackThread(getattr(listener, "connection_open"), messagebus=self).start()
+
 		self._app.run_forever(  # type: ignore[attr-defined]
 			sslopt=sslopt,
 			skip_utf8_validation=True,
@@ -1221,7 +1280,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			http_proxy_timeout=self._connect_timeout,
 			ping_interval=self.ping_interval,
 			ping_timeout=self.ping_timeout,
-			reconnect=self.reconnect_wait
+			reconnect=0 # self.reconnect_wait
 		)
 
 	def _disconnect(self) -> None:
@@ -1239,12 +1298,19 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		for var in self._context:
 			var.set(self._context[var])
 		logger.debug("Messagebus thread started")
-		try:
+		try:  # pylint: disable=too-many-nested-blocks
 			while not self._should_stop.wait(1):
 				if self._should_be_connected and not self._connected:
+					if self._next_connect_wait:
+						logger.info("Waiting %d seconds before reconnect", self._next_connect_wait)  # pylint: disable=loop-global-usage
+						for _ in range(round(self._next_connect_wait)):
+							if self._should_stop.wait(1):  # pylint: disable=loop-invariant-statement
+								return
 					logger.debug("Calling _connect()")  # pylint: disable=loop-global-usage
 					# Call of _connect() will block
 					self._connect()
+				if self._next_connect_wait == 0.0:
+					self._next_connect_wait = self.reconnect_wait
 		except Exception as err:  # pylint: disable=broad-except
 			logger.error(err, exc_info=True)
 
