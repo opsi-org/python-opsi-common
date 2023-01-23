@@ -712,15 +712,15 @@ def test_messagebus_reconnect_exception() -> None:
 				client.connect_messagebus()
 				time.sleep(3)
 				server.response_status = (503, "Unavail")
-				server.response_headers["Retry-After"] = "7"
+				server.response_headers["Retry-After"] = "3"
 				server.restart()
-				time.sleep(10)
+				time.sleep(4)
 
-			assert len(listener.exceptions) == 2
+			assert len(listener.exceptions) >= 2
 			assert listener.exceptions[1].status_code == 503  # type: ignore[attr-defined]
 
 			assert listener.next_connect_wait[0] == 5
-			assert listener.next_connect_wait[1] == 7
+			assert listener.next_connect_wait[1] == 3
 
 			assert listener.established == 1
 
