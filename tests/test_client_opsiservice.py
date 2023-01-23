@@ -565,7 +565,7 @@ def test_requests() -> None:
 			assert response.content == server.response_body
 
 
-def test_request_exceptions() -> None:
+def test_request_exceptions() -> None:  # pylint: disable=too-many-statements
 	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)"}) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			server.response_status = (200, "OK")

@@ -1280,7 +1280,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			http_proxy_timeout=self._connect_timeout,
 			ping_interval=self.ping_interval,
 			ping_timeout=self.ping_timeout,
-			reconnect=0 # self.reconnect_wait
+			reconnect=0
 		)
 
 	def _disconnect(self) -> None:
