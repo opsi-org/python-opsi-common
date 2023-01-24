@@ -11,6 +11,8 @@ from typing import Generator
 
 import packaging.version
 
+from opsicommon.logging import logger
+
 
 @contextmanager
 def chdir(new_dir: Path) -> Generator[None, None, None]:
@@ -80,15 +82,15 @@ def extract_command(archive: Path) -> str:
 	if archive.suffix in (".gzip", ".gz"):
 		if pigz_available():
 			return f"pigz --stdout --decompress '{archive}'"
-		return f"zcat --stdout --decompress '{archive}'"
+		return f"zcat --stdout --quiet --decompress '{archive}'"
 	if archive.suffix in (".bzip2", ".bz2"):
-		return f"bzcat --stdout --decompress '{archive}'"
+		return f"bzcat --stdout --quiet --decompress '{archive}'"
 	if archive.suffix == ".zstd":
 		try:
-			subprocess.check_call("zstdcat --version", shell=True)
+			subprocess.check_call("zstdcat --version > /dev/null", shell=True)
 		except subprocess.CalledProcessError as error:
 			raise RuntimeError("Zstd not available.") from error
-		return f"zstdcat --stdout --decompress '{archive}'"
+		return f"zstdcat --stdout --quiet --decompress '{archive}'"
 	raise RuntimeError(f"Unknown compression of file '{archive}'")
 
 
@@ -108,18 +110,17 @@ def deserialize(archive: Path, destination: Path, file_pattern: str | None = Non
 
 def compress_command(archive: Path, compression: str) -> str:
 	if compression in ("bzip2", "bz2"):
-		return f"bzip2 - > '{archive}'"
+		return f"bzip2 --quiet - > '{archive}'"
 	if compression == "zstd":
 		try:
-			subprocess.check_call("zstd --version", shell=True)
+			subprocess.check_call("zstd --version > /dev/null", shell=True)
 		except subprocess.CalledProcessError as error:
 			raise RuntimeError("Zstd not available.") from error
-		return f"zstd - -o '{archive}'"
-	raise RuntimeError(f"Unknown compression of file '{archive}'")
+		return f"zstd --no-progress -q - -o '{archive}'"
+	raise RuntimeError(f"Unknown compression '{compression}'")
 
 
 def serialize(archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None) -> None:
-	print("serializing", sources, "rooted at", base_dir, "to", archive)
 	if archive.exists():
 		archive.unlink()
 	source_string = " ".join((str(source.relative_to(base_dir)) for source in sources))
@@ -128,4 +129,5 @@ def serialize(archive: Path, sources: list[Path], base_dir: Path, compression: s
 	else:
 		cmd = f"{TAR_CREATE_COMMAND} {archive} {source_string}"
 	with chdir(base_dir):
+		logger.debug("Executing %s at %s", cmd, base_dir)
 		subprocess.check_call(cmd, shell=True)

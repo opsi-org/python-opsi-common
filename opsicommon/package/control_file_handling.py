@@ -96,7 +96,6 @@ def create_product(data_dict: dict[str, Any]) -> Product:
 	for key in ("id", "version", "type", "productClasses"):
 		if key in kwargs:
 			kwargs.pop(key)
-	print(kwargs)
 	if data_dict["Product"]["type"] in ("netboot", "NetbootProduct"):
 		return NetbootProduct(data_dict["Product"]["id"], data_dict["Product"]["version"], data_dict["Package"]["version"], **kwargs)
 	if data_dict["Product"]["type"] in ("localboot", "LocalbootProduct"):

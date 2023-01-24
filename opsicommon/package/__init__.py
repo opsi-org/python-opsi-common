@@ -32,13 +32,18 @@ class OpsiPackage:
 	"""
 
 	@classmethod
-	def extract_package_archive(cls, package_archive: Path, destination: Path) -> None:
+	def extract_package_archive(cls, package_archive: Path, destination: Path, new_product_id: str | None = None) -> None:
 		with tempfile.TemporaryDirectory() as temp_dir_name:
 			temp_dir = Path(temp_dir_name)
 			logger.debug("Deserializing archive %s", package_archive)
 			deserialize(package_archive, temp_dir)
 			for archive in temp_dir.iterdir():
 				deserialize(archive, destination / archive.name.split(".")[0])
+		if new_product_id:
+			opsi_package = OpsiPackage()  # TODO: rename scripts? why? see OPSI.Util.Product
+			control_file = opsi_package.find_and_parse_control_file(destination)
+			opsi_package.product.setId(new_product_id)
+			opsi_package.generate_control_file(control_file)
 
 	def __init__(self, package_archive: Path | None = None) -> None:
 		self.product: Product
@@ -59,19 +64,19 @@ class OpsiPackage:
 				raise RuntimeError(f"No OPSI directory in archive '{package_archive}'")
 			if len(content) > 1:
 				raise RuntimeError(f"Multiple OPSI directories in archive '{package_archive}'.")
-			deserialize(content[0], temp_dir, file_pattern="control*")
+			deserialize(content[0], temp_dir, file_pattern="control*")  # or OPSI? difference tar and cpio
 			self.find_and_parse_control_file(temp_dir)
 
-	def find_and_parse_control_file(self, base_dir: Path) -> None:
+	def find_and_parse_control_file(self, base_dir: Path) -> Path:
 		content = list(base_dir.rglob("control*"))
 		for path in (base_dir / "control.toml", base_dir / "OPSI" / "control.toml"):
 			if path in content:
 				self.parse_control_file(path)
-				return
+				return path
 		for path in (base_dir / "control", base_dir / "OPSI" / "control"):
 			if path in content:
 				self.parse_control_file_legacy(path)
-				return
+				return path
 		raise RuntimeError("No control file found.")
 
 	def parse_control_file_legacy(self, control_file: Path) -> None:
@@ -83,6 +88,9 @@ class OpsiPackage:
 		self.product_dependencies = legacy_control_file.productDependencies
 		self.package_dependencies = legacy_control_file.packageDependencies
 
+	def package_archive_name(self) -> str:
+		return f"{self.product.id}_{self.product.productVersion}-{self.product.packageVersion}.opsi"
+
 	def generate_control_file_legacy(self, control_file: Path) -> None:
 		legacy_control_file = LegacyControlFile()
 		legacy_control_file.product = self.product
@@ -92,6 +100,10 @@ class OpsiPackage:
 		legacy_control_file.generate_control_file(control_file)
 
 	def parse_control_file(self, control_file: Path) -> None:
+		if control_file.suffix != ".toml":
+			self.parse_control_file_legacy(control_file)
+			return
+
 		data_dict = tomlkit.loads(control_file.read_text()).unwrap()
 		# changelog key in changelog section... better idea?
 		self.changelog = data_dict.get("changelog", {}).get("changelog")
@@ -110,7 +122,11 @@ class OpsiPackage:
 			data_dict.get("ProductProperty", []),
 		)
 
-	def generate_control_file(self, control_file: Path) -> None:  # IDEA: assert .toml here? or only specify dir?
+	def generate_control_file(self, control_file: Path) -> None:
+		if control_file.suffix != ".toml":
+			self.generate_control_file_legacy(control_file)
+			return
+
 		data_dict = tomlkit.document()
 		data_dict["Package"] = {
 			"version": self.product.getPackageVersion(),
@@ -126,7 +142,7 @@ class OpsiPackage:
 		control_file.write_text(tomlkit.dumps(data_dict))
 
 	# compression zstd or bz2
-	def create_package_archive(self, base_dir: Path, compression: str = "zstd", destination: Path = Path()) -> Path:
+	def create_package_archive(self, base_dir: Path, compression: str = "zstd", destination: Path | None = None) -> Path:
 		self.find_and_parse_control_file(base_dir)
 
 		archives = []
@@ -158,7 +174,8 @@ class OpsiPackage:
 					if not EXCLUDE_DIRS_ON_PACK_REGEX.match(file.name)  # pylint: disable=loop-global-usage
 					and not EXCLUDE_FILES_ON_PACK_REGEX.match(file.name)  # pylint: disable=loop-global-usage
 				]
-				# TODO: SERVER_DATA stuff
+				# TODO: SERVER_DATA stuff - restrict to only /tftpboot?
+				# TODO: what is the right instance to enforce this?
 				# if _dir.name == "SERVER_DATA":
 				# 	# Never change permissions of existing directories in / ???
 				# 	tmp = []
@@ -174,11 +191,12 @@ class OpsiPackage:
 					continue
 				filename = temp_dir / f"{_dir.name}.tar.{compression}"
 				logger.info("Creating archive %s", filename)
-				serialize(filename, [_dir], base_dir, compression=compression)
+				serialize(filename, file_list, base_dir=_dir, compression=compression)
 				# TODO: progress tracking
 				archives.append(filename)
 
-			package_archive = destination / f"{self.product.id}_{self.product.productVersion}-{self.product.packageVersion}.opsi"
-			logger.info("Creating archive %s", package_archive)
+			destination = (destination or Path()).absolute()
+			package_archive = destination / self.package_archive_name()
+			logger.info("Creating archive %s", package_archive.absolute())
 			serialize(package_archive, archives, temp_dir)
 		return package_archive

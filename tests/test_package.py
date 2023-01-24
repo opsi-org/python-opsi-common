@@ -150,18 +150,25 @@ def test_load_package(product_type: str, form: str) -> None:
 
 
 @pytest.mark.linux
-def test_extract_package() -> None:
+@pytest.mark.parametrize(
+	"new_product_id",
+	(None, "newproductid"),
+)
+def test_extract_package(new_product_id: str | None) -> None:
 	with tempfile.TemporaryDirectory() as temp_dir_name:
 		temp_dir = Path(temp_dir_name)
-		OpsiPackage.extract_package_archive(TEST_DATA / "localboot_legacy_42.0-1337.opsi", temp_dir)
+		OpsiPackage.extract_package_archive(TEST_DATA / "localboot_legacy_42.0-1337.opsi", temp_dir, new_product_id=new_product_id)
 		contents = list(temp_dir.rglob("*"))
-	for _file in (
-		temp_dir / "OPSI" / "control",
-		temp_dir / "OPSI" / "preinst",
-		temp_dir / "OPSI" / "postinst",
-		temp_dir / "CLIENT_DATA" / "setup.opsiscript",
-	):
-		assert _file in contents
+		for _file in (
+			temp_dir / "OPSI" / "control",
+			temp_dir / "OPSI" / "preinst",
+			temp_dir / "OPSI" / "postinst",
+			temp_dir / "CLIENT_DATA" / "setup.opsiscript",
+		):
+			assert _file in contents
+			result = OpsiPackage()
+			result.find_and_parse_control_file(temp_dir)
+			assert result.product.id == "newproductid" if new_product_id else "localboot_legacy"
 
 
 @pytest.mark.linux
