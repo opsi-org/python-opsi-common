@@ -116,7 +116,7 @@ def compress_command(archive: Path, compression: str) -> str:
 			subprocess.check_call("zstd --version > /dev/null", shell=True)
 		except subprocess.CalledProcessError as error:
 			raise RuntimeError("Zstd not available.") from error
-		return f"zstd --no-progress - -o '{archive}'  > /dev/null"
+		return f"zstd - -o '{archive}' > /dev/null"  # --no-progress is not available for deb9 zstd
 	raise RuntimeError(f"Unknown compression '{compression}'")
 
 
