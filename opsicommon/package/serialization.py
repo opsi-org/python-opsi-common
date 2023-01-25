@@ -11,7 +11,9 @@ from typing import Generator
 
 import packaging.version
 
-from opsicommon.logging import logger
+from opsicommon.logging import get_logger
+
+logger = get_logger("opsicommon.package")
 
 
 @contextmanager
@@ -95,7 +97,7 @@ def extract_command(archive: Path) -> str:
 
 
 # Warning: this is specific for linux!
-def deserialize(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
+def extract_archive(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
 	if not destination.exists():
 		destination.mkdir(parents=True)
 	if archive.suffixes and archive.suffixes[-1] in (".zstd", ".gz", ".gzip", ".bz2", ".bzip2"):
@@ -120,7 +122,7 @@ def compress_command(archive: Path, compression: str) -> str:
 	raise RuntimeError(f"Unknown compression '{compression}'")
 
 
-def serialize(archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None) -> None:
+def create_archive(archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None) -> None:
 	if archive.exists():
 		archive.unlink()
 	source_string = " ".join((str(source.relative_to(base_dir)) for source in sources))

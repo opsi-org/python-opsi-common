@@ -2,7 +2,6 @@
 tests for opsicommon.package
 """
 
-import tempfile
 from pathlib import Path
 from shutil import copy
 
@@ -10,6 +9,7 @@ import pytest
 
 from opsicommon.objects import NetbootProduct
 from opsicommon.package import OpsiPackage
+from opsicommon.utils import make_temp_dir
 
 TEST_DATA = Path("tests") / "data" / "package"
 
@@ -83,8 +83,7 @@ def test_generate_control(source: str, destination: str) -> None:
 	elif source == "legacy":
 		control_file = TEST_DATA / "control"
 		package.parse_control_file_legacy(control_file)
-	with tempfile.TemporaryDirectory() as temp_dir_name:
-		temp_dir = Path(temp_dir_name)
+	with make_temp_dir() as temp_dir:
 		if destination == "new":
 			package.generate_control_file(temp_dir / "control.toml")
 		elif destination == "legacy":
@@ -155,9 +154,8 @@ def test_load_package(product_type: str, form: str) -> None:
 	(None, "newproductid"),
 )
 def test_extract_package(new_product_id: str | None) -> None:
-	with tempfile.TemporaryDirectory() as temp_dir_name:
-		temp_dir = Path(temp_dir_name)
-		OpsiPackage.extract_package_archive(TEST_DATA / "localboot_legacy_42.0-1337.opsi", temp_dir, new_product_id=new_product_id)
+	with make_temp_dir() as temp_dir:
+		OpsiPackage().extract_package_archive(TEST_DATA / "localboot_legacy_42.0-1337.opsi", temp_dir, new_product_id=new_product_id)
 		contents = list(temp_dir.rglob("*"))
 		for _file in (
 			temp_dir / "OPSI" / "control",
@@ -179,15 +177,13 @@ def test_extract_package(new_product_id: str | None) -> None:
 def test_create_package(compression: str) -> None:
 	package = OpsiPackage()
 	test_data = TEST_DATA / "control.toml"
-	with tempfile.TemporaryDirectory() as temp_dir_name:
-		temp_dir = Path(temp_dir_name)
+	with make_temp_dir() as temp_dir:
 		for _dir in (temp_dir / "OPSI", temp_dir / "CLIENT_DATA", temp_dir / "SERVER_DATA"):
 			_dir.mkdir()
 			copy(test_data, _dir)
 		package_archive = package.create_package_archive(temp_dir, compression=compression, destination=temp_dir)
-		with tempfile.TemporaryDirectory() as result_dir_name:
-			result_dir = Path(result_dir_name)
-			OpsiPackage.extract_package_archive(package_archive, result_dir)
+		with make_temp_dir() as result_dir:
+			OpsiPackage().extract_package_archive(package_archive, result_dir)
 			result_contents = list((_dir.relative_to(result_dir) for _dir in result_dir.rglob("*")))
 			for part in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
 				assert (temp_dir / part).relative_to(temp_dir) in result_contents

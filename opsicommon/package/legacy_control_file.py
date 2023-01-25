@@ -5,7 +5,7 @@ handling for old control file format
 import re
 from pathlib import Path
 
-from opsicommon.logging import logger
+from opsicommon.logging import get_logger
 from opsicommon.objects import (
 	BoolProductProperty,
 	LocalbootProduct,
@@ -32,6 +32,8 @@ from opsicommon.types import (
 	forceUniqueList,
 )
 from opsicommon.utils import from_json, to_json
+
+logger = get_logger("opsicommon.package")
 
 
 class LegacyControlFile:

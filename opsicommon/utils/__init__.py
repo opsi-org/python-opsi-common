@@ -9,24 +9,34 @@ General utility functions.
 import functools
 import json
 import os
+import platform
 import secrets
 import subprocess
+import tempfile
 import time
 import types
+from contextlib import contextmanager
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, Union
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Generator, Type, Union
 
 import msgspec
 import requests
 
 from opsicommon.logging import get_logger
 
+if platform.system().lower() == "windows":
+	OPSI_TMP_DIR = None  # default %TEMP% of user
+else:
+	OPSI_TMP_DIR = Path("/var/lib/opsi/tmp")
+
+
 if TYPE_CHECKING:
 	from opsicommon.objects import BaseObject as TBaseObject
 	from opsicommon.objects import Product, ProductOnClient, ProductOnDepot
 
-OBJECT_CLASSES: Dict[str, Type["TBaseObject"]] = {}
-BaseObject: Union[Type["TBaseObject"], None] = None  # pylint: disable=invalid-name
+OBJECT_CLASSES: dict[str, Type["TBaseObject"]] = {}
+BaseObject: Type["TBaseObject"] | None = None  # pylint: disable=invalid-name
 
 logger = get_logger("opsicommon.general")
 
@@ -106,6 +116,7 @@ def serialize(obj: Any) -> Any:
 	return obj
 
 
+# For typing: need Union here and cannot use |-syntax when working with strings (not importing Types)
 def combine_versions(obj: Union["Product", "ProductOnClient", "ProductOnDepot"]) -> str:
 	"""
 	Returns the combination of product and package version.
@@ -121,7 +132,7 @@ json_decoder = msgspec.json.Decoder()
 json_encoder = msgspec.json.Encoder()
 
 
-def from_json(obj: Union[str, bytes], object_type: Optional[str] = None, prevent_object_creation: bool = False) -> Any:
+def from_json(obj: str | bytes, object_type: str | None = None, prevent_object_creation: bool = False) -> Any:
 	if isinstance(obj, str):
 		obj = obj.encode("utf-8")
 	obj = json_decoder.decode(obj)
@@ -155,7 +166,7 @@ def timestamp(secs: float = 0.0, date_only: bool = False) -> str:
 
 
 class Singleton(type):
-	_instances: Dict[type, type] = {}
+	_instances: dict[type, type] = {}
 
 	def __call__(cls: "Singleton", *args: Any, **kwargs: Any) -> type:
 		if cls not in cls._instances:
@@ -165,9 +176,9 @@ class Singleton(type):
 
 def prepare_proxy_environment(  # pylint: disable=too-many-branches
 	hostname: str,
-	proxy_url: Optional[str] = "system",
-	no_proxy_addresses: Union[List[str], None] = None,
-	session: Union[requests.Session, None] = None
+	proxy_url: str | None = "system",
+	no_proxy_addresses: list[str] | None = None,
+	session: requests.Session | None = None
 ) -> requests.Session:
 	"""
 	proxy_url can be:
@@ -286,3 +297,17 @@ def frozen_lru_cache(*decorator_args: Any) -> Callable:
 		# No arguments, this is the decorator
 		return inner(decorator_args[0])
 	return inner
+
+
+@contextmanager
+def make_temp_dir(base: Path | None = None) -> Generator[Path, None, None]:
+	if not base:
+		base = OPSI_TMP_DIR
+	try:
+		if base and not base.exists():
+			base.mkdir(parents=True)
+	except PermissionError as error:
+		logger.error("Failed to create temporary directory at %s, falling back to default: %s", base, error)
+		base = None
+	with tempfile.TemporaryDirectory(dir=base) as tmp_dir_name:
+		yield Path(tmp_dir_name)

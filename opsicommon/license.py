@@ -36,7 +36,8 @@ from typing import (
 )
 
 import attr
-from opsicommon.logging import logger
+
+from opsicommon.logging import get_logger
 
 try:
 	# PyCryptodome from pypi installs into Crypto
@@ -113,6 +114,8 @@ OPSI_FREE_MODULE_IDS = (
 	"treeview",
 	"vista"
 )
+
+logger = get_logger("opsicommon.license")
 
 
 def _str2date(value: str) -> date:

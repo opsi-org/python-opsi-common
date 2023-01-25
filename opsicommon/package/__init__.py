@@ -3,12 +3,12 @@ opsi package class and associated methods
 """
 
 import re
-import tempfile
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import tomlkit
 
-from opsicommon.logging import logger
+from opsicommon.logging import get_logger
 from opsicommon.objects import Product, ProductDependency, ProductProperty
 from opsicommon.package.control_file_handling import (
 	create_package_dependencies,
@@ -20,10 +20,19 @@ from opsicommon.package.control_file_handling import (
 	dictify_product_properties,
 )
 from opsicommon.package.legacy_control_file import LegacyControlFile
-from opsicommon.package.serialization import deserialize, serialize
+from opsicommon.package.serialization import create_archive, extract_archive
+from opsicommon.utils import make_temp_dir
 
 EXCLUDE_DIRS_ON_PACK_REGEX = re.compile(r"(^\.svn$)|(^\.git$)")
 EXCLUDE_FILES_ON_PACK_REGEX = re.compile(r"(~$)|(^[Tt]humbs\.db$)|(^\.[Dd][Ss]_[Ss]tore$)")
+logger = get_logger("opsicommon.package")
+
+
+@dataclass(slots=True, kw_only=True)
+class PackageDependency:
+	package: str
+	version: str | None = None
+	condition: str | None = None
 
 
 class OpsiPackage:
@@ -31,40 +40,38 @@ class OpsiPackage:
 	Basic class for opsi packages.
 	"""
 
-	@classmethod
-	def extract_package_archive(cls, package_archive: Path, destination: Path, new_product_id: str | None = None) -> None:
-		with tempfile.TemporaryDirectory() as temp_dir_name:
-			temp_dir = Path(temp_dir_name)
+	def __init__(self, package_archive: Path | None = None, temp_dir: Path | None = None) -> None:
+		self.product: Product
+		self.product_properties: list[ProductProperty] = []
+		self.product_dependencies: list[ProductDependency] = []
+		self.package_dependencies: list[PackageDependency] = []
+		self.changelog: str = ""
+		self.temp_dir: Path | None = temp_dir
+		if package_archive:
+			self.from_package_archive(package_archive)
+
+	def extract_package_archive(self, package_archive: Path, destination: Path, new_product_id: str | None = None) -> None:
+		with make_temp_dir(self.temp_dir) as temp_dir:
 			logger.debug("Deserializing archive %s", package_archive)
-			deserialize(package_archive, temp_dir)
+			extract_archive(package_archive, temp_dir)
 			for archive in temp_dir.iterdir():
-				deserialize(archive, destination / archive.name.split(".")[0])
+				extract_archive(archive, destination / archive.name.split(".")[0])
 		if new_product_id:
 			opsi_package = OpsiPackage()  # TODO: rename scripts? why? see OPSI.Util.Product
 			control_file = opsi_package.find_and_parse_control_file(destination)
 			opsi_package.product.setId(new_product_id)
 			opsi_package.generate_control_file(control_file)
 
-	def __init__(self, package_archive: Path | None = None) -> None:
-		self.product: Product
-		self.product_properties: list[ProductProperty] = []
-		self.product_dependencies: list[ProductDependency] = []
-		self.package_dependencies: list[dict[str, str | None]] = []
-		self.changelog: str = ""
-		if package_archive:
-			self.from_package_archive(package_archive)
-
 	def from_package_archive(self, package_archive: Path) -> None:
-		with tempfile.TemporaryDirectory() as temp_dir_name:
-			temp_dir = Path(temp_dir_name)
+		with make_temp_dir(self.temp_dir) as temp_dir:
 			logger.debug("Deserializing archive %s", package_archive)
-			deserialize(package_archive, temp_dir, file_pattern="OPSI.*")
+			extract_archive(package_archive, temp_dir, file_pattern="OPSI.*")
 			content = list(temp_dir.glob("OPSI.*"))
 			if len(content) == 0:
 				raise RuntimeError(f"No OPSI directory in archive '{package_archive}'")
 			if len(content) > 1:
 				raise RuntimeError(f"Multiple OPSI directories in archive '{package_archive}'.")
-			deserialize(content[0], temp_dir, file_pattern="control*")  # or OPSI? difference tar and cpio
+			extract_archive(content[0], temp_dir, file_pattern="control*")  # or OPSI? difference tar and cpio
 			self.find_and_parse_control_file(temp_dir)
 
 	def find_and_parse_control_file(self, base_dir: Path) -> Path:
@@ -86,7 +93,10 @@ class OpsiPackage:
 		self.product = legacy_control_file.product
 		self.product_properties = legacy_control_file.productProperties
 		self.product_dependencies = legacy_control_file.productDependencies
-		self.package_dependencies = legacy_control_file.packageDependencies
+		self.package_dependencies = [
+			PackageDependency(package=str(pdep["package"]), version=pdep.get("version"), condition=pdep.get("condition"))
+			for pdep in legacy_control_file.packageDependencies
+		]
 
 	def package_archive_name(self) -> str:
 		return f"{self.product.id}_{self.product.productVersion}-{self.product.packageVersion}.opsi"
@@ -96,7 +106,7 @@ class OpsiPackage:
 		legacy_control_file.product = self.product
 		legacy_control_file.productDependencies = self.product_dependencies
 		legacy_control_file.productProperties = self.product_properties
-		legacy_control_file.packageDependencies = self.package_dependencies
+		legacy_control_file.packageDependencies = [asdict(pdep) for pdep in self.package_dependencies]
 		legacy_control_file.generate_control_file(control_file)
 
 	def parse_control_file(self, control_file: Path) -> None:
@@ -108,7 +118,10 @@ class OpsiPackage:
 		# changelog key in changelog section... better idea?
 		self.changelog = data_dict.get("changelog", {}).get("changelog")
 		self.product = create_product(data_dict)
-		self.package_dependencies = create_package_dependencies(data_dict["Package"].get("depends", []))
+		self.package_dependencies = [
+			PackageDependency(package=str(pdep["package"]), version=pdep.get("version"), condition=pdep.get("condition"))
+			for pdep in create_package_dependencies(data_dict["Package"].get("depends", []))
+		]
 		self.product_dependencies = create_product_dependencies(
 			data_dict["Product"]["id"],
 			data_dict["Product"]["version"],
@@ -130,7 +143,7 @@ class OpsiPackage:
 		data_dict = tomlkit.document()
 		data_dict["Package"] = {
 			"version": self.product.getPackageVersion(),
-			"depends": self.package_dependencies,
+			"depends": [asdict(pdep) for pdep in self.package_dependencies],
 		}
 		data_dict["Product"] = dictify_product(self.product)
 		if self.product_properties:
@@ -162,8 +175,7 @@ class OpsiPackage:
 		# 	if not found:
 		# 		raise RuntimeError(f"No custom dirs found for '{custom_name}'")
 
-		with tempfile.TemporaryDirectory() as temp_dir_name:
-			temp_dir = Path(temp_dir_name)
+		with make_temp_dir(self.temp_dir) as temp_dir:
 			for _dir in dirs:
 				if not _dir.exists():
 					logger.info("Directory '%s' does not exist", _dir)
@@ -191,12 +203,12 @@ class OpsiPackage:
 					continue
 				filename = temp_dir / f"{_dir.name}.tar.{compression}"
 				logger.info("Creating archive %s", filename)
-				serialize(filename, file_list, base_dir=_dir, compression=compression)
+				create_archive(filename, file_list, base_dir=_dir, compression=compression)
 				# TODO: progress tracking
 				archives.append(filename)
 
 			destination = (destination or Path()).absolute()
 			package_archive = destination / self.package_archive_name()
 			logger.info("Creating archive %s", package_archive.absolute())
-			serialize(package_archive, archives, temp_dir)
+			create_archive(package_archive, archives, temp_dir)
 		return package_archive
