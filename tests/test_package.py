@@ -4,6 +4,7 @@ tests for opsicommon.package
 
 from pathlib import Path
 from shutil import copy
+from typing import Literal
 
 import pytest
 
@@ -172,9 +173,9 @@ def test_extract_package(new_product_id: str | None) -> None:
 @pytest.mark.linux
 @pytest.mark.parametrize(
 	"compression",
-	("zstd", "bzip2"),
+	("zstd", "bz2"),
 )
-def test_create_package(compression: str) -> None:
+def test_create_package(compression: Literal["zstd", "bz2"]) -> None:
 	package = OpsiPackage()
 	test_data = TEST_DATA / "control.toml"
 	with make_temp_dir() as temp_dir:
