@@ -10,6 +10,8 @@ As an example this contains classes for hosts, products, configurations.
 
 # pylint: disable=too-many-lines
 
+from __future__ import annotations
+
 from datetime import date, datetime
 from functools import lru_cache
 from inspect import getfullargspec
@@ -60,6 +62,7 @@ from opsicommon.types import (
 	forceUnicodeLower,
 	forceUnsignedInt,
 	forceUrl,
+	forceUUIDString,
 )
 from opsicommon.utils import (
 	combine_versions,
@@ -118,14 +121,10 @@ __all__ = (
 	"mandatory_constructor_args",
 	"objects_differ",
 	"OBJECT_CLASSES",
-	"serialize",
-	"deserialize"
 )
 
 
 logger = get_logger("opsicommon.general")
-
-_MANDATORY_CONSTRUCTOR_ARGS_CACHE = {}
 
 
 BaseObjectT = TypeVar('BaseObjectT', bound='BaseObject')
@@ -140,6 +139,7 @@ class classproperty:  # pylint: disable=invalid-name,too-few-public-methods
 
 
 class BaseObject:
+	copy_from_hash = False
 	sub_classes: dict[str, type] = {}
 	ident_separator = ";"
 	foreign_id_attributes: list[str] = []
@@ -169,7 +169,7 @@ class BaseObject:
 		return self.foreign_id_attributes
 
 	def getIdentAttributes(self) -> tuple[str, ...]:  # pylint: disable=invalid-name
-		return get_ident_attributes(self.__class__)
+		return get_ident_attributes(self.__class__)  # type: ignore[arg-type]
 
 	def getIdent(self, returnType: str = "unicode") -> list[str] | tuple[str, ...] | dict[str, str] | str:  # pylint: disable=invalid-name
 		returnType = forceUnicodeLower(returnType)
@@ -238,6 +238,8 @@ class BaseObject:
 
 	@classmethod
 	def fromHash(cls: Type[BaseObjectT], _hash: dict[str, Any]) -> BaseObjectT:  # pylint: disable=invalid-name
+		if cls.copy_from_hash:
+			_hash = _hash.copy()
 		_cls = cls
 		try:
 			_cls = get_object_type(_hash.pop("type"))  # type: ignore
@@ -312,32 +314,36 @@ class BaseObject:
 		return self.__str__()
 
 
+@lru_cache()
 def mandatory_constructor_args(_class: Type[BaseObject]) -> list[str]:
 	cache_key = _class.__name__  # type: ignore[attr-defined]
-	if cache_key not in _MANDATORY_CONSTRUCTOR_ARGS_CACHE:
-		spec = getfullargspec(_class.__init__)  # type: ignore[misc]
-		args = spec.args
-		defaults = spec.defaults
-		mandatory = None
-		if defaults is None:
-			mandatory = args[1:]
-		else:
-			last = len(defaults) * -1
-			mandatory = args[1:][:last]
-		logger.trace("mandatory_constructor_args for %s: %s", cache_key, mandatory)
-		_MANDATORY_CONSTRUCTOR_ARGS_CACHE[cache_key] = mandatory
-	return _MANDATORY_CONSTRUCTOR_ARGS_CACHE[cache_key]
+	spec = getfullargspec(_class.__init__)  # type: ignore[misc]
+	args = spec.args
+	defaults = spec.defaults
+	mandatory = None
+	if defaults is None:
+		mandatory = args[1:]
+	else:
+		last = len(defaults) * -1
+		mandatory = args[1:][:last]
+	logger.trace("mandatory_constructor_args for %s: %s", cache_key, mandatory)
+	return mandatory
 
 
+@lru_cache()
 def get_ident_attributes(_class: Type[BaseObject]) -> tuple[str, ...]:
-	return tuple(mandatory_constructor_args(_class))
+	ident_attributes = tuple(mandatory_constructor_args(_class))  # type: ignore[arg-type]
+	if "hardwareClass" in ident_attributes:
+		ident_attributes = tuple([a for a in ident_attributes if a != "hardwareClass"])  # pylint: disable=consider-using-generator
+	return ident_attributes
 
 
+@lru_cache()
 def get_foreign_id_attributes(_class: Type[BaseObject]) -> Any:
 	return _class.foreign_id_attributes
 
 
-@lru_cache(maxsize=500)
+@lru_cache()
 def get_possible_class_attributes(_class: Type[BaseObject]) -> set[str]:
 	"""
 	Returns the possible attributes of a class.
@@ -357,6 +363,7 @@ def get_possible_class_attributes(_class: Type[BaseObject]) -> set[str]:
 	return attributes_set
 
 
+@lru_cache()
 def get_backend_method_prefix(_class: Type[BaseObject]) -> Any:
 	return _class.backend_method_prefix
 
@@ -367,7 +374,7 @@ def decode_ident(_class: Type[BaseObject], _hash: dict[str, Any]) -> dict[str, A
 
 	ident = _hash.pop("ident")
 	if not isinstance(ident, dict):
-		ident_keys = mandatory_constructor_args(_class)
+		ident_keys = mandatory_constructor_args(_class)  # type: ignore[arg-type]
 		ident_values = []
 		if isinstance(ident, str):
 			ident_values = ident.split(_class.ident_separator)
@@ -529,11 +536,13 @@ class Host(Object):
 		hardwareAddress: str | None = None,
 		ipAddress: str | None = None,
 		inventoryNumber: str | None = None,
+		systemUUID: str | None = None
 	) -> None:
 		Object.__init__(self, id, description, notes)
 		self.hardwareAddress: str | None = None  # pylint: disable=invalid-name
 		self.ipAddress: str | None = None  # pylint: disable=invalid-name
 		self.inventoryNumber: str | None = None  # pylint: disable=invalid-name
+		self.systemUUID: str | None = None  # pylint: disable=invalid-name
 		self.setId(id)
 
 		if hardwareAddress is not None:
@@ -542,6 +551,8 @@ class Host(Object):
 			self.setIpAddress(ipAddress)
 		if inventoryNumber is not None:
 			self.setInventoryNumber(inventoryNumber)
+		if systemUUID is not None:
+			self.setSystemUUID(systemUUID)
 
 	def setDefaults(self) -> None:
 		Object.setDefaults(self)
@@ -573,6 +584,12 @@ class Host(Object):
 	def setInventoryNumber(self, inventoryNumber: str) -> None:  # pylint: disable=invalid-name
 		self.inventoryNumber = forceUnicode(inventoryNumber)
 
+	def getSystemUUID(self) -> str | None:  # pylint: disable=invalid-name
+		return self.systemUUID
+
+	def setSystemUUID(self, systemUUID: str) -> None:  # pylint: disable=invalid-name
+		self.systemUUID = forceUUIDString(systemUUID) if systemUUID else ""
+
 
 Object.sub_classes["Host"] = Host
 
@@ -593,9 +610,10 @@ class OpsiClient(Host):
 		oneTimePassword: str | None = None,
 		created: str | None = None,
 		lastSeen: str | None = None,
+		systemUUID: str | None = None
 	) -> None:
 
-		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber)
+		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber, systemUUID)
 		self.opsiHostKey: str | None = None  # pylint: disable=invalid-name
 		self.created: str | None = None  # pylint: disable=invalid-name
 		self.lastSeen: str | None = None  # pylint: disable=invalid-name
@@ -671,9 +689,10 @@ class OpsiDepotserver(Host):  # pylint: disable=too-many-instance-attributes,too
 		masterDepotId: str | None = None,
 		workbenchLocalUrl: str | None = None,
 		workbenchRemoteUrl: str | None = None,
+		systemUUID: str | None = None
 	) -> None:
 
-		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber)
+		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber, systemUUID)
 
 		self.opsiHostKey: str | None = None  # pylint: disable=invalid-name
 		self.depotLocalUrl: str | None = None  # pylint: disable=invalid-name
@@ -833,6 +852,7 @@ class OpsiConfigserver(OpsiDepotserver):
 		masterDepotId: str | None = None,
 		workbenchLocalUrl: str | None = None,
 		workbenchRemoteUrl: str | None = None,
+		systemUUID: str | None = None
 	) -> None:
 		OpsiDepotserver.__init__(
 			self,
@@ -854,6 +874,7 @@ class OpsiConfigserver(OpsiDepotserver):
 			masterDepotId,
 			workbenchLocalUrl,
 			workbenchRemoteUrl,
+			systemUUID
 		)
 
 	def setDefaults(self) -> None:
@@ -3117,8 +3138,10 @@ class AuditHardware(Entity):
 	def getIdentAttributes(self) -> tuple[str, ...]:
 		return ("hardwareClass", ) + tuple(sorted(self.hardware_attributes.get(self.hardwareClass, {})))
 
-	@staticmethod
-	def fromHash(_hash: dict[str, Any]) -> Any:
+	@classmethod
+	def fromHash(cls, _hash: dict[str, Any]) -> AuditHardware:
+		if cls.copy_from_hash:
+			_hash = _hash.copy()
 		_hash.pop("type", None)
 		return AuditHardware(**_hash)
 
@@ -3335,8 +3358,10 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 	def getIdentAttributes(self) -> tuple[str, ...]:
 		return ("hostId", "hardwareClass") + tuple(sorted(self.hardware_attributes.get(self.hardwareClass, {})))
 
-	@staticmethod
-	def fromHash(_hash: dict[str, Any]) -> Any:
+	@classmethod
+	def fromHash(cls, _hash: dict[str, Any]) -> AuditHardwareOnHost:
+		if cls.copy_from_hash:
+			_hash = _hash.copy()
 		_hash.pop("type", None)
 		return AuditHardwareOnHost(**_hash)
 
@@ -3359,7 +3384,7 @@ Relationship.sub_classes["AuditHardwareOnHost"] = AuditHardwareOnHost
 OBJECT_CLASSES = {name: cls for (name, cls) in globals().items() if isinstance(cls, type) and issubclass(cls, BaseObject)}
 
 
-@lru_cache(maxsize=0)
+@lru_cache()
 def get_object_type(object_type: str) -> Type[BaseObject]:
 	return OBJECT_CLASSES[object_type]
 

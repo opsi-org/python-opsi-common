@@ -28,9 +28,13 @@ from opsicommon.client.opsiservice import (
 	UIB_OPSI_CA,
 	Messagebus,
 	MessagebusListener,
-	OpsiConnectionError,
+	OpsiServiceAuthenticationError,
+	OpsiServiceConnectionError,
+	OpsiServiceError,
+	OpsiServicePermissionError,
+	OpsiServiceTimeoutError,
+	OpsiServiceUnavailableError,
 	OpsiServiceVerificationError,
-	OpsiTimeoutError,
 	ServiceClient,
 	ServiceConnectionListener,
 	ServiceVerificationFlags,
@@ -56,6 +60,8 @@ from opsicommon.testing.helpers import (  # type: ignore[import]
 	environment,
 	http_test_server,
 )
+
+from .test_utils import log_level_stderr
 
 
 class MyConnectionListener(ServiceConnectionListener):
@@ -209,6 +215,8 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 			with pytest.raises(OpsiServiceVerificationError):
 				client.connect_messagebus()
 
+			assert client._request(method="HEAD", path="/", verify=False).status_code == 200  # pylint: disable=protected-access
+
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=ca_cert_file, verify="strict_check") as client:
 			client.connect()
 			client.connect_messagebus()
@@ -317,11 +325,11 @@ def test_proxy(tmp_path: Path) -> None:
 			f"https://localhost:{server.port+1}", proxy_url=f"http://localhost:{server.port}", verify="accept_all", connect_timeout=2
 		) as client:
 			# Proxy will not be used for localhost (no_proxy_addresses)
-			with pytest.raises(OpsiConnectionError):
+			with pytest.raises(OpsiServiceConnectionError):
 				client.connect()
 
 		proxy_env = {"http_proxy": f"http://localhost:{server.port}", "https_proxy": f"http://localhost:{server.port}"}
-		with environment(proxy_env), pytest.raises(OpsiConnectionError):
+		with environment(proxy_env), pytest.raises(OpsiServiceConnectionError):
 			with ServiceClient(f"https://localhost:{server.port+1}", proxy_url="system", verify="accept_all", connect_timeout=2) as client:
 				client.connect()
 
@@ -342,7 +350,7 @@ def test_proxy(tmp_path: Path) -> None:
 						verify="accept_all",
 						connect_timeout=2,
 					) as client:
-						with pytest.raises(OpsiConnectionError):
+						with pytest.raises(OpsiServiceConnectionError):
 							# HTTPTestServer sends error 501 on CONNECT requests
 							client.connect()
 						request = json.loads(log_file.read_text(encoding="utf-8"))
@@ -363,7 +371,7 @@ def test_proxy(tmp_path: Path) -> None:
 					verify="accept_all",
 					connect_timeout=2,
 				) as client:
-					with pytest.raises(OpsiConnectionError):
+					with pytest.raises(OpsiServiceConnectionError):
 						# HTTPTestServer sends error 501 on CONNECT requests
 						client.connect()
 					request = json.loads(log_file.read_text(encoding="utf-8"))
@@ -455,7 +463,8 @@ def test_server_name_handling(  # pylint: disable=too-many-arguments
 
 
 def test_connect_disconnect() -> None:  # pylint: disable=too-many-statements
-	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
+
+	with (log_level_stderr(9), http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server):
 		listener = MyConnectionListener()
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			with listener.register(client):
@@ -515,12 +524,121 @@ def test_connect_disconnect() -> None:  # pylint: disable=too-many-statements
 		assert client.messagebus_connected is False
 		assert client.connected is False
 
+		print("_connected", client.messagebus._connected)  # pylint: disable=protected-access
+		print("_should_be_connected", client.messagebus._should_be_connected)  # pylint: disable=protected-access
+		print("_connected_result", client.messagebus._connected_result.is_set())  # pylint: disable=protected-access
+		print("is_alive", client.messagebus.is_alive())
+
 		client.connect_messagebus()
 		assert client.messagebus_connected is True
 
 		client.disconnect()
 		assert client.messagebus_connected is False
 		assert client.connected is False
+
+
+def test_requests() -> None:
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)"}) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.connect()
+
+			server.response_status = (201, "reason")
+			server.response_body = b"content"
+			response = client.get("/")
+
+			status_code, reason, headers, content = response
+			assert status_code == server.response_status[0]
+			assert reason == server.response_status[1]
+			assert headers["server"] == server.response_headers["server"]  # type: ignore  # pylint: disable=unsubscriptable-object
+			assert content == server.response_body
+
+			assert response[0] == server.response_status[0]
+			assert response[1] == server.response_status[1]
+			assert response[2]["server"] == server.response_headers["server"]  # type: ignore  # pylint: disable=unsubscriptable-object
+			assert response[3] == server.response_body
+
+			with pytest.raises(IndexError):
+				response[4]  # pylint: disable=pointless-statement
+
+			assert response.status_code == server.response_status[0]
+			assert response.reason == server.response_status[1]
+			assert response.headers["server"] == server.response_headers["server"]
+			assert response.content == server.response_body
+
+
+def test_request_exceptions() -> None:  # pylint: disable=too-many-statements
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)"}) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			server.response_status = (200, "OK")
+			client.connect()
+			assert client.get("/")[0] == 200
+
+			server.response_status = (500, "Internal Server Error")
+			server.response_body = b"content"
+			with pytest.raises(OpsiServiceError) as exc_info:
+				client.get("/")
+			assert exc_info.value.content == "content"
+			assert exc_info.value.status_code == 500
+			assert client.get("/", allow_status_codes=[500])[0] == 500
+
+			server.response_status = (401, "Unauthorized")
+			with pytest.raises(OpsiServiceAuthenticationError) as exc_info:
+				client.get("/")
+			assert exc_info.value.content == "content"
+			assert exc_info.value.status_code == 401
+
+			server.response_status = (403, "Forbidden")
+			with pytest.raises(OpsiServicePermissionError) as exc_info:
+				client.get("/")
+			assert exc_info.value.content == "content"
+			assert exc_info.value.status_code == 403
+
+			server.response_status = (200, "OK")
+			with pytest.raises(OpsiServiceConnectionError) as exc_info:
+				client.get("/", read_timeout="FAIL")  # type: ignore[arg-type]
+
+			now = time.time()
+			server.response_status = (503, "Unavail")
+			server.response_headers["Retry-After"] = "5"
+			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
+				client.get("/")
+			assert exc_info.value.content == "content"
+			assert exc_info.value.status_code == 503
+			assert exc_info.value.until or 0 <= now + 7
+			assert exc_info.value.until or 0 >= now + 3
+
+			server.response_status = (200, "OK")
+			del server.response_headers["Retry-After"]
+			# OpsiServiceUnavailableError must persist until err.until reached
+			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
+				client.get("/")
+
+			time.sleep(6)
+			client.get("/")
+
+			server.response_status = (503, "Unavail")
+			server.response_headers["Retry-After"] = "invalid"
+			now = time.time()
+			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
+				client.get("/")
+			# 60 = default value
+			assert int((exc_info.value.until or -999) - now) in (59, 60)
+
+			client._service_unavailable = None  # pylint: disable=protected-access
+			server.response_headers["Retry-After"] = "-1"
+			now = time.time()
+			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
+				client.get("/")
+			# 1 = min
+			assert int((exc_info.value.until or -999) - now) in (0, 1)
+
+			client._service_unavailable = None  # pylint: disable=protected-access
+			server.response_headers["Retry-After"] = "999999"
+			now = time.time()
+			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
+				client.get("/")
+			# 7200 = max
+			assert int((exc_info.value.until or -999) - now) in (7199, 7200)
 
 
 def test_multi_address() -> None:
@@ -573,6 +691,41 @@ def test_messagebus_reconnect() -> None:
 			assert rpc_ids[:6] == list(range(1, expected_messages + 1))
 
 
+def test_messagebus_reconnect_exception() -> None:
+	class MBListener(MessagebusListener):
+		exceptions = []
+		next_connect_wait = []
+		established = 0
+
+		def connection_established(self, messagebus: Messagebus) -> None:
+			self.established += 1
+
+		def connection_failed(self, messagebus: Messagebus, exception: Exception) -> None:
+			self.exceptions.append(exception)
+			self.next_connect_wait.append(messagebus._next_connect_wait)  # pylint: disable=protected-access
+
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.messagebus.reconnect_wait = 5
+			listener = MBListener()
+
+			with listener.register(client.messagebus):
+				client.connect_messagebus()
+				time.sleep(3)
+				server.response_status = (503, "Unavail")
+				server.response_headers["Retry-After"] = "3"
+				server.restart()
+				time.sleep(4)
+
+			assert len(listener.exceptions) >= 2
+			assert listener.exceptions[1].status_code == 503  # type: ignore[attr-defined]
+
+			assert listener.next_connect_wait[0] == 5
+			assert listener.next_connect_wait[1] == 3
+
+			assert listener.established == 1
+
+
 def test_get() -> None:
 	response_body = b"test" * 1000
 	thread_count = 10 if platform.system().lower() == "linux" else 5
@@ -611,7 +764,7 @@ def test_timeouts() -> None:
 	with http_test_server(generate_cert=True, response_delay=3) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port+1}", connect_timeout=4) as client:
 			client.register_connection_listener(listener)
-			with pytest.raises(OpsiConnectionError):
+			with pytest.raises(OpsiServiceConnectionError):
 				client.connect()
 			assert len(listener.events) == 2
 			assert listener.events[0][0] == "open"
@@ -622,7 +775,7 @@ def test_timeouts() -> None:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", connect_timeout=4, verify="accept_all") as client:
 			client.connect()
 			start = time.time()
-			with pytest.raises(OpsiTimeoutError):
+			with pytest.raises(OpsiServiceTimeoutError):
 				client.get("/", read_timeout=2)
 			assert round(time.time() - start) >= 2
 
@@ -711,14 +864,38 @@ def test_jsonrpc_interface(tmp_path: Path) -> None:
 			"alternative_method": None,
 			"doc": None,
 			"annotations": {},
-		}
+		},
+		{
+			"name": "backend_getInterface",
+			"params": [],
+			"args": ["self"],
+			"varargs": None,
+			"keywords": None,
+			"defaults": None,
+			"deprecated": False,
+			"alternative_method": None,
+			"doc": None,
+			"annotations": {},
+		},
+		{
+			"name": "backend_exit",
+			"params": [],
+			"args": ["self"],
+			"varargs": None,
+			"keywords": None,
+			"defaults": None,
+			"deprecated": False,
+			"alternative_method": None,
+			"doc": None,
+			"annotations": {},
+		},
 	]
-	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.0.0 (uvicorn)"}) as server:
+	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.0.285 (uvicorn)"}) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", jsonrpc_create_methods=True) as client:
 			server.response_body = json.dumps({"jsonrpc": "2.0", "result": interface}).encode("utf-8")
 			server.response_headers["Content-Type"] = "application/json"
 			client.connect()
-			assert len(client.jsonrpc_interface) == 1
+			assert len(client.jsonrpc_interface) == 3
 			with pytest.raises(ValueError, match="Method 'invalid' not found in interface description"):
 				client.jsonrpc(method="invalid", params={"arg1": "test"})
 			with pytest.raises(ValueError, match="Invalid param 'invalid' for method 'test_method'"):
@@ -741,6 +918,20 @@ def test_jsonrpc_interface(tmp_path: Path) -> None:
 			assert reqs[5]["request"]["params"] == [None, "default2", "3"]
 			assert reqs[6]["request"]["params"] == [1, 2, {"x": 3, "y": 4}]
 			assert reqs[7]["request"]["params"] == [1, "default2", {"x": "y"}]
+
+			class Test:  # pylint: disable=too-few-public-methods
+				pass
+
+			log_file.unlink()
+			test_obj = Test()
+			client.create_jsonrpc_methods(test_obj)
+			test_obj.backend_getInterface()  # type: ignore[attr-defined]  # pylint: disable=no-member
+			test_obj.test_method(1, x="y")  # type: ignore[attr-defined]  # pylint: disable=no-member
+			test_obj.backend_exit()  # type: ignore[attr-defined]  # pylint: disable=no-member
+			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+			assert reqs[0]["request"]["method"] == "test_method"
+			assert reqs[1]["method"] == "POST"
+			assert reqs[1]["path"] == "/session/logout"
 
 
 def test_jsonrpc_objects(tmp_path: Path) -> None:
@@ -862,7 +1053,7 @@ def test_messagebus_jsonrpc() -> None:
 
 			delay = 3.0
 			with mock.patch("opsicommon.client.opsiservice.RPC_TIMEOUTS", {"test": 1}):
-				with pytest.raises(OpsiTimeoutError):
+				with pytest.raises(OpsiServiceTimeoutError):
 					res = messagebus.jsonrpc("test")
 
 			rpc_error = {"code": 0, "message": "error_message", "data": {"class": "BackendPermissionDeniedError", "details": "details"}}
@@ -911,12 +1102,28 @@ def test_messagebus_multi_thread() -> None:
 				assert res["error"] is None
 
 
-def test_messagebus_listener() -> None:
+def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 	class StoringListener(MessagebusListener):
 		def __init__(self, message_types: Iterable[MessageType | str] | None = None) -> None:
 			super().__init__(message_types)
 			self.messages_received: list[Message] = []
 			self.expired_messages_received: list[Message] = []
+			self.connection_open_calls = 0
+			self.connection_established_calls = 0
+			self.connection_closed_calls = 0
+			self.connection_failed_calls = 0
+
+		def connection_open(self, messagebus: Messagebus) -> None:
+			self.connection_open_calls += 1
+
+		def connection_established(self, messagebus: Messagebus) -> None:
+			self.connection_established_calls += 1
+
+		def connection_closed(self, messagebus: Messagebus) -> None:
+			self.connection_closed_calls += 1
+
+		def connection_failed(self, messagebus: Messagebus, exception: Exception) -> None:
+			self.connection_failed_calls += 1
 
 		def message_received(self, message: Message) -> None:
 			self.messages_received.append(message)
@@ -991,10 +1198,24 @@ def test_messagebus_listener() -> None:
 				listener4.register(client.messagebus),
 			):
 				assert len(client.messagebus._listener) == 4  # pylint: disable=protected-access
+				client.messagebus.reconnect_wait = 2
+				client.messagebus._connect_timeout = 2  # pylint: disable=protected-access
 				client.connect_messagebus()
 				# Receive messages for 3 seconds
 				time.sleep(3)
+				# Stop server
+				server.stop()
+				# Wait for reconnect after 2 seconds (which will fail)
+				time.sleep(5)
+				client.disconnect()
+
 			assert len(client.messagebus._listener) == 0  # pylint: disable=protected-access
+
+			for listener in (listener1, listener2, listener3, listener4):
+				assert listener.connection_open_calls == 2
+				assert listener.connection_established_calls == 1
+				assert listener.connection_closed_calls == 1
+				assert listener.connection_failed_calls == 1
 
 	# listener1 / listener3: JSONRPC_RESPONSE + FILE_UPLOAD_RESULT
 	for listener in (listener1, listener3):
@@ -1055,4 +1276,5 @@ def test_server_date_update_max_diff() -> None:
 			client.connect()
 			cur = datetime.utcnow()
 			# Assert that local time was NOT set to server time
+			assert abs((server_dt - cur).total_seconds()) > 20
 			assert abs((server_dt - cur).total_seconds()) > 20

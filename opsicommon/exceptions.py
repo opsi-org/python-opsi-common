@@ -6,8 +6,6 @@
 OPSI Exceptions.
 """
 
-from typing import List, Optional
-
 __all__ = (
 	"BackendAuthenticationError",
 	"BackendBadValueError",
@@ -24,19 +22,22 @@ __all__ = (
 	"CanceledException",
 	"LicenseConfigurationError",
 	"LicenseMissingError",
-	"OpsiAuthenticationError",
+	"OpsiServiceAuthenticationError",
 	"OpsiBackupBackendNotFound",
 	"OpsiBackupFileError",
 	"OpsiBackupFileNotFound",
 	"OpsiBadRpcError",
-	"OpsiConnectionError",
+	"OpsiServiceConnectionError",
 	"OpsiError",
 	"OpsiProductOrderingError",
 	"OpsiRpcError",
 	"OpsiServiceVerificationError",
-	"OpsiTimeoutError",
+	"OpsiServiceTimeoutError",
 	"RepositoryError",
 )
+
+
+from typing import Any
 
 
 class OpsiError(Exception):
@@ -74,21 +75,46 @@ class OpsiBackupBackendNotFound(OpsiBackupFileError):
 class OpsiServiceError(OpsiError):
 	ExceptionShortDescription = "Opsi service error"
 
+	def __init__(self, message: str = "", status_code: int | None = None, content: str | None = None) -> None:
+		super().__init__(message)
+		self.status_code = status_code
+		self.content = content
 
-class OpsiAuthenticationError(OpsiServiceError):
-	ExceptionShortDescription = "Opsi authentication error"
+
+class OpsiServiceAuthenticationError(OpsiServiceError):
+	ExceptionShortDescription = "Opsi service authentication error"
 
 
-class OpsiServiceVerificationError(OpsiServiceError):
+BackendAuthenticationError = OpsiServiceAuthenticationError
+
+
+class OpsiServicePermissionError(OpsiServiceError):
+	ExceptionShortDescription = "Opsi service permission error"
+
+
+BackendPermissionDeniedError = OpsiServicePermissionError
+
+
+class OpsiServiceConnectionError(OpsiServiceError):
+	ExceptionShortDescription = "Opsi service connection error"
+
+
+class OpsiServiceVerificationError(OpsiServiceConnectionError):
 	ExceptionShortDescription = "Opsi service verification error"
 
 
-class OpsiConnectionError(OpsiServiceError):
-	ExceptionShortDescription = "Opsi connection error"
+class OpsiServiceTimeoutError(OpsiServiceConnectionError):
+	ExceptionShortDescription = "Opsi service timeout error"
 
 
-class OpsiTimeoutError(OpsiServiceError):
-	ExceptionShortDescription = "Opsi timeout error"
+class OpsiServiceUnavailableError(OpsiServiceConnectionError):
+	ExceptionShortDescription = "Opsi service unavailable error"
+
+	def __init__(self, message: str = "", status_code: int | None = None, content: str | None = None, until: float | None = None) -> None:
+		super().__init__(message)
+		self.status_code = status_code
+		self.content = content
+		self.until = until
 
 
 class OpsiBadRpcError(OpsiError):
@@ -98,13 +124,17 @@ class OpsiBadRpcError(OpsiError):
 class OpsiRpcError(OpsiError):
 	ExceptionShortDescription = "Opsi rpc error"
 
+	def __init__(self, message: str = "", response: dict[str, Any] | None = None) -> None:
+		super().__init__(message)
+		self.response = response
+
 
 class OpsiProductOrderingError(OpsiError):
 	ExceptionShortDescription = "A condition for ordering cannot be fulfilled"
 
-	def __init__(self, message: str = "", problematicRequirements: Optional[List[int]] = None) -> None:
+	def __init__(self, message: str = "", problematicRequirements: list[int] | list[str] | None = None) -> None:
 		super().__init__(message)
-		self.problematicRequirements = problematicRequirements or []  # pylint: disable=invalid-name
+		self.problematicRequirements: list[int] | list[str] | list = problematicRequirements or []  # pylint: disable=invalid-name
 
 	def __str__(self) -> str:
 		if self.message:
@@ -164,18 +194,6 @@ class BackendMissingDataError(OpsiError):
 	"""Exception raised if expected data not found."""
 
 	ExceptionShortDescription = "Backend missing data error"
-
-
-class BackendAuthenticationError(OpsiAuthenticationError):
-	"""Exception raised if authentication failes."""
-
-	ExceptionShortDescription = "Backend authentication error"
-
-
-class BackendPermissionDeniedError(OpsiError):
-	"""Exception raised if a permission is denied."""
-
-	ExceptionShortDescription = "Backend permission denied error"
 
 
 class BackendTemporaryError(OpsiError):

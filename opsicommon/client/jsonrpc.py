@@ -563,8 +563,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 				if method_name in (
 					"backend_exit",
-					"backend_getInterface",
-					"jsonrpc_getSessionId",
+					"backend_getInterface"
 				):
 					continue
 

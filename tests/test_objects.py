@@ -5,9 +5,7 @@ test_objects
 """
 
 import json
-from contextlib import contextmanager
-from typing import Any, Dict, Generator, Optional, Type
-from unittest import mock
+from typing import Any, Dict, Optional, Type
 
 import pytest
 
@@ -69,12 +67,6 @@ object_classes = [
 ]
 
 
-@contextmanager
-def empty_mandatory_constructor_args_cache() -> Generator[None, None, None]:
-	with mock.patch('opsicommon.objects._MANDATORY_CONSTRUCTOR_ARGS_CACHE', {}):
-		yield
-
-
 def test_object_classes() -> None:
 	objs = (
 		Host(
@@ -82,19 +74,19 @@ def test_object_classes() -> None:
 		),
 		OpsiClient(
 			"client.dom.tld", "12345678901234567890123456789011", "desc", "notes", "00:01:02:03:04:05",
-			"172.16.1.1", "inv001", "password", "2021-01-01", "2021-01-02"
+			"172.16.1.1", "inv001", "password", "2021-01-01", "2021-01-02", "1357b107-caa0-470e-bea1-20dc1f70e7dc"
 		),
 		OpsiDepotserver(
 			"depot.dom.tld", "12345678901234567890123456789022", "file:///depot", "smb://depot/share",
 			"webdavs://depot:4447/depot", "file:///repo", "webdavs://depot:4447/repository", "desc", "notes",
 			"00:01:02:03:04:06", "192.168.1.1", "inv_asdf", "10.10.0.0/16", 10000, False, "master.dom.tld",
-			"file:///workbench", "webdavs://depot:4447/workbench"
+			"file:///workbench", "webdavs://depot:4447/workbench", "5dde4b72-7e6d-4976-8616-f055c0d1b4a5"
 		),
 		OpsiConfigserver(
 			"opsi.dom.tld", "12345678901234567890123456789033", "file:///depot", "smb://depot/share",
 			"webdavs://opsi:4447/depot", "file:///repo", "webdavs://opsi:4447/repository", "desc", "notes",
 			"00:01:02:03:04:07", "192.168.2.1", "xyz", "10.10.0.0/16", 10000, True, None,
-			"file:///workbench", "webdavs://opsi:4447/workbench"
+			"file:///workbench", "webdavs://opsi:4447/workbench", "cef40529-9167-4f02-9545-b57a87a16b96"
 		),
 		Config(
 			"config.id", "description", ["1", "2", "3"], ["1", "2"], True, True
@@ -264,7 +256,7 @@ def test_get_possible_class_attributes() -> None:
 		'maxBandwidth', 'hardwareAddress', 'networkAddress',
 		'repositoryLocalUrl', 'opsiHostKey', 'ipAddress',
 		'depotWebdavUrl', 'depotRemoteUrl', 'type',
-		'workbenchRemoteUrl', 'workbenchLocalUrl'
+		'workbenchRemoteUrl', 'workbenchLocalUrl', 'systemUUID'
 	}
 
 	class Test(Entity):  # pylint: disable=too-few-public-methods
@@ -583,8 +575,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_no_arguments() -> 
 			pass
 
 	obj = NoArgs()
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == []
+	assert mandatory_constructor_args(obj.__class__) == []  # type: ignore[arg-type]
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_only_mandatory_arguments() -> None:
@@ -593,8 +584,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_only_mandatory_arg
 			pass
 
 	obj = OnlyMandatory(1, 1, 1)
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == ['arg1', 'arg2', 'arg3']
+	assert mandatory_constructor_args(obj.__class__) == ['arg1', 'arg2', 'arg3']  # type: ignore[arg-type]
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_only_optional_arguments() -> None:
@@ -603,8 +593,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_only_optional_argu
 			pass
 
 	obj = OnlyOptional()
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == []
+	assert mandatory_constructor_args(obj.__class__) == []  # type: ignore[arg-type]
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_mixed_arguments() -> None:
@@ -613,8 +602,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_mixed_arguments() 
 			pass
 
 	obj = MixedArgs(True, True)
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == ["arg1", "arg2"]
+	assert mandatory_constructor_args(obj.__class__) == ["arg1", "arg2"]  # type: ignore[arg-type]
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_wildcard_arguments() -> None:
@@ -623,8 +611,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_wildcard_arguments
 			pass
 
 	obj = WildcardOnly("yeah", "great", "thing")
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == []
+	assert mandatory_constructor_args(obj.__class__) == []  # type: ignore[arg-type]
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_keyword_arguments() -> None:
@@ -633,8 +620,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_keyword_arguments(
 			pass
 
 	obj = Kwargz(goand=1, get="asdf", them=[], girl=True)
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == []
+	assert mandatory_constructor_args(obj.__class__) == []  # type: ignore[arg-type]
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_mixed_with_args_and_kwargs() -> None:
@@ -643,8 +629,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_mixed_with_args_an
 			pass
 
 	obj = KwargzAndMore(False, True, "some", "more", things="here")
-	with empty_mandatory_constructor_args_cache():
-		assert mandatory_constructor_args(obj.__class__) == ["crosseyed", "heart"]
+	assert mandatory_constructor_args(obj.__class__) == ["crosseyed", "heart"]  # type: ignore[arg-type]
 
 
 def test_product_name_can_be_very_long() -> None:

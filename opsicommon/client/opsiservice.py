@@ -18,6 +18,7 @@ import warnings
 from base64 import b64encode
 from contextlib import contextmanager
 from contextvars import copy_context
+from dataclasses import astuple, dataclass
 from datetime import datetime
 from enum import Enum
 from ipaddress import IPv6Address, ip_address
@@ -38,6 +39,8 @@ from OpenSSL.crypto import (  # type: ignore[import]
 	load_certificate,
 )
 from packaging import version
+from requests import HTTPError
+from requests import Response as RequestsResponse
 from requests import Session
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
@@ -47,13 +50,14 @@ from websocket._abnf import ABNF  # type: ignore[import]
 
 from .. import __version__
 from ..exceptions import (
-	BackendAuthenticationError,
-	BackendPermissionDeniedError,
-	OpsiConnectionError,
 	OpsiRpcError,
+	OpsiServiceAuthenticationError,
+	OpsiServiceConnectionError,
 	OpsiServiceError,
+	OpsiServicePermissionError,
+	OpsiServiceTimeoutError,
+	OpsiServiceUnavailableError,
 	OpsiServiceVerificationError,
-	OpsiTimeoutError,
 )
 from ..logging import get_logger, secret_filter
 from ..messagebus import (
@@ -181,8 +185,22 @@ class ServiceConnectionListener():  # pylint: disable=too-few-public-methods
 			service_client.unregister_connection_listener(self)
 
 
-class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+@dataclass
+class Response:
+	status_code: int
+	reason: str
+	headers: CaseInsensitiveDict
+	content: bytes
 
+	def __getitem__(self, item: int) -> int | str | CaseInsensitiveDict | bytes:
+		return astuple(self)[item]
+
+	def __iter__(self) -> Generator[int | str | CaseInsensitiveDict | bytes, None, None]:
+		for item in astuple(self):
+			yield item
+
+
+class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
 	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]
 
 	def __init__(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
@@ -245,6 +263,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self._listener: list[ServiceConnectionListener] = []
 		self._username = username
 		self._password = password
+		self._service_unavailable: OpsiServiceUnavailableError | None = None
 
 		self._msgpack_decoder = msgspec.msgpack.Decoder()
 		self._msgpack_encoder = msgspec.msgpack.Encoder()
@@ -478,61 +497,64 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			logger.warning(err, exc_info=True)
 		return ca_certs
 
-	def backend_getInterface(self) -> list[dict[str, Any]]:  # pylint: disable=invalid-name
-		return self.jsonrpc_interface
-
-	def _create_jsonrpc_methods(self) -> None:  # pylint: disable=too-many-locals
+	def create_jsonrpc_methods(self, instance: Any = None) -> None:  # pylint: disable=too-many-locals
 		if self.jsonrpc_interface is None:
 			raise ValueError("Interface description not available")
 
-		for method in self.jsonrpc_interface:
-			try:
+		instance = instance or self
+
+		def backend_getInterface(self: ServiceClient) -> list[dict[str, Any]]:  # pylint: disable=invalid-name,unused-variable
+			return self.jsonrpc_interface
+
+		def backend_exit(self: ServiceClient) -> None:  # pylint: disable=unused-variable
+			return self.disconnect()
+
+		for method in self.jsonrpc_interface:  # pylint: disable=too-many-nested-blocks
+			try:  # pylint: disable=too-many-nested-blocks
 				method_name = method["name"]
 
-				if method_name == "backend_getInterface":
-					continue
+				if method_name not in ("backend_getInterface", "backend_exit"):
+					logger.debug("Creating instance method: %s", method_name)
 
-				logger.debug("Creating instance method: %s", method_name)
+					args = method["args"]
+					varargs = method["varargs"]
+					keywords = method["keywords"]
+					defaults = method["defaults"]
 
-				args = method["args"]
-				varargs = method["varargs"]
-				keywords = method["keywords"]
-				defaults = method["defaults"]
+					arg_list = []
+					call_list = []
+					for i, argument in enumerate(args):
+						if argument == "self":
+							continue
 
-				arg_list = []
-				call_list = []
-				for i, argument in enumerate(args):
-					if argument == "self":
-						continue
+						if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):
+							default = defaults[len(defaults) - len(args) + i]
+							if isinstance(default, str):
+								default = repr(default)
+							arg_list.append(f"{argument}={default}")
+						else:
+							arg_list.append(argument)
+						call_list.append(argument)
 
-					if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):
-						default = defaults[len(defaults) - len(args) + i]
-						if isinstance(default, str):
-							default = repr(default)
-						arg_list.append(f"{argument}={default}")
-					else:
-						arg_list.append(argument)
-					call_list.append(argument)
+					if varargs:
+						for vararg in varargs:
+							arg_list.append(f"*{vararg}")
+							call_list.append(vararg)
 
-				if varargs:
-					for vararg in varargs:
-						arg_list.append(f"*{vararg}")
-						call_list.append(vararg)
+					if keywords:
+						arg_list.append(f"**{keywords}")
+						call_list.append(keywords)
 
-				if keywords:
-					arg_list.append(f"**{keywords}")
-					call_list.append(keywords)
+					arg_string = ", ".join(arg_list)
+					call_string = ", ".join(call_list)
 
-				arg_string = ", ".join(arg_list)
-				call_string = ", ".join(call_list)
-
-				logger.trace("%s: arg string is: %s", method_name, arg_string)
-				logger.trace("%s: call string is: %s", method_name, call_string)
-				with warnings.catch_warnings():
-					exec(  # pylint: disable=exec-used
-						f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])'
-					)
-					setattr(self, method_name, MethodType(eval(method_name), self))  # pylint: disable=eval-used
+					logger.trace("%s: arg string is: %s", method_name, arg_string)
+					logger.trace("%s: call string is: %s", method_name, call_string)
+					with warnings.catch_warnings():
+						exec(  # pylint: disable=exec-used
+							f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])'
+						)
+				setattr(instance, method_name, MethodType(eval(method_name), self))  # pylint: disable=eval-used
 			except Exception as err:  # pylint: disable=broad-except
 				logger.error("Failed to create instance method '%s': %s", method, err)
 
@@ -564,22 +586,16 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			for address_index in range(len(self._addresses)):
 				self._address_index = address_index
 				try:
-					try:
-						timeout = (self._connect_timeout, self._connect_timeout)
-						response = self._session.head(self.base_url, timeout=timeout, verify=verify)
-						response.raise_for_status()
-						break
-					except SSLError as err:
-						try:
-							if err.args[0].reason.args[0].errno == 8:
-								# EOF occurred in violation of protocol
-								raise OpsiConnectionError(str(err)) from err
-						except (AttributeError, IndexError):
-							pass
-						raise OpsiServiceVerificationError(str(err)) from err
-					except Exception as err:  # pylint: disable=broad-except
-						raise OpsiConnectionError(str(err)) from err
-				except Exception as err:  # pylint: disable=broad-except
+					response = self._request(
+						method="HEAD",
+						path="/",
+						timeout=(self._connect_timeout, self._connect_timeout),
+						verify=verify,
+						# Accept status 405 for older opsiconfd versions
+						allow_status_codes=(200, 405)
+					)
+					break
+				except OpsiServiceError as err:
 					if self._address_index >= len(self._addresses) - 1:
 						for listener in self._listener:
 							CallbackThread(listener.connection_failed, service_client=self, exception=err).start()
@@ -639,15 +655,16 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				default = None
 				if param[0] == "*":
 					param = param.lstrip("*")
-					try:
-						default = method["defaults"][def_idx]
-					except IndexError:
-						pass
+					if method["defaults"]:
+						try:
+							default = method["defaults"][def_idx]
+						except IndexError:
+							pass
 					def_idx += 1
 				self._jsonrpc_method_params[method["name"]][param] = default
 
 		if self.jsonrpc_create_methods:
-			self._create_jsonrpc_methods()
+			self.create_jsonrpc_methods()
 
 		for listener in self._listener:
 			CallbackThread(listener.connection_established, service_client=self).start()
@@ -688,34 +705,107 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			path = f"/{path}"
 		return f"{self.base_url}{path}"
 
-	def request(  # pylint: disable=too-many-arguments
-		self, method: str, path: str, headers: dict[str, str] | None = None, read_timeout: float = 60.0, data: bytes | None = None
-	) -> tuple[int, str, CaseInsensitiveDict, bytes]:
-		self._assert_connected()
+	def _request(  # pylint: disable=too-many-arguments
+		self,
+		method: str,
+		path: str,
+		headers: dict[str, str] | None = None,
+		timeout: float | tuple[float, float] = 60.0,
+		data: bytes | None = None,
+		verify: str | bool | None = None,
+		allow_status_codes: Iterable[int] | None = None
+	) -> RequestsResponse:
+		if self._service_unavailable and self._service_unavailable.until and self._service_unavailable.until >= time.time():
+			raise self._service_unavailable
+
+		self._service_unavailable = None
+
+		allow_status_codes = (200, 201, 202, 203, 204, 206, 207, 208) if allow_status_codes is None else allow_status_codes
 		try:
 			response = self._session.request(
 				method=method,
 				url=self._get_url(path),
 				headers=headers,
 				data=data,
-				timeout=(self._connect_timeout, read_timeout),
-				stream=True
+				timeout=timeout,
+				stream=True,
+				verify=verify
 			)
+			if allow_status_codes and allow_status_codes != ... and response.status_code not in allow_status_codes:
+				response.raise_for_status()
+			return response
+		except SSLError as err:
+			try:
+				if err.args[0].reason.args[0].errno == 8:
+					# EOF occurred in violation of protocol
+					raise OpsiServiceConnectionError(str(err)) from err
+			except (AttributeError, IndexError):
+				pass
+			raise OpsiServiceVerificationError(str(err)) from err
 		except Timeout as err:
-			raise OpsiTimeoutError(str(err)) from err
+			raise OpsiServiceTimeoutError(str(err)) from err
+		except HTTPError as err:
+			if err.response.status_code == 503:
+				retry_after = 60
+				try:
+					retry_after = int(err.response.headers.get("Retry-After", ""))
+					retry_after = max(1, min(retry_after, 7200))
+				except ValueError:
+					pass
+				self._service_unavailable = OpsiServiceUnavailableError(
+					str(err), status_code=err.response.status_code, content=err.response.text, until=time.time() + retry_after
+				)
+				raise self._service_unavailable from err
+
+			cls = OpsiServiceError
+			if err.response.status_code == 401:
+				cls = OpsiServiceAuthenticationError
+			elif err.response.status_code == 403:
+				cls = OpsiServicePermissionError
+			raise cls(str(err), status_code=err.response.status_code, content=err.response.text) from err
 		except Exception as err:  # pylint: disable=broad-except
-			raise OpsiConnectionError(str(err)) from err
-		return (response.status_code, response.reason, response.headers, response.content)
+			raise OpsiServiceConnectionError(str(err)) from err
+
+	def request(  # pylint: disable=too-many-arguments
+		self,
+		method: str,
+		path: str,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0, data: bytes | None = None,
+		allow_status_codes: Iterable[int] | None = None
+	) -> Response:
+		self._assert_connected()
+		response = self._request(
+			method=method, path=path, headers=headers, timeout=read_timeout, data=data, allow_status_codes=allow_status_codes
+		)
+		return Response(
+			status_code=response.status_code,
+			reason=response.reason,
+			headers=response.headers,
+			content=response.content
+		)
 
 	def get(
-		self, path: str, headers: dict[str, str] | None = None, read_timeout: float = 60.0
-	) -> tuple[int, str, CaseInsensitiveDict, bytes]:
-		return self.request("GET", path=path, headers=headers, read_timeout=read_timeout)
+		self,
+		path: str,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0,
+		allow_status_codes: Iterable[int] | None = None
+	) -> Response:
+		return self.request("GET", path=path, headers=headers, read_timeout=read_timeout, allow_status_codes=allow_status_codes)
 
 	def post(
-		self, path: str, data: bytes | None = None, headers: dict[str, str] | None = None, read_timeout: float = 60.0
-	) -> tuple[int, str, CaseInsensitiveDict, bytes]:
-		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data)
+		self,
+		path: str,
+		data: bytes | None = None,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0,
+		allow_status_codes: Iterable[int] | None = None
+	) -> Response:
+		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data, allow_status_codes=allow_status_codes)
 
 	def jsonrpc(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		self,
@@ -788,13 +878,16 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		)
 		start_time = time.time()
 
-		(status_code, reason, response_headers, data) = self.post("/rpc", headers=headers, data=data, read_timeout=read_timeout)
-
-		content_type = response_headers.get("Content-Type", "")
-		content_encoding = response_headers.get("Content-Encoding", "")
+		allow_status_codes = (200, 500) if return_result_only else ...
+		response = self.post(
+			"/rpc", headers=headers, data=data, read_timeout=read_timeout, allow_status_codes=allow_status_codes  # type: ignore[arg-type]
+		)
+		data = response.content
+		content_type = response.headers.get("Content-Type", "")
+		content_encoding = response.headers.get("Content-Encoding", "")
 		logger.info(
 			"Got response status=%s, Content-Type=%s, Content-Encoding=%s, duration=%0.3fs",
-			status_code,
+			response.status_code,
 			content_type,
 			content_encoding,
 			(time.time() - start_time),
@@ -807,14 +900,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		error_cls: Type[Exception] | None = None
 		error_msg = None
-		if status_code != 200:
-			error_msg = reason
+		if response.status_code != 200:
+			error_msg = response.reason
 			error_cls = OpsiRpcError
-			error_msg = f"{status_code} - {reason}"
-			if status_code == 401:
-				error_cls = BackendAuthenticationError
-			if status_code == 403:
-				error_cls = BackendPermissionDeniedError
+			error_msg = f"{response.status_code} - {response.reason}"
 
 		rpc = {}
 		try:
@@ -893,6 +982,26 @@ class MessagebusListener():  # pylint: disable=too-few-public-methods
 		"""
 		self.message_types = {MessageType(mt) for mt in message_types} if message_types else None
 
+	def connection_open(self, messagebus: Messagebus) -> None:
+		"""
+		Called when the connection to the messagebus is opened.
+		"""
+
+	def connection_established(self, messagebus: Messagebus) -> None:
+		"""
+		Called when the connection to the messagebus is established.
+		"""
+
+	def connection_closed(self, messagebus: Messagebus) -> None:
+		"""
+		Called when the connection to the messagebus is closed.
+		"""
+
+	def connection_failed(self, messagebus: Messagebus, exception: Exception) -> None:
+		"""
+		Called when a connection to the messagebus failed.
+		"""
+
 	def message_received(self, message: Message) -> None:
 		"""
 		Called when a valid message is received.
@@ -938,7 +1047,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self.ping_interval = 15.0  # Send ping every specified period in seconds.
 		self.ping_timeout = 10.0  # Ping timeout in seconds.
 		self.reconnect_wait = 5.0  # After connection lost, reconnect after specified seconds.
-
+		self._next_connect_wait = 0.0
 		# from websocket import enableTrace
 		# enableTrace(True)
 
@@ -954,17 +1063,34 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		logger.debug("Websocket opened")
 		if not self._connected:
 			logger.notice("Connected to opsi messagebus")
+		self._next_connect_wait = self.reconnect_wait
 		self._connected = True
 		self._connected_result.set()
+		for listener in self._listener:
+			CallbackThread(getattr(listener, "connection_established"), messagebus=self).start()
 
 	def _on_error(self, app: WebSocketApp, error: Exception) -> None:  # pylint: disable=unused-argument
-		logger.debug("Websocket error: %s", error)
+		status_code = getattr(error, "status_code", 0)
+		logger.error("Websocket error: %d - %s", status_code, error)
 		self._connect_exception = error
+		next_reconnect_wait = self._next_connect_wait or self.reconnect_wait
+		if status_code == 503:
+			next_reconnect_wait = 60
+			try:
+				next_reconnect_wait = int(getattr(error, "resp_headers", {}).get("retry-after", ""))
+				next_reconnect_wait = max(1, min(next_reconnect_wait, 7200))
+			except ValueError:
+				pass
+		self._next_connect_wait = next_reconnect_wait
 		self._connected_result.set()
+		for listener in self._listener:
+			CallbackThread(getattr(listener, "connection_failed"), messagebus=self, exception=error).start()
 
 	def _on_close(self, app: WebSocketApp, close_status_code: int, close_message: str) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket closed with status_code=%r and message %r", close_status_code, close_message)
-		# Websocket is doing reconnect, do not set self._connected = False
+		self._connected = False
+		for listener in self._listener:
+			CallbackThread(getattr(listener, "connection_closed"), messagebus=self).start()
 
 	def _on_message(self, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket message received")
@@ -1016,7 +1142,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			def wait_for_message(self) -> JSONRPCResponseMessage:
 				if self.message_received_event.wait(self.timeout) and self.message:
 					return self.message
-				raise OpsiTimeoutError(f"Timed out waiting for JSONRPCResponseMessage with rpc_id={self.rpc_id}")
+				raise OpsiServiceTimeoutError(f"Timed out waiting for JSONRPCResponseMessage with rpc_id={self.rpc_id}")
 
 			def message_received(self, message: Message) -> None:
 				if isinstance(message, JSONRPCResponseMessage) and message.rpc_id == self.rpc_id:
@@ -1041,8 +1167,8 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		if res.error:
 			logger.debug("JSONRPC-response contains error: %s", res.error)
 			error_cls: Type[Exception] = OpsiRpcError
-			if res.error["data"]["class"] == "BackendPermissionDeniedError":
-				error_cls = BackendPermissionDeniedError
+			if res.error["data"]["class"] in ("BackendPermissionDeniedError", "OpsiServicePermissionError"):
+				error_cls = OpsiServicePermissionError
 			raise error_cls(res.error["message"])
 
 		return res.result
@@ -1065,7 +1191,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		if wait:
 			logger.debug("Waiting for connected result (timeout=%r)", self._connect_timeout)
 			if not self._connected_result.wait(self._connect_timeout):
-				self._connect_exception = TimeoutError(
+				self._connect_exception = OpsiServiceTimeoutError(
 					f"Timed out after {self._connect_timeout} seconds while waiting for connect result"
 				)
 			if self._connect_exception:
@@ -1141,6 +1267,9 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			on_pong=self._on_pong
 		)
 
+		for listener in self._listener:
+			CallbackThread(getattr(listener, "connection_open"), messagebus=self).start()
+
 		self._app.run_forever(  # type: ignore[attr-defined]
 			sslopt=sslopt,
 			skip_utf8_validation=True,
@@ -1151,7 +1280,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			http_proxy_timeout=self._connect_timeout,
 			ping_interval=self.ping_interval,
 			ping_timeout=self.ping_timeout,
-			reconnect=self.reconnect_wait
+			reconnect=0
 		)
 
 	def _disconnect(self) -> None:
@@ -1169,12 +1298,19 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		for var in self._context:
 			var.set(self._context[var])
 		logger.debug("Messagebus thread started")
-		try:
+		try:  # pylint: disable=too-many-nested-blocks
 			while not self._should_stop.wait(1):
 				if self._should_be_connected and not self._connected:
+					if self._next_connect_wait:
+						logger.info("Waiting %d seconds before reconnect", self._next_connect_wait)
+						for _ in range(round(self._next_connect_wait)):
+							if self._should_stop.wait(1):
+								return
 					logger.debug("Calling _connect()")
 					# Call of _connect() will block
 					self._connect()
+				if self._next_connect_wait == 0.0:
+					self._next_connect_wait = self.reconnect_wait
 		except Exception as err:  # pylint: disable=broad-except
 			logger.error(err, exc_info=True)
 
