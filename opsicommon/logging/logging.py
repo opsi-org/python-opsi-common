@@ -498,7 +498,7 @@ class SecretFilter(metaclass=Singleton):
 		:type *secrets: str
 		"""
 		for _secret in secrets:
-			try:  # pylint: disable=loop-try-except-usage
+			try:
 				self.secrets.remove(_secret)
 			except KeyError:
 				pass
@@ -554,7 +554,7 @@ class ObservableHandler(Handler, metaclass=Singleton):
 		if self._observers:
 			message = self.format(record)
 			for observer in self._observers:
-				try:  # pylint: disable=loop-try-except-usage
+				try:
 					observer.messageChanged(self, message)
 				except Exception as err:  # pylint: disable=broad-except
 					handle_log_exception(err)
@@ -652,7 +652,7 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 				shandler = StreamHandler(stream=stderr_file)
 			shandler.name = "opsi_stderr_handler"
 			logging.root.addHandler(shandler)
-		for hdlr in get_all_handlers((StreamHandler, RichConsoleHandler)):  # pylint: disable=loop-invariant-statement
+		for hdlr in get_all_handlers((StreamHandler, RichConsoleHandler)):
 			hdlr.setLevel(stderr_level)
 
 	if observable_handler not in get_all_handlers(ObservableHandler):
@@ -731,7 +731,7 @@ def set_format(
 		fmt = stderr_format if handler_type is StreamHandler or handler_type is RichConsoleHandler else file_format
 		for handler in get_all_handlers(handler_type):
 			formatter: Formatter
-			if handler_type != RichConsoleHandler and fmt.find("(log_color)") >= 0:  # pylint: disable=loop-invariant-statement
+			if handler_type != RichConsoleHandler and fmt.find("(log_color)") >= 0:
 				formatter = ColoredFormatter(fmt, datefmt=datefmt, log_colors=log_colors or LOG_COLORS)
 			else:
 				formatter = Formatter(fmt, datefmt=datefmt)
@@ -871,7 +871,7 @@ def get_all_handlers(handler_type: type | tuple[type, ...] | None = None, handle
 		handler_type = (handler_type,)
 	for _logger in get_all_loggers():
 		if not isinstance(_logger, PlaceHolder):
-			for _handler in _logger.handlers:  # pylint: disable=use-list-comprehension
+			for _handler in _logger.handlers:
 				if (
 					(not isinstance(_handler, NullHandler))
 					and (

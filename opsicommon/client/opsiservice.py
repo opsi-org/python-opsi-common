@@ -201,7 +201,7 @@ class Response:
 
 
 class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
-	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]  # pylint: disable=use-tuple-over-list
+	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]
 
 	def __init__(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		self,
@@ -280,7 +280,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		verify = verify or []
 		if isinstance(verify, (str, ServiceVerificationFlags)):
-			verify = [verify]  # type: ignore[list-item]  # pylint: disable=use-tuple-over-list
+			verify = [verify]  # type: ignore[list-item]
 
 		self._verify: list[ServiceVerificationFlags] = []
 		for verify_flag in list(verify):
@@ -353,7 +353,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		for addr in [address] if isinstance(address, str) else address:
 			if "://" not in addr:
-				try:  # pylint: disable=loop-try-except-usage
+				try:
 					ipa = ip_address(addr)
 					if isinstance(ipa, IPv6Address):
 						addr = f"[{ipa.compressed}]"
@@ -372,15 +372,15 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				if not self._username:
 					self._username = url.username
 				elif self._username != url.username:
-					raise ValueError("Different usernames supplied")  # pylint: disable=loop-invariant-statement
+					raise ValueError("Different usernames supplied")
 
 			if url.password is not None:
 				if not self._password:
 					self._password = url.password
 				elif self._password != url.password:
-					raise ValueError("Different passwords supplied")  # pylint: disable=loop-invariant-statement
+					raise ValueError("Different passwords supplied")
 
-			self._addresses.append(f"{url.scheme}://{hostname}:{url.port or _DEFAULT_HTTPS_PORT}")  # pylint: disable=loop-global-usage
+			self._addresses.append(f"{url.scheme}://{hostname}:{url.port or _DEFAULT_HTTPS_PORT}")
 
 	@property
 	def base_url(self) -> str:
@@ -446,13 +446,13 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		except Exception as err:
 			raise OpsiServiceError(f"Failed to fetch opsi-ca-cert.pem: {err}") from err
 
-		for match in re.finditer(  # pylint: disable=dotted-import-in-loop
-			r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", response.text, re.DOTALL  # pylint: disable=dotted-import-in-loop
+		for match in re.finditer(
+			r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", response.text, re.DOTALL
 		):
-			try:  # pylint: disable=loop-try-except-usage
+			try:
 				ca_certs.append(load_certificate(FILETYPE_PEM, match.group(1).encode("utf-8")))
 			except Exception as err:  # pylint: disable=broad-except
-				logger.error("Failed to load cert %r: %s", match.group(1), err, exc_info=True)  # pylint: disable=loop-global-usage
+				logger.error("Failed to load cert %r: %s", match.group(1), err, exc_info=True)
 
 		if not ca_certs:
 			raise OpsiServiceError("Failed to fetch opsi-ca-cert.pem: No certificates in response")
@@ -470,15 +470,15 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		data = self._ca_cert_file.read_text(encoding="utf-8")
 		now = datetime.now()
-		for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):  # pylint: disable=dotted-import-in-loop
-			try:  # pylint: disable=loop-try-except-usage
+		for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):
+			try:
 				cert = load_certificate(FILETYPE_PEM, match.group(1).encode("utf-8"))
 				enddate = datetime.strptime((cert.get_notAfter() or b"").decode("utf-8"), "%Y%m%d%H%M%SZ")
 				if enddate <= now:
-					logger.notice("Expired certificate found: %r", cert)  # pylint: disable=loop-global-usage
+					logger.notice("Expired certificate found: %r", cert)
 					return True
 			except Exception as err:  # pylint: disable=broad-except
-				logger.error(err, exc_info=True)  # pylint: disable=loop-global-usage
+				logger.error(err, exc_info=True)
 				return True
 		return False
 
@@ -488,11 +488,11 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			return ca_certs
 		try:
 			data = self._ca_cert_file.read_text(encoding="utf-8")
-			for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):  # pylint: disable=dotted-import-in-loop
-				try:  # pylint: disable=loop-try-except-usage
+			for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):
+				try:
 					ca_certs.append(load_certificate(FILETYPE_PEM, match.group(1).encode("utf-8")))
 				except Exception as err:  # pylint: disable=broad-except
-					logger.error(err, exc_info=True)  # pylint: disable=loop-global-usage
+					logger.error(err, exc_info=True)
 		except Exception as err:  # pylint: disable=broad-except
 			logger.warning(err, exc_info=True)
 		return ca_certs
@@ -510,11 +510,11 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			return self.disconnect()
 
 		for method in self.jsonrpc_interface:  # pylint: disable=too-many-nested-blocks
-			try:  # pylint: disable=loop-try-except-usage,too-many-nested-blocks
+			try:  # pylint: disable=too-many-nested-blocks
 				method_name = method["name"]
 
 				if method_name not in ("backend_getInterface", "backend_exit"):
-					logger.debug("Creating instance method: %s", method_name)  # pylint: disable=loop-global-usage
+					logger.debug("Creating instance method: %s", method_name)
 
 					args = method["args"]
 					varargs = method["varargs"]
@@ -527,8 +527,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 						if argument == "self":
 							continue
 
-						if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):  # pylint: disable=loop-invariant-statement
-							default = defaults[len(defaults) - len(args) + i]  # pylint: disable=loop-invariant-statement
+						if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):
+							default = defaults[len(defaults) - len(args) + i]
 							if isinstance(default, str):
 								default = repr(default)
 							arg_list.append(f"{argument}={default}")
@@ -548,15 +548,15 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					arg_string = ", ".join(arg_list)
 					call_string = ", ".join(call_list)
 
-					logger.trace("%s: arg string is: %s", method_name, arg_string)  # pylint: disable=loop-global-usage
-					logger.trace("%s: call string is: %s", method_name, call_string)  # pylint: disable=loop-global-usage
-					with warnings.catch_warnings():  # pylint: disable=dotted-import-in-loop
+					logger.trace("%s: arg string is: %s", method_name, arg_string)
+					logger.trace("%s: call string is: %s", method_name, call_string)
+					with warnings.catch_warnings():
 						exec(  # pylint: disable=exec-used
 							f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])'
 						)
-				setattr(instance, method_name, MethodType(eval(method_name), self))  # pylint: disable=eval-used,dotted-import-in-loop
+				setattr(instance, method_name, MethodType(eval(method_name), self))  # pylint: disable=eval-used
 			except Exception as err:  # pylint: disable=broad-except
-				logger.error("Failed to create instance method '%s': %s", method, err)  # pylint: disable=loop-global-usage
+				logger.error("Failed to create instance method '%s': %s", method, err)
 
 	def connect(self) -> None:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		if self._connect_lock.locked():
@@ -585,7 +585,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 			for address_index in range(len(self._addresses)):
 				self._address_index = address_index
-				try:  # pylint: disable=loop-try-except-usage
+				try:
 					response = self._request(
 						method="HEAD",
 						path="/",
@@ -595,7 +595,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 						allow_status_codes=(200, 405)
 					)
 					break
-				except OpsiServiceError as err:  # pylint: disable=loop-invariant-statement
+				except OpsiServiceError as err:
 					if self._address_index >= len(self._addresses) - 1:
 						for listener in self._listener:
 							CallbackThread(listener.connection_failed, service_client=self, exception=err).start()
@@ -655,13 +655,13 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				default = None
 				if param[0] == "*":
 					param = param.lstrip("*")
-					if method["defaults"]:  # pylint: disable=loop-invariant-statement
-						try:  # pylint: disable=loop-try-except-usage
-							default = method["defaults"][def_idx]  # pylint: disable=loop-invariant-statement
+					if method["defaults"]:
+						try:
+							default = method["defaults"][def_idx]
 						except IndexError:
 							pass
 					def_idx += 1
-				self._jsonrpc_method_params[method["name"]][param] = default  # pylint: disable=loop-invariant-statement
+				self._jsonrpc_method_params[method["name"]][param] = default
 
 		if self.jsonrpc_create_methods:
 			self.create_jsonrpc_methods()
@@ -734,14 +734,14 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			if allow_status_codes and allow_status_codes != ... and response.status_code not in allow_status_codes:
 				response.raise_for_status()
 			return response
-		except SSLError as err:  # pylint: disable=loop-invariant-statement
-			try:  # pylint: disable=loop-try-except-usage
+		except SSLError as err:
+			try:
 				if err.args[0].reason.args[0].errno == 8:
 					# EOF occurred in violation of protocol
-					raise OpsiServiceConnectionError(str(err)) from err  # pylint: disable=loop-invariant-statement
+					raise OpsiServiceConnectionError(str(err)) from err
 			except (AttributeError, IndexError):
 				pass
-			raise OpsiServiceVerificationError(str(err)) from err  # pylint: disable=loop-invariant-statement
+			raise OpsiServiceVerificationError(str(err)) from err
 		except Timeout as err:
 			raise OpsiServiceTimeoutError(str(err)) from err
 		except HTTPError as err:
@@ -826,10 +826,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			new_params = list(m_params.values())
 			max_idx = 0
 			for name, val in params.items():
-				try:  # pylint: disable=loop-try-except-usage
+				try:
 					idx = m_param_names.index(name)
 				except ValueError as err:
-					raise ValueError(f"Invalid param {name!r} for method {method!r}") from err  # pylint: disable=loop-invariant-statement
+					raise ValueError(f"Invalid param {name!r} for method {method!r}") from err
 				new_params[idx] = val
 				max_idx = max(max_idx, idx)
 			params = [p for i, p in enumerate(new_params) if i <= max_idx]
@@ -1302,11 +1302,11 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			while not self._should_stop.wait(1):
 				if self._should_be_connected and not self._connected:
 					if self._next_connect_wait:
-						logger.info("Waiting %d seconds before reconnect", self._next_connect_wait)  # pylint: disable=loop-global-usage
+						logger.info("Waiting %d seconds before reconnect", self._next_connect_wait)
 						for _ in range(round(self._next_connect_wait)):
-							if self._should_stop.wait(1):  # pylint: disable=loop-invariant-statement
+							if self._should_stop.wait(1):
 								return
-					logger.debug("Calling _connect()")  # pylint: disable=loop-global-usage
+					logger.debug("Calling _connect()")
 					# Call of _connect() will block
 					self._connect()
 				if self._next_connect_wait == 0.0:

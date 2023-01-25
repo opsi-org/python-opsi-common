@@ -50,6 +50,8 @@ pytest-linux:
   #when: manual
   stage: test
   script:
+    - apt update
+    - apt --yes install zstd  # need zstd for packaging tests
     - poetry install
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_linux1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_linux2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
@@ -78,7 +80,7 @@ pylint-pytest:
     - apt-get update
     - apt-get --yes install sqlite3
     - poetry install
-    - poetry run pylint --load-plugins perflint --disable=R,fixme opsicommon tests
+    - poetry run pylint --disable=R,fixme opsicommon tests
     - poetry run flake8 opsicommon tests
     - poetry run mypy opsicommon tests
     - for db in coverage_*; do sqlite3 $db 'update file set path=replace(substr(path,instr(path,"opsicommon")),"\","/");'; done

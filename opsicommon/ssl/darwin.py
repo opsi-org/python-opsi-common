@@ -61,11 +61,11 @@ def remove_ca(subject_name: str) -> bool:
 
 	removed_sha1_hash = None
 	while ca_cert:
-		logger.info("Removing CA '%s'", subject_name)  # pylint: disable=loop-global-usage
+		logger.info("Removing CA '%s'", subject_name)
 		sha1_hash = ca_cert.digest("sha1").decode("ascii").replace(":", "")
 		if removed_sha1_hash and sha1_hash == removed_sha1_hash:
 			raise RuntimeError(f"Failed to remove certficate {removed_sha1_hash}")
-		subprocess.check_call(  # pylint: disable=dotted-import-in-loop
+		subprocess.check_call(
 			["security", "delete-certificate", "-Z", sha1_hash, "/Library/Keychains/System.keychain", "-t"], shell=False
 		)
 		removed_sha1_hash = sha1_hash

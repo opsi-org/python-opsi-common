@@ -13,6 +13,7 @@ from unittest import mock
 
 import pytest
 from OpenSSL.crypto import X509, PKey  # type: ignore[import]
+
 from opsicommon.ssl import (
 	as_pem,
 	create_ca,
@@ -113,7 +114,7 @@ def test_create_server_cert() -> None:
 					cert_hns.add(alt_name.split(":", 1)[-1].strip())
 				elif alt_name.startswith(("IP:", "IP Address:")):
 					addr = alt_name.split(":", 1)[-1].strip()
-					ip_addr = ipaddress.ip_address(addr)  # pylint: disable=dotted-import-in-loop
+					ip_addr = ipaddress.ip_address(addr)
 					cert_ips.add(ip_addr.compressed)
 			break
 

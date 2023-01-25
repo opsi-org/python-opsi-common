@@ -18,6 +18,7 @@ from unittest import mock
 
 import pytest
 from Crypto.PublicKey import RSA
+
 from opsicommon.license import (
 	MAX_STATE_CACHE_VALUES,
 	OPSI_FREE_MODULE_IDS,
@@ -307,8 +308,8 @@ def test_load_opsi_license_pool() -> None:
 	for lic in olp.licenses:
 		assert lic.module_id in module_ids
 		_prefix, module_id = lic.id.split("-", 1)
-		assert _prefix == "legacy"  # pylint: disable=loop-invariant-statement
-		assert module_id in module_ids  # pylint: disable=loop-invariant-statement
+		assert _prefix == "legacy"
+		assert module_id in module_ids
 
 
 def test_opsi_license_pool_modified(tmp_path: Path) -> None:
@@ -413,7 +414,7 @@ def test_opsi_license_pool_relevant_dates() -> None:
 
 		for at_date in dates:
 			modules = olp.get_modules(at_date=at_date)
-			assert sorted(OPSI_MODULE_IDS) == sorted(modules)  # pylint: disable=loop-invariant-statement
+			assert sorted(OPSI_MODULE_IDS) == sorted(modules)
 
 			assert modules["treeview"]["available"]
 			assert modules["treeview"]["state"] == OPSI_MODULE_STATE_FREE
@@ -450,19 +451,19 @@ def test_licensing_info_and_cache() -> None:
 
 		timings = []
 		for num in range(3):
-			start = time.time()  # pylint: disable=dotted-import-in-loop
-			info: Dict[str, Any] = {  # pylint: disable=loop-invariant-statement
+			start = time.time()
+			info: Dict[str, Any] = {
 				"client_numbers": olp.client_numbers,
-				"available_modules": [module_id for module_id, info in olp.get_modules().items() if info["available"]],  # pylint: disable=loop-invariant-statement
+				"available_modules": [module_id for module_id, info in olp.get_modules().items() if info["available"]],
 				"licenses_checksum": olp.get_licenses_checksum(),
 			}
 			licenses = olp.get_licenses()
-			info["licenses"] = [lic.to_dict(serializable=True, with_state=True) for lic in licenses]  # pylint: disable=loop-invariant-statement
-			info["legacy_modules"] = olp.get_legacy_modules()  # pylint: disable=loop-invariant-statement
-			info["dates"] = {}  # pylint: disable=loop-invariant-statement
+			info["licenses"] = [lic.to_dict(serializable=True, with_state=True) for lic in licenses]
+			info["legacy_modules"] = olp.get_legacy_modules()
+			info["dates"] = {}
 			for at_date in olp.get_relevant_dates():
-				info["dates"][str(at_date)] = {"modules": olp.get_modules(at_date=at_date)}  # pylint: disable=loop-invariant-statement
-			timings.append(time.time() - start)  # pylint: disable=dotted-import-in-loop
+				info["dates"][str(at_date)] = {"modules": olp.get_modules(at_date=at_date)}
+			timings.append(time.time() - start)
 			if num == 1:
 				# Cached should be faster
 				assert timings[1] < timings[0]
@@ -692,11 +693,11 @@ def test_license_state_cache() -> None:
 		uncached_time_ns = time.perf_counter_ns() - start
 
 		for _ in range(20):
-			start = time.perf_counter_ns()  # pylint: disable=dotted-import-in-loop
+			start = time.perf_counter_ns()
 			lic.get_state(at_date=today)
 
 			# Cached state should be much faster
-			time_ns = time.perf_counter_ns() - start  # pylint: disable=dotted-import-in-loop
+			time_ns = time.perf_counter_ns() - start
 			assert time_ns * 2 < uncached_time_ns
 
 			# Cache should keep size

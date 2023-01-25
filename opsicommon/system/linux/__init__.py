@@ -34,8 +34,8 @@ def set_system_datetime(utc_datetime: datetime) -> None:
 
 
 def get_user_sessions(username: Optional[str] = None, session_type: Optional[str] = None) -> Generator[Session, None, None]:
-	for user in psutil.users():  # pylint: disable=dotted-import-in-loop
-		if username is not None and user.name != username:  # pylint: disable=loop-invariant-statement
+	for user in psutil.users():
+		if username is not None and user.name != username:
 			continue
 		_type = None
 		terminal = user.terminal
@@ -44,7 +44,7 @@ def get_user_sessions(username: Optional[str] = None, session_type: Optional[str
 				_type = "x11"
 			elif terminal.startswith("tty"):
 				_type = "tty"
-				proc = psutil.Process(int(user.pid))  # pylint: disable=dotted-import-in-loop
+				proc = psutil.Process(int(user.pid))
 				env = proc.environ()
 				# DISPLAY, XDG_SESSION_TYPE, XDG_SESSION_ID
 				if env.get("DISPLAY"):
@@ -52,7 +52,7 @@ def get_user_sessions(username: Optional[str] = None, session_type: Optional[str
 					terminal = env["DISPLAY"]
 			elif terminal.startswith("pts"):
 				_type = "pts"
-		if session_type is not None and session_type != _type:  # pylint: disable=loop-invariant-statement
+		if session_type is not None and session_type != _type:
 			continue
 		yield Session(id=terminal, type=_type, username=user.name, started=user.started, login_pid=user.pid, terminal=terminal)
 
@@ -66,15 +66,15 @@ def run_process_in_session(command: List[str], session_id: str, shell: bool = Fa
 	if not session:
 		raise ValueError(f"Session {session_id} not found")
 
-	procs = [psutil.Process(pid=session.login_pid)]  # pylint: disable=use-tuple-over-list
+	procs = [psutil.Process(pid=session.login_pid)]
 	procs += procs[0].children(recursive=True)
 	env = {}
 	for proc in procs:
-		try:  # pylint: disable=loop-try-except-usage
+		try:
 			env = proc.environ()
-		except psutil.AccessDenied:  # pylint: disable=dotted-import-in-loop,loop-invariant-statement
+		except psutil.AccessDenied:
 			pass
-		if env and (env.get("DISPLAY") or session.type != "x11"):  # pylint: disable=loop-invariant-statement
+		if env and (env.get("DISPLAY") or session.type != "x11"):
 			# Need environment var DISPLAY to start process in x11
 			break
 
@@ -91,7 +91,7 @@ def drop_privileges(username: str) -> None:
 	logger.debug("Switching to user %s", username)
 	user = pwd.getpwnam(username)
 	gids = [user.pw_gid]
-	for _grp in grp.getgrall():  # pylint: disable=use-list-comprehension,dotted-import-in-loop
+	for _grp in grp.getgrall():
 		if user.pw_name in _grp.gr_mem and _grp.gr_gid not in gids:
 			gids.append(_grp.gr_gid)
 	logger.trace("Set uid=%s, gid=%s, groups=%s", user.pw_uid, gids[0], gids)
