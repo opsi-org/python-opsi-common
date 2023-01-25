@@ -52,7 +52,7 @@ class OpsiPackage:
 
 	def extract_package_archive(self, package_archive: Path, destination: Path, new_product_id: str | None = None) -> None:
 		with make_temp_dir(self.temp_dir) as temp_dir:
-			logger.debug("Deserializing archive %s", package_archive)
+			logger.debug("Extracting archive %s", package_archive)
 			extract_archive(package_archive, temp_dir)
 			for archive in temp_dir.iterdir():
 				extract_archive(archive, destination / archive.name.split(".")[0])
@@ -64,7 +64,7 @@ class OpsiPackage:
 
 	def from_package_archive(self, package_archive: Path) -> None:
 		with make_temp_dir(self.temp_dir) as temp_dir:
-			logger.debug("Deserializing archive %s", package_archive)
+			logger.debug("Extracting archive %s", package_archive)
 			extract_archive(package_archive, temp_dir, file_pattern="OPSI.*")
 			content = list(temp_dir.glob("OPSI.*"))
 			if len(content) == 0:
@@ -89,7 +89,7 @@ class OpsiPackage:
 	def parse_control_file_legacy(self, control_file: Path) -> None:
 		legacy_control_file = LegacyControlFile(control_file)
 		if not isinstance(legacy_control_file.product, Product):
-			raise ValueError("Could not extract Product information from old control file.")
+			raise ValueError("Could not extract product information from legacy control file.")
 		self.product = legacy_control_file.product
 		self.product_properties = legacy_control_file.productProperties
 		self.product_dependencies = legacy_control_file.productDependencies
@@ -161,7 +161,7 @@ class OpsiPackage:
 		archives = []
 		dirs = [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
 		if not (base_dir / "OPSI").exists():
-			raise FileNotFoundError(f"Did not find OPSI directory at {base_dir}")
+			raise FileNotFoundError(f"Did not find OPSI directory at '{base_dir}'")
 		# TODO: option to follow symlinks.
 		# TODO: custom_name stuff?
 		# if custom_name:
