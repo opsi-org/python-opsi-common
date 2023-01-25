@@ -5,6 +5,7 @@ opsi package class and associated methods
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Literal
 
 import tomlkit
 
@@ -155,7 +156,7 @@ class OpsiPackage:
 		control_file.write_text(tomlkit.dumps(data_dict))
 
 	# compression zstd or bz2
-	def create_package_archive(self, base_dir: Path, compression: str = "zstd", destination: Path | None = None) -> Path:
+	def create_package_archive(self, base_dir: Path, compression: Literal["zstd", "bz2"] = "zstd", destination: Path | None = None) -> Path:
 		self.find_and_parse_control_file(base_dir)
 
 		archives = []
@@ -183,8 +184,7 @@ class OpsiPackage:
 				file_list = [  # TODO: behaviour for symlinks
 					file
 					for file in _dir.iterdir()
-					if not EXCLUDE_DIRS_ON_PACK_REGEX.match(file.name)
-					and not EXCLUDE_FILES_ON_PACK_REGEX.match(file.name)
+					if not EXCLUDE_DIRS_ON_PACK_REGEX.match(file.name) and not EXCLUDE_FILES_ON_PACK_REGEX.match(file.name)
 				]
 				# TODO: SERVER_DATA stuff - restrict to only /tftpboot?
 				# TODO: what is the right instance to enforce this?
