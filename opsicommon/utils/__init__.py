@@ -195,7 +195,7 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 		return "://".join((protocol, host))
 
 	if no_proxy_addresses is None:
-		no_proxy_addresses = []  # pylint: disable=use-tuple-over-list
+		no_proxy_addresses = []
 	if session is None:
 		session = requests.Session()
 	if proxy_url:
@@ -218,8 +218,8 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 					}
 				)
 				for key in ("http_proxy", "https_proxy"):
-					if key in os.environ:  # pylint: disable=dotted-import-in-loop
-						del os.environ[key]  # pylint: disable=dotted-import-in-loop
+					if key in os.environ:
+						del os.environ[key]
 
 		no_proxy = [x.strip() for x in os.environ.get("no_proxy", "").split(",") if x.strip()]
 		if no_proxy != ["*"]:

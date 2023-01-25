@@ -103,10 +103,10 @@ def load_ca(subject_name: str) -> crypto.X509:
 	with _open_cert_store(store_name, force_close=False) as store:
 		for certificate in store.CertEnumCertificatesInStore():
 			# logger.trace("checking certificate %s", certificate.SerialNumber)	# ASN1 encoded integer
-			ca_cert = crypto.load_certificate(crypto.FILETYPE_ASN1, certificate.CertEncoded)  # pylint: disable=dotted-import-in-loop
-			logger.trace("checking certificate %s", ca_cert.get_subject().CN)  # pylint: disable=dotted-import-in-loop,loop-global-usage
+			ca_cert = crypto.load_certificate(crypto.FILETYPE_ASN1, certificate.CertEncoded)
+			logger.trace("checking certificate %s", ca_cert.get_subject().CN)
 			if ca_cert.get_subject().CN == subject_name:
-				logger.debug("Found matching ca %s", subject_name)  # pylint: disable=dotted-import-in-loop,loop-global-usage
+				logger.debug("Found matching ca %s", subject_name)
 				return ca_cert
 	logger.debug("Did not find ca")
 	return None
@@ -117,27 +117,23 @@ def remove_ca(subject_name: str) -> bool:
 	removed = 0
 	with _open_cert_store(store_name, ctype=True) as store:
 		while True:
-			p_cert_ctx = crypt32.CertFindCertificateInStore(  # pylint: disable=loop-global-usage
+			p_cert_ctx = crypt32.CertFindCertificateInStore(
 				store,
-				X509_ASN_ENCODING,  # pylint: disable=loop-global-usage
+				X509_ASN_ENCODING,
 				0,
-				CERT_FIND_SUBJECT_STR,  # Searches for a certificate that contains the specified subject name string  # pylint: disable=loop-global-usage
+				CERT_FIND_SUBJECT_STR,  # Searches for a certificate that contains the specified subject name string
 				subject_name,
 				None,
 			)
 			if p_cert_ctx == 0:
 				break
 
-			cbsize = crypt32.CertGetNameStringW(  # pylint: disable=loop-global-usage
-				p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, None, 0  # pylint: disable=loop-global-usage
-			)
-			buf = ctypes.create_unicode_buffer(cbsize)  # pylint: disable=dotted-import-in-loop
-			cbsize = crypt32.CertGetNameStringW(  # pylint: disable=loop-global-usage
-				p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, buf, cbsize  # pylint: disable=loop-global-usage
-			)
-			logger.info("Removing CA '%s' (%s) from '%s' store", subject_name, buf.value, store_name)  # pylint: disable=loop-global-usage
-			crypt32.CertDeleteCertificateFromStore(p_cert_ctx)  # pylint: disable=loop-global-usage
-			crypt32.CertFreeCertificateContext(p_cert_ctx)  # pylint: disable=loop-global-usage
+			cbsize = crypt32.CertGetNameStringW(p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, None, 0)
+			buf = ctypes.create_unicode_buffer(cbsize)
+			cbsize = crypt32.CertGetNameStringW(p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, buf, cbsize)
+			logger.info("Removing CA '%s' (%s) from '%s' store", subject_name, buf.value, store_name)
+			crypt32.CertDeleteCertificateFromStore(p_cert_ctx)
+			crypt32.CertFreeCertificateContext(p_cert_ctx)
 			removed += 1
 			if removed >= 25:
 				raise RuntimeError(f"Stop loop after removing {removed} certficates")

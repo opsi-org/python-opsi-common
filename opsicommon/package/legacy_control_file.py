@@ -242,16 +242,16 @@ class LegacyControlFile:
 			for i, currentSection in enumerate(secs):  # pylint: disable=invalid-name
 				for (option, value) in currentSection.items():  # type: ignore
 					if (  # pylint: disable=too-many-boolean-expressions
-						(sectionType == "product" and option == "productclasses")  # pylint: disable=loop-invariant-statement
-						or (sectionType == "package" and option == "depends")  # pylint: disable=loop-invariant-statement
+						(sectionType == "product" and option == "productclasses")
+						or (sectionType == "package" and option == "depends")
 						or (
-							sectionType == "productproperty" and option in ("default", "values")  # pylint: disable=loop-invariant-statement
+							sectionType == "productproperty" and option in ("default", "values")
 						)
-						or (sectionType == "windows" and option == "softwareids")  # pylint: disable=loop-invariant-statement
+						or (sectionType == "windows" and option == "softwareids")
 					):
 						try:
 							if not value.strip().startswith(("{", "[")):
-								raise ValueError(  # pylint: disable=loop-invariant-statement
+								raise ValueError(
 									"Not trying to read json string because value does not start with { or ["
 								)
 							value = from_json(value.strip())
@@ -261,7 +261,7 @@ class LegacyControlFile:
 							logger.trace("Failed to read json string '%s': %s", value.strip(), err)  # type: ignore
 							value = value.replace("\n", "")
 							value = value.replace("\t", "")
-							if not (sectionType == "productproperty" and option == "default"):  # pylint: disable=loop-invariant-statement
+							if not (sectionType == "productproperty" and option == "default"):
 								value = [v.strip() for v in value.split(",")]
 
 							# Remove duplicates
@@ -271,7 +271,7 @@ class LegacyControlFile:
 					if isinstance(value, str):
 						value = value.rstrip()
 
-					self._sections[sectionType][i][option] = value  # type: ignore  # pylint: disable=unnecessary-dict-index-lookup,loop-invariant-statement
+					self._sections[sectionType][i][option] = value  # type: ignore  # pylint: disable=unnecessary-dict-index-lookup
 
 		if not self._sections.get("product"):
 			raise ValueError(f"Error in control file '{control_file}': 'product' section not found")
@@ -280,7 +280,7 @@ class LegacyControlFile:
 		for (option, value) in self._sections.get("package", [{}])[0].items():  # type: ignore
 			if option == "depends":
 				for dep in value:
-					match = re.search(r"^\s*([^\(]+)\s*\(*\s*([^\)]*)\s*\)*", dep)  # pylint: disable=dotted-import-in-loop
+					match = re.search(r"^\s*([^\(]+)\s*\(*\s*([^\)]*)\s*\)*", dep)
 					if not match or not match.group(1):
 						raise ValueError(f"Bad package dependency '{dep}' in control file")
 
@@ -288,7 +288,7 @@ class LegacyControlFile:
 					version = match.group(2)
 					condition = None
 					if version:
-						match = re.search(r"^\s*([<>]?=?)\s*([\w\.]+-*[\w\.]*)\s*$", version)  # pylint: disable=dotted-import-in-loop
+						match = re.search(r"^\s*([<>]?=?)\s*([\w\.]+-*[\w\.]*)\s*$", version)
 						if not match:
 							raise ValueError(f"Bad version string '{version}' in package dependency")
 
@@ -365,7 +365,7 @@ class LegacyControlFile:
 					requirementType=productDependency.get("requirementtype"),  # type: ignore
 				)
 			)
-			self.productDependencies[-1].setDefaults()  # pylint: disable=loop-invariant-statement
+			self.productDependencies[-1].setDefaults()
 
 		# Create ProductProperty objects
 		for productProperty in self._sections.get("productproperty", []):  # pylint: disable=invalid-name
@@ -442,7 +442,7 @@ class LegacyControlFile:
 		if len(descLines) > 0:
 			lines[-1] += descLines[0]
 			if len(descLines) > 1:
-				for line in descLines[1:]:  # pylint: disable=use-list-copy
+				for line in descLines[1:]:
 					lines.append(f" {line}")
 		lines.append(f"advice: {self.product.getAdvice()}")
 		lines.append(f"version: {self.product.getProductVersion()}")
@@ -501,7 +501,7 @@ class LegacyControlFile:
 				if len(descLines) > 0:
 					lines[-1] += descLines[0]
 					if len(descLines) > 1:
-						for line in descLines[1:]:  # pylint: disable=use-list-copy
+						for line in descLines[1:]:
 							lines.append(f" {line}")
 
 			if not isinstance(productProperty, BoolProductProperty) and productProperty.getPossibleValues() is not None:

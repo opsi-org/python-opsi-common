@@ -18,6 +18,7 @@ from typing import Any
 
 import pytest
 import requests
+
 from opsicommon.logging import (
 	ContextSecretFormatter,
 	context_filter,
@@ -57,7 +58,7 @@ def test_levels() -> None:  # pylint: disable=redefined-outer-name
 		expected = ""
 		print_logger_info()
 		for level in ("secret", "confidential", "trace", "debug2", "debug", "info", "notice", "warning", "error", "critical", "comment"):
-			func = getattr(logger, level)  # pylint: disable=loop-global-usage
+			func = getattr(logger, level)
 			msg = f"logline {level}"
 			func(msg)
 			expected += f"{msg}\n"
@@ -69,7 +70,7 @@ def test_levels() -> None:  # pylint: disable=redefined-outer-name
 def test_caller_filename() -> None:  # pylint: disable=redefined-outer-name
 	with log_stream(LOG_SECRET, format="%(levelname)s %(filename)s") as stream:
 		for level in ("secret", "trace", "debug", "info", "notice", "warning", "error", "critical", "essential"):
-			func = getattr(logger, level)  # pylint: disable=loop-global-usage
+			func = getattr(logger, level)
 			func("")
 		stream.seek(0)
 		for line in stream.read().strip().split("\n"):
@@ -214,7 +215,7 @@ def test_context_threads() -> None:  # pylint: disable=redefined-outer-name
 					_thread.start()
 				for _thread in threads:
 					_thread.join()
-				time.sleep(1)  # pylint: disable=dotted-import-in-loop
+				time.sleep(1)
 
 	class AsyncMain(threading.Thread):
 		def __init__(self) -> None:
@@ -239,10 +240,10 @@ def test_context_threads() -> None:  # pylint: disable=redefined-outer-name
 		async def arun(self) -> None:
 			while not self._should_stop:
 				tasks = []
-				for i in range(2):  # pylint: disable=use-list-copy
+				for i in range(2):
 					tasks.append(self.handle_client(client=f"Client-{i}"))
-				await asyncio.gather(*tasks)  # pylint: disable=dotted-import-in-loop
-				await asyncio.sleep(1)  # pylint: disable=dotted-import-in-loop
+				await asyncio.gather(*tasks)
+				await asyncio.sleep(1)
 
 	class MyModule(threading.Thread):
 		def __init__(self, client: str):
@@ -262,7 +263,7 @@ def test_context_threads() -> None:  # pylint: disable=redefined-outer-name
 				main.run()
 			except KeyboardInterrupt:
 				pass
-			for _thread in threading.enumerate():  # pylint: disable=dotted-import-in-loop
+			for _thread in threading.enumerate():
 				if hasattr(_thread, "stop"):
 					_thread.stop()  # type: ignore[attr-defined]
 					_thread.join()

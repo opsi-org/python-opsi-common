@@ -57,14 +57,14 @@ def modify_user(username: str, home: str | None = None, shell: str | None = None
 
 def add_user_to_group(username: str, groupname: str) -> None:
 	logger.notice("Adding user '%s' to group '%s'", username, groupname)
-	cmd = ["usermod", "-a", "-G", groupname, username]  # pylint: disable=use-tuple-over-list
+	cmd = ["usermod", "-a", "-G", groupname, username]
 	logger.info("Running command: %s", cmd)
 	subprocess.check_output(cmd, stderr=subprocess.STDOUT)
 
 
 def set_primary_group(username: str, groupname: str) -> None:
 	logger.notice("Setting primary group of user '%s' to '%s'", username, groupname)
-	cmd = ["usermod", "-g", groupname, username]  # pylint: disable=use-tuple-over-list
+	cmd = ["usermod", "-g", groupname, username]
 	logger.info("Running command: %s", cmd)
 	subprocess.check_output(cmd, stderr=subprocess.STDOUT)
 

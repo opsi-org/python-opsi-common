@@ -48,14 +48,14 @@ def test_load_control(form: str) -> None:
 			assert prop.editable is True
 			assert prop.defaultValues == ["a"]
 			assert prop.possibleValues
-			assert set(prop.possibleValues) == {"a", "b"}  # pylint: disable=loop-invariant-statement
+			assert set(prop.possibleValues) == {"a", "b"}
 		elif prop.propertyId == "boolprop":
 			assert prop.description == "this is a bool property"
 			assert prop.multiValue is False
 			assert prop.editable is False
 			assert prop.defaultValues == [False]
 			assert prop.possibleValues
-			assert set(prop.possibleValues) == {True, False}  # pylint: disable=loop-invariant-statement
+			assert set(prop.possibleValues) == {True, False}
 		else:
 			raise ValueError(f"Did not expect propertyId {prop.propertyId}")
 	assert len(package.product_dependencies) == 1
@@ -130,14 +130,14 @@ def test_load_package(product_type: str, form: str) -> None:
 			assert prop.editable is True
 			assert prop.defaultValues == ["a"]
 			assert prop.possibleValues
-			assert set(prop.possibleValues) == {"a", "b"}  # pylint: disable=loop-invariant-statement
+			assert set(prop.possibleValues) == {"a", "b"}
 		elif prop.propertyId == "boolprop":
 			assert prop.description == "this is a bool property"
 			assert prop.multiValue is False
 			assert prop.editable is False
 			assert prop.defaultValues == [False]
 			assert prop.possibleValues
-			assert set(prop.possibleValues) == {True, False}  # pylint: disable=loop-invariant-statement
+			assert set(prop.possibleValues) == {True, False}
 		else:
 			raise ValueError(f"Did not expect propertyId {prop.propertyId}")
 	assert len(package.product_dependencies) == 1

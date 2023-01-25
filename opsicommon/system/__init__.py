@@ -40,10 +40,10 @@ def ensure_not_already_running(process_name: Optional[str] = None) -> None:
 		exe_name = f"{process_name}.exe"
 		ignore_pids = [p.pid for p in our_proc.children(recursive=True)]
 		ignore_pids += [p.pid for p in our_proc.parents()]
-		for proc in psutil.process_iter():  # pylint: disable=dotted-import-in-loop
+		for proc in psutil.process_iter():
 			# logger.debug("Found running process: %s", proc)
 			if proc.name() == process_name or proc.name() == exe_name:
-				logger.debug("Found running '%s' process: %s", process_name, proc)  # pylint: disable=loop-global-usage
+				logger.debug("Found running '%s' process: %s", process_name, proc)
 				if proc.pid != our_pid and proc.pid not in ignore_pids:
 					other_pid = proc.pid
 					break

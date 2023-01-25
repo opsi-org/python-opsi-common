@@ -16,7 +16,7 @@ class FixtureRequest:  # pylint: disable=too-few-public-methods
 	param: str
 
 
-exception_classes = []  # pylint: disable=use-tuple-over-list
+exception_classes = []
 pre_globals = list(globals())
 from opsicommon.exceptions import (  # pylint: disable=wrong-import-position,unused-import
 	BackendAuthenticationError,
@@ -124,5 +124,5 @@ def test_exception_is_sub_class_of_opsi_error(exception_class: Type[Exception]) 
 
 @given(strategies.text())
 def test_exception_constuctor_hypothesis(message: str) -> None:
-	for cls in exception_classes:  # pylint: disable=loop-global-usage
+	for cls in exception_classes:
 		cls(message)

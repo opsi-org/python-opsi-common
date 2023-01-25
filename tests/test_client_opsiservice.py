@@ -17,6 +17,7 @@ from urllib.parse import unquote
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
+
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
 	MIN_VERSION_GZIP,
@@ -140,9 +141,9 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 	)._verify == [ServiceVerificationFlags.STRICT_CHECK]
 
 	for mode in ServiceVerificationFlags.OPSI_CA, ServiceVerificationFlags.UIB_OPSI_CA:
-		with pytest.raises(ValueError, match="ca_cert_file required"):  # pylint: disable=dotted-import-in-loop
+		with pytest.raises(ValueError, match="ca_cert_file required"):
 			ServiceClient("::1", verify=mode)
-	with pytest.raises(ValueError, match="bad_mode"):  # pylint: disable=dotted-import-in-loop
+	with pytest.raises(ValueError, match="bad_mode"):
 		ServiceClient("::1", verify="bad_mode")
 
 	# session_cookie
@@ -336,15 +337,15 @@ def test_proxy(tmp_path: Path) -> None:
 					("127.0.0.1", "127.0.0.1"),
 				):
 					with ServiceClient(
-						f"https://{host}:{server.port+1}",  # pylint: disable=loop-invariant-statement
+						f"https://{host}:{server.port+1}",
 						proxy_url=f"https://{proxy_host}:{server.port}",
 						verify="accept_all",
 						connect_timeout=2,
 					) as client:
-						with pytest.raises(OpsiConnectionError):  # pylint: disable=dotted-import-in-loop
+						with pytest.raises(OpsiConnectionError):
 							# HTTPTestServer sends error 501 on CONNECT requests
 							client.connect()
-						request = json.loads(log_file.read_text(encoding="utf-8"))  # pylint: disable=dotted-import-in-loop
+						request = json.loads(log_file.read_text(encoding="utf-8"))
 						# print(request)
 						assert request["method"] == "CONNECT"
 						assert request["path"] == f"{host}:{server.port+1}"
@@ -357,12 +358,12 @@ def test_proxy(tmp_path: Path) -> None:
 			}
 			with environment(proxy_env):
 				with ServiceClient(
-					f"https://localhost:{server.port+1}",  # pylint: disable=loop-invariant-statement
+					f"https://localhost:{server.port+1}",
 					proxy_url="system",
 					verify="accept_all",
 					connect_timeout=2,
 				) as client:
-					with pytest.raises(OpsiConnectionError):  # pylint: disable=dotted-import-in-loop
+					with pytest.raises(OpsiConnectionError):
 						# HTTPTestServer sends error 501 on CONNECT requests
 						client.connect()
 					request = json.loads(log_file.read_text(encoding="utf-8"))
@@ -374,7 +375,7 @@ def test_proxy(tmp_path: Path) -> None:
 			proxy_env = {"http_proxy": "http://should-not-be-used", "https_proxy": "https://should-not-be-used"}
 			with environment(proxy_env):
 				with ServiceClient(
-					f"https://localhost:{server.port}",  # pylint: disable=loop-invariant-statement
+					f"https://localhost:{server.port}",
 					proxy_url=None,  # Do not use any proxy
 					verify="accept_all",
 					connect_timeout=2,
@@ -537,7 +538,7 @@ def test_multi_address() -> None:
 
 def test_messagebus_reconnect() -> None:
 	class MBListener(MessagebusListener):
-		messages = []  # pylint: disable=use-tuple-over-list
+		messages = []
 
 		def message_received(self, message: Message) -> None:
 			self.messages.append(message)
@@ -597,11 +598,11 @@ def test_get() -> None:
 				thread.join(10)
 			for thread in threads:
 				(status_code, reason, headers, content) = thread.response
-				assert status_code == 202  # pylint: disable=loop-invariant-statement
-				assert reason == "status"  # pylint: disable=loop-invariant-statement
-				assert headers["x-1"] == "1"  # pylint: disable=loop-invariant-statement
-				assert headers["x-2"] == "2"  # pylint: disable=loop-invariant-statement
-				assert content == response_body  # pylint: disable=loop-invariant-statement
+				assert status_code == 202
+				assert reason == "status"
+				assert headers["x-1"] == "1"
+				assert headers["x-2"] == "2"
+				assert content == response_body
 
 
 def test_timeouts() -> None:
@@ -674,7 +675,7 @@ def test_jsonrpc(tmp_path: Path) -> None:
 				tuple(),
 			]
 			for _params in params:
-				client.jsonrpc("method", params=_params)  # pylint: disable=loop-invariant-statement
+				client.jsonrpc("method", params=_params)
 
 			server.restart(new_cert=True)
 
@@ -698,7 +699,7 @@ def test_jsonrpc(tmp_path: Path) -> None:
 
 def test_jsonrpc_interface(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
-	interface: list[dict[str, Any]] = [  # pylint: disable=use-tuple-over-list
+	interface: list[dict[str, Any]] = [
 		{
 			"name": "test_method",
 			"params": ["arg1", "*arg2", "**arg3"],
@@ -856,7 +857,7 @@ def test_messagebus_jsonrpc() -> None:
 				tuple(),
 			]
 			for _params in params:
-				res = messagebus.jsonrpc("test", params=_params)  # pylint: disable=loop-invariant-statement
+				res = messagebus.jsonrpc("test", params=_params)
 				assert res == list(_params or [])
 
 			delay = 3.0

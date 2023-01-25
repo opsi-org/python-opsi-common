@@ -159,7 +159,7 @@ class OpsiPackage:
 		self.find_and_parse_control_file(base_dir)
 
 		archives = []
-		dirs = [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]  # pylint: disable=use-tuple-over-list
+		dirs = [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
 		if not (base_dir / "OPSI").exists():
 			raise FileNotFoundError(f"Did not find OPSI directory at {base_dir}")
 		# TODO: option to follow symlinks.
@@ -183,8 +183,8 @@ class OpsiPackage:
 				file_list = [  # TODO: behaviour for symlinks
 					file
 					for file in _dir.iterdir()
-					if not EXCLUDE_DIRS_ON_PACK_REGEX.match(file.name)  # pylint: disable=loop-global-usage
-					and not EXCLUDE_FILES_ON_PACK_REGEX.match(file.name)  # pylint: disable=loop-global-usage
+					if not EXCLUDE_DIRS_ON_PACK_REGEX.match(file.name)
+					and not EXCLUDE_FILES_ON_PACK_REGEX.match(file.name)
 				]
 				# TODO: SERVER_DATA stuff - restrict to only /tftpboot?
 				# TODO: what is the right instance to enforce this?

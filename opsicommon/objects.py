@@ -268,7 +268,7 @@ class BaseObject:
 	def serialize(self) -> dict[str, Any]:
 		_hash = {}
 		for key, val in self.toHash().items():
-			if isinstance(val, (datetime, date)):  # pylint: disable=loop-invariant-statement
+			if isinstance(val, (datetime, date)):
 				val = val.isoformat()
 			_hash[key] = val
 		_hash["ident"] = self.getIdent()
@@ -300,7 +300,7 @@ class BaseObject:
 	def __str__(self) -> str:
 		additional_attributes = []
 		for attr in self.getIdentAttributes():
-			try:  # pylint: disable=loop-try-except-usage
+			try:
 				value = getattr(self, attr)
 				additional_attributes.append(f"{attr}='{value}'")
 			except AttributeError:
@@ -368,7 +368,7 @@ def decode_ident(_class: Type[BaseObject], _hash: dict[str, Any]) -> dict[str, A
 	ident = _hash.pop("ident")
 	if not isinstance(ident, dict):
 		ident_keys = mandatory_constructor_args(_class)
-		ident_values = []  # pylint: disable=use-tuple-over-list
+		ident_values = []
 		if isinstance(ident, str):
 			ident_values = ident.split(_class.ident_separator)
 		elif isinstance(ident, (tuple, list)):
@@ -384,7 +384,7 @@ def decode_ident(_class: Type[BaseObject], _hash: dict[str, Any]) -> dict[str, A
 
 def objects_differ(obj1: Any, obj2: Any, exclude_attributes: list[str] | None = None) -> bool:  # pylint: disable=too-many-return-statements,too-many-branches
 	if exclude_attributes is None:
-		exclude_attributes = []  # pylint: disable=use-tuple-over-list
+		exclude_attributes = []
 	else:
 		exclude_attributes = forceUnicodeList(exclude_attributes)
 
@@ -3028,27 +3028,27 @@ class AuditHardware(Entity):
 
 				if attr_type.startswith("varchar"):
 					kwargs[attribute] = forceUnicode(value).strip()
-					try:  # pylint: disable=loop-try-except-usage
+					try:
 						size = int(attr_type.split("(")[1].split(")")[0].strip())
 
 						if len(kwargs[attribute]) > size:
-							logger.warning(  # pylint: disable=loop-global-usage
+							logger.warning(
 								"Truncating value of attribute %s of hardware class %s to length %d", attribute, hardwareClass, size
 							)
 							kwargs[attribute] = kwargs[attribute][:size].strip()
 					except (ValueError, IndexError):
 						pass
 				elif "int" in attr_type:
-					try:  # pylint: disable=loop-try-except-usage
+					try:
 						kwargs[attribute] = forceInt(value)
 					except Exception as err:  # pylint: disable=broad-except
-						logger.trace(err)  # pylint: disable=loop-global-usage
+						logger.trace(err)
 						kwargs[attribute] = None
 				elif attr_type == "double":
-					try:  # pylint: disable=loop-try-except-usage
+					try:
 						kwargs[attribute] = forceFloat(value)
 					except Exception as err:  # pylint: disable=broad-except
-						logger.trace(err)  # pylint: disable=loop-global-usage
+						logger.trace(err)
 						kwargs[attribute] = None
 				else:
 					raise BackendConfigurationError(
@@ -3102,7 +3102,7 @@ class AuditHardware(Entity):
 			hardware_attributes[hw_class] = {}
 			for value in config["Values"]:
 				if value["Scope"] == "g":
-					hardware_attributes[hw_class][value["Opsi"]] = value["Type"]  # pylint: disable=loop-invariant-statement
+					hardware_attributes[hw_class][value["Opsi"]] = value["Type"]
 		AuditHardware.hardware_attributes = hardware_attributes
 
 	def setDefaults(self) -> None:
@@ -3203,34 +3203,34 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 
 				if attr_type.startswith("varchar"):
 					kwargs[attribute] = forceUnicode(value).strip()
-					try:  # pylint: disable=loop-try-except-usage
+					try:
 						size = int(attr_type.split("(")[1].split(")")[0].strip())
 
 						if len(kwargs[attribute]) > size:
-							logger.warning(  # pylint: disable=loop-global-usage
+							logger.warning(
 								"Truncating value of attribute %s of hardware class %s to length %d", attribute, hardwareClass, size
 							)
 							kwargs[attribute] = kwargs[attribute][:size].strip()
 					except (ValueError, IndexError):
 						pass
 				elif "int" in attr_type:
-					try:  # pylint: disable=loop-try-except-usage
+					try:
 						kwargs[attribute] = forceInt(value)
 					except Exception as err:  # pylint: disable=broad-except
-						logger.trace(err)  # pylint: disable=loop-global-usage
+						logger.trace(err)
 						kwargs[attribute] = None
 				elif attr_type == "double":
-					try:  # pylint: disable=loop-try-except-usage
+					try:
 						kwargs[attribute] = forceFloat(value)
 					except Exception as err:  # pylint: disable=broad-except
-						logger.trace(err)  # pylint: disable=loop-global-usage
+						logger.trace(err)
 						kwargs[attribute] = None
 				else:
 					raise BackendConfigurationError(
 						f"Attribute '{attribute}' of hardware class '{hardwareClass}' has unknown type '{type}'"
 					)
 		else:
-			for (attribute, value) in kwargs.items():  # pylint: disable=use-dict-comprehension
+			for (attribute, value) in kwargs.items():
 				if isinstance(value, str):
 					kwargs[attribute] = forceUnicode(value).strip()
 
@@ -3273,7 +3273,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 			hw_class = config["Class"]["Opsi"]
 			hardware_attributes[hw_class] = {}
 			for value in config["Values"]:
-				hardware_attributes[hw_class][value["Opsi"]] = value["Type"]  # pylint: disable=loop-invariant-statement
+				hardware_attributes[hw_class][value["Opsi"]] = value["Type"]
 		AuditHardwareOnHost.hardware_attributes = hardware_attributes
 
 	def setDefaults(self) -> None:

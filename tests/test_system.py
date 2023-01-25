@@ -14,6 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+
 from opsicommon.system import ensure_not_already_running, set_system_datetime
 
 
@@ -32,6 +33,7 @@ def test_get_user_sessions_linux() -> None:
 @pytest.mark.linux
 def test_get_user_sessions_linux_mock() -> None:
 	import psutil  # type: ignore[import]  # pylint: disable=import-outside-toplevel
+
 	from opsicommon.system import (  # pylint: disable=import-outside-toplevel
 		get_user_sessions,
 	)
@@ -60,12 +62,12 @@ def test_run_process_in_session_linux() -> None:
 		if username in (session.username, "root"):
 			proc = run_process_in_session(command=["whoami"], session_id=session.id, impersonate=False)
 			out = proc.stdout.read().decode()  # type: ignore[union-attr]
-			assert f"{username}\n" == out  # pylint: disable=loop-invariant-statement
+			assert f"{username}\n" == out
 			proc.wait()
 
 			proc = run_process_in_session(command=["whoami"], session_id=session.id, impersonate=True)
 			out = proc.stdout.read().decode()  # type: ignore[union-attr]
-			assert f"{session.username}\n" == out  # pylint: disable=loop-invariant-statement
+			assert f"{session.username}\n" == out
 			proc.wait()
 
 

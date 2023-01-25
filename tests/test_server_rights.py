@@ -10,6 +10,7 @@ import platform
 from pathlib import Path
 
 import pytest
+
 from opsicommon.server.rights import (
 	DirPermission,
 	FilePermission,
@@ -27,9 +28,9 @@ def some_secondary_group_name() -> str:
 	user_id = os.getuid()
 	user = pwd.getpwuid(user_id)
 	primary_gid = user.pw_gid
-	for gid in os.getgrouplist(user.pw_name, primary_gid):  # pylint: disable=dotted-import-in-loop
+	for gid in os.getgrouplist(user.pw_name, primary_gid):
 		if gid != primary_gid:
-			return grp.getgrgid(gid).gr_name  # pylint: disable=dotted-import-in-loop
+			return grp.getgrgid(gid).gr_name
 	pytest.skip("No group for test found. Aborting.")
 	return ""
 
@@ -81,11 +82,11 @@ def test_set_rights_recursive(  # pylint: disable=too-many-locals
 	dir4 = os.path.join(dir2, "dir4")
 
 	for path in (dir1, dir2, dir3, dir4):
-		os.mkdir(path)  # pylint: disable=dotted-import-in-loop
-		os.chmod(path, 0o707)  # pylint: disable=dotted-import-in-loop
+		os.mkdir(path)
+		os.chmod(path, 0o707)
 	for path in (fil1, fil2, fil3, fil4, fil5, fil6, fil7):
 		open(path, "wb").close()  # pylint: disable=consider-using-with
-		os.chmod(path, 0o606)  # pylint: disable=dotted-import-in-loop
+		os.chmod(path, 0o606)
 
 	for permission in (
 		DirPermission(dir1, username, some_secondary_group_name, 0o666, 0o777, recursive=True),
@@ -99,12 +100,12 @@ def test_set_rights_recursive(  # pylint: disable=too-many-locals
 	set_rights(dir1)
 
 	for path in (dir1, dir2, dir3, dir4, fil1, fil2, fil3, fil4, fil5, fil6, fil7):
-		assert os.stat(path).st_uid == user_id  # pylint: disable=dotted-import-in-loop
+		assert os.stat(path).st_uid == user_id
 
 	for path in (dir1, dir3, fil2, fil5, fil7):
-		assert os.stat(path).st_gid == some_secondary_group_id  # pylint: disable=dotted-import-in-loop
+		assert os.stat(path).st_gid == some_secondary_group_id
 	for path in (dir2, dir4, fil1, fil3, fil4, fil6):
-		assert os.stat(path).st_gid == primary_gid  # pylint: disable=dotted-import-in-loop
+		assert os.stat(path).st_gid == primary_gid
 
 	assert os.stat(dir1).st_mode & 0o7777 == 0o777
 	assert os.stat(fil1).st_mode & 0o7777 == 0o660
@@ -129,8 +130,8 @@ def test_set_rights_modify_file_exe(tmp_path: Path) -> None:
 	fil3 = os.path.join(dir1, "fil3")
 
 	for path in (dir1,):
-		os.mkdir(path)  # pylint: disable=dotted-import-in-loop
-		os.chmod(path, 0o777)  # pylint: disable=dotted-import-in-loop
+		os.mkdir(path)
+		os.chmod(path, 0o777)
 	for path in (fil1, fil2, fil3):
 		open(path, "wb").close()  # pylint: disable=consider-using-with
 	os.chmod(fil1, 0o666)
@@ -184,11 +185,11 @@ def test_set_rights_file_in_dir(tmp_path: Path) -> None:
 	fil2 = os.path.join(dir2, "fil2")
 
 	for path in (dir1, dir2):
-		os.mkdir(path)  # pylint: disable=dotted-import-in-loop
-		os.chmod(path, 0o777)  # pylint: disable=dotted-import-in-loop
+		os.mkdir(path)
+		os.chmod(path, 0o777)
 	for path in (fil1, fil2):
 		open(path, "wb").close()  # pylint: disable=consider-using-with
-		os.chmod(path, 0o666)  # pylint: disable=dotted-import-in-loop
+		os.chmod(path, 0o666)
 
 	registry.register_permission(
 		DirPermission(dir1, None, None, 0o660, 0o770, recursive=True), DirPermission(dir2, None, None, 0o600, 0o700, recursive=True)

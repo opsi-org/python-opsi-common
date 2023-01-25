@@ -10,6 +10,7 @@ from typing import Any, Dict, Generator, Optional, Type
 from unittest import mock
 
 import pytest
+
 from opsicommon.objects import (
 	Entity,
 	decode_ident,
@@ -20,7 +21,7 @@ from opsicommon.objects import (
 	objects_differ,
 )
 
-object_classes = []  # pylint: disable=use-tuple-over-list
+object_classes = []
 pre_globals = list(globals())
 from opsicommon.objects import (  # pylint: disable=wrong-import-position,unused-import
 	AuditHardware,
@@ -226,8 +227,8 @@ def test_object_classes() -> None:
 				setter(value)
 
 		# type: ignore[assignment]
-		if not isinstance(obj, (Entity, Relationship)):  # pylint: disable=loop-invariant-statement
-			raise ValueError(f"wrong type: {type(obj)}")  # pylint: disable=loop-invariant-statement
+		if not isinstance(obj, (Entity, Relationship)):
+			raise ValueError(f"wrong type: {type(obj)}")
 
 		_class = obj.__class__
 
@@ -240,10 +241,10 @@ def test_object_classes() -> None:
 		_class.fromHash(_dict)
 		_dict.pop("type", None)
 		assert isinstance(_class.fromHash(_dict), _class)
-		assert isinstance(_class.from_json(json.dumps(_dict)), _class)  # pylint: disable=dotted-import-in-loop
+		assert isinstance(_class.from_json(json.dumps(_dict)), _class)
 
 		obj.update(obj.clone())
-		with pytest.raises(TypeError):  # pylint: disable=dotted-import-in-loop
+		with pytest.raises(TypeError):
 			obj.update({"wrong": "type"})  # type: ignore[arg-type]
 		obj.emptyValues()
 		obj.setDefaults()
