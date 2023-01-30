@@ -152,7 +152,7 @@ class CallbackThread(Thread):
 			logger.error("Error in %s: %s", self, err, exc_info=True)
 
 
-class ServiceConnectionListener():  # pylint: disable=too-few-public-methods
+class ServiceConnectionListener:  # pylint: disable=too-few-public-methods
 	def connection_open(self, service_client: ServiceClient) -> None:
 		"""
 		Called when the connection to the service is opened.
@@ -218,7 +218,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		connect_timeout: float = 10.0,
 		max_time_diff: float = 5.0,
 		jsonrpc_create_objects: bool = False,
-		jsonrpc_create_methods: bool = False
+		jsonrpc_create_methods: bool = False,
 	) -> None:
 		"""
 		proxy_url:
@@ -261,14 +261,17 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self._messagebus_connect_lock = Lock()
 		self._listener_lock = Lock()
 		self._listener: list[ServiceConnectionListener] = []
-		self._username = username
-		self._password = password
 		self._service_unavailable: OpsiServiceUnavailableError | None = None
 
 		self._msgpack_decoder = msgspec.msgpack.Decoder()
 		self._msgpack_encoder = msgspec.msgpack.Encoder()
 		self._json_decoder = msgspec.json.Decoder()
 		self._json_encoder = msgspec.json.Encoder()
+
+		self._session = Session()
+
+		self.username = username
+		self.password = password
 
 		self.set_addresses(address)
 
@@ -318,16 +321,6 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		if ca_bundle:
 			logger.warning("Environment variable REQUESTS_CA_BUNDLE is set to %r", ca_bundle)
 
-		if self._password:
-			secret_filter.add_secrets(self._password)
-
-		self._session = Session()
-		if self._username or self._password:
-			self._session.auth = (  # type: ignore[assignment] # session.auth should be Tuple of str, but that is a problem with weird locales
-				(self._username or "").encode("utf-8"),
-				(self._password or "").encode("utf-8"),
-			)
-
 		self._session.headers.update(self.default_headers)
 		if self._session_cookie:
 			logger.confidential("Using session cookie passed: %s", self._session_cookie)
@@ -369,16 +362,14 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				hostname = f"[{hostname}]"
 
 			if url.username is not None:
-				if not self._username:
-					self._username = url.username
-				elif self._username != url.username:
+				if self.username and self.username != url.username:
 					raise ValueError("Different usernames supplied")  # pylint: disable=loop-invariant-statement
+				self.username = url.username
 
 			if url.password is not None:
-				if not self._password:
-					self._password = url.password
-				elif self._password != url.password:
+				if self.password and self.password != url.password:
 					raise ValueError("Different passwords supplied")  # pylint: disable=loop-invariant-statement
+				self.password = url.password
 
 			self._addresses.append(f"{url.scheme}://{hostname}:{url.port or _DEFAULT_HTTPS_PORT}")  # pylint: disable=loop-global-usage
 
@@ -402,9 +393,26 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	def username(self) -> str | None:
 		return self._username
 
+	@username.setter
+	def username(self, username: str) -> None:
+		self._username = username
+		self._session.auth = (  # type: ignore[assignment] # session.auth should be Tuple of str, but that is a problem with weird locales
+			(self._username or "").encode("utf-8"),
+			(self._password or "").encode("utf-8"),
+		)
+
 	@property
 	def password(self) -> str | None:
 		return self._password
+
+	@password.setter
+	def password(self, password: str) -> None:
+		self._password = password
+		secret_filter.add_secrets(self._password)
+		self._session.auth = (  # type: ignore[assignment] # session.auth should be Tuple of str, but that is a problem with weird locales
+			(self._username or "").encode("utf-8"),
+			(self._password or "").encode("utf-8"),
+		)
 
 	@property
 	def proxy_url(self) -> str | None:
@@ -470,7 +478,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		data = self._ca_cert_file.read_text(encoding="utf-8")
 		now = datetime.now()
-		for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):  # pylint: disable=dotted-import-in-loop
+		for match in re.finditer(
+			r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL
+		):  # pylint: disable=dotted-import-in-loop
 			try:  # pylint: disable=loop-try-except-usage
 				cert = load_certificate(FILETYPE_PEM, match.group(1).encode("utf-8"))
 				enddate = datetime.strptime((cert.get_notAfter() or b"").decode("utf-8"), "%Y%m%d%H%M%SZ")
@@ -488,7 +498,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			return ca_certs
 		try:
 			data = self._ca_cert_file.read_text(encoding="utf-8")
-			for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):  # pylint: disable=dotted-import-in-loop
+			for match in re.finditer(
+				r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL
+			):  # pylint: disable=dotted-import-in-loop
 				try:  # pylint: disable=loop-try-except-usage
 					ca_certs.append(load_certificate(FILETYPE_PEM, match.group(1).encode("utf-8")))
 				except Exception as err:  # pylint: disable=broad-except
@@ -527,7 +539,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 						if argument == "self":
 							continue
 
-						if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):  # pylint: disable=loop-invariant-statement
+						if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(
+							args
+						):  # pylint: disable=loop-invariant-statement
 							default = defaults[len(defaults) - len(args) + i]  # pylint: disable=loop-invariant-statement
 							if isinstance(default, str):
 								default = repr(default)
@@ -568,11 +582,15 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			verify = self._session.verify
 			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file:
 				if not ca_cert_file_exists or self._ca_cert_file.stat().st_size == 0:
-					logger.info("Service verification enabled, but CA cert file %r does not exist or is empty, skipping verification", self._ca_cert_file)
+					logger.info(
+						"Service verification enabled, but CA cert file %r does not exist or is empty, skipping verification",
+						self._ca_cert_file,
+					)
 					verify = False
 				elif ServiceVerificationFlags.REPLACE_EXPIRED_CA in self._verify and self.opsi_ca_certs_expired():
 					logger.info(
-						"Service verification enabled, but a certificate from CA cert file %r is expired, skipping verification", self._ca_cert_file
+						"Service verification enabled, but a certificate from CA cert file %r is expired, skipping verification",
+						self._ca_cert_file,
 					)
 					verify = False
 
@@ -592,7 +610,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 						timeout=(self._connect_timeout, self._connect_timeout),
 						verify=verify,
 						# Accept status 405 for older opsiconfd versions
-						allow_status_codes=(200, 405)
+						allow_status_codes=(200, 405),
 					)
 					break
 				except OpsiServiceError as err:  # pylint: disable=loop-invariant-statement
@@ -633,7 +651,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					if diff.total_seconds() > self._max_time_diff:
 						logger.warning(
 							"Local time %r differs from server time (max diff: %0.3f), setting system time to %r",
-							local_dt.strftime("%Y-%m-%d %H:%M:%S"), self._max_time_diff, server_dt.strftime("%Y-%m-%d %H:%M:%S")
+							local_dt.strftime("%Y-%m-%d %H:%M:%S"),
+							self._max_time_diff,
+							server_dt.strftime("%Y-%m-%d %H:%M:%S"),
 						)
 						set_system_datetime(server_dt)
 				except Exception as err:  # pylint: disable=broad-except
@@ -713,7 +733,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		timeout: float | tuple[float, float] = 60.0,
 		data: bytes | None = None,
 		verify: str | bool | None = None,
-		allow_status_codes: Iterable[int] | None = None
+		allow_status_codes: Iterable[int] | None = None,
 	) -> RequestsResponse:
 		if self._service_unavailable and self._service_unavailable.until and self._service_unavailable.until >= time.time():
 			raise self._service_unavailable
@@ -723,13 +743,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		allow_status_codes = (200, 201, 202, 203, 204, 206, 207, 208) if allow_status_codes is None else allow_status_codes
 		try:
 			response = self._session.request(
-				method=method,
-				url=self._get_url(path),
-				headers=headers,
-				data=data,
-				timeout=timeout,
-				stream=True,
-				verify=verify
+				method=method, url=self._get_url(path), headers=headers, data=data, timeout=timeout, stream=True, verify=verify
 			)
 			if allow_status_codes and allow_status_codes != ... and response.status_code not in allow_status_codes:
 				response.raise_for_status()
@@ -772,19 +786,15 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
-		read_timeout: float = 60.0, data: bytes | None = None,
-		allow_status_codes: Iterable[int] | None = None
+		read_timeout: float = 60.0,
+		data: bytes | None = None,
+		allow_status_codes: Iterable[int] | None = None,
 	) -> Response:
 		self._assert_connected()
 		response = self._request(
 			method=method, path=path, headers=headers, timeout=read_timeout, data=data, allow_status_codes=allow_status_codes
 		)
-		return Response(
-			status_code=response.status_code,
-			reason=response.reason,
-			headers=response.headers,
-			content=response.content
-		)
+		return Response(status_code=response.status_code, reason=response.reason, headers=response.headers, content=response.content)
 
 	def get(
 		self,
@@ -792,7 +802,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		*,
 		headers: dict[str, str] | None = None,
 		read_timeout: float = 60.0,
-		allow_status_codes: Iterable[int] | None = None
+		allow_status_codes: Iterable[int] | None = None,
 	) -> Response:
 		return self.request("GET", path=path, headers=headers, read_timeout=read_timeout, allow_status_codes=allow_status_codes)
 
@@ -803,7 +813,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		*,
 		headers: dict[str, str] | None = None,
 		read_timeout: float = 60.0,
-		allow_status_codes: Iterable[int] | None = None
+		allow_status_codes: Iterable[int] | None = None,
 	) -> Response:
 		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data, allow_status_codes=allow_status_codes)
 
@@ -812,7 +822,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		method: str,
 		params: tuple[Any, ...] | list[Any] | dict[str, Any] | None = None,
 		read_timeout: float | None = None,
-		return_result_only: bool = True
+		return_result_only: bool = True,
 	) -> Any:
 		params = params or []
 		if isinstance(params, tuple):
@@ -975,7 +985,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self.stop()
 
 
-class MessagebusListener():  # pylint: disable=too-few-public-methods
+class MessagebusListener:  # pylint: disable=too-few-public-methods
 	def __init__(self, message_types: Iterable[MessageType | str] | None = None) -> None:
 		"""
 		message_types:
@@ -1157,7 +1167,9 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		params = params or tuple()
 		if isinstance(params, list):
 			params = tuple(params)
-		msg = JSONRPCRequestMessage(sender="*", channel="service:config:jsonrpc", method=method, params=params)  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+		msg = JSONRPCRequestMessage(
+			sender="*", channel="service:config:jsonrpc", method=method, params=params
+		)  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
 		self.send_message(msg)
 		timeout = float(RPC_TIMEOUTS.get(method, 300))
 		res = self.wait_for_jsonrpc_response_message(rpc_id=msg.rpc_id, timeout=timeout)
@@ -1264,7 +1276,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			on_close=self._on_close,
 			on_message=self._on_message,
 			on_ping=self._on_ping,
-			on_pong=self._on_pong
+			on_pong=self._on_pong,
 		)
 
 		for listener in self._listener:
@@ -1280,7 +1292,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			http_proxy_timeout=self._connect_timeout,
 			ping_interval=self.ping_interval,
 			ping_timeout=self.ping_timeout,
-			reconnect=0
+			reconnect=0,
 		)
 
 	def _disconnect(self) -> None:
