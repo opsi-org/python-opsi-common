@@ -181,8 +181,8 @@ class OpsiConfig(metaclass=Singleton):
 		self._assert_config_read()
 		self._assert_category_and_config(category, config)
 		if config is None:
-			return dict(self._config[category])
-		return self._config[category][config]
+			return {k: v.unwrap() if hasattr(v, "unwrap") else v for k, v in dict(self._config[category]).items()}
+		return self._config[category][config].unwrap()
 
 	def set(self, category: str, config: str, value: Any, persistent: bool = False) -> None:
 		self._assert_config_read()
