@@ -17,7 +17,6 @@ from urllib.parse import unquote
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
-
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
 	MIN_VERSION_GZIP,
@@ -394,7 +393,7 @@ def test_proxy(tmp_path: Path) -> None:
 					reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
 					# print(reqs)
 					assert reqs[0]["method"] == "HEAD"
-					assert reqs[0]["path"] == "/"
+					assert reqs[0]["path"] == "/rpc"
 
 					assert reqs[1]["method"] == "POST"
 

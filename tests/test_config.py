@@ -135,6 +135,14 @@ def test_read_config_file(tmp_path: Path) -> None:
 	mtime = config._config_file_mtime  # pylint: disable=protected-access
 	assert mtime != 0.0
 
+	# Assert that a changed file is reread
+	data = """
+	[ldap_auth]
+	ldap_url = "ldaps://test2"
+	"""
+	config_file.write_text(dedent(data), encoding="utf-8")
+	assert config.get("ldap_auth", "ldap_url") == "ldaps://test2"
+
 
 def test_get_config(tmp_path: Path) -> None:
 	config_file = tmp_path / "opsi.conf"
