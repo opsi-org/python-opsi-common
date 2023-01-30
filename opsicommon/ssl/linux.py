@@ -23,7 +23,7 @@ logger = get_logger("opsicommon.general")
 
 def _get_cert_path_and_cmd() -> Tuple[str, str]:
 	dist = {distro.id()}
-	for name in (distro.like() or "").split(" "):  # pylint: disable=dotted-import-in-loop
+	for name in (distro.like() or "").split(" "):
 		if name:
 			dist.add(name)
 	if "centos" in dist or "rhel" in dist:
@@ -54,14 +54,14 @@ def install_ca(ca_cert: crypto.X509) -> None:
 def load_ca(subject_name: str) -> crypto.X509:
 	system_cert_path, _cmd = _get_cert_path_and_cmd()
 	if os.path.exists(system_cert_path):
-		for root, _dirs, files in os.walk(system_cert_path):  # pylint: disable=dotted-import-in-loop
+		for root, _dirs, files in os.walk(system_cert_path):
 			for entry in files:
-				with open(os.path.join(root, entry), "rb") as file:  # pylint: disable=dotted-import-in-loop
-					try:  # pylint: disable=loop-try-except-usage
-						ca_cert = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())  # pylint: disable=dotted-import-in-loop
+				with open(os.path.join(root, entry), "rb") as file:
+					try:
+						ca_cert = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())
 						if ca_cert.get_subject().CN == subject_name:
 							return ca_cert
-					except crypto.Error:  # pylint: disable=dotted-import-in-loop
+					except crypto.Error:
 						continue
 	return None
 
@@ -70,17 +70,17 @@ def remove_ca(subject_name: str) -> bool:
 	system_cert_path, cmd = _get_cert_path_and_cmd()
 	removed = 0
 	if os.path.exists(system_cert_path):
-		for root, _dirs, files in os.walk(system_cert_path):  # pylint: disable=dotted-import-in-loop
+		for root, _dirs, files in os.walk(system_cert_path):
 			for entry in files:
-				filename = os.path.join(root, entry)  # pylint: disable=dotted-import-in-loop
+				filename = os.path.join(root, entry)
 				with open(filename, "rb") as file:
-					try:  # pylint: disable=loop-try-except-usage
-						ca_cert = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())  # pylint: disable=dotted-import-in-loop
+					try:
+						ca_cert = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())
 						if ca_cert.get_subject().CN == subject_name:
-							logger.info("Removing CA '%s' (%s)", subject_name, filename)  # pylint: disable=loop-global-usage
-							os.remove(filename)  # pylint: disable=dotted-import-in-loop
+							logger.info("Removing CA '%s' (%s)", subject_name, filename)
+							os.remove(filename)
 							removed += 1
-					except crypto.Error:  # pylint: disable=dotted-import-in-loop
+					except crypto.Error:
 						continue
 
 	if not removed:

@@ -211,10 +211,10 @@ def set_rights(start_path: str = "/") -> None:  # pylint: disable=too-many-branc
 	permissions_to_process = []
 	parent = None
 	for path in sorted(list(permissions)):
-		if not os.path.relpath(path, start_path).startswith(".."):  # pylint: disable=dotted-import-in-loop
+		if not os.path.relpath(path, start_path).startswith(".."):
 			# Sub path of start_path
 			permissions_to_process.append(permissions[path])
-		elif not os.path.relpath(start_path, path).startswith(".."):  # pylint: disable=dotted-import-in-loop
+		elif not os.path.relpath(start_path, path).startswith(".."):
 			if not parent or len(parent.path) < len(path):
 				parent = permissions[path]
 
@@ -224,38 +224,36 @@ def set_rights(start_path: str = "/") -> None:  # pylint: disable=too-many-branc
 	processed_path = set()
 	for permission in permissions_to_process:
 		path = start_path
-		if not os.path.relpath(permission.path, start_path).startswith(".."):  # pylint: disable=dotted-import-in-loop
+		if not os.path.relpath(permission.path, start_path).startswith(".."):
 			# permission.path is sub path of start_path
 			path = permission.path
 
-		if path in processed_path or not os.path.lexists(path):  # pylint: disable=dotted-import-in-loop
+		if path in processed_path or not os.path.lexists(path):
 			continue
 		processed_path.add(path)
 
 		modify_file_exe = isinstance(permission, DirPermission) and permission.modify_file_exe
-		recursive = (
-			isinstance(permission, DirPermission) and permission.recursive and os.path.isdir(path)  # pylint: disable=dotted-import-in-loop
-		)
+		recursive = isinstance(permission, DirPermission) and permission.recursive and os.path.isdir(path)
 
-		logger.info("Setting rights %son '%s'", "recursively " if recursive else "", path)  # pylint: disable=loop-global-usage
+		logger.info("Setting rights %son '%s'", "recursively " if recursive else "", path)
 		permission.apply(path)
 
 		if not recursive:
 			continue
 
-		for root, dirs, files in os.walk(path, topdown=True):  # pylint: disable=dotted-import-in-loop
+		for root, dirs, files in os.walk(path, topdown=True):
 			# logger.debug("Processing '%s'", root)
 			for name in files:
-				abspath = os.path.join(root, name)  # pylint: disable=dotted-import-in-loop
+				abspath = os.path.join(root, name)
 				if abspath in permissions:
 					continue
-				if not modify_file_exe and os.path.islink(abspath):  # pylint: disable=dotted-import-in-loop
+				if not modify_file_exe and os.path.islink(abspath):
 					continue
 				permission.apply(abspath)
 
 			remove_dirs = []
 			for name in dirs:
-				abspath = os.path.join(root, name)  # pylint: disable=dotted-import-in-loop
+				abspath = os.path.join(root, name)
 				if abspath in permissions:
 					remove_dirs.append(name)
 					continue
