@@ -253,6 +253,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self.jsonrpc_create_objects = bool(jsonrpc_create_objects)
 		self.jsonrpc_create_methods = bool(jsonrpc_create_methods)
 		self.jsonrpc_interface: list[dict[str, Any]] = []
+		self._jsonrpc_path = "/rpc"
 		self._jsonrpc_method_params: dict[str, dict[str, Any]] = {}
 		self._messagebus_available = False
 		self._connected = False
@@ -262,6 +263,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self._listener_lock = Lock()
 		self._listener: list[ServiceConnectionListener] = []
 		self._service_unavailable: OpsiServiceUnavailableError | None = None
+		self._username = ""
+		self._password = ""
 
 		self._msgpack_decoder = msgspec.msgpack.Decoder()
 		self._msgpack_encoder = msgspec.msgpack.Encoder()
@@ -606,7 +609,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				try:  # pylint: disable=loop-try-except-usage
 					response = self._request(
 						method="HEAD",
-						path="/",
+						path=self._jsonrpc_path,
 						timeout=(self._connect_timeout, self._connect_timeout),
 						verify=verify,
 						# Accept status 405 for older opsiconfd versions
@@ -890,7 +893,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		allow_status_codes = (200, 500) if return_result_only else ...
 		response = self.post(
-			"/rpc", headers=headers, data=data, read_timeout=read_timeout, allow_status_codes=allow_status_codes  # type: ignore[arg-type]
+			self._jsonrpc_path, headers=headers, data=data, read_timeout=read_timeout, allow_status_codes=allow_status_codes  # type: ignore[arg-type]
 		)
 		data = response.content
 		content_type = response.headers.get("Content-Type", "")
