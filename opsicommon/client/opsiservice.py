@@ -61,6 +61,8 @@ from ..exceptions import (
 )
 from ..logging import get_logger, secret_filter
 from ..messagebus import (
+	ChannelSubscriptionEventMessage,
+	ChannelSubscriptionRequestMessage,
 	JSONRPCRequestMessage,
 	JSONRPCResponseMessage,
 	Message,
@@ -885,11 +887,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		allow_status_codes = (200, 500) if return_result_only else ...
 		response = self.post(
-			self._jsonrpc_path,
-			headers=headers,
-			data=data,
-			read_timeout=read_timeout,
-			allow_status_codes=allow_status_codes,  # type: ignore[arg-type]
+			self._jsonrpc_path, headers=headers, data=data, read_timeout=read_timeout, allow_status_codes=allow_status_codes  # type: ignore[arg-type]
 		)
 		data = response.content
 		content_type = response.headers.get("Content-Type", "")
@@ -1057,6 +1055,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self.ping_timeout = 10.0  # Ping timeout in seconds.
 		self.reconnect_wait = 5.0  # After connection lost, reconnect after specified seconds.
 		self._next_connect_wait = 0.0
+		self._subscribed_channels = []
 		# from websocket import enableTrace
 		# enableTrace(True)
 
@@ -1075,6 +1074,14 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self._next_connect_wait = self.reconnect_wait
 		self._connected = True
 		self._connected_result.set()
+		if self._subscribed_channels:
+			# Restore subscriptions on reconnect
+			self.send_message(
+				ChannelSubscriptionRequestMessage(
+					sender="@", channel="service:messagebus", channels=self._subscribed_channels, operation="add"
+				)
+			)
+
 		for listener in self._listener:
 			CallbackThread(getattr(listener, "connection_established"), messagebus=self).start()
 
@@ -1113,6 +1120,9 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			else:
 				callback = "message_received"
 				logger.debug("Received message: %r", msg)
+
+			if isinstance(msg, ChannelSubscriptionEventMessage):
+				self._subscribed_channels = msg.subscribed_channels
 
 			for listener in self._listener:
 				if listener.message_types and msg.type not in listener.message_types:
