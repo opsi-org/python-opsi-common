@@ -156,12 +156,12 @@ def test_get_config(tmp_path: Path) -> None:
 	"""
 	config_file.write_text(dedent(data), encoding="utf-8")
 	config = OpsiConfig()
-	assert type(config.get("groups", "fileadmingroup")) is str
+	assert type(config.get("groups", "fileadmingroup")) is str  # pylint: disable=unidiomatic-typecheck
 	assert config.get("groups", "fileadmingroup") == "fag"
 	conf_dict = config.get("groups")
 	for key, val in conf_dict.items():
-		assert type(key) is str
-		assert type(val) is str
+		assert type(key) is str  # pylint: disable=unidiomatic-typecheck
+		assert type(val) is str  # pylint: disable=unidiomatic-typecheck
 	assert conf_dict["fileadmingroup"] == "fag"
 
 

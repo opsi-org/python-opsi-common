@@ -366,12 +366,12 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 			if url.username is not None:
 				if self.username and self.username != url.username:
-					raise ValueError("Different usernames supplied")  # pylint: disable=loop-invariant-statement
+					raise ValueError("Different usernames supplied")
 				self.username = url.username
 
 			if url.password is not None:
 				if self.password and self.password != url.password:
-					raise ValueError("Different passwords supplied")  # pylint: disable=loop-invariant-statement
+					raise ValueError("Different passwords supplied")
 				self.password = url.password
 
 			self._addresses.append(f"{url.scheme}://{hostname}:{url.port or _DEFAULT_HTTPS_PORT}")
@@ -537,7 +537,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 							continue
 
 						if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):
-							default = defaults[len(defaults) - len(args) + i]  # pylint: disable=loop-invariant-statement
+							default = defaults[len(defaults) - len(args) + i]
 							if isinstance(default, str):
 								default = repr(default)
 							arg_list.append(f"{argument}={default}")
@@ -885,7 +885,11 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		allow_status_codes = (200, 500) if return_result_only else ...
 		response = self.post(
-			self._jsonrpc_path, headers=headers, data=data, read_timeout=read_timeout, allow_status_codes=allow_status_codes  # type: ignore[arg-type]
+			self._jsonrpc_path,
+			headers=headers,
+			data=data,
+			read_timeout=read_timeout,
+			allow_status_codes=allow_status_codes,  # type: ignore[arg-type]
 		)
 		data = response.content
 		content_type = response.headers.get("Content-Type", "")
