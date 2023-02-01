@@ -11,10 +11,10 @@ import platform
 from .common import as_pem, create_ca, create_server_cert, create_x590_name
 
 if platform.system().lower() == "linux":
-	from .linux import *
+	from .linux import *  # noqa: F403
 elif platform.system().lower() == "windows":
-	from .windows import *
+	from .windows import *  # noqa: F403
 elif platform.system().lower() == "darwin":
-	from .darwin import *
+	from .darwin import *  # noqa: F403
 else:
 	raise NotImplementedError(f"{platform.system().lower()} not supported")

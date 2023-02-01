@@ -22,7 +22,6 @@ from typing import TYPE_CHECKING, Any, Callable, Generator, Type, Union
 
 import msgspec
 import requests
-
 from opsicommon.logging import get_logger
 
 if platform.system().lower() == "windows":
@@ -175,10 +174,7 @@ class Singleton(type):
 
 
 def prepare_proxy_environment(  # pylint: disable=too-many-branches
-	hostname: str,
-	proxy_url: str | None = "system",
-	no_proxy_addresses: list[str] | None = None,
-	session: requests.Session | None = None
+	hostname: str, proxy_url: str | None = "system", no_proxy_addresses: list[str] | None = None, session: requests.Session | None = None
 ) -> requests.Session:
 	"""
 	proxy_url can be:
@@ -285,7 +281,9 @@ def frozen_lru_cache(*decorator_args: Any) -> Callable:
 
 		@functools.wraps(func)
 		def lru_decorator(*args: Any, **kwargs: Any) -> Callable:
-			_args = tuple([json.dumps(arg, sort_keys=True) if type(arg) in (list, dict) else arg for arg in args])  # pylint: disable=consider-using-generator
+			_args = tuple(  # pylint: disable=consider-using-generator
+				[json.dumps(arg, sort_keys=True) if type(arg) in (list, dict) else arg for arg in args]
+			)
 			_kwargs = {k: json.dumps(v, sort_keys=True) if type(v) in (list, dict) else v for k, v in kwargs.items()}
 			return cached_function(*_args, **_kwargs)
 

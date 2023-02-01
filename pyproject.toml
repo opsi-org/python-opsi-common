@@ -31,18 +31,26 @@ requests = "^2.26"
 rich = "^13.0"
 websocket-client = "^1.4"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 hypothesis = "^6.32"
+isort = "^5.10.1"
+mypy = "^0.991"
+perflint = "^0.7.3"
 pylint = "^2.7"
 pytest = "^7.0"
 pytest-cov = "^4.0"
-mypy = "^0.991"
-tan = "^22.2"
-types-requests = "^2.27"
-types-orjson = "^3.6"
-isort = "^5.10.1"
-perflint = "^0.7.3"
 pyupgrade = "^3.0.0"
+ruff = "^0.0.239"
+tan = "^22.2"
+types-orjson = "^3.6"
+types-requests = "^2.27"
+
+[tool.ruff]
+line-length = 140
+# As long as pylint is in use:
+# Ignore F401 (imported but unused)
+# Ignore E402 (Module level import not at top of file)
+ignore = ["F401", "E402"]
 
 [tool.black]
 line-length = 140

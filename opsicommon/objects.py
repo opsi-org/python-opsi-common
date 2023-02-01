@@ -127,7 +127,7 @@ __all__ = (
 logger = get_logger("opsicommon.general")
 
 
-BaseObjectT = TypeVar('BaseObjectT', bound='BaseObject')
+BaseObjectT = TypeVar("BaseObjectT", bound="BaseObject")
 
 
 class classproperty:  # pylint: disable=invalid-name,too-few-public-methods
@@ -389,7 +389,9 @@ def decode_ident(_class: Type[BaseObject], _hash: dict[str, Any]) -> dict[str, A
 	return _hash
 
 
-def objects_differ(obj1: Any, obj2: Any, exclude_attributes: list[str] | None = None) -> bool:  # pylint: disable=too-many-return-statements,too-many-branches
+def objects_differ(  # pylint: disable=too-many-return-statements,too-many-branches
+	obj1: Any, obj2: Any, exclude_attributes: list[str] | None = None
+) -> bool:
 	if exclude_attributes is None:
 		exclude_attributes = []
 	else:
@@ -536,7 +538,7 @@ class Host(Object):
 		hardwareAddress: str | None = None,
 		ipAddress: str | None = None,
 		inventoryNumber: str | None = None,
-		systemUUID: str | None = None
+		systemUUID: str | None = None,
 	) -> None:
 		Object.__init__(self, id, description, notes)
 		self.hardwareAddress: str | None = None  # pylint: disable=invalid-name
@@ -610,7 +612,7 @@ class OpsiClient(Host):
 		oneTimePassword: str | None = None,
 		created: str | None = None,
 		lastSeen: str | None = None,
-		systemUUID: str | None = None
+		systemUUID: str | None = None,
 	) -> None:
 
 		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber, systemUUID)
@@ -689,7 +691,7 @@ class OpsiDepotserver(Host):  # pylint: disable=too-many-instance-attributes,too
 		masterDepotId: str | None = None,
 		workbenchLocalUrl: str | None = None,
 		workbenchRemoteUrl: str | None = None,
-		systemUUID: str | None = None
+		systemUUID: str | None = None,
 	) -> None:
 
 		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber, systemUUID)
@@ -852,7 +854,7 @@ class OpsiConfigserver(OpsiDepotserver):
 		masterDepotId: str | None = None,
 		workbenchLocalUrl: str | None = None,
 		workbenchRemoteUrl: str | None = None,
-		systemUUID: str | None = None
+		systemUUID: str | None = None,
 	) -> None:
 		OpsiDepotserver.__init__(
 			self,
@@ -874,7 +876,7 @@ class OpsiConfigserver(OpsiDepotserver):
 			masterDepotId,
 			workbenchLocalUrl,
 			workbenchRemoteUrl,
-			systemUUID
+			systemUUID,
 		)
 
 	def setDefaults(self) -> None:
@@ -2052,7 +2054,7 @@ class ProductPropertyState(Relationship):
 		productId: str,  # pylint: disable=invalid-name
 		propertyId: str,  # pylint: disable=invalid-name
 		objectId: str,  # pylint: disable=invalid-name
-		values: list[Any] | None = None
+		values: list[Any] | None = None,
 	) -> None:
 		self.values: list[Any] | None = None
 
@@ -2118,7 +2120,7 @@ class Group(Object):
 		id: str,  # pylint: disable=redefined-builtin
 		description: str | None = None,
 		notes: str | None = None,
-		parentGroupId: str | None = None
+		parentGroupId: str | None = None,
 	) -> None:
 		Object.__init__(self, id, description, notes)
 		self.parentGroupId: str | None = None  # pylint: disable=invalid-name
@@ -2158,7 +2160,7 @@ class HostGroup(Group):
 		id: str,  # pylint: disable=redefined-builtin
 		description: str | None = None,
 		notes: str | None = None,
-		parentGroupId: str | None = None
+		parentGroupId: str | None = None,
 	) -> None:
 		Group.__init__(self, id, description, notes, parentGroupId)
 
@@ -2512,7 +2514,9 @@ class LicensePool(Entity):
 	foreign_id_attributes = Entity.foreign_id_attributes + ["licensePoolId"]
 	backend_method_prefix = "licensePool"
 
-	def __init__(self, id: str, description: str | None = None, productIds: list[str] | None = None):  # pylint: disable=redefined-builtin,invalid-name
+	def __init__(
+		self, id: str, description: str | None = None, productIds: list[str] | None = None  # pylint: disable=redefined-builtin,invalid-name
+	):
 		self.description: str | None = None
 		self.productIds: list[str] | None = None  # pylint: disable=invalid-name
 		self.setId(id)
@@ -3136,7 +3140,7 @@ class AuditHardware(Entity):
 		return self.hardwareClass
 
 	def getIdentAttributes(self) -> tuple[str, ...]:
-		return ("hardwareClass", ) + tuple(sorted(self.hardware_attributes.get(self.hardwareClass, {})))
+		return ("hardwareClass",) + tuple(sorted(self.hardware_attributes.get(self.hardwareClass, {})))
 
 	@classmethod
 	def fromHash(cls, _hash: dict[str, Any]) -> AuditHardware:

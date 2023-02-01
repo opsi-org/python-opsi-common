@@ -115,7 +115,9 @@ class OPSILogger(logging.Logger):
 	comment = essential
 	devel = essential
 
-	def findCaller(self, stack_info: bool = False, stacklevel: int = 1) -> tuple[str, int, str, None]:  # pylint: disable=invalid-name,unused-argument
+	def findCaller(  # pylint: disable=invalid-name
+		self, stack_info: bool = False, stacklevel: int = 1  # pylint: disable=unused-argument
+	) -> tuple[str, int, str, None]:
 		"""
 		Find the stack frame of the caller so that we can note the source
 		file name, line number and function name.
@@ -160,7 +162,7 @@ def logrecord_init(  # pylint: disable=too-many-arguments
 	exc_info: Any,
 	func: str | None = None,
 	sinfo: Any = None,
-	**kwargs: Any
+	**kwargs: Any,
 ) -> None:
 	"""
 	New Constructor for LogRecord.
@@ -337,6 +339,7 @@ class ContextSecretFormatter(Formatter):
 	2. It can replace secret strings specified to a SecretFilter by a
 		replacement string, thus censor passwords etc.
 	"""
+
 	logger_name_in_context_string = False
 
 	def __init__(self, orig_formatter: Formatter) -> None:  # pylint: disable=super-init-not-called
@@ -390,9 +393,9 @@ class ContextSecretFormatter(Formatter):
 
 		context_ = getattr(record, "context", None)
 		if context_:
-			record.contextstring = ",".join([  # type: ignore[attr-defined]
-				str(v) for k, v in context_.items() if self.logger_name_in_context_string or k != "logger"
-			])
+			record.contextstring = ",".join(
+				[str(v) for k, v in context_.items() if self.logger_name_in_context_string or k != "logger"]  # type: ignore[attr-defined]
+			)
 
 		msg = self.orig_formatter.format(record)
 		if not self.secret_filter_enabled:
@@ -521,7 +524,7 @@ class RichConsoleHandler(Handler):
 			elif "bold" in color:
 				color = color.replace("bold_", "bright_")
 				self._styles[level] = (f"[bold][{color}]", f"[/{color}][/bold]")
-			else :
+			else:
 				self._styles[level] = (f"[not bold][{color}]", f"[/{color}][/not bold]")
 
 	def emit(self, record: LogRecord) -> None:
@@ -575,7 +578,7 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 	file_rotate_backup_count: int = 0,
 	remove_handlers: bool = False,
 	stderr_file: IO | Console = sys.stderr,
-	logger_levels: dict | None = None
+	logger_levels: dict | None = None,
 ) -> None:
 	"""
 	Initialize logging.
@@ -666,8 +669,9 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 
 	if logger_levels:
 		loggers = {
-			logger_.name: logger_ for logger_ in  # type: ignore[union-attr]
-			list(logging.Logger.manager.loggerDict.values()) if hasattr(logger_, "name")
+			logger_.name: logger_
+			for logger_ in list(logging.Logger.manager.loggerDict.values())  # type: ignore[union-attr]
+			if hasattr(logger_, "name")
 		}
 		re_compile = re.compile
 		for logger_re, level in logger_levels.items():
@@ -680,7 +684,13 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 						level = OPSI_LEVEL_TO_LEVEL[level]
 					logger_.setLevel(level)  # type: ignore[union-attr]
 
-	if stderr_format and "(log_color)" in stderr_format and stderr_file and not isinstance(stderr_file, Console) and not stderr_file.isatty():
+	if (
+		stderr_format
+		and "(log_color)" in stderr_format
+		and stderr_file
+		and not isinstance(stderr_file, Console)
+		and not stderr_file.isatty()
+	):
 		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")
 	set_format(file_format=file_format, stderr_format=stderr_format)
 
@@ -691,7 +701,7 @@ def init_logging(
 	stderr_format: str | None = None,
 	log_file: str | None = None,
 	file_level: int | None = None,
-	file_format: str | None = None
+	file_format: str | None = None,
 ) -> None:
 	logging_config(
 		stderr_level=stderr_level,
@@ -699,7 +709,7 @@ def init_logging(
 		log_file=log_file,
 		file_level=file_level,
 		file_format=file_format,
-		remove_handlers=True
+		remove_handlers=True,
 	)
 
 
@@ -708,7 +718,7 @@ def set_format(
 	file_format: str = DEFAULT_FORMAT,
 	stderr_format: str = DEFAULT_COLORED_FORMAT,
 	datefmt: str = DATETIME_FORMAT,
-	log_colors: dict[str, str] | None = None
+	log_colors: dict[str, str] | None = None,
 ) -> None:
 	"""
 	Assigns ContextSecretFormatter to all Handlers.
@@ -900,9 +910,7 @@ def remove_all_handlers(handler_type: type | None = None, handler_name: str | No
 				if (
 					not handler_type
 					or type(_handler) == handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
-				) and (
-					not handler_name or _handler.name == handler_name
-				):
+				) and (not handler_name or _handler.name == handler_name):
 					_logger.removeHandler(_handler)
 
 
@@ -930,7 +938,9 @@ def print_logger_info() -> None:
 
 
 def init_warnings_capture(traceback_log_level: int = logging.INFO) -> None:
-	def _log_warning(message: str, category: Any, filename: str, lineno: int, line: Any = None, file: Any = None) -> None:  # pylint: disable=unused-argument,too-many-arguments
+	def _log_warning(  # pylint: disable=too-many-arguments
+		message: str, category: Any, filename: str, lineno: int, line: Any = None, file: Any = None  # pylint: disable=unused-argument
+	) -> None:
 		log = logger.log
 		logger.warning("Warning '%s' in file '%s', line %s", message, filename, lineno)
 		for entry in format_stack():

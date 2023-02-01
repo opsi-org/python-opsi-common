@@ -22,11 +22,6 @@ import lz4.frame  # type: ignore[import,no-redef]
 import msgspec
 import requests
 import urllib3
-from requests.adapters import HTTPAdapter
-from requests.exceptions import SSLError
-from requests.models import PreparedRequest, Response
-from urllib3.util.retry import Retry
-
 from opsicommon import __version__
 from opsicommon.exceptions import (
 	BackendAuthenticationError,
@@ -37,6 +32,10 @@ from opsicommon.exceptions import (
 from opsicommon.logging import get_logger, secret_filter
 from opsicommon.types import forceHostId, forceOpsiHostKey
 from opsicommon.utils import deserialize, prepare_proxy_environment, serialize
+from requests.adapters import HTTPAdapter
+from requests.exceptions import SSLError
+from requests.models import PreparedRequest, Response
+from urllib3.util.retry import Retry
 
 warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
 
@@ -68,7 +67,7 @@ class TimeoutHTTPAdapter(HTTPAdapter):
 		timeout: Union[None, float, Tuple[float, float], Tuple[float, None]] = None,
 		verify: Union[bool, str] = True,
 		cert: Union[None, bytes, str, Tuple[Union[bytes, str], Union[bytes, str]]] = None,
-		proxies: Optional[Mapping[str, str]] = None
+		proxies: Optional[Mapping[str, str]] = None,
 	) -> Response:
 		if timeout is None:
 			timeout = self.timeout
@@ -403,7 +402,9 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		return self._execute_rpc(method, params)
 
-	def _execute_rpc(self, method: str, params: Optional[Union[List, Dict[str, Any]]] = None) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+	def _execute_rpc(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+		self, method: str, params: Optional[Union[List, Dict[str, Any]]] = None
+	) -> Any:
 		params = params or []
 
 		rpc_id = 0
@@ -561,10 +562,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			try:
 				method_name = method["name"]
 
-				if method_name in (
-					"backend_exit",
-					"backend_getInterface"
-				):
+				if method_name in ("backend_exit", "backend_getInterface"):
 					continue
 
 				logger.debug("Creating instance method: %s", method_name)

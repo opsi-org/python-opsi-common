@@ -244,16 +244,12 @@ class LegacyControlFile:
 					if (  # pylint: disable=too-many-boolean-expressions
 						(sectionType == "product" and option == "productclasses")
 						or (sectionType == "package" and option == "depends")
-						or (
-							sectionType == "productproperty" and option in ("default", "values")
-						)
+						or (sectionType == "productproperty" and option in ("default", "values"))
 						or (sectionType == "windows" and option == "softwareids")
 					):
 						try:
 							if not value.strip().startswith(("{", "[")):
-								raise ValueError(
-									"Not trying to read json string because value does not start with { or ["
-								)
+								raise ValueError("Not trying to read json string because value does not start with { or [")
 							value = from_json(value.strip())
 							# Remove duplicates
 							value = forceUniqueList(value)
@@ -398,7 +394,7 @@ class LegacyControlFile:
 			if productProperty.get("editable") is not None:
 				self.productProperties[-1].setEditable(productProperty["editable"])  # type: ignore
 			else:
-				if not productProperty.get("values") in (None, []):
+				if productProperty.get("values") not in (None, []):
 					self.productProperties[-1].setEditable(False)
 				else:
 					self.productProperties[-1].setEditable(True)

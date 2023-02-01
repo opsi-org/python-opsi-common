@@ -8,7 +8,9 @@ This file is part of opsi - https://www.opsi.org
 
 import logging
 
-DEFAULT_COLORED_FORMAT = "%(log_color)s[%(opsilevel)d] [%(asctime)s.%(msecs)03d]%(reset)s [%(contextstring)-15s] %(message)s   (%(filename)s:%(lineno)d)"  # pylint: disable=line-too-long
+DEFAULT_COLORED_FORMAT = (
+	"%(log_color)s[%(opsilevel)d] [%(asctime)s.%(msecs)03d]%(reset)s [%(contextstring)-15s] %(message)s   (%(filename)s:%(lineno)d)"
+)
 DEFAULT_FORMAT = "[%(opsilevel)d] [%(asctime)s.%(msecs)03d] [%(contextstring)-15s] %(message)s   (%(filename)s:%(lineno)d)"
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
