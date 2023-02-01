@@ -195,6 +195,7 @@ def test_create_package(compression: Literal["zstd", "bz2"]) -> None:
 				assert (temp_dir / part).relative_to(temp_dir) in result_contents
 
 
+@pytest.mark.linux
 def test_create_package_content_file() -> None:
 	test_data = TEST_DATA / "control.toml"
 	with make_temp_dir() as temp_dir:
