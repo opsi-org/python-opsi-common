@@ -10,6 +10,11 @@ import pytest
 
 from opsicommon.objects import NetbootProduct
 from opsicommon.package import OpsiPackage
+from opsicommon.package.associated_files import (
+	create_package_content_file,
+	create_package_md5_file,
+	create_package_zsync_file,
+)
 from opsicommon.utils import make_temp_dir
 
 TEST_DATA = Path("tests") / "data" / "package"
@@ -188,3 +193,40 @@ def test_create_package(compression: Literal["zstd", "bz2"]) -> None:
 			result_contents = list((_dir.relative_to(result_dir) for _dir in result_dir.rglob("*")))
 			for part in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
 				assert (temp_dir / part).relative_to(temp_dir) in result_contents
+
+
+@pytest.mark.linux
+def test_create_package_content_file() -> None:
+	test_data = TEST_DATA / "control.toml"
+	with make_temp_dir() as temp_dir:
+		(temp_dir / "testpackage").mkdir()
+		copy(test_data, temp_dir / "testpackage")
+		(temp_dir / "testpackage" / "testdir").mkdir()
+		copy(test_data, temp_dir / "testpackage" / "testdir")
+		content_file = create_package_content_file(temp_dir / "testpackage")
+		result = content_file.read_text(encoding="utf-8")
+	for entry in (
+		"d 'testdir' 0",
+		"f 'control.toml' 1132 f96f9b2343dceec972682b06f43cd1e7",
+		"f 'testdir/control.toml' 1132 f96f9b2343dceec972682b06f43cd1e7",
+	):
+		assert entry in result
+
+
+def test_create_package_md5_file() -> None:
+	with make_temp_dir() as temp_dir:
+		result = temp_dir / "localboot_new_42.0-1337.opsi.md5"
+		create_package_md5_file(TEST_DATA / "localboot_new_42.0-1337.opsi", filename=result)
+		assert result.read_text(encoding="utf-8") == "d99057288026298443f4b9ce8b490d7e"
+
+
+@pytest.mark.linux
+def test_create_package_zsync_file() -> None:
+	with make_temp_dir() as temp_dir:
+		result = temp_dir / "localboot_new_42.0-1337.opsi.zsync"
+		create_package_zsync_file(TEST_DATA / "localboot_new_42.0-1337.opsi", filename=result)
+		assert result.read_bytes() == (
+			b"zsync: 0.6.2\nFilename: localboot_new_42.0-1337.opsi\nMTime: Wed, 25 Jan 2023 16:44:05 +0000\n"
+			b"Blocksize: 2048\nLength: 2048\nHash-Lengths: 1,2,4\nURL: localboot_new_42.0-1337.opsi\n"
+			b"SHA-1: 6faa32a67e5aead76f736013299ddf8de9a016db\n\n\x84\xae\x8c/\xb2\x99"
+		)
