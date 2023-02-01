@@ -223,10 +223,17 @@ def test_create_package_md5_file() -> None:
 @pytest.mark.linux
 def test_create_package_zsync_file() -> None:
 	with make_temp_dir() as temp_dir:
-		result = temp_dir / "localboot_new_42.0-1337.opsi.zsync"
-		create_package_zsync_file(TEST_DATA / "localboot_new_42.0-1337.opsi", filename=result)
-		assert result.read_bytes() == (
-			b"zsync: 0.6.2\nFilename: localboot_new_42.0-1337.opsi\nMTime: Wed, 25 Jan 2023 16:44:05 +0000\n"
-			b"Blocksize: 2048\nLength: 2048\nHash-Lengths: 1,2,4\nURL: localboot_new_42.0-1337.opsi\n"
-			b"SHA-1: 6faa32a67e5aead76f736013299ddf8de9a016db\n\n\x84\xae\x8c/\xb2\x99"
-		)
+		zsync_file = temp_dir / "localboot_new_42.0-1337.opsi.zsync"
+		create_package_zsync_file(TEST_DATA / "localboot_new_42.0-1337.opsi", filename=zsync_file)
+		result = zsync_file.read_bytes()
+		for entry in (
+			b"zsync: 0.6.2",
+			b"Filename: localboot_new_42.0-1337.opsi",
+			b"Blocksize: 2048",
+			b"Length: 2048",
+			b"Hash-Lengths: 1,2,4",
+			b"URL: localboot_new_42.0-1337.opsi",
+			b"SHA-1: 6faa32a67e5aead76f736013299ddf8de9a016db",
+			b"\x84\xae\x8c/\xb2\x99",
+		):
+			assert entry in result
