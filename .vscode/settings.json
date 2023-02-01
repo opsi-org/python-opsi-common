@@ -3,15 +3,14 @@
 	"editor.renderWhitespace": "all",
 	"editor.formatOnSave": true,
 	"editor.codeActionsOnSave": {
-        "source.organizeImports": true,
-    },
+		"source.organizeImports": true,
+	},
 	"editor.formatOnType": true,
 	"python.formatting.provider": "black",
 	"python.formatting.blackPath": ".venv/bin/tan",
 	"python.linting.enabled": true,
 	"python.linting.pylintEnabled": true,
 	"python.linting.pylintCategorySeverity.refactor": "Information",
-	"python.linting.flake8Enabled": true,
 	"python.linting.maxNumberOfProblems": 1000,
 	"python.linting.mypyEnabled": true,
 	"python.linting.mypyArgs": [

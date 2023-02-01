@@ -81,7 +81,6 @@ pylint-pytest:
     - apt-get --yes install sqlite3
     - poetry install
     - poetry run pylint --disable=R,fixme opsicommon tests
-    - poetry run flake8 opsicommon tests
     - poetry run mypy opsicommon tests
     - for db in coverage_*; do sqlite3 $db 'update file set path=replace(substr(path,instr(path,"opsicommon")),"\","/");'; done
     - echo -e '[run]\nrelative_files = True\n' > .coveragerc
