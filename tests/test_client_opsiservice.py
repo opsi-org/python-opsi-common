@@ -666,10 +666,10 @@ def test_messagebus_reconnect() -> None:
 	def ws_connect_callback(handler: HTTPTestServerRequestHandler) -> None:
 		nonlocal rpc_id
 		if rpc_id == 0:
-			msg = ChannelSubscriptionEventMessage(
+			smsg = ChannelSubscriptionEventMessage(
 				sender="service:worker:test:1", channel="host:test-client.uib.local", subscribed_channels=["chan1", "chan2", "chan3"]
 			)
-			handler.ws_send_message(msg.to_msgpack())
+			handler.ws_send_message(smsg.to_msgpack())
 
 		for _ in range(3):
 			rpc_id += 1

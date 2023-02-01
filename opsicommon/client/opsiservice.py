@@ -887,7 +887,11 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		allow_status_codes = (200, 500) if return_result_only else ...
 		response = self.post(
-			self._jsonrpc_path, headers=headers, data=data, read_timeout=read_timeout, allow_status_codes=allow_status_codes  # type: ignore[arg-type]
+			self._jsonrpc_path,
+			headers=headers,
+			data=data,
+			read_timeout=read_timeout,
+			allow_status_codes=allow_status_codes,  # type: ignore[arg-type]
 		)
 		data = response.content
 		content_type = response.headers.get("Content-Type", "")
@@ -1055,7 +1059,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self.ping_timeout = 10.0  # Ping timeout in seconds.
 		self.reconnect_wait = 5.0  # After connection lost, reconnect after specified seconds.
 		self._next_connect_wait = 0.0
-		self._subscribed_channels = []
+		self._subscribed_channels: list[str] = []
 		# from websocket import enableTrace
 		# enableTrace(True)
 
