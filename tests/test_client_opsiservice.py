@@ -45,6 +45,7 @@ from opsicommon.exceptions import (
 	OpsiRpcError,
 )
 from opsicommon.messagebus import (
+	ChannelSubscriptionEventMessage,
 	FileUploadResultMessage,
 	JSONRPCRequestMessage,
 	JSONRPCResponseMessage,
@@ -664,6 +665,12 @@ def test_messagebus_reconnect() -> None:
 
 	def ws_connect_callback(handler: HTTPTestServerRequestHandler) -> None:
 		nonlocal rpc_id
+		if rpc_id == 0:
+			msg = ChannelSubscriptionEventMessage(
+				sender="service:worker:test:1", channel="host:test-client.uib.local", subscribed_channels=["chan1", "chan2", "chan3"]
+			)
+			handler.ws_send_message(msg.to_msgpack())
+
 		for _ in range(3):
 			rpc_id += 1
 			msg = JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
@@ -681,9 +688,13 @@ def test_messagebus_reconnect() -> None:
 			with listener.register(client.messagebus):
 				client.connect_messagebus()
 				time.sleep(3)
+				assert client.messagebus._subscribed_channels == ["chan1", "chan2", "chan3"]  # pylint: disable=protected-access
+
 				server.restart(new_cert=True)
 				time.sleep(10)
+				assert client.messagebus._subscribed_channels == ["chan1", "chan2", "chan3"]  # pylint: disable=protected-access
 
+			listener.messages.pop(0)
 			expected_messages = 6
 			assert len(listener.messages) == expected_messages
 			rpc_ids = sorted([int(m.rpc_id) for m in listener.messages])  # type: ignore[attr-defined]
