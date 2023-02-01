@@ -226,7 +226,7 @@ def test_create_package_zsync_file() -> None:
 		result = temp_dir / "localboot_new_42.0-1337.opsi.zsync"
 		create_package_zsync_file(TEST_DATA / "localboot_new_42.0-1337.opsi", filename=result)
 		assert result.read_bytes() == (
-			b"zsync: 0.6.2\nFilename: localboot_new_42.0-1337.opsi\nBlocksize: 2048\nLeng"
-			b"th: 2048\nHash-Lengths: 1,2,4\nURL: localboot_new_42.0-1337.opsi\nSHA-1: 6f"
-			b"aa32a67e5aead76f736013299ddf8de9a016db\n\n\x84\xae\x8c/\xb2\x99"
+			b"zsync: 0.6.2\nFilename: localboot_new_42.0-1337.opsi\nMTime: Wed, 25 Jan 2023 16:44:05 +0000\n"
+			b"Blocksize: 2048\nLength: 2048\nHash-Lengths: 1,2,4\nURL: localboot_new_42.0-1337.opsi\n"
+			b"SHA-1: 6faa32a67e5aead76f736013299ddf8de9a016db\n\n\x84\xae\x8c/\xb2\x99"
 		)

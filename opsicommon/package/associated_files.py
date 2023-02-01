@@ -70,20 +70,5 @@ def create_package_zsync_file(package_path: Path, filename: Path | None = None) 
 			subprocess.check_call(f"zsyncmake-curl -u '{package_path.name}' -o '{filename}' '{package_path}'", shell=True)
 		except subprocess.CalledProcessError as error:
 			raise FileNotFoundError("zsyncmake(-curl) binary not found in PATH") from error
-
-	header = {}
-	with open(filename, "rb") as file:
-		for line in iter(lambda: file.readline().strip(), b""):
-			key, value = line.decode().split(":", 1)
-			header[key.strip()] = value.strip()
-		# Header and data are divided by an empty line
-		data = file.read()
-
-	with open(filename, "wb") as file:
-		for key, value in header.items():
-			if key.lower() == "mtime":
-				continue
-			file.write(f"{key}: {value}\n".encode())
-		file.write("\n".encode())
-		file.write(data)
+	# In old versions, the mtime was removed here - keeping it for now
 	return filename
