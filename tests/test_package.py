@@ -219,6 +219,7 @@ def test_create_package_md5_file() -> None:
 		assert result.read_text(encoding="utf-8") == "d99057288026298443f4b9ce8b490d7e"
 
 
+@pytest.mark.linux
 def test_create_package_zsync_file() -> None:
 	with make_temp_dir() as temp_dir:
 		result = temp_dir / "localboot_new_42.0-1337.opsi.zsync"
