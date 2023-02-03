@@ -1286,7 +1286,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 				http_proxy_auth = (purl.username, purl.password)
 
 		url = self._client.base_url.replace("https://", "wss://") + self._messagebus_path
-		header = [f"{k}: {v}" for k, v in self._client.default_headers.items()]
+		header = [f"{k}: {v + ('/messagebus' if k.lower() == 'user-agent' else '')}" for k, v in self._client.default_headers.items()]
 		if self._client.username is not None or self._client.password is not None:
 			basic_auth = b64encode(f"{self._client.username or ''}:{self._client.password or ''}".encode("utf-8")).decode("ascii")
 			header.append(f"Authorization: Basic {basic_auth}")
