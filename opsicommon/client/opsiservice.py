@@ -378,8 +378,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					raise ValueError("Different passwords supplied")
 				self.password = url.password
 
-			if url.path and url.path.rstrip("/") != "/rpc":
-				self._jsonrpc_path = url.path.rstrip("/")
+			path = url.path.rstrip("/")
+			if path and path != "/rpc":
+				self._jsonrpc_path = path
 
 			self._addresses.append(f"{url.scheme}://{hostname}:{url.port or _DEFAULT_HTTPS_PORT}")
 
