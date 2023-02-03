@@ -89,6 +89,7 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 	assert ServiceClient("https://localhost").base_url == "https://localhost:4447"
 	assert ServiceClient("https://localhost:4448").base_url == "https://localhost:4448"
 	assert ServiceClient("https://localhost:4448/xy").base_url == "https://localhost:4448"
+	assert ServiceClient("https://localhost:4448/xy")._jsonrpc_path == "/xy"  # pylint: disable=protected-access
 	assert ServiceClient("localhost:4448").base_url == "https://localhost:4448"
 	assert ServiceClient("1.2.3.4").base_url == "https://1.2.3.4:4447"
 	assert ServiceClient("::1").base_url == "https://[::1]:4447"
@@ -859,6 +860,21 @@ def test_jsonrpc(tmp_path: Path) -> None:
 
 			assert reqs[-1]["method"] == "POST"
 			assert reqs[-1]["request"]["method"] == "reconnect"
+
+
+def test_custom_jsonrpc_path(tmp_path: Path) -> None:
+	log_file = tmp_path / "request.log"
+	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.0.0 (uvicorn)"}) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}/opsiclientd", verify="accept_all") as client:
+			client.jsonrpc("method")
+
+			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+			# connect
+			assert reqs[0]["method"] == "HEAD"
+			# get interface
+			assert reqs[1]["method"] == "POST"
+			assert reqs[2]["method"] == "POST"
+			assert reqs[2]["path"] == "/opsiclientd"
 
 
 def test_jsonrpc_interface(tmp_path: Path) -> None:
