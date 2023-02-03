@@ -995,22 +995,22 @@ class MessagebusListener:  # pylint: disable=too-few-public-methods
 		"""
 		self.message_types = {MessageType(mt) for mt in message_types} if message_types else None
 
-	def connection_open(self, messagebus: Messagebus) -> None:
+	def messagebus_connection_open(self, messagebus: Messagebus) -> None:
 		"""
 		Called when the connection to the messagebus is opened.
 		"""
 
-	def connection_established(self, messagebus: Messagebus) -> None:
+	def messagebus_connection_established(self, messagebus: Messagebus) -> None:
 		"""
 		Called when the connection to the messagebus is established.
 		"""
 
-	def connection_closed(self, messagebus: Messagebus) -> None:
+	def messagebus_connection_closed(self, messagebus: Messagebus) -> None:
 		"""
 		Called when the connection to the messagebus is closed.
 		"""
 
-	def connection_failed(self, messagebus: Messagebus, exception: Exception) -> None:
+	def messagebus_connection_failed(self, messagebus: Messagebus, exception: Exception) -> None:
 		"""
 		Called when a connection to the messagebus failed.
 		"""
@@ -1062,6 +1062,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self.reconnect_wait = 5.0  # After connection lost, reconnect after specified seconds.
 		self._next_connect_wait = 0.0
 		self._subscribed_channels: list[str] = []
+		self.threaded_callbacks = True
 		# from websocket import enableTrace
 		# enableTrace(True)
 
@@ -1089,7 +1090,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			)
 
 		for listener in self._listener:
-			CallbackThread(getattr(listener, "connection_established"), messagebus=self).start()
+			self._run_listener_callback(listener, "messagebus_connection_established", messagebus=self)
 
 	def _on_error(self, app: WebSocketApp, error: Exception) -> None:  # pylint: disable=unused-argument
 		status_code = getattr(error, "status_code", 0)
@@ -1106,13 +1107,13 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self._next_connect_wait = next_reconnect_wait
 		self._connected_result.set()
 		for listener in self._listener:
-			CallbackThread(getattr(listener, "connection_failed"), messagebus=self, exception=error).start()
+			self._run_listener_callback(listener, "messagebus_connection_failed", messagebus=self, exception=error)
 
 	def _on_close(self, app: WebSocketApp, close_status_code: int, close_message: str) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket closed with status_code=%r and message %r", close_status_code, close_message)
 		self._connected = False
 		for listener in self._listener:
-			CallbackThread(getattr(listener, "connection_closed"), messagebus=self).start()
+			self._run_listener_callback(listener, "messagebus_connection_closed", messagebus=self)
 
 	def _on_message(self, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket message received")
@@ -1133,7 +1134,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			for listener in self._listener:
 				if listener.message_types and msg.type not in listener.message_types:
 					continue
-				CallbackThread(getattr(listener, callback), message=msg).start()
+				self._run_listener_callback(listener, callback, message=msg)
 		except Exception as err:  # pylint: disable=broad-except
 			logger.error("Failed to process websocket message: %s", err, exc_info=True)
 
@@ -1154,6 +1155,16 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		with self._listener_lock:
 			if listener in self._listener:
 				self._listener.remove(listener)
+
+	def _run_listener_callback(self, listener: MessagebusListener, callback_name: str, **kwargs: Any) -> None:
+		try:
+			callback = getattr(listener, callback_name)
+			if self.threaded_callbacks:
+				CallbackThread(callback, **kwargs).start()
+			else:
+				callback(**kwargs)
+		except Exception as err:  # pylint: disable=broad-except
+			logger.error("Error running callback %r on listener %r: %s", callback_name, listener, err, exc_info=True)
 
 	def wait_for_jsonrpc_response_message(self, rpc_id: str, timeout: float | None = None) -> JSONRPCResponseMessage:
 		class JSONRPCResponseListener(MessagebusListener):
@@ -1298,7 +1309,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		)
 
 		for listener in self._listener:
-			CallbackThread(getattr(listener, "connection_open"), messagebus=self).start()
+			self._run_listener_callback(listener, "messagebus_connection_open", messagebus=self)
 
 		self._app.run_forever(  # type: ignore[attr-defined]
 			sslopt=sslopt,
