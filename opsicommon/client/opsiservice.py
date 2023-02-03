@@ -73,6 +73,7 @@ from ..messagebus import (
 	JSONRPCResponseMessage,
 	Message,
 	MessageType,
+	timestamp,
 )
 from ..system import set_system_datetime
 from ..utils import prepare_proxy_environment, serialize
@@ -157,7 +158,7 @@ class CallbackThread(Thread):
 			logger.error("Error in %s: %s", self, err, exc_info=True)
 
 
-class ServiceConnectionListener():  # pylint: disable=too-few-public-methods
+class ServiceConnectionListener:  # pylint: disable=too-few-public-methods
 	def connection_open(self, service_client: "ServiceClient") -> None:
 		"""
 		Called when the connection to the service is opened.
@@ -207,7 +208,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		proxy_url: Optional[str] = "system",
 		user_agent: str = None,
 		connect_timeout: float = 10.0,
-		max_time_diff: float = 5.0
+		max_time_diff: float = 5.0,
 	) -> None:
 		"""
 		proxy_url:
@@ -432,7 +433,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			return ca_certs
 		try:
 			data = self._ca_cert_file.read_text(encoding="utf-8")
-			for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):  # pylint: disable=dotted-import-in-loop
+			for match in re.finditer(
+				r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL
+			):  # pylint: disable=dotted-import-in-loop
 				try:  # pylint: disable=loop-try-except-usage
 					ca_certs.append(load_certificate(FILETYPE_PEM, match.group(1).encode("utf-8")))
 				except Exception as err:  # pylint: disable=broad-except
@@ -454,7 +457,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				and self._ca_cert_file
 				and (not ca_cert_file_exists or self._ca_cert_file.stat().st_size == 0)
 			):
-				logger.info("Service verification enabled, but CA cert file %r does not exist or is empty, skipping verification", self._ca_cert_file)
+				logger.info(
+					"Service verification enabled, but CA cert file %r does not exist or is empty, skipping verification",
+					self._ca_cert_file,
+				)
 				verify = False
 
 			if self._ca_cert_file and verify and not ca_cert_file_exists:
@@ -507,7 +513,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					if diff.total_seconds() > self._max_time_diff:
 						logger.warning(
 							"Local time %r differs from server time (max diff: %0.3f), setting system time to %r",
-							local_dt.strftime("%Y-%m-%d %H:%M:%S"), self._max_time_diff, server_dt.strftime("%Y-%m-%d %H:%M:%S")
+							local_dt.strftime("%Y-%m-%d %H:%M:%S"),
+							self._max_time_diff,
+							server_dt.strftime("%Y-%m-%d %H:%M:%S"),
 						)
 						set_system_datetime(server_dt)
 				except Exception as err:  # pylint: disable=broad-except
@@ -566,7 +574,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				headers=headers,
 				data=data,
 				timeout=(self._connect_timeout, read_timeout),
-				stream=True
+				stream=True,
 			)
 		except Timeout as err:
 			raise OpsiTimeoutError(str(err)) from err
@@ -584,7 +592,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	) -> Tuple[int, str, CaseInsensitiveDict, bytes]:
 		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data)
 
-	def jsonrpc(self, method: str, params: Union[Tuple[Any, ...], List[Any], None] = None, return_result_only: bool = True) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+	def jsonrpc(
+		self, method: str, params: Union[Tuple[Any, ...], List[Any], None] = None, return_result_only: bool = True
+	) -> Any:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		params = params or []
 		if isinstance(params, tuple):
 			params = list(params)
@@ -725,7 +735,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self.stop()
 
 
-class MessagebusListener():  # pylint: disable=too-few-public-methods
+class MessagebusListener:  # pylint: disable=too-few-public-methods
 	def __init__(self, message_types: Iterable[Union[MessageType, str]] = None) -> None:
 		"""
 		message_types:
@@ -810,7 +820,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		try:
 			msg = Message.from_msgpack(message)
 
-			expired = msg.expires and msg.expires <= time.time()
+			expired = msg.expires and msg.expires <= timestamp()
 			if expired:
 				callback = "expired_message_received"
 				logger.debug("Received expired message: %r", msg)
@@ -870,7 +880,9 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		params = params or tuple()
 		if isinstance(params, list):
 			params = tuple(params)
-		msg = JSONRPCRequestMessage(sender="*", channel="service:config:jsonrpc", method=method, params=params)  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+		msg = JSONRPCRequestMessage(
+			sender="*", channel="service:config:jsonrpc", method=method, params=params
+		)  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
 		self.send_message(msg)
 		timeout = float(RPC_TIMEOUTS.get(method, 300))
 		res = self.wait_for_jsonrpc_response_message(rpc_id=msg.rpc_id, timeout=timeout)
@@ -904,9 +916,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		if wait:
 			logger.debug("Waiting for connected result (timeout=%r)", self._connect_timeout)
 			if not self._connected_result.wait(self._connect_timeout):
-				self._connect_exception = TimeoutError(
-					f"Timed out after {self._connect_timeout} seconds while waiting for connect result"
-				)
+				self._connect_exception = TimeoutError(f"Timed out after {self._connect_timeout} seconds while waiting for connect result")
 			if self._connect_exception:
 				logger.debug("Raising connect exception %r", self._connect_exception)
 				raise self._connect_exception
@@ -972,7 +982,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			on_close=self._on_close,
 			on_message=self._on_message,
 			on_ping=self._on_ping,
-			on_pong=self._on_pong
+			on_pong=self._on_pong,
 		)
 
 		self._app.run_forever(  # type: ignore[attr-defined]
@@ -985,7 +995,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			http_proxy_timeout=self._connect_timeout,
 			ping_interval=self.ping_interval,
 			ping_timeout=self.ping_timeout,
-			reconnect=self.reconnect_wait
+			reconnect=self.reconnect_wait,
 		)
 
 	def _disconnect(self) -> None:
