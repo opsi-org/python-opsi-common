@@ -51,6 +51,7 @@ from opsicommon.messagebus import (
 	JSONRPCResponseMessage,
 	Message,
 	MessageType,
+	timestamp,
 )
 from opsicommon.objects import OpsiClient
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
@@ -1154,7 +1155,7 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 	assert listener4.message_types == {MessageType.FILE_CHUNK}
 
 	def ws_connect_callback(handler: HTTPTestServerRequestHandler) -> None:
-		now = int(time.time())
+		now = timestamp()
 		handler.ws_send_message(
 			JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
 				id="11111111-1111-1111-1111-111111111111",

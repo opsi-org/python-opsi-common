@@ -68,6 +68,7 @@ from ..messagebus import (
 	JSONRPCResponseMessage,
 	Message,
 	MessageType,
+	timestamp,
 )
 from ..objects import deserialize, serialize
 from ..system import set_system_datetime
@@ -1118,7 +1119,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		try:
 			msg = Message.from_msgpack(message)
 
-			expired = msg.expires and msg.expires <= time.time()
+			expired = msg.expires and msg.expires <= timestamp()
 			if expired:
 				callback = "expired_message_received"
 				logger.debug("Received expired message: %r", msg)
