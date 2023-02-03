@@ -9,6 +9,7 @@ This file is part of opsi - https://www.opsi.org
 
 from __future__ import annotations
 
+import asyncio
 import gzip
 import os
 import re
@@ -1197,6 +1198,9 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			raise error_cls(res.error["message"])
 
 		return res.result
+
+	async def async_send_message(self, message: Message) -> None:
+		await asyncio.get_event_loop().run_in_executor(None, self.send_message, message)
 
 	def send_message(self, message: Message) -> None:
 		if not self._app:
