@@ -433,9 +433,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			return ca_certs
 		try:
 			data = self._ca_cert_file.read_text(encoding="utf-8")
-			for match in re.finditer(
-				r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL
-			):  # pylint: disable=dotted-import-in-loop
+			for match in re.finditer(  # pylint: disable=dotted-import-in-loop
+				r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL  # pylint: disable=dotted-import-in-loop
+			):
 				try:  # pylint: disable=loop-try-except-usage
 					ca_certs.append(load_certificate(FILETYPE_PEM, match.group(1).encode("utf-8")))
 				except Exception as err:  # pylint: disable=broad-except
