@@ -709,10 +709,10 @@ def test_messagebus_reconnect_exception() -> None:
 		next_connect_wait = []
 		established = 0
 
-		def connection_established(self, messagebus: Messagebus) -> None:
+		def messagebus_connection_established(self, messagebus: Messagebus) -> None:
 			self.established += 1
 
-		def connection_failed(self, messagebus: Messagebus, exception: Exception) -> None:
+		def messagebus_connection_failed(self, messagebus: Messagebus, exception: Exception) -> None:
 			self.exceptions.append(exception)
 			self.next_connect_wait.append(messagebus._next_connect_wait)  # pylint: disable=protected-access
 
@@ -1140,16 +1140,16 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 			self.connection_closed_calls = 0
 			self.connection_failed_calls = 0
 
-		def connection_open(self, messagebus: Messagebus) -> None:
+		def messagebus_connection_open(self, messagebus: Messagebus) -> None:
 			self.connection_open_calls += 1
 
-		def connection_established(self, messagebus: Messagebus) -> None:
+		def messagebus_connection_established(self, messagebus: Messagebus) -> None:
 			self.connection_established_calls += 1
 
-		def connection_closed(self, messagebus: Messagebus) -> None:
+		def messagebus_connection_closed(self, messagebus: Messagebus) -> None:
 			self.connection_closed_calls += 1
 
-		def connection_failed(self, messagebus: Messagebus, exception: Exception) -> None:
+		def messagebus_connection_failed(self, messagebus: Messagebus, exception: Exception) -> None:
 			self.connection_failed_calls += 1
 
 		def message_received(self, message: Message) -> None:
