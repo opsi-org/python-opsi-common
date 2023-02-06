@@ -947,7 +947,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		if error_cls:
 			raise error_cls(error_msg)
 
-		if self.jsonrpc_create_objects:
+		if self.jsonrpc_create_objects and "gethash" not in method:
 			return deserialize(rpc.get("result"))
 
 		return rpc.get("result")
