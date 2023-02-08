@@ -663,8 +663,14 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				except Exception as err:  # pylint: disable=broad-except
 					logger.warning("Failed to process date header %r: %r", response.headers["date"], err)
 
-			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file:
-				self.fetch_opsi_ca(skip_verify=not verify)
+			if (
+				ServiceVerificationFlags.OPSI_CA in self._verify or ServiceVerificationFlags.ACCEPT_ALL in self._verify
+			) and self._ca_cert_file:
+				try:
+					self.fetch_opsi_ca(skip_verify=not verify)
+				except Exception as err:  # pylint: disable=broad-except
+					if ServiceVerificationFlags.OPSI_CA in self._verify:
+						logger.error(err)
 
 		try:
 			self.jsonrpc_interface = self.jsonrpc("backend_getInterface")
