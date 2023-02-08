@@ -6,10 +6,12 @@ import os
 import re
 import subprocess
 from contextlib import contextmanager
+from functools import lru_cache
 from pathlib import Path
 from typing import Generator
 
 import packaging.version
+from opsicommon.config.opsi import OpsiConfig
 from opsicommon.logging import get_logger
 
 logger = get_logger("opsicommon.package")
@@ -33,8 +35,12 @@ EXCLUDE_DIRS_ON_PACK_REGEX = re.compile(r"(^\.svn$)|(^\.git$)")
 EXCLUDE_FILES_ON_PACK_REGEX = re.compile(r"(~$)|(^[Tt]humbs\.db$)|(^\.[Dd][Ss]_[Ss]tore$)")
 
 
-def pigz_available() -> bool:
-	try:  # TODO: check if configured to use pigz? in opsiconf
+@lru_cache
+def use_pigz() -> bool:
+	opsi_conf = OpsiConfig(upgrade_config=False)
+	if not opsi_conf.get("packages", "use_pigz"):
+		return False
+	try:
 		pigz_version = subprocess.check_output("pigz --version", shell=True).decode("utf-8")
 		if packaging.version.parse(pigz_version) < packaging.version.parse("2.2.3"):
 			raise ValueError("pigz too old")
@@ -81,7 +87,7 @@ def extract_command(archive: Path, file_pattern: str | None = None) -> str:
 
 def decompress_command(archive: Path) -> str:
 	if archive.suffix in (".gzip", ".gz"):
-		if pigz_available():
+		if use_pigz():
 			return f"pigz --stdout --decompress '{archive}'"
 		return f"zcat --stdout --quiet --decompress '{archive}'"
 	if archive.suffix in (".bzip2", ".bz2"):
