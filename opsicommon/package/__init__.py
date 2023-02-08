@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Literal
 
 import tomlkit
-
 from opsicommon.logging import get_logger
 from opsicommon.objects import Product, ProductDependency, ProductProperty
+from opsicommon.package.archive import create_archive, extract_archive
 from opsicommon.package.control_file_handling import (
 	create_package_dependencies,
 	create_product,
@@ -21,7 +21,6 @@ from opsicommon.package.control_file_handling import (
 	dictify_product_properties,
 )
 from opsicommon.package.legacy_control_file import LegacyControlFile
-from opsicommon.package.serialization import create_archive, extract_archive
 from opsicommon.utils import make_temp_dir
 
 EXCLUDE_DIRS_ON_PACK_REGEX = re.compile(r"(^\.svn$)|(^\.git$)")

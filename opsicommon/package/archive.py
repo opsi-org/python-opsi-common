@@ -1,5 +1,5 @@
 """
-handling of serialization and deserialization
+handling of archives
 """
 
 import os
@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Generator
 
 import packaging.version
-
 from opsicommon.logging import get_logger
 
 logger = get_logger("opsicommon.package")
@@ -60,9 +59,9 @@ def get_file_type(filename: str | Path) -> str:
 	raise TypeError("get_file_type only accepts gz, bzip2, zstd, cpio and tar files.")
 
 
-def deserialize_command(archive: Path, file_pattern: str | None = None) -> str:
+def extract_command(archive: Path, file_pattern: str | None = None) -> str:
 	# Look for cpio and tar in last or second last position (for compressed archives like .tar.gz)
-	# It is assumed that the deserialize command gets data via stdin in an uncompressed state
+	# It is assumed that the extract command gets data via stdin in an uncompressed state
 	if archive.suffixes and ".cpio" in archive.suffixes[-2:]:
 		cmd = CPIO_EXTRACT_COMMAND
 	elif archive.suffixes and ".tar" in archive.suffixes[-2:]:
@@ -74,13 +73,13 @@ def deserialize_command(archive: Path, file_pattern: str | None = None) -> str:
 		elif file_type == "cpio":
 			cmd = CPIO_EXTRACT_COMMAND
 		else:
-			raise TypeError(f"Archive to deserialize must be 'tar' or 'cpio', found: {file_type}")
+			raise TypeError(f"Archive to extract must be 'tar' or 'cpio', found: {file_type}")
 	if file_pattern:
 		cmd += f" '{file_pattern}'"
 	return cmd
 
 
-def extract_command(archive: Path) -> str:
+def decompress_command(archive: Path) -> str:
 	if archive.suffix in (".gzip", ".gz"):
 		if pigz_available():
 			return f"pigz --stdout --decompress '{archive}'"
@@ -101,10 +100,10 @@ def extract_archive(archive: Path, destination: Path, file_pattern: str | None =
 	if not destination.exists():
 		destination.mkdir(parents=True)
 	if archive.suffixes and archive.suffixes[-1] in (".zstd", ".gz", ".gzip", ".bz2", ".bzip2"):
-		create_input = extract_command(archive.absolute())
+		create_input = decompress_command(archive.absolute())
 	else:
 		create_input = f"cat {archive.absolute()}"
-	process_archive = deserialize_command(archive.absolute(), file_pattern=file_pattern)
+	process_archive = extract_command(archive.absolute(), file_pattern=file_pattern)
 	with chdir(destination):
 		print(f"{create_input} | {process_archive}")
 		subprocess.check_call(f"{create_input} | {process_archive}", shell=True)
