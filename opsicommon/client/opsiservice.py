@@ -1382,9 +1382,29 @@ class BackendManager(ServiceClient):
 			address=opsi_config.get("service", "url"),
 			username=username or opsi_config.get("host", "id"),
 			password=password or opsi_config.get("host", "key"),
+			user_agent=f"BackendManager/{__version__}",
 			ca_cert_file=CA_CERT_FILE,
 			verify=ServiceVerificationFlags.STRICT_CHECK,
 			jsonrpc_create_objects=True,
 			jsonrpc_create_methods=True,
 		)
 		self.connect()
+
+
+def get_service_client(
+	*, address: str | None = None, username: str | None = None, password: str | None = None, user_agent: str | None = None
+) -> ServiceClient:
+	opsi_config = OpsiConfig(upgrade_config=False)
+	service_client = ServiceClient(
+		address=address or opsi_config.get("service", "url"),
+		username=username or opsi_config.get("host", "id"),
+		password=password or opsi_config.get("host", "key"),
+		user_agent=user_agent,
+		verify=ServiceVerificationFlags.STRICT_CHECK,
+		ca_cert_file=CA_CERT_FILE,
+		jsonrpc_create_objects=True,
+		jsonrpc_create_methods=True,
+	)
+	service_client.connect()
+	logger.info("Connected to %s", service_client.server_name)
+	return service_client

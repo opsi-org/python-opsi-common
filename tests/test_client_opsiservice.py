@@ -40,6 +40,7 @@ from opsicommon.client.opsiservice import (
 	ServiceConnectionListener,
 	ServiceVerificationFlags,
 	WebSocketApp,
+	get_service_client,
 )
 from opsicommon.config import OpsiConfig
 from opsicommon.exceptions import (
@@ -1043,7 +1044,7 @@ def test_jsonrpc_error_handling() -> None:
 			assert res["error"]["message"] == "err_msg2"
 
 
-def test_backend_manager(tmp_path: Path) -> None:
+def test_backend_managerand_get_service_client(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	interface: list[dict[str, Any]] = [
 		{
@@ -1109,6 +1110,7 @@ def test_backend_manager(tmp_path: Path) -> None:
 			assert reqs[2]["path"] == "/rpc"
 			assert reqs[2]["request"]["method"] == "test_method"
 
+			backend.disconnect()
 			log_file.unlink()
 
 			backend = BackendManager(username="user", password="pass")
@@ -1118,6 +1120,18 @@ def test_backend_manager(tmp_path: Path) -> None:
 			encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
 			auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
 			assert auth == "user:pass"
+			backend.disconnect()
+			log_file.unlink()
+
+			service_client = get_service_client()
+			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+			assert reqs[0]["method"] == "HEAD"
+			assert reqs[0]["path"] == "/rpc"
+			encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
+			auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
+			assert auth == "test-host.opsi.org:11111111111111111111111111111111"
+			service_client.disconnect()
+			log_file.unlink()
 
 
 def test_messagebus_jsonrpc() -> None:
