@@ -5,6 +5,7 @@ This file is part of opsi - https://www.opsi.org
 """
 # pylint: disable=too-many-lines
 
+import base64
 import json
 import platform
 import time
@@ -25,6 +26,7 @@ from opsicommon.client.opsiservice import (
 	MIN_VERSION_MSGPACK,
 	MIN_VERSION_SESSION_API,
 	UIB_OPSI_CA,
+	BackendManager,
 	Messagebus,
 	MessagebusListener,
 	OpsiServiceAuthenticationError,
@@ -39,6 +41,7 @@ from opsicommon.client.opsiservice import (
 	ServiceVerificationFlags,
 	WebSocketApp,
 )
+from opsicommon.config import OpsiConfig
 from opsicommon.exceptions import (
 	BackendAuthenticationError,
 	BackendPermissionDeniedError,
@@ -1038,6 +1041,82 @@ def test_jsonrpc_error_handling() -> None:
 			assert err.value.message == "err_msg2"
 			res = client.jsonrpc("method", return_result_only=False)
 			assert res["error"]["message"] == "err_msg2"
+
+
+def test_backend_manager(tmp_path: Path) -> None:
+	log_file = tmp_path / "request.log"
+	interface: list[dict[str, Any]] = [
+		{
+			"name": "test_method",
+			"params": ["arg1", "*arg2", "**arg3"],
+			"args": ["arg1", "arg2"],
+			"varargs": None,
+			"keywords": "arg4",
+			"defaults": ["default2"],
+			"deprecated": False,
+			"alternative_method": None,
+			"doc": None,
+			"annotations": {},
+		},
+		{
+			"name": "backend_getInterface",
+			"params": [],
+			"args": ["self"],
+			"varargs": None,
+			"keywords": None,
+			"defaults": None,
+			"deprecated": False,
+			"alternative_method": None,
+			"doc": None,
+			"annotations": {},
+		},
+	]
+	with http_test_server(
+		generate_cert=True,
+		log_file=log_file,
+		response_body=json.dumps({"jsonrpc": "2.0", "result": interface}).encode("utf-8"),
+		response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)", "Content-Type": "application/json"},
+	) as server:
+		opsi_conf = tmp_path / "opsi.conf"
+		opsi_conf.write_text(
+			"[host]\n"
+			'id = "test-host.opsi.org"\n'
+			'key = "11111111111111111111111111111111"\n'
+			"\n"
+			"[service]\n"
+			f'url = "https://localhost:{server.port}"\n',
+			encoding="utf-8",
+		)
+		OpsiConfig.config_file = str(opsi_conf)
+		BackendManager.ca_cert_file = server.ca_cert
+		backend = BackendManager()
+		backend.test_method(arg1=1, arg2=2)  # pylint: disable=no-member
+
+		reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+
+		assert reqs[0]["method"] == "HEAD"
+		assert reqs[0]["path"] == "/rpc"
+		encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
+		auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
+		assert auth == "test-host.opsi.org:11111111111111111111111111111111"
+
+		assert reqs[1]["method"] == "POST"
+		assert reqs[1]["path"] == "/rpc"
+		assert reqs[1]["request"]["method"] == "backend_getInterface"
+
+		assert reqs[2]["method"] == "POST"
+		assert reqs[2]["path"] == "/rpc"
+		assert reqs[2]["request"]["method"] == "test_method"
+
+		log_file.unlink()
+
+		backend = BackendManager(username="user", password="pass")
+		reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+		assert reqs[0]["method"] == "HEAD"
+		assert reqs[0]["path"] == "/rpc"
+		encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
+		auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
+		assert auth == "user:pass"
 
 
 def test_messagebus_jsonrpc() -> None:

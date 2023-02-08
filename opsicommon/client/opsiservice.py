@@ -50,6 +50,7 @@ from websocket import WebSocketApp  # type: ignore[import]
 from websocket._abnf import ABNF  # type: ignore[import]
 
 from .. import __version__
+from ..config import OpsiConfig
 from ..exceptions import (
 	OpsiRpcError,
 	OpsiServiceAuthenticationError,
@@ -662,7 +663,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				except Exception as err:  # pylint: disable=broad-except
 					logger.warning("Failed to process date header %r: %r", response.headers["date"], err)
 
-			if self._ca_cert_file:
+			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file:
 				self.fetch_opsi_ca(skip_verify=not verify)
 
 		try:
@@ -1362,3 +1363,24 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def stop(self) -> None:
 		self.disconnect()
 		self._should_stop.set()
+
+
+class BackendManager(ServiceClient):
+	"""
+	For backwards compatibility
+	"""
+
+	ca_cert_file = ("/etc/opsi/ssl/opsi-ca-cert.pem",)
+
+	def __init__(self, username: str | None = None, password: str | None = None, **kwargs: Any) -> None:  # pylint: disable=unused-argument
+		opsi_config = OpsiConfig(upgrade_config=False)
+		super().__init__(
+			address=opsi_config.get("service", "url"),
+			username=username or opsi_config.get("host", "id"),
+			password=password or opsi_config.get("host", "key"),
+			ca_cert_file=self.ca_cert_file,
+			verify=ServiceVerificationFlags.STRICT_CHECK,
+			jsonrpc_create_objects=True,
+			jsonrpc_create_methods=True,
+		)
+		self.connect()

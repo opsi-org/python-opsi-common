@@ -41,13 +41,13 @@ class WebSocketError(Exception):
 
 
 class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
-	_ws_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
+	_ws_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 	_opcode_continuation = 0x0
 	_opcode_text = 0x1
 	_opcode_binary = 0x2
 	_opcode_close = 0x8
 	_opcode_ping = 0x9
-	_opcode_pong = 0xa
+	_opcode_pong = 0xA
 
 	mutex = threading.Lock()
 	server: "ThreadingHTTPServer"
@@ -186,9 +186,9 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 	def send_response(self, code: int, message: str | None = None) -> None:
 		self.log_request(code)
 		self.send_response_only(code, message)
-		self.send_header('Server', self.version_string())
+		self.send_header("Server", self.version_string())
 		if "date" not in [hdr.lower() for hdr in self.server.response_headers or {}]:
-			self.send_header('Date', self.date_time_string())
+			self.send_header("Date", self.date_time_string())
 
 	def do_POST(self) -> None:  # pylint: disable=invalid-name
 		length = int(self.headers["Content-Length"])
@@ -206,7 +206,13 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 
 		log_request = b64encode(request).decode("ascii") if isinstance(request, bytes) else request
 		self._log(
-			{"method": "POST", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers), "request": log_request}
+			{
+				"method": "POST",
+				"client_address": self.client_address,
+				"path": self.path,
+				"headers": dict(self.headers),
+				"request": log_request,
+			}
 		)
 		response = None
 		if self.server.response_body:
@@ -224,7 +230,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self.send_header("Content-Type", "application/json")
 		self.end_headers()
 		if self.server.send_max_bytes:
-			response = response[:self.server.send_max_bytes]
+			response = response[: self.server.send_max_bytes]
 		self.wfile.write(response)
 
 	def do_GET(self) -> None:  # pylint: disable=invalid-name,too-many-branches
@@ -259,7 +265,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 						response = file.read()
 
 					if self.server.send_max_bytes:
-						response = response[:self.server.send_max_bytes]
+						response = response[: self.server.send_max_bytes]
 					self.wfile.write(response)
 				finally:
 					file.close()
@@ -281,7 +287,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self.send_header("Content-Length", str(len(response)))
 		self.end_headers()
 		if self.server.send_max_bytes:
-			response = response[:self.server.send_max_bytes]
+			response = response[: self.server.send_max_bytes]
 		self.wfile.write(response)
 		return None
 
@@ -354,7 +360,13 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		# print("Websocket message", message)
 		log_message = b64encode(message).decode("ascii") if isinstance(message, bytes) else message
 		self._log(
-			{"method": "websocket", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers), "request": log_message}
+			{
+				"method": "websocket",
+				"client_address": self.client_address,
+				"path": self.path,
+				"headers": dict(self.headers),
+				"request": log_message,
+			}
 		)
 		if self.server.ws_message_callback:
 			self.server.ws_message_callback(self, message)
@@ -438,12 +450,12 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		headers = self.headers
 		if headers.get("Upgrade", None) != "websocket":
 			return
-		key = headers['Sec-WebSocket-Key']
+		key = headers["Sec-WebSocket-Key"]
 		digest = b64encode(sha1((key + self._ws_GUID).encode("ascii")).digest()).decode("ascii")
-		self.send_response(101, 'Switching Protocols')
-		self.send_header('Upgrade', 'websocket')
-		self.send_header('Connection', 'Upgrade')
-		self.send_header('Sec-WebSocket-Accept', digest)
+		self.send_response(101, "Switching Protocols")
+		self.send_header("Upgrade", "websocket")
+		self.send_header("Connection", "Upgrade")
+		self.send_header("Sec-WebSocket-Accept", digest)
 		self.end_headers()
 		self._ws_connected = True
 		self.on_ws_connected()
@@ -552,11 +564,13 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		ws_connect_callback: Callable | None = None,
 		ws_message_callback: Callable | None = None,
 		serve_directory: str | Path | None = None,
-		send_max_bytes: int | None = None
+		send_max_bytes: int | None = None,
 	) -> None:
 		super().__init__()
 		self.log_file = str(log_file) if log_file else None
 		self.ip_version = 6 if int(ip_version or 4) == 6 else 4
+		self.ca_key: str | None = None
+		self.ca_cert: str | None = None
 		self.server_key = str(server_key) if server_key else None
 		self.server_cert = str(server_cert) if server_cert else None
 		self.generate_cert = generate_cert
@@ -586,7 +600,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 			self.server = ThreadingHTTPServer(
 				self,
 				("::" if self.ip_version == 6 else "", self.port),
-				socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET  # pylint: disable=dotted-import-in-loop
+				socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET,  # pylint: disable=dotted-import-in-loop
 			)
 			self._init_ssl_socket()
 			# print("Server listening on port:" + str(self.port))
@@ -605,6 +619,17 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 
 		# Use 2048 bits for speedup
 		ca_cert, ca_key = create_ca({"CN": "http_test_server ca"}, 3, bits=2048)
+
+		tmp = NamedTemporaryFile(delete=False)  # pylint: disable=consider-using-with
+		tmp.write(as_pem(ca_key).encode("utf-8"))
+		tmp.close()
+		self.ca_key = tmp.name
+
+		tmp = NamedTemporaryFile(delete=False)  # pylint: disable=consider-using-with
+		tmp.write(as_pem(ca_cert).encode("utf-8"))
+		tmp.close()
+		self.ca_cert = tmp.name
+
 		kwargs: dict[str, Any] = {
 			"subject": {"CN": "http_test_server server cert"},
 			"valid_days": 3,
@@ -612,7 +637,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 			"hostnames": {"localhost", "ip6-localhost"},
 			"ca_key": ca_key,
 			"ca_cert": ca_cert,
-			"bits": 2048
+			"bits": 2048,
 		}
 		cert, key = create_server_cert(**kwargs)
 
@@ -628,6 +653,10 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 
 	def _cleanup_cert(self) -> None:
 		if self.generate_cert:
+			if self.ca_key and os.path.exists(self.ca_key):
+				os.unlink(self.ca_key)
+			if self.ca_cert and os.path.exists(self.ca_cert):
+				os.unlink(self.ca_cert)
 			if self.server_key and os.path.exists(self.server_key):
 				os.unlink(self.server_key)
 			if self.server_cert and os.path.exists(self.server_cert):
@@ -666,7 +695,9 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		while time.time() - start < timeout:  # pylint: disable=dotted-import-in-loop
 			with closing(socket.socket(sock_type, socket.SOCK_STREAM)) as sock:  # pylint: disable=dotted-import-in-loop
 				sock.settimeout(1)
-				res = sock.connect_ex(("::1" if self.ip_version == 6 else "127.0.0.1", self.port))  # pylint: disable=loop-invariant-statement
+				res = sock.connect_ex(
+					("::1" if self.ip_version == 6 else "127.0.0.1", self.port)
+				)  # pylint: disable=loop-invariant-statement
 				if res == 0:
 					return True
 		return False
@@ -687,7 +718,7 @@ def http_test_server(  # pylint: disable=too-many-arguments,too-many-locals
 	ws_connect_callback: Callable | None = None,
 	ws_message_callback: Callable | None = None,
 	serve_directory: str | Path | None = None,
-	send_max_bytes: int | None = None
+	send_max_bytes: int | None = None,
 ) -> Generator[HTTPTestServer, None, None]:
 	server = HTTPTestServer(
 		log_file=log_file,
@@ -702,7 +733,7 @@ def http_test_server(  # pylint: disable=too-many-arguments,too-many-locals
 		ws_connect_callback=ws_connect_callback,
 		ws_message_callback=ws_message_callback,
 		serve_directory=serve_directory,
-		send_max_bytes=send_max_bytes
+		send_max_bytes=send_max_bytes,
 	)
 	server.daemon = True
 	server.start()
