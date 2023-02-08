@@ -105,7 +105,6 @@ def extract_archive(archive: Path, destination: Path, file_pattern: str | None =
 		create_input = f"cat {archive.absolute()}"
 	process_archive = extract_command(archive.absolute(), file_pattern=file_pattern)
 	with chdir(destination):
-		print(f"{create_input} | {process_archive}")
 		subprocess.check_call(f"{create_input} | {process_archive}", shell=True)
 
 
