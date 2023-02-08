@@ -130,6 +130,7 @@ kGOsCMSImzajpmtonx3ccPgSOyEWyoEaGij6u80QtFkj9g==
 
 
 logger = get_logger("opsicommon.general")
+opsi_config = OpsiConfig(upgrade_config=False)
 
 
 class ServiceVerificationFlags(str, Enum):
@@ -666,11 +667,17 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			if (
 				ServiceVerificationFlags.OPSI_CA in self._verify or ServiceVerificationFlags.ACCEPT_ALL in self._verify
 			) and self._ca_cert_file:
+				config_server = False
 				try:
-					self.fetch_opsi_ca(skip_verify=not verify)
+					config_server = os.path.exists(opsi_config.config_file) and opsi_config.get("host", "server-role") == "configserver"
 				except Exception as err:  # pylint: disable=broad-except
-					if ServiceVerificationFlags.OPSI_CA in self._verify:
-						logger.error(err)
+					logger.warning(err, exc_info=True)
+				if not config_server:
+					try:
+						self.fetch_opsi_ca(skip_verify=not verify)
+					except Exception as err:  # pylint: disable=broad-except
+						if ServiceVerificationFlags.OPSI_CA in self._verify:
+							logger.error(err)
 
 		try:
 			self.jsonrpc_interface = self.jsonrpc("backend_getInterface")
@@ -1378,7 +1385,6 @@ class BackendManager(ServiceClient):
 
 	def __init__(self, username: str | None = None, password: str | None = None, **kwargs: Any) -> None:  # pylint: disable=unused-argument
 		warnings.warn("BackendManager is deprecated, please use opsicommon.client.opsiservice.get_service_client()")
-		opsi_config = OpsiConfig(upgrade_config=False)
 		super().__init__(
 			address=opsi_config.get("service", "url"),
 			username=username or opsi_config.get("host", "id"),
@@ -1395,7 +1401,6 @@ class BackendManager(ServiceClient):
 def get_service_client(
 	*, address: str | None = None, username: str | None = None, password: str | None = None, user_agent: str | None = None
 ) -> ServiceClient:
-	opsi_config = OpsiConfig(upgrade_config=False)
 	service_client = ServiceClient(
 		address=address or opsi_config.get("service", "url"),
 		username=username or opsi_config.get("host", "id"),
