@@ -1377,6 +1377,7 @@ class BackendManager(ServiceClient):
 	"""
 
 	def __init__(self, username: str | None = None, password: str | None = None, **kwargs: Any) -> None:  # pylint: disable=unused-argument
+		warnings.warn("BackendManager is deprecated, please use opsicommon.client.opsiservice.get_service_client()")
 		opsi_config = OpsiConfig(upgrade_config=False)
 		super().__init__(
 			address=opsi_config.get("service", "url"),
