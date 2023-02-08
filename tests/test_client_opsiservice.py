@@ -1077,46 +1077,47 @@ def test_backend_manager(tmp_path: Path) -> None:
 		response_body=json.dumps({"jsonrpc": "2.0", "result": interface}).encode("utf-8"),
 		response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)", "Content-Type": "application/json"},
 	) as server:
-		opsi_conf = tmp_path / "opsi.conf"
-		opsi_conf.write_text(
-			"[host]\n"
-			'id = "test-host.opsi.org"\n'
-			'key = "11111111111111111111111111111111"\n'
-			"\n"
-			"[service]\n"
-			f'url = "https://localhost:{server.port}"\n',
-			encoding="utf-8",
-		)
-		OpsiConfig.config_file = str(opsi_conf)
-		BackendManager.ca_cert_file = server.ca_cert
-		backend = BackendManager()
-		backend.test_method(arg1=1, arg2=2)  # pylint: disable=no-member
+		with mock.patch("opsicommon.client.opsiservice.CA_CERT_FILE", server.ca_cert):
+			opsi_conf = tmp_path / "opsi.conf"
+			opsi_conf.write_text(
+				"[host]\n"
+				'id = "test-host.opsi.org"\n'
+				'key = "11111111111111111111111111111111"\n'
+				"\n"
+				"[service]\n"
+				f'url = "https://localhost:{server.port}"\n',
+				encoding="utf-8",
+			)
+			OpsiConfig.config_file = str(opsi_conf)
 
-		reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+			backend = BackendManager()
+			backend.test_method(arg1=1, arg2=2)  # type: ignore[attr-defined]  # pylint: disable=no-member
 
-		assert reqs[0]["method"] == "HEAD"
-		assert reqs[0]["path"] == "/rpc"
-		encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
-		auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
-		assert auth == "test-host.opsi.org:11111111111111111111111111111111"
+			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
 
-		assert reqs[1]["method"] == "POST"
-		assert reqs[1]["path"] == "/rpc"
-		assert reqs[1]["request"]["method"] == "backend_getInterface"
+			assert reqs[0]["method"] == "HEAD"
+			assert reqs[0]["path"] == "/rpc"
+			encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
+			auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
+			assert auth == "test-host.opsi.org:11111111111111111111111111111111"
 
-		assert reqs[2]["method"] == "POST"
-		assert reqs[2]["path"] == "/rpc"
-		assert reqs[2]["request"]["method"] == "test_method"
+			assert reqs[1]["method"] == "POST"
+			assert reqs[1]["path"] == "/rpc"
+			assert reqs[1]["request"]["method"] == "backend_getInterface"
 
-		log_file.unlink()
+			assert reqs[2]["method"] == "POST"
+			assert reqs[2]["path"] == "/rpc"
+			assert reqs[2]["request"]["method"] == "test_method"
 
-		backend = BackendManager(username="user", password="pass")
-		reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
-		assert reqs[0]["method"] == "HEAD"
-		assert reqs[0]["path"] == "/rpc"
-		encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
-		auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
-		assert auth == "user:pass"
+			log_file.unlink()
+
+			backend = BackendManager(username="user", password="pass")
+			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+			assert reqs[0]["method"] == "HEAD"
+			assert reqs[0]["path"] == "/rpc"
+			encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
+			auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
+			assert auth == "user:pass"
 
 
 def test_messagebus_jsonrpc() -> None:

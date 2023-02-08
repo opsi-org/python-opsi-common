@@ -50,7 +50,7 @@ from websocket import WebSocketApp  # type: ignore[import]
 from websocket._abnf import ABNF  # type: ignore[import]
 
 from .. import __version__
-from ..config import OpsiConfig
+from ..config import CA_CERT_FILE, OpsiConfig
 from ..exceptions import (
 	OpsiRpcError,
 	OpsiServiceAuthenticationError,
@@ -1370,15 +1370,13 @@ class BackendManager(ServiceClient):
 	For backwards compatibility
 	"""
 
-	ca_cert_file = ("/etc/opsi/ssl/opsi-ca-cert.pem",)
-
 	def __init__(self, username: str | None = None, password: str | None = None, **kwargs: Any) -> None:  # pylint: disable=unused-argument
 		opsi_config = OpsiConfig(upgrade_config=False)
 		super().__init__(
 			address=opsi_config.get("service", "url"),
 			username=username or opsi_config.get("host", "id"),
 			password=password or opsi_config.get("host", "key"),
-			ca_cert_file=self.ca_cert_file,
+			ca_cert_file=CA_CERT_FILE,
 			verify=ServiceVerificationFlags.STRICT_CHECK,
 			jsonrpc_create_objects=True,
 			jsonrpc_create_methods=True,
