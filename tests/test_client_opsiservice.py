@@ -15,8 +15,10 @@ from threading import Thread
 from typing import Any, Iterable
 from unittest import mock
 from urllib.parse import unquote
+from warnings import catch_warnings, simplefilter
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import lz4.frame  # type: ignore[import,no-redef]
 import pytest
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
@@ -405,7 +407,7 @@ def test_proxy(tmp_path: Path) -> None:
 					assert reqs[1]["method"] == "POST"
 
 					assert reqs[2]["method"] == "GET"
-					assert reqs[2]["path"] == "/messagebus/v1"
+					assert reqs[2]["path"] == "/messagebus/v1?compression=lz4"
 					assert reqs[2]["headers"]["Upgrade"] == "websocket"
 
 					log_file.write_bytes(b"")
@@ -675,14 +677,14 @@ def test_messagebus_reconnect() -> None:
 			smsg = ChannelSubscriptionEventMessage(
 				sender="service:worker:test:1", channel="host:test-client.uib.local", subscribed_channels=["chan1", "chan2", "chan3"]
 			)
-			handler.ws_send_message(smsg.to_msgpack())
+			handler.ws_send_message(lz4.frame.compress(smsg.to_msgpack(), compression_level=0, block_linked=True))
 
 		for _ in range(3):
 			rpc_id += 1
 			msg = JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
 				sender="service:worker:test:1", channel="host:test-client.uib.local", rpc_id=str(rpc_id), result="RESULT"
 			)
-			handler.ws_send_message(msg.to_msgpack())
+			handler.ws_send_message(lz4.frame.compress(msg.to_msgpack(), compression_level=0, block_linked=True))
 
 	with http_test_server(
 		generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
@@ -1044,7 +1046,7 @@ def test_jsonrpc_error_handling() -> None:
 			assert res["error"]["message"] == "err_msg2"
 
 
-def test_backend_managerand_get_service_client(tmp_path: Path) -> None:
+def test_backend_manager_and_get_service_client(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	interface: list[dict[str, Any]] = [
 		{
@@ -1091,7 +1093,9 @@ def test_backend_managerand_get_service_client(tmp_path: Path) -> None:
 			)
 			OpsiConfig.config_file = str(opsi_conf)
 
-			backend = BackendManager()
+			with catch_warnings():
+				simplefilter("ignore")
+				backend = BackendManager()
 			backend.test_method(arg1=1, arg2=2)  # type: ignore[attr-defined]  # pylint: disable=no-member
 
 			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
@@ -1113,7 +1117,9 @@ def test_backend_managerand_get_service_client(tmp_path: Path) -> None:
 			backend.disconnect()
 			log_file.unlink()
 
-			backend = BackendManager(username="user", password="pass")
+			with catch_warnings():
+				simplefilter("ignore")
+				backend = BackendManager(username="user", password="pass")
 			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
 			assert reqs[0]["method"] == "HEAD"
 			assert reqs[0]["path"] == "/rpc"
@@ -1141,7 +1147,7 @@ def test_messagebus_jsonrpc() -> None:
 	def ws_message_callback(handler: HTTPTestServerRequestHandler, message: bytes) -> None:
 		nonlocal delay
 		nonlocal rpc_error
-		msg = JSONRPCRequestMessage.from_msgpack(message)
+		msg = JSONRPCRequestMessage.from_msgpack(lz4.frame.decompress(message))
 		time.sleep(delay)
 		res = JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
 			sender="service:worker:test:1",
@@ -1150,7 +1156,7 @@ def test_messagebus_jsonrpc() -> None:
 			result=None if rpc_error else msg.params,
 			error=rpc_error,
 		)
-		handler.ws_send_message(res.to_msgpack())
+		handler.ws_send_message(lz4.frame.compress(res.to_msgpack(), compression_level=0, block_linked=True))
 
 	with http_test_server(
 		generate_cert=True, ws_message_callback=ws_message_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
@@ -1210,6 +1216,7 @@ def test_messagebus_multi_thread() -> None:
 		generate_cert=True, ws_message_callback=ws_message_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
 	) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.messagebus.compression = None
 			threads = [ReqThread(client) for _ in range(10)]
 			for thread in threads:
 				thread.start()
@@ -1312,6 +1319,7 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 		generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
 	) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.messagebus.compression = None
 			with (
 				listener1.register(client.messagebus),
 				listener2.register(client.messagebus),

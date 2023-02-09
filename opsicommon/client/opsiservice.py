@@ -1081,6 +1081,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self._next_connect_wait = 0.0
 		self._subscribed_channels: list[str] = []
 		self.threaded_callbacks = True
+		self.compression = "lz4"
 		# from websocket import enableTrace
 		# enableTrace(True)
 
@@ -1136,6 +1137,8 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def _on_message(self, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket message received")
 		try:
+			if self.compression == "lz4":
+				message = lz4.frame.decompress(message)
 			msg = Message.from_msgpack(message)
 
 			expired = msg.expires and msg.expires <= timestamp()
@@ -1235,8 +1238,11 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def send_message(self, message: Message) -> None:
 		if not self._app:
 			raise RuntimeError("Messagebus not connected")
+		data = message.to_msgpack()
+		if self.compression == "lz4":
+			data = lz4.frame.compress(data, compression_level=0, block_linked=True)
 		with self._send_lock:
-			self._app.send(message.to_msgpack(), ABNF.OPCODE_BINARY)
+			self._app.send(data, ABNF.OPCODE_BINARY)
 
 	def connect(self, wait: bool = True) -> None:
 		logger.debug("Messagebus.connect")
@@ -1304,6 +1310,8 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 				http_proxy_auth = (purl.username, purl.password)
 
 		url = self._client.base_url.replace("https://", "wss://") + self._messagebus_path
+		if self.compression:
+			url = f"{url}?compression={self.compression}"
 		header = [f"{k}: {v + ('/messagebus' if k.lower() == 'user-agent' else '')}" for k, v in self._client.default_headers.items()]
 		if self._client.username is not None or self._client.password is not None:
 			basic_auth = b64encode(f"{self._client.username or ''}:{self._client.password or ''}".encode("utf-8")).decode("ascii")
