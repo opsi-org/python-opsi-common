@@ -135,9 +135,9 @@ opsi_config = OpsiConfig(upgrade_config=False)
 
 class ServiceVerificationFlags(str, Enum):
 	STRICT_CHECK = "strict_check"
-	OPSI_CA = "opsi_ca"
 	UIB_OPSI_CA = "uib_opsi_ca"
 	ACCEPT_ALL = "accept_all"
+	OPSI_CA = "opsi_ca"
 	REPLACE_EXPIRED_CA = "replace_expired_ca"
 
 
@@ -233,20 +233,19 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		verify:
 			strict_check:
-				Check server certifcate against default certs or ca_cert_file if provided.
-			opsi_ca:
-				Needs ca_cert_file to be set.
-				Check server certifcate against ca_cert_file.
-				If ca_cert_file missing or empty, accept every certificate once.
-				Fetch opsi ca from service after each successful connection.
+				Check server certificate against default certs or ca_cert_file if provided.
 			uib_opsi_ca:
-				Accept server certficates signed by uib.
+				In combination with verify. Also accept server certificates signed by uib.
 			accept_all:
 				Do not check server certificate.
-				Fetch opsi ca from service and update ca_cert_file if provided.
+			opsi_ca:
+				Needs ca_cert_file to be set.
+				If ca_cert_file missing or empty: Do not verify certificate.
+				If ca_cert_file is present: Verify if accept_all is not set.
+				After every successful connection: Fetch opsi ca from service and update ca_cert_file.
 			replace_expired_ca:
-				To use in combination with opsi_ca.
-				If opsi_ca from ca_cert_file is expired, accept every certificate once.
+				To use in combination with fetch_opsi_ca.
+				If opsi_ca from ca_cert_file is expired => accept_all.
 		"""
 		self._messagebus = Messagebus(self)
 
@@ -310,6 +309,17 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		if ServiceVerificationFlags.OPSI_CA in self._verify and not self._ca_cert_file:
 			raise ValueError(f"ca_cert_file required for selected {ServiceVerificationFlags.OPSI_CA}")
+
+		if ServiceVerificationFlags.OPSI_CA in self._verify:
+			try:
+				if os.path.exists(opsi_config.config_file) and opsi_config.get("host", "server-role") == "configserver":
+					# Never fetch opsi ca on configserver
+					self._verify.remove(ServiceVerificationFlags.OPSI_CA)
+			except Exception as err:  # pylint: disable=broad-except
+				logger.debug(err, exc_info=True)
+
+		if not self._verify:
+			self._verify = [ServiceVerificationFlags.STRICT_CHECK]
 
 		if session_cookie and "=" not in session_cookie:
 			raise ValueError("Invalid session cookie, <name>=<value> is needed")
@@ -664,20 +674,12 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				except Exception as err:  # pylint: disable=broad-except
 					logger.warning("Failed to process date header %r: %r", response.headers["date"], err)
 
-			if (
-				ServiceVerificationFlags.OPSI_CA in self._verify or ServiceVerificationFlags.ACCEPT_ALL in self._verify
-			) and self._ca_cert_file:
-				config_server = False
+			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file:
 				try:
-					config_server = os.path.exists(opsi_config.config_file) and opsi_config.get("host", "server-role") == "configserver"
+					self.fetch_opsi_ca(skip_verify=not verify)
 				except Exception as err:  # pylint: disable=broad-except
-					logger.warning(err, exc_info=True)
-				if not config_server:
-					try:
-						self.fetch_opsi_ca(skip_verify=not verify)
-					except Exception as err:  # pylint: disable=broad-except
-						if ServiceVerificationFlags.OPSI_CA in self._verify:
-							logger.error(err)
+					if ServiceVerificationFlags.OPSI_CA in self._verify:
+						logger.error(err)
 
 		try:
 			self.jsonrpc_interface = self.jsonrpc("backend_getInterface")

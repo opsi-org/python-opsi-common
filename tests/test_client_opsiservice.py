@@ -245,6 +245,14 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="accept_all") as client:
 			client.connect()
 
+		assert not opsi_ca_file_on_client.exists()
+
+		# accept_all | opsi_ca
+		with ServiceClient(
+			f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify=("accept_all", "opsi_ca")
+		) as client:
+			client.connect()
+
 		assert opsi_ca_file_on_client.exists()
 		assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert)
 
