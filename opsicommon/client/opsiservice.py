@@ -969,7 +969,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		return rpc.get("result")
 
 	@property
-	def messagebus(self) -> "Messagebus":
+	def messagebus(self) -> Messagebus:
 		return self._messagebus
 
 	@property
@@ -984,7 +984,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			if not self._messagebus.connected:
 				self._messagebus.connect()
 
-	def connect_messagebus(self) -> "Messagebus":
+	def connect_messagebus(self) -> Messagebus:
 		self._assert_messagebus_connected()
 		return self._messagebus
 
@@ -1047,15 +1047,15 @@ class MessagebusListener:  # pylint: disable=too-few-public-methods
 		"""
 
 	@contextmanager
-	def register(self, messagebus: "Messagebus") -> Generator[None, None, None]:
+	def register(self, messagebus: Messagebus) -> Generator[None, None, None]:
 		"""
 		Context manager for register this listener on and off the message bus.
 		"""
 		try:
-			messagebus.register_message_listener(self)
+			messagebus.register_messagebus_listener(self)
 			yield
 		finally:
-			messagebus.unregister_message_listener(self)
+			messagebus.unregister_messagebus_listener(self)
 
 
 class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
@@ -1169,12 +1169,12 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def _on_pong(self, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
 		logger.debug("Pong message received")
 
-	def register_message_listener(self, listener: MessagebusListener) -> None:
+	def register_messagebus_listener(self, listener: MessagebusListener) -> None:
 		with self._listener_lock:
 			if listener not in self._listener:
 				self._listener.append(listener)
 
-	def unregister_message_listener(self, listener: MessagebusListener) -> None:
+	def unregister_messagebus_listener(self, listener: MessagebusListener) -> None:
 		with self._listener_lock:
 			if listener in self._listener:
 				self._listener.remove(listener)
