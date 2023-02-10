@@ -1083,7 +1083,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self._next_connect_wait = 0.0
 		self._subscribed_channels: list[str] = []
 		self.threaded_callbacks = True
-		self.compression = "lz4"
+		self.compression: str | None = "lz4"
 		# from websocket import enableTrace
 		# enableTrace(True)
 
