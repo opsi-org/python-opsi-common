@@ -32,6 +32,16 @@ def linux_distro_id() -> str:
 
 
 @lru_cache
+def linux_distro_version() -> str:
+	return platform.freedesktop_os_release()["VERSION"]
+
+
+@lru_cache
+def linux_distro_version_id() -> str:
+	return platform.freedesktop_os_release()["VERSION_ID"]
+
+
+@lru_cache
 def linux_distro_id_like() -> set[str]:
 	info = platform.freedesktop_os_release()
 	ids = {info["ID"]}

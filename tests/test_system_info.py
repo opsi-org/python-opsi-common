@@ -11,6 +11,7 @@ import re
 from unittest.mock import patch
 
 import pytest
+
 from opsicommon.system import info  # pylint: disable=unused-import
 from opsicommon.system.info import (
 	is_deb_based,
@@ -22,6 +23,8 @@ from opsicommon.system.info import (
 	linux_distro_id,
 	linux_distro_id_like,
 	linux_distro_id_like_contains,
+	linux_distro_version,
+	linux_distro_version_id,
 )
 
 
@@ -42,6 +45,20 @@ def test_linux_distro_id() -> None:
 	data = pathlib.Path("/etc/os-release").read_text(encoding="utf-8")
 	did = re.search(r"^ID=(.*)$", data, flags=re.MULTILINE).group(1)  # type: ignore[union-attr]
 	assert linux_distro_id() == did
+
+
+@pytest.mark.linux
+def test_linux_distro_version_id() -> None:
+	data = pathlib.Path("/etc/os-release").read_text(encoding="utf-8")
+	dvid = re.search(r"^VERSION_ID=(.*)$", data, flags=re.MULTILINE).group(1).strip('"')  # type: ignore[union-attr]
+	assert linux_distro_version_id() == dvid
+
+
+@pytest.mark.linux
+def test_linux_distro_version() -> None:
+	data = pathlib.Path("/etc/os-release").read_text(encoding="utf-8")
+	dversion = re.search(r"^VERSION=(.*)$", data, flags=re.MULTILINE).group(1).strip('"')  # type: ignore[union-attr]
+	assert linux_distro_version() == dversion
 
 
 @pytest.mark.linux
