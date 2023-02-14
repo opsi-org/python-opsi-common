@@ -22,18 +22,18 @@ import lz4.frame  # type: ignore[import,no-redef]
 import msgspec
 import requests
 import urllib3
-from opsicommon import __version__
-from opsicommon.exceptions import (
-	BackendAuthenticationError,
-	BackendPermissionDeniedError,
-	OpsiRpcError,
-	OpsiServiceVerificationError,
-)
 from requests.adapters import HTTPAdapter
 from requests.exceptions import SSLError
 from requests.models import PreparedRequest, Response
 from urllib3.util.retry import Retry
 
+from .. import __version__
+from ..exceptions import (
+	BackendAuthenticationError,
+	BackendPermissionDeniedError,
+	OpsiRpcError,
+	OpsiServiceVerificationError,
+)
 from ..logging import get_logger, secret_filter
 from ..objects import deserialize, serialize
 from ..types import forceHostId, forceOpsiHostKey
