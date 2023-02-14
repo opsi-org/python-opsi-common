@@ -50,14 +50,14 @@ def test_linux_distro_id() -> None:
 @pytest.mark.linux
 def test_linux_distro_version_id() -> None:
 	data = pathlib.Path("/etc/os-release").read_text(encoding="utf-8")
-	dvid = re.search(r"^VERSION_ID=(.*)$", data, flags=re.MULTILINE).group(1)  # type: ignore[union-attr]
+	dvid = re.search(r"^VERSION_ID=(.*)$", data, flags=re.MULTILINE).group(1).strip('"')  # type: ignore[union-attr]
 	assert linux_distro_version_id() == dvid
 
 
 @pytest.mark.linux
-def test_linux_distro_version_id() -> None:
+def test_linux_distro_version() -> None:
 	data = pathlib.Path("/etc/os-release").read_text(encoding="utf-8")
-	dversion = re.search(r"^VERSION=(.*)$", data, flags=re.MULTILINE).group(1)  # type: ignore[union-attr]
+	dversion = re.search(r"^VERSION=(.*)$", data, flags=re.MULTILINE).group(1).strip('"')  # type: ignore[union-attr]
 	assert linux_distro_version() == dversion
 
 
