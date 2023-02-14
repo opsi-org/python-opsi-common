@@ -3391,7 +3391,7 @@ def get_object_type(object_type: str) -> Type[BaseObject]:
 
 def serialize(obj: Any, deep: bool = False) -> Any:
 	# This is performance critical!
-	if isinstance(obj, (list, GeneratorType)):
+	if isinstance(obj, (list, set, GeneratorType)):
 		return [serialize(o, deep) for o in obj]
 	if isinstance(obj, BaseObject):
 		return obj.serialize()
