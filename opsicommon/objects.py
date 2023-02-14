@@ -15,6 +15,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from functools import lru_cache
 from inspect import getfullargspec
+from types import GeneratorType
 from typing import Any, Callable, Generator, Type, TypeVar
 
 import msgspec
@@ -3390,7 +3391,7 @@ def get_object_type(object_type: str) -> Type[BaseObject]:
 
 def serialize(obj: Any, deep: bool = False) -> Any:
 	# This is performance critical!
-	if isinstance(obj, list):
+	if isinstance(obj, (list, GeneratorType)):
 		return [serialize(o, deep) for o in obj]
 	if isinstance(obj, BaseObject):
 		return obj.serialize()
