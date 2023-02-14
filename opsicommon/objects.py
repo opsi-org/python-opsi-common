@@ -3405,20 +3405,19 @@ def serialize(obj: Any, deep: bool = False) -> Any:
 def deserialize(obj: Any, deep: bool = False, prevent_object_creation: bool = False) -> Any:  # pylint: disable=invalid-name
 	# This is performance critical!
 	if isinstance(obj, list):
-		return [deserialize(o) for o in obj]
-	if isinstance(obj, dict) and not prevent_object_creation:
-		try:
-			obj_type = get_object_type(obj["type"])
-			return obj_type.fromHash(obj)  # type: ignore[union-attr]
-		except KeyError:
-			pass
-		except Exception as err:  # pylint: disable=broad-except
-			logger.error(err, exc_info=True)
-			raise ValueError(f"Failed to create object from dict {obj}: {err}") from err
-	if not deep:
-		return obj
+		return [deserialize(o, deep=deep, prevent_object_creation=prevent_object_creation) for o in obj]
 	if isinstance(obj, dict):
-		return {k: deserialize(v) for k, v in obj.items()}
+		if not prevent_object_creation:
+			try:
+				obj_type = get_object_type(obj["type"])
+				return obj_type.fromHash(obj)  # type: ignore[union-attr]
+			except KeyError:
+				pass
+			except Exception as err:  # pylint: disable=broad-except
+				logger.error(err, exc_info=True)
+				raise ValueError(f"Failed to create object from dict {obj}: {err}") from err
+		if deep:
+			return {k: deserialize(v, deep=deep, prevent_object_creation=prevent_object_creation) for k, v in obj.items()}
 	return obj
 
 
