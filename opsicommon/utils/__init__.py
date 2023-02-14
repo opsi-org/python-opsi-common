@@ -19,7 +19,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Generator, Type, Union
 
-import psutil
+import psutil  # type: ignore[import]
 import requests
 from opsicommon.logging import get_logger
 from opsicommon.types import forceFqdn
