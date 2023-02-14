@@ -29,14 +29,15 @@ from opsicommon.exceptions import (
 	OpsiRpcError,
 	OpsiServiceVerificationError,
 )
-from opsicommon.logging import get_logger, secret_filter
-from opsicommon.objects import deserialize, serialize
-from opsicommon.types import forceHostId, forceOpsiHostKey
-from opsicommon.utils import prepare_proxy_environment
 from requests.adapters import HTTPAdapter
 from requests.exceptions import SSLError
 from requests.models import PreparedRequest, Response
 from urllib3.util.retry import Retry
+
+from ..logging import get_logger, secret_filter
+from ..objects import deserialize, serialize
+from ..types import forceHostId, forceOpsiHostKey
+from ..utils import prepare_proxy_environment
 
 warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
 
