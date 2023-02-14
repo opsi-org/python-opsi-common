@@ -43,7 +43,7 @@ logger = get_logger("opsicommon.general")
 def get_fqdn() -> str:
 	fqdn = socket.getfqdn()
 	try:
-		return forceFqdn(fqdn)
+		return forceFqdn(fqdn.lower())
 	except ValueError:
 		pass
 
@@ -54,7 +54,7 @@ def get_fqdn() -> str:
 			try:
 				fqdn = socket.getfqdn(addr.address)
 				if fqdn != addr.address:
-					return forceFqdn(fqdn)
+					return forceFqdn(fqdn.lower())
 			except (socket.error, ValueError):
 				pass
 
