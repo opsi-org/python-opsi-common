@@ -761,6 +761,7 @@ def log_context(new_context: dict[str, Any]) -> Generator[None, None, None]:
 	This contextmanager sets context to the given one on entering
 	and resets to the previous dictionary when leaving.
 
+	Example: with log_context({"instance": "context-name"}): ...
 	:param new_context: new context to set for the section.
 	:type new_context: dict
 	"""
