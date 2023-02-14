@@ -17,6 +17,7 @@ from functools import lru_cache
 from inspect import getfullargspec
 from typing import Any, Callable, Generator, Type, TypeVar
 
+import msgspec
 from opsicommon.exceptions import BackendBadValueError, BackendConfigurationError
 from opsicommon.logging import get_logger
 from opsicommon.types import (
@@ -64,13 +65,7 @@ from opsicommon.types import (
 	forceUrl,
 	forceUUIDString,
 )
-from opsicommon.utils import (
-	combine_versions,
-	from_json,
-	generate_opsi_host_key,
-	timestamp,
-	to_json,
-)
+from opsicommon.utils import combine_versions, generate_opsi_host_key, timestamp
 
 __all__ = (
 	"AuditHardware",
@@ -3406,11 +3401,11 @@ def serialize(obj: Any, deep: bool = False) -> Any:
 	return obj
 
 
-def deserialize(obj: Any, deep: bool = False) -> Any:  # pylint: disable=invalid-name
+def deserialize(obj: Any, deep: bool = False, prevent_object_creation: bool = False) -> Any:  # pylint: disable=invalid-name
 	# This is performance critical!
 	if isinstance(obj, list):
 		return [deserialize(o) for o in obj]
-	if isinstance(obj, dict):
+	if isinstance(obj, dict) and not prevent_object_creation:
 		try:
 			obj_type = get_object_type(obj["type"])
 			return obj_type.fromHash(obj)  # type: ignore[union-attr]
@@ -3424,3 +3419,20 @@ def deserialize(obj: Any, deep: bool = False) -> Any:  # pylint: disable=invalid
 	if isinstance(obj, dict):
 		return {k: deserialize(v) for k, v in obj.items()}
 	return obj
+
+
+json_decoder = msgspec.json.Decoder()
+json_encoder = msgspec.json.Encoder()
+
+
+def from_json(obj: str | bytes, object_type: str | None = None, prevent_object_creation: bool = False) -> Any:
+	if isinstance(obj, str):
+		obj = obj.encode("utf-8")
+	obj = json_decoder.decode(obj)
+	if isinstance(obj, dict) and object_type:
+		obj["type"] = object_type
+	return deserialize(obj, prevent_object_creation=prevent_object_creation)
+
+
+def to_json(obj: Any) -> str:
+	return json_encoder.encode(serialize(obj)).decode("utf-8")

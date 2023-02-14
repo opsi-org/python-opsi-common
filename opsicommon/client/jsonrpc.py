@@ -22,11 +22,6 @@ import lz4.frame  # type: ignore[import,no-redef]
 import msgspec
 import requests
 import urllib3
-from requests.adapters import HTTPAdapter
-from requests.exceptions import SSLError
-from requests.models import PreparedRequest, Response
-from urllib3.util.retry import Retry
-
 from opsicommon import __version__
 from opsicommon.exceptions import (
 	BackendAuthenticationError,
@@ -35,8 +30,13 @@ from opsicommon.exceptions import (
 	OpsiServiceVerificationError,
 )
 from opsicommon.logging import get_logger, secret_filter
+from opsicommon.objects import deserialize, serialize
 from opsicommon.types import forceHostId, forceOpsiHostKey
-from opsicommon.utils import deserialize, prepare_proxy_environment, serialize
+from opsicommon.utils import prepare_proxy_environment
+from requests.adapters import HTTPAdapter
+from requests.exceptions import SSLError
+from requests.models import PreparedRequest, Response
+from urllib3.util.retry import Retry
 
 warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
 

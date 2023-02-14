@@ -11,18 +11,18 @@ import json
 import os
 import platform
 import secrets
+import socket
 import subprocess
 import tempfile
 import time
-import types
 from contextlib import contextmanager
-from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Generator, Type, Union
 
-import msgspec
+import psutil
 import requests
 from opsicommon.logging import get_logger
+from opsicommon.types import forceFqdn
 
 if platform.system().lower() == "windows":
 	OPSI_TMP_DIR = None  # default %TEMP% of user
@@ -40,79 +40,25 @@ BaseObject: Type["TBaseObject"] | None = None  # pylint: disable=invalid-name
 logger = get_logger("opsicommon.general")
 
 
-def deserialize(obj: Any, prevent_object_creation: bool = False) -> Any:  # pylint: disable=invalid-name
-	"""
-	Deserialization of `obj`.
-
-	This function will deserialize objects from JSON into opsi compatible objects.
-	In case `obj` is a list contained elements are deserialized.
-	In case `obj` is a dict the values are deserialized.
-
-	In case `obj` is a dict and holds a key *type* and `prevent_object_creation`
-	is `True` it will be tried to create an opsi object instance from it
-
-	:type obj: object
-	:type prevent_object_creation: bool
-	"""
-	if isinstance(obj, list):
-		return [deserialize(element, prevent_object_creation=prevent_object_creation) for element in obj]
-
-	global OBJECT_CLASSES  # pylint: disable=global-statement,invalid-name,global-variable-not-assigned
-	if not OBJECT_CLASSES:
-		from opsicommon.objects import (  # pylint: disable=redefined-outer-name,import-outside-toplevel
-			OBJECT_CLASSES,
-		)
-	global BaseObject  # pylint: disable=global-statement,invalid-name,global-variable-not-assigned
-	if BaseObject is None:
-		from opsicommon.objects import (  # pylint: disable=redefined-outer-name,import-outside-toplevel
-			BaseObject,
-		)
-
-	if BaseObject is None:
-		raise RuntimeError("Failed to import BaseObject")
-
-	if isinstance(obj, dict):
-		if (
-			not prevent_object_creation
-			and "type" in obj
-			and isinstance(obj["type"], str)
-			and obj["type"] in OBJECT_CLASSES
-			and issubclass(OBJECT_CLASSES[obj["type"]], BaseObject)
-		):
-			try:
-				return OBJECT_CLASSES[obj["type"]].fromHash(obj)  # type: ignore[attr-defined]
-			except Exception as err:  # pylint: disable=broad-except
-				logger.error(err, exc_info=True)
-				raise ValueError(f"Failed to create object from dict {obj}: {err}") from err
-
-		return {key: deserialize(value, prevent_object_creation=prevent_object_creation) for key, value in obj.items()}
-
-	return obj
-
-
-def serialize(obj: Any) -> Any:
-	"""
-	Serialize `obj`.
-
-	It will turn an object into a JSON-compatible format -
-	consisting of strings, dicts, lists or numbers.
-
-	:return: a JSON-compatible serialisation of the input.
-	"""
-	if isinstance(obj, str):
-		return obj
-
+def get_fqdn() -> str:
+	fqdn = socket.getfqdn()
 	try:
-		return obj.serialize()
-	except AttributeError:
-		if isinstance(obj, (datetime, date)):
-			return obj.isoformat()
-		if isinstance(obj, (list, set, types.GeneratorType)):
-			return [serialize(tempObject) for tempObject in obj]
-		if isinstance(obj, dict):
-			return {key: serialize(value) for key, value in obj.items()}
+		return forceFqdn(fqdn)
+	except ValueError:
+		pass
 
-	return obj
+	for addresses in psutil.net_if_addrs().values():
+		for addr in addresses:
+			if addr.family not in (socket.AF_INET, socket.AF_INET6) or addr.address in ("127.0.0.1", "::1"):
+				continue
+			try:
+				fqdn = socket.getfqdn(addr.address)
+				if fqdn != addr.address:
+					return forceFqdn(fqdn)
+			except (socket.error, ValueError):
+				pass
+
+	raise RuntimeError("Failed to get fqdn")
 
 
 # For typing: need Union here and cannot use |-syntax when working with strings (not importing Types)
@@ -125,23 +71,6 @@ def combine_versions(obj: Union["Product", "ProductOnClient", "ProductOnDepot"])
 	:rtype: str
 	"""
 	return f"{obj.productVersion}-{obj.packageVersion}"
-
-
-json_decoder = msgspec.json.Decoder()
-json_encoder = msgspec.json.Encoder()
-
-
-def from_json(obj: str | bytes, object_type: str | None = None, prevent_object_creation: bool = False) -> Any:
-	if isinstance(obj, str):
-		obj = obj.encode("utf-8")
-	obj = json_decoder.decode(obj)
-	if isinstance(obj, dict) and object_type:
-		obj["type"] = object_type
-	return deserialize(obj, prevent_object_creation=prevent_object_creation)
-
-
-def to_json(obj: Any) -> str:
-	return json_encoder.encode(serialize(obj)).decode("utf-8")
 
 
 def generate_opsi_host_key() -> str:

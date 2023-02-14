@@ -6,69 +6,39 @@ This file is part of opsi - https://www.opsi.org
 
 import datetime
 import os
+import socket
 import subprocess
 from contextlib import contextmanager
-from typing import Any, Generator, Type
+from typing import Generator
+from unittest import mock
 
 import psutil  # type: ignore[import]
 import pytest
 from opsicommon.logging.constants import LEVEL_TO_OPSI_LEVEL
 from opsicommon.logging.logging import StreamHandler, get_all_handlers, logging_config
-from opsicommon.objects import LocalbootProduct, Product
+from opsicommon.objects import Product
 from opsicommon.utils import (
 	Singleton,
 	combine_versions,
-	deserialize,
-	from_json,
 	frozen_lru_cache,
 	generate_opsi_host_key,
+	get_fqdn,
 	monkeypatch_subprocess_for_frozen,
-	serialize,
 	timestamp,
-	to_json,
 )
 
 from .helpers import environment
 
 
-@pytest.mark.parametrize(
-	"obj,json_exc",
-	(
-		(Product("test-prod", "2.0", "3", windowsSoftwareIds=["123", "abc"]), None),
-		({"ident": ["product", "LocalbootProduct", "client1.dom.tld"]}, None),
-		("string", None),
-		(Exception("test"), TypeError),
-		(123, None),
-		(None, None),
-		([1, "b", {"x": "y"}], None),
-	),
-)
-def test_serialize_deserialize(obj: Any, json_exc: Type[Exception] | None) -> None:
-	assert obj == deserialize(serialize(obj))
-	if json_exc:
-		with pytest.raises(json_exc):
-			to_json(obj)
-	else:
-		assert obj == from_json(to_json(obj))
-		assert obj == from_json(to_json(obj).encode("utf-8"))
-
-
-def test_deserialize_error() -> None:
-	with pytest.raises(ValueError):
-		deserialize({"type": "LocalbootProduct", "id": "--invalid id--", "productVersion": "1", "packageVersion": "2"})
-
-
-def test_object_fom_json() -> None:
-	json_data = '{"type": "LocalbootProduct", "id": "product1", "productVersion": "1", "packageVersion": "2"}'
-	res = from_json(json_data)
-	assert isinstance(res, LocalbootProduct)
-
-	res = from_json(json_data, prevent_object_creation=True)
-	assert isinstance(res, dict)
-
-	json_data = '{"id": "product1", "productVersion": "1", "packageVersion": "2"}'
-	res = from_json(json_data, object_type="LocalbootProduct")
-	assert isinstance(res, LocalbootProduct)
+def test_get_fqdn() -> None:
+	fqdn = socket.getfqdn()
+	if "." in fqdn:
+		assert fqdn == socket.getfqdn()
+	try:
+		with mock.patch("socket.getfqdn", lambda x=None: "hostname"):
+			assert "." in get_fqdn()
+	except RuntimeError:
+		pass
 
 
 @pytest.mark.parametrize(

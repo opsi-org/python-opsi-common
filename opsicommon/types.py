@@ -577,7 +577,7 @@ def forceObjectClass(var: Any, objectClass: Type[BaseObjectT]) -> BaseObjectT:  
 
 	if isinstance(var, str) and var.startswith("{"):
 		if not from_json:
-			from opsicommon.utils import (  # pylint: disable=import-outside-toplevel,redefined-outer-name
+			from opsicommon.objects import (  # pylint: disable=import-outside-toplevel,redefined-outer-name
 				from_json,
 			)
 

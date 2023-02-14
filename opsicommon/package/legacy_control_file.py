@@ -13,6 +13,8 @@ from opsicommon.objects import (
 	ProductDependency,
 	ProductProperty,
 	UnicodeProductProperty,
+	from_json,
+	to_json,
 )
 from opsicommon.types import (
 	forceActionRequest,
@@ -31,7 +33,6 @@ from opsicommon.types import (
 	forceUnicodeLower,
 	forceUniqueList,
 )
-from opsicommon.utils import from_json, to_json
 
 logger = get_logger("opsicommon.package")
 

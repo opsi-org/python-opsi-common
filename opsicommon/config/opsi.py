@@ -21,7 +21,7 @@ from tomlkit.items import Item
 
 from ..logging import get_logger
 from ..types import forceFqdn
-from ..utils import Singleton
+from ..utils import Singleton, get_fqdn
 
 logger = get_logger("opsicommon.config")
 
@@ -81,7 +81,10 @@ def get_host_id(server_role: str) -> str:
 		except ValueError:
 			pass
 
-	return forceFqdn(socket.getfqdn())
+	try:
+		return get_fqdn()
+	except RuntimeError:
+		return f"{socket.gethostname()}.opsi.internal"
 
 
 def get_host_key(server_role: str) -> str:
