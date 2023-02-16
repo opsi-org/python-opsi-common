@@ -222,7 +222,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		proxy_url: str | None = "system",
 		user_agent: str | None = None,
 		connect_timeout: float = 10.0,
-		max_time_diff: float = 5.0,
+		max_time_diff: float = 0.0,
 		jsonrpc_create_objects: bool = False,
 		jsonrpc_create_methods: bool = False,
 	) -> None:
