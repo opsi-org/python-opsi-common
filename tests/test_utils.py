@@ -6,11 +6,9 @@ This file is part of opsi - https://www.opsi.org
 
 import datetime
 import os
-import socket
 import subprocess
 from contextlib import contextmanager
 from typing import Generator
-from unittest import mock
 
 import psutil  # type: ignore[import]
 import pytest
@@ -22,23 +20,11 @@ from opsicommon.utils import (
 	combine_versions,
 	frozen_lru_cache,
 	generate_opsi_host_key,
-	get_fqdn,
 	monkeypatch_subprocess_for_frozen,
 	timestamp,
 )
 
 from .helpers import environment
-
-
-def test_get_fqdn() -> None:
-	fqdn = socket.getfqdn()
-	if "." in fqdn:
-		assert fqdn == socket.getfqdn()
-	try:
-		with mock.patch("socket.getfqdn", lambda x=None: "hostname"):
-			assert "." in get_fqdn()
-	except RuntimeError:
-		pass
 
 
 @pytest.mark.parametrize(

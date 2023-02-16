@@ -20,8 +20,9 @@ from tomlkit import dumps, loads
 from tomlkit.items import Item
 
 from ..logging import get_logger
+from ..system.network import get_fqdn
 from ..types import forceFqdn
-from ..utils import Singleton, get_fqdn
+from ..utils import Singleton
 
 logger = get_logger("opsicommon.config")
 

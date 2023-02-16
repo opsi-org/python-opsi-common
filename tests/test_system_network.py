@@ -4,6 +4,9 @@
 test_system_network
 """
 
+import socket
+from unittest import mock
+
 from opsicommon.system.network import (
 	get_domain,
 	get_fqdn,
@@ -18,7 +21,14 @@ def test_get_ip_addresses() -> None:
 
 
 def test_get_fqdn() -> None:
-	assert get_fqdn()
+	fqdn = socket.getfqdn()
+	if "." in fqdn:
+		assert fqdn == socket.getfqdn()
+	try:
+		with mock.patch("socket.getfqdn", lambda x=None: "hostname"):
+			assert "." in get_fqdn()
+	except RuntimeError:
+		pass
 
 
 def test_get_domain() -> None:

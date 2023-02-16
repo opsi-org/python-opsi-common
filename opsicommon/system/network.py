@@ -11,8 +11,8 @@ import socket
 from typing import Any, Dict, Generator, Set
 
 import psutil  # type: ignore[import]
-
 from opsicommon.logging import get_logger
+from opsicommon.types import forceFqdn
 
 logger = get_logger("opsicommon.general")
 
@@ -39,7 +39,24 @@ def get_ip_addresses() -> Generator[Dict[str, Any], None, None]:
 
 
 def get_fqdn() -> str:
-	return socket.getfqdn().lower()
+	fqdn = socket.getfqdn()
+	try:
+		return forceFqdn(fqdn.lower())
+	except ValueError:
+		pass
+
+	for addresses in psutil.net_if_addrs().values():
+		for addr in addresses:
+			if addr.family not in (socket.AF_INET, socket.AF_INET6) or addr.address in ("127.0.0.1", "::1"):
+				continue
+			try:
+				fqdn = socket.getfqdn(addr.address)
+				if fqdn != addr.address:
+					return forceFqdn(fqdn.lower())
+			except (socket.error, ValueError):
+				pass
+
+	raise RuntimeError("Failed to get fqdn")
 
 
 def get_domain() -> str:

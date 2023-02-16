@@ -19,10 +19,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Generator, Type, Union
 
-import psutil  # type: ignore[import]
 import requests
 from opsicommon.logging import get_logger
-from opsicommon.types import forceFqdn
 
 if platform.system().lower() == "windows":
 	OPSI_TMP_DIR = None  # default %TEMP% of user
@@ -38,27 +36,6 @@ OBJECT_CLASSES: dict[str, Type["TBaseObject"]] = {}
 BaseObject: Type["TBaseObject"] | None = None  # pylint: disable=invalid-name
 
 logger = get_logger("opsicommon.general")
-
-
-def get_fqdn() -> str:
-	fqdn = socket.getfqdn()
-	try:
-		return forceFqdn(fqdn.lower())
-	except ValueError:
-		pass
-
-	for addresses in psutil.net_if_addrs().values():
-		for addr in addresses:
-			if addr.family not in (socket.AF_INET, socket.AF_INET6) or addr.address in ("127.0.0.1", "::1"):
-				continue
-			try:
-				fqdn = socket.getfqdn(addr.address)
-				if fqdn != addr.address:
-					return forceFqdn(fqdn.lower())
-			except (socket.error, ValueError):
-				pass
-
-	raise RuntimeError("Failed to get fqdn")
 
 
 # For typing: need Union here and cannot use |-syntax when working with strings (not importing Types)
