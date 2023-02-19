@@ -36,7 +36,6 @@ from typing import (
 )
 
 import attr
-
 from opsicommon.logging import get_logger
 
 try:
@@ -106,14 +105,7 @@ OPSI_OBSOLETE_MODULE_IDS = (
 	"vista",
 )
 
-OPSI_FREE_MODULE_IDS = (
-	"dynamic_depot",
-	"install_by_shutdown",
-	"roaming_profiles",
-	"swondemand",
-	"treeview",
-	"vista"
-)
+OPSI_FREE_MODULE_IDS = ("dynamic_depot", "install_by_shutdown", "roaming_profiles", "swondemand", "treeview", "vista")
 
 logger = get_logger("opsicommon.license")
 
@@ -685,7 +677,12 @@ class OpsiLicensePool:
 		modules: Dict[str, Dict[str, Any]] = {}
 		for module_id in OPSI_MODULE_IDS:
 			if module_id in OPSI_FREE_MODULE_IDS:
-				modules[module_id] = {"available": True, "state": OPSI_MODULE_STATE_FREE, "license_ids": [], "client_number": 999999999}
+				modules[module_id] = {
+					"available": True,
+					"state": OPSI_MODULE_STATE_FREE,
+					"license_ids": [],
+					"client_number": OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED,
+				}
 			else:
 				modules[module_id] = {"available": False, "state": OPSI_MODULE_STATE_UNLICENSED, "license_ids": [], "client_number": 0}
 
@@ -809,7 +806,7 @@ def get_default_opsi_license_pool(
 			modules_file_path=modules_file_path,
 			client_info=client_info,
 			client_limit_warning_percent=client_limit_warning_percent,
-			client_limit_warning_absolute=client_limit_warning_absolute
+			client_limit_warning_absolute=client_limit_warning_absolute,
 		)
 		_default_opsi_license_pool.load()
 	return _default_opsi_license_pool
