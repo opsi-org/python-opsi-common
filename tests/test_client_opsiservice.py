@@ -44,7 +44,6 @@ from opsicommon.client.opsiservice import (
 	WebSocketApp,
 	get_service_client,
 )
-from opsicommon.config import OpsiConfig
 from opsicommon.exceptions import (
 	BackendAuthenticationError,
 	BackendPermissionDeniedError,
