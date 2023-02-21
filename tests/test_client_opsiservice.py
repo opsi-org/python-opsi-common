@@ -66,6 +66,7 @@ from opsicommon.testing.helpers import (  # type: ignore[import]
 	HTTPTestServerRequestHandler,
 	environment,
 	http_test_server,
+	opsi_config,
 )
 
 from .test_utils import log_level_stderr
@@ -145,11 +146,21 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 	assert ServiceClient("::1", ca_cert_file=Path("/x/cacert.pem"))._ca_cert_file == Path(  # pylint: disable=protected-access
 		"/x/cacert.pem"
 	)
-	for mode in ServiceVerificationFlags:
-		assert mode in ServiceClient("::1", ca_cert_file="ca.pem", verify=mode)._verify  # pylint: disable=protected-access
-		assert mode in ServiceClient("::1", ca_cert_file="ca.pem", verify=mode.value)._verify  # pylint: disable=protected-access
-		assert mode in ServiceClient("::1", ca_cert_file="ca.pem", verify=[mode])._verify  # pylint: disable=protected-access
-		assert mode in ServiceClient("::1", ca_cert_file="ca.pem", verify=[mode.value])._verify  # pylint: disable=protected-access
+
+	for server_role in ("configserver", "depotserver"):
+		with opsi_config({"host.server-role": server_role}):
+			for mode in ServiceVerificationFlags:
+				expect = mode
+				if mode == ServiceVerificationFlags.OPSI_CA and server_role == "configserver":
+					expect = ServiceVerificationFlags.STRICT_CHECK
+
+				assert expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=mode)._verify  # pylint: disable=protected-access
+				assert expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=mode.value)._verify  # pylint: disable=protected-access
+				assert expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=[mode])._verify  # pylint: disable=protected-access
+				assert (
+					expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=[mode.value])._verify  # pylint: disable=protected-access
+				)
+
 	assert ServiceClient(  # pylint: disable=protected-access
 		"::1", ca_cert_file="ca.pem", verify=ServiceVerificationFlags.STRICT_CHECK
 	)._verify == [ServiceVerificationFlags.STRICT_CHECK]
@@ -209,12 +220,15 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 
 	opsi_ca_file_on_client = tmpdir / "opsi_ca_file_on_client.pem"
 
-	with http_test_server(
-		server_key=server_key_file,
-		server_cert=server_cert_file,
-		response_body=as_pem(ca_cert).encode("utf-8"),
-		response_headers={"server": "opsiconfd 4.2.1.1 (uvicorn)"},
-	) as server:
+	with (
+		opsi_config({"host.server-role": ""}),
+		http_test_server(
+			server_key=server_key_file,
+			server_cert=server_cert_file,
+			response_body=as_pem(ca_cert).encode("utf-8"),
+			response_headers={"server": "opsiconfd 4.2.1.1 (uvicorn)"},
+		) as server,
+	):
 		# strict_check
 		assert not opsi_ca_file_on_client.exists()
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="strict_check") as client:
@@ -719,37 +733,45 @@ def test_messagebus_reconnect() -> None:
 
 def test_messagebus_reconnect_exception() -> None:
 	class MBListener(MessagebusListener):
-		exceptions = []
 		next_connect_wait = []
 		established = 0
+		closed = 0
 
 		def messagebus_connection_established(self, messagebus: Messagebus) -> None:
 			self.established += 1
 
-		def messagebus_connection_failed(self, messagebus: Messagebus, exception: Exception) -> None:
-			self.exceptions.append(exception)
+		def messagebus_connection_closed(self, messagebus: Messagebus) -> None:
+			self.closed += 1
 			self.next_connect_wait.append(messagebus._next_connect_wait)  # pylint: disable=protected-access
 
-	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}) as server:
+	num = 0
+
+	def ws_connect_callback(handler: HTTPTestServerRequestHandler) -> None:
+		nonlocal num
+		num += 1
+		if num == 1:
+			smsg = ChannelSubscriptionEventMessage(
+				sender="service:worker:test:1", channel="host:test-client.uib.local", subscribed_channels=["chan1", "chan2", "chan3"]
+			)
+			handler.ws_send_message(lz4.frame.compress(smsg.to_msgpack(), compression_level=0, block_linked=True))
+			handler._ws_close()  # pylint: disable=protected-access
+		else:
+			handler._ws_close(1013, "Maintenance mode\nRetry-After: 3")  # pylint: disable=protected-access
+
+	with http_test_server(
+		generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
+	) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
-			client.messagebus.reconnect_wait = 5
+			client.messagebus.reconnect_wait = 2
 			listener = MBListener()
 
 			with listener.register(client.messagebus):
 				client.connect_messagebus()
-				time.sleep(3)
-				server.response_status = (503, "Unavail")
-				server.response_headers["Retry-After"] = "3"
-				server.restart()
-				time.sleep(4)
+				time.sleep(8)
 
-			assert len(listener.exceptions) >= 2
-			assert listener.exceptions[1].status_code == 503  # type: ignore[attr-defined]
-
-			assert listener.next_connect_wait[0] == 5
-			assert listener.next_connect_wait[1] == 3
-
-			assert listener.established == 1
+			assert listener.established == 2
+			assert listener.closed == 2
+			assert listener.next_connect_wait == [2, 3]
 
 
 def test_get() -> None:

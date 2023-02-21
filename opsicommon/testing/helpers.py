@@ -763,14 +763,16 @@ def environment(env_vars: dict[str, str]) -> Generator[dict[str, str], None, Non
 
 @contextmanager
 def opsi_config(conf_vars: dict[str, Any]) -> Generator[OpsiConfig, None, None]:
+	orig_config_file = OpsiConfig.config_file
 	config_file = NamedTemporaryFile(delete=False)
 	opsi_conf = OpsiConfig(upgrade_config=False)
-	opsi_conf.config_file = config_file.name
-	for key, value in conf_vars.items():
-		category, config = key.split(".", 1)
-		opsi_conf.set(category, config, value, persistent=False)
 	try:
+		opsi_conf.config_file = config_file.name
+		for key, value in conf_vars.items():
+			category, config = key.split(".", 1)
+			opsi_conf.set(category, config, value, persistent=False)
 		yield opsi_conf
 	finally:
+		opsi_conf.config_file = orig_config_file
 		if os.path.exists(config_file.name):
 			os.unlink(config_file.name)
