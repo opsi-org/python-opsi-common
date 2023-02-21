@@ -726,7 +726,7 @@ def test_messagebus_reconnect() -> None:
 			listener.messages.pop(0)
 			expected_messages = 6
 			assert len(listener.messages) == expected_messages
-			rpc_ids = sorted([int(m.rpc_id) for m in listener.messages])  # type: ignore[attr-defined]
+			rpc_ids = sorted([int(m.rpc_id) for m in listener.messages if hasattr(m, "rpc_id")])  # type: ignore[attr-defined]
 			assert rpc_ids[:6] == list(range(1, expected_messages + 1))
 
 
