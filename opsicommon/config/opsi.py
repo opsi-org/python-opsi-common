@@ -258,10 +258,11 @@ class OpsiConfig(metaclass=Singleton):
 			self._config_file_read = False
 			self.upgrade_config_file()
 			file = Path(self.config_file)
-			data = file.read_text(encoding="utf-8")
-			self._merge_config(self._config, loads(data))
-			self._config_file_read = True
-			self._config_file_mtime = file.stat().st_mtime
+			if file.exists():
+				data = file.read_text(encoding="utf-8")
+				self._merge_config(self._config, loads(data))
+				self._config_file_read = True
+				self._config_file_mtime = file.stat().st_mtime
 
 	def write_config_file(self) -> None:
 		with self.file_lock:
