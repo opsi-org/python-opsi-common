@@ -33,6 +33,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import lz4  # type: ignore[import]
 import msgspec
+from opsicommon.config.opsi import OpsiConfig
 from opsicommon.ssl import as_pem, create_ca, create_server_cert  # type: ignore[import]
 
 
@@ -758,3 +759,18 @@ def environment(env_vars: dict[str, str]) -> Generator[dict[str, str], None, Non
 	finally:
 		os.environ.clear()
 		os.environ.update(old_environ)
+
+
+@contextmanager
+def opsi_config(conf_vars: dict[str, Any]) -> Generator[OpsiConfig, None, None]:
+	config_file = NamedTemporaryFile(delete=False)
+	opsi_conf = OpsiConfig(upgrade_config=False)
+	opsi_conf.config_file = config_file.name
+	for key, value in conf_vars.items():
+		category, config = key.split(".", 1)
+		opsi_conf.set(category, config, value, persistent=False)
+	try:
+		yield opsi_conf
+	finally:
+		if os.path.exists(config_file.name):
+			os.unlink(config_file.name)
