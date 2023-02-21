@@ -774,5 +774,8 @@ def opsi_config(conf_vars: dict[str, Any]) -> Generator[OpsiConfig, None, None]:
 		yield opsi_conf
 	finally:
 		opsi_conf.config_file = orig_config_file
-		if os.path.exists(config_file.name):
-			os.unlink(config_file.name)
+		try:
+			if os.path.exists(config_file.name):
+				os.unlink(config_file.name)
+		except Exception:  # pylint: disable=broad-except
+			pass
