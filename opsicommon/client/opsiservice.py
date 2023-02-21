@@ -1080,6 +1080,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self.ping_interval = 15.0  # Send ping every specified period in seconds.
 		self.ping_timeout = 10.0  # Ping timeout in seconds.
 		self.reconnect_wait = 5.0  # After connection lost, reconnect after specified seconds.
+		self._connect_attempt = 0
 		self._next_connect_wait = 0.0
 		self._subscribed_channels: list[str] = []
 		self.threaded_callbacks = True
@@ -1112,39 +1113,32 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 
 		for listener in self._listener:
 			self._run_listener_callback(listener, "messagebus_connection_established", messagebus=self)
+		self._connect_attempt = 0
 
 	def _on_error(self, app: WebSocketApp, error: Exception) -> None:  # pylint: disable=unused-argument
 		status_code = getattr(error, "status_code", 0)
 		logger.warning("Websocket error: %d - %s", status_code, error)
 		self._connect_exception = error
-		next_reconnect_wait = self._next_connect_wait or self.reconnect_wait
-		if status_code == 503:
-			next_reconnect_wait = 60
-			try:
-				next_reconnect_wait = int(getattr(error, "resp_headers", {}).get("retry-after", ""))
-				next_reconnect_wait = max(1, min(next_reconnect_wait, 7200))
-			except ValueError:
-				pass
-		self._next_connect_wait = next_reconnect_wait
 		self._connected_result.set()
 		for listener in self._listener:
 			self._run_listener_callback(listener, "messagebus_connection_failed", messagebus=self, exception=error)
 
 	def _on_close(self, app: WebSocketApp, close_status_code: int, close_message: str) -> None:  # pylint: disable=unused-argument
-		logger.info("Websocket closed with status_code=%r and message %r", close_status_code, close_message)
+		logger.info("Websocket closed with status_code=%r and message=%r", close_status_code, close_message)
 		self._connected = False
-
-		next_reconnect_wait = self._next_connect_wait or self.reconnect_wait
 		if close_status_code == 1013:
 			# Try again later
-			next_reconnect_wait = 60
+			self._next_connect_wait = 60
 			try:
 				match = re.search(r"retry-after:\s*(\d+)", close_message, flags=re.IGNORECASE)
 				if match:
-					next_reconnect_wait = max(1, min(int(match.group(1)), 7200))
+					self._next_connect_wait = max(1, min(int(match.group(1)), 7200))
 			except ValueError:
 				pass
-		self._next_connect_wait = next_reconnect_wait
+		else:
+			self._next_connect_wait = max(
+				self.reconnect_wait, min(int(self.reconnect_wait * self._connect_attempt * 1.25), self.reconnect_wait * 10)
+			)
 
 		for listener in self._listener:
 			self._run_listener_callback(listener, "messagebus_connection_closed", messagebus=self)
@@ -1292,6 +1286,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		logger.notice("Connecting to opsi messagebus")
 		if self._connected:
 			self._disconnect()
+		self._connect_attempt += 1
 		self._connected_result.clear()
 		self._connect_exception = None
 
@@ -1368,6 +1363,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def _disconnect(self) -> None:
 		logger.notice("Disconnecting from opsi messagebus")
 		self._disconnected_result.clear()
+		self._connect_attempt = 0
 		if self._app and self._app.sock:
 			try:
 				self._app.close()  # type: ignore[attr-defined]
