@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Generator
 
 import packaging.version
-
 from opsicommon.config.opsi import OpsiConfig
 from opsicommon.logging import get_logger
 
@@ -39,13 +38,10 @@ EXCLUDE_FILES_ON_PACK_REGEX = re.compile(r"(~$)|(^[Tt]humbs\.db$)|(^\.[Dd][Ss]_[
 @lru_cache
 def use_pigz() -> bool:
 	opsi_conf = OpsiConfig(upgrade_config=False)
+	if not opsi_conf.get("packages", "use_pigz"):
+		return False
 	try:
-		if not opsi_conf.get("packages", "use_pigz"):
-			return False
-	except FileNotFoundError:
-		pass  # No opsi.conf found
-	try:
-		pigz_version = subprocess.check_output("pigz --version", shell=True).decode("utf-8")
+		pigz_version = subprocess.check_output(["pigz", "--version"]).decode("utf-8")
 		if packaging.version.parse(pigz_version) < packaging.version.parse("2.2.3"):
 			raise ValueError("pigz too old")
 		return True
