@@ -460,7 +460,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self._ws_connected = True
 		self.on_ws_connected()
 
-	def _ws_close(self) -> None:
+	def _ws_close(self, code: int = 1005, reason: str = "") -> None:
 		# Avoid closing a single socket two time for send and receive.
 		with self.mutex:
 			if self._ws_connected:
@@ -469,7 +469,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 				self.close_connection = True
 				# Send close and ignore exceptions. An error may already have occurred.
 				try:
-					self._ws_send_close()
+					self._ws_send_close(code, reason)
 				except Exception:  # pylint: disable=broad-except
 					pass
 				self.on_ws_closed()
@@ -491,12 +491,15 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		elif self._ws_opcode in (self._opcode_continuation, self._opcode_text, self._opcode_binary):
 			self.on_ws_message(message)
 
-	def _ws_send_close(self) -> None:
+	def _ws_send_close(self, code: int, reason: str = "") -> None:
 		# Dedicated _send_close allows for catch all exception handling
-		msg = bytearray()
-		msg.append(0x80 + self._opcode_close)
-		msg.append(0x00)
-		self.wfile.write(msg)
+		breason = reason.encode("utf-8")
+		if reason and not code:
+			code = 1000
+		length = (2 if code else 0) + len(breason)
+		self.wfile.write(bytes([0x80 + self._opcode_close]) + bytes([length]))
+		if reason:
+			self.wfile.write(struct.pack("!H", code) + breason)
 
 
 # Use ThreadingMixIn to handle requests in a separate thread
