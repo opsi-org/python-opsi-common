@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Generator
 
 import packaging.version
+
 from opsicommon.config.opsi import OpsiConfig
 from opsicommon.logging import get_logger
 
@@ -38,8 +39,11 @@ EXCLUDE_FILES_ON_PACK_REGEX = re.compile(r"(~$)|(^[Tt]humbs\.db$)|(^\.[Dd][Ss]_[
 @lru_cache
 def use_pigz() -> bool:
 	opsi_conf = OpsiConfig(upgrade_config=False)
-	if not opsi_conf.get("packages", "use_pigz"):
-		return False
+	try:
+		if not opsi_conf.get("packages", "use_pigz"):
+			return False
+	except FileNotFoundError:
+		pass  # No opsi.conf found
 	try:
 		pigz_version = subprocess.check_output("pigz --version", shell=True).decode("utf-8")
 		if packaging.version.parse(pigz_version) < packaging.version.parse("2.2.3"):
@@ -103,6 +107,7 @@ def decompress_command(archive: Path) -> str:
 
 # Warning: this is specific for linux!
 def extract_archive(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
+	logger.info("Extracting archive %s to destination %s", archive, destination)
 	if not destination.exists():
 		destination.mkdir(parents=True)
 	if archive.suffixes and archive.suffixes[-1] in (".zstd", ".gz", ".gzip", ".bz2", ".bzip2"):
@@ -122,18 +127,21 @@ def compress_command(archive: Path, compression: str) -> str:
 			subprocess.check_call("zstd --version > /dev/null", shell=True)
 		except subprocess.CalledProcessError as error:
 			raise RuntimeError("Zstd not available.") from error
-		return f"zstd - -o '{archive}' > /dev/null"  # --no-progress is not available for deb9 zstd
+		return f"zstd - -o '{archive}' 2> /dev/null"  # --no-progress is not available for deb9 zstd
 	raise RuntimeError(f"Unknown compression '{compression}'")
 
 
-def create_archive(archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None) -> None:
+# Warning: this is specific for linux!
+def create_archive(archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False) -> None:
+	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
 	if archive.exists():
 		archive.unlink()
 	source_string = " ".join((str(source.relative_to(base_dir)) for source in sources))
+	dereference_string = "--dereference" if dereference else ""
 	if compression:
-		cmd = f"{TAR_CREATE_COMMAND} - {source_string} | {compress_command(archive, compression)}"
+		cmd = f"{TAR_CREATE_COMMAND} - {dereference_string} {source_string} | {compress_command(archive, compression)}"
 	else:
-		cmd = f"{TAR_CREATE_COMMAND} {archive} {source_string}"
+		cmd = f"{TAR_CREATE_COMMAND} {archive} {dereference_string} {source_string}"
 	with chdir(base_dir):
 		logger.debug("Executing %s at %s", cmd, base_dir)
 		subprocess.check_call(cmd, shell=True)

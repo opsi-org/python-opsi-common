@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 import tomlkit
+
 from opsicommon.logging import get_logger
 from opsicommon.objects import Product, ProductDependency, ProductProperty
 from opsicommon.package.archive import create_archive, extract_archive
@@ -155,14 +156,19 @@ class OpsiPackage:
 		control_file.write_text(tomlkit.dumps(data_dict))
 
 	# compression zstd or bz2
-	def create_package_archive(self, base_dir: Path, compression: Literal["zstd", "bz2"] = "zstd", destination: Path | None = None) -> Path:
+	def create_package_archive(
+		self,
+		base_dir: Path,
+		compression: Literal["zstd", "bz2"] = "zstd",
+		destination: Path | None = None,
+		dereference: bool = False,
+	) -> Path:
 		self.find_and_parse_control_file(base_dir)
 
 		archives = []
 		dirs = [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
 		if not (base_dir / "OPSI").exists():
 			raise FileNotFoundError(f"Did not find OPSI directory at '{base_dir}'")
-		# TODO: option to follow symlinks.
 		# TODO: custom_name stuff?
 		# if custom_name:
 		# 	found = False
@@ -202,7 +208,7 @@ class OpsiPackage:
 					continue
 				filename = temp_dir / f"{_dir.name}.tar.{compression}"
 				logger.info("Creating archive %s", filename)
-				create_archive(filename, file_list, base_dir=_dir, compression=compression)
+				create_archive(filename, file_list, base_dir=_dir, compression=compression, dereference=dereference)
 				# TODO: progress tracking
 				archives.append(filename)
 

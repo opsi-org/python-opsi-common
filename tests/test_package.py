@@ -2,6 +2,7 @@
 tests for opsicommon.package
 """
 
+from os import symlink
 from pathlib import Path
 from shutil import copy
 from typing import Literal
@@ -193,6 +194,31 @@ def test_create_package(compression: Literal["zstd", "bz2"]) -> None:
 			result_contents = list((_dir.relative_to(result_dir) for _dir in result_dir.rglob("*")))
 			for part in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
 				assert (temp_dir / part).relative_to(temp_dir) in result_contents
+
+
+@pytest.mark.linux
+@pytest.mark.parametrize(
+	"dereference",
+	(False, True),
+)
+def test_create_package_link_handing(dereference: bool) -> None:
+	package = OpsiPackage()
+	test_data = TEST_DATA / "control.toml"
+	with make_temp_dir() as temp_dir:
+		for _dir in (temp_dir / "OPSI", temp_dir / "CLIENT_DATA", temp_dir / "SERVER_DATA"):
+			_dir.mkdir()
+			copy(test_data, _dir)
+		symlink(temp_dir / "CLIENT_DATA" / "control.toml", temp_dir / "CLIENT_DATA" / "control.link")
+		symlink(Path("/etc/hostname"), temp_dir / "CLIENT_DATA" / "link_pointing_outside")
+		package_archive = package.create_package_archive(temp_dir, destination=temp_dir, dereference=dereference)
+		with make_temp_dir() as result_dir:
+			OpsiPackage().extract_package_archive(package_archive, result_dir)
+			if dereference:
+				assert not (result_dir / "CLIENT_DATA" / "control.link").is_symlink()
+				assert not (result_dir / "CLIENT_DATA" / "link_pointing_outside").is_symlink()
+			else:
+				assert (result_dir / "CLIENT_DATA" / "control.link").is_symlink()
+				assert (result_dir / "CLIENT_DATA" / "link_pointing_outside").is_symlink()
 
 
 @pytest.mark.linux
