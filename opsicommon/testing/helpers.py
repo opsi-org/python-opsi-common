@@ -470,6 +470,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 				# Send close and ignore exceptions. An error may already have occurred.
 				try:
 					self._ws_send_close(code, reason)
+					time.sleep(1)
 				except Exception:  # pylint: disable=broad-except
 					pass
 				self.on_ws_closed()
