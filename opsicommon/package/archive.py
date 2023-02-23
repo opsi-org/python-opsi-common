@@ -110,8 +110,7 @@ def decompress_command(archive: Path) -> str:
 # Warning: this is specific for linux!
 def extract_archive(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
 	logger.info("Extracting archive %s to destination %s", archive, destination)
-	if not destination.exists():
-		destination.mkdir(parents=True)
+	destination.mkdir(parents=True, exist_ok=True)
 	if archive.suffixes and archive.suffixes[-1] in (".zstd", ".gz", ".gzip", ".bz2", ".bzip2"):
 		create_input = decompress_command(archive.absolute())
 	else:
@@ -135,8 +134,7 @@ def untar(tar: tarfile.TarFile, destination: Path, file_pattern: str | None = No
 
 def extract_archive_universal(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
 	logger.info("Extracting archive %s to destination %s", archive, destination)
-	if not destination.exists():
-		destination.mkdir(parents=True)
+	destination.mkdir(parents=True, exist_ok=True)
 	if archive.suffixes and archive.suffixes[-1] == ".zstd":
 		decompressor = zstandard.ZstdDecompressor()
 		with BytesIO() as buffer, open(archive, mode="rb") as archive_handle:
