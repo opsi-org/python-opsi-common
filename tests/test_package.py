@@ -234,7 +234,7 @@ def test_create_package_content_file() -> None:
 	for entry in (
 		"d 'testdir'",
 		"f 'control.toml'",  # md5sums and sizes are different on windows??
-		"f 'testdir/control.toml'",
+		"f 'testdir",  # followed by /control.toml or \\control.toml ...
 	):
 		assert entry in result
 
