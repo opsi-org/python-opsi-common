@@ -38,10 +38,10 @@ def time_tar_create(work_dir: Path, method: Callable, compression: str | None = 
 		archive.unlink(missing_ok=True)
 
 	print(f"method: {method.__name__}, compression: {compression}")
-	print(f"mean:\t{statistics.mean(timings):.3f}ms")
-	print(f"stdev:\t{statistics.stdev(timings):.3f}ms")
-	print(f"min:\t{min(timings)}ms")
-	print(f"max:\t{max(timings)}ms\n")
+	print(f"mean:\t{statistics.mean(timings):.2f}ms")
+	print(f"stdev:\t{statistics.stdev(timings):.2f}ms")
+	print(f"min:\t{min(timings):.2f}ms")
+	print(f"max:\t{max(timings):.2f}ms\n")
 
 
 def benchmark_tar_create() -> None:
@@ -69,10 +69,10 @@ def time_tar_extract(archive: Path, method: Callable, compression: str | None = 
 			timings.append((datetime.now() - start).microseconds / 1000)
 
 	print(f"method: {method.__name__}, compression: {compression}")
-	print(f"mean:\t{statistics.mean(timings):.3f}ms")
-	print(f"stdev:\t{statistics.stdev(timings):.3f}ms")
-	print(f"min:\t{min(timings)}ms")
-	print(f"max:\t{max(timings)}ms\n")
+	print(f"mean:\t{statistics.mean(timings):.2f}ms")
+	print(f"stdev:\t{statistics.stdev(timings):.2f}ms")
+	print(f"min:\t{min(timings):.2f}ms")
+	print(f"max:\t{max(timings):.2f}ms\n")
 
 
 def benchmark_tar_extract() -> None:
@@ -85,7 +85,7 @@ def benchmark_tar_extract() -> None:
 			archive = temp_dir / f"archive.tar{f'.{compression}' if compression else ''}"
 			create_archive_universal(archive, [temp_dir / "source"], temp_dir, compression=compression)
 			for method in (extract_archive, extract_archive_universal):
-				if platform.system().lower() != "linux" and method is create_archive:
+				if platform.system().lower() != "linux" and method is extract_archive:
 					continue
 				time_tar_extract(archive, method, compression)
 
