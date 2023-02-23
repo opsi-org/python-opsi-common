@@ -29,6 +29,7 @@ pywin32 = {platform = "win32", version = "^303"}
 requests = "^2.26"
 rich = "^13.0"
 websocket-client = "^1.4"
+zstandard = "^0.20.0"
 
 [tool.poetry.group.dev.dependencies]
 hypothesis = "^6.32"

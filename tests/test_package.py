@@ -176,7 +176,6 @@ def test_extract_package(new_product_id: str | None) -> None:
 			assert result.product.id == "newproductid" if new_product_id else "localboot_legacy"
 
 
-@pytest.mark.linux
 @pytest.mark.parametrize(
 	"compression",
 	("zstd", "bz2"),
@@ -192,8 +191,10 @@ def test_create_package(compression: Literal["zstd", "bz2"]) -> None:
 		with make_temp_dir() as result_dir:
 			OpsiPackage().extract_package_archive(package_archive, result_dir)
 			result_contents = list((_dir.relative_to(result_dir) for _dir in result_dir.rglob("*")))
+			print(result_contents)
 			for part in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
 				assert (temp_dir / part).relative_to(temp_dir) in result_contents
+				assert (temp_dir / part / "control.toml").relative_to(temp_dir) in result_contents
 
 
 @pytest.mark.linux
@@ -221,7 +222,6 @@ def test_create_package_link_handing(dereference: bool) -> None:
 				assert (result_dir / "CLIENT_DATA" / "link_pointing_outside").is_symlink()
 
 
-@pytest.mark.linux
 def test_create_package_content_file() -> None:
 	test_data = TEST_DATA / "control.toml"
 	with make_temp_dir() as temp_dir:
@@ -263,3 +263,24 @@ def test_create_package_zsync_file() -> None:
 			b"\x84\xae\x8c/\xb2\x99",
 		):
 			assert entry in result
+
+
+def test_extract_package_tar_zstd() -> None:
+	with make_temp_dir() as temp_dir:
+		OpsiPackage().extract_package_archive(TEST_DATA / "tar_zstd_packaged_42.0-1337.opsi", temp_dir)
+		contents = list(temp_dir.rglob("*"))
+		print(contents)
+		for _file in (
+			temp_dir / "OPSI" / "control.toml",
+			temp_dir / "CLIENT_DATA" / "control.toml",
+		):
+			assert _file in contents
+			result = OpsiPackage()
+			result.find_and_parse_control_file(temp_dir)
+			assert result.product.id == "localboot_new"
+
+
+def test_load_package_tar_zstd() -> None:
+	package = OpsiPackage(TEST_DATA / "tar_zstd_packaged_42.0-1337.opsi")
+	print_info(package)
+	assert package.product.id == "localboot_new"
