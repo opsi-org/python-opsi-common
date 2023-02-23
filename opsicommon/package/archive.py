@@ -2,15 +2,21 @@
 handling of archives
 """
 
+import fnmatch
 import os
+import platform
 import re
 import subprocess
+import tarfile
 from contextlib import contextmanager
 from functools import lru_cache
+from io import BytesIO
 from pathlib import Path
 from typing import Generator
 
 import packaging.version
+import zstandard
+
 from opsicommon.config.opsi import OpsiConfig
 from opsicommon.logging import get_logger
 
@@ -104,8 +110,7 @@ def decompress_command(archive: Path) -> str:
 # Warning: this is specific for linux!
 def extract_archive(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
 	logger.info("Extracting archive %s to destination %s", archive, destination)
-	if not destination.exists():
-		destination.mkdir(parents=True)
+	destination.mkdir(parents=True, exist_ok=True)
 	if archive.suffixes and archive.suffixes[-1] in (".zstd", ".gz", ".gzip", ".bz2", ".bzip2"):
 		create_input = decompress_command(archive.absolute())
 	else:
@@ -113,6 +118,41 @@ def extract_archive(archive: Path, destination: Path, file_pattern: str | None =
 	process_archive = extract_command(archive.absolute(), file_pattern=file_pattern)
 	with chdir(destination):
 		subprocess.check_call(f"{create_input} | {process_archive}", shell=True)
+
+
+def untar(tar: tarfile.TarFile, destination: Path, file_pattern: str | None = None) -> None:
+	relevant_members = []
+	if file_pattern:
+		for member in tar.getmembers():
+			if fnmatch.fnmatch(member.name, file_pattern):
+				relevant_members.append(member)
+		if not relevant_members:
+			raise FileNotFoundError(f"Did not find file pattern {file_pattern} in tar file")
+		logger.debug("Extracting members according to file pattern %s: %s", file_pattern, relevant_members)
+	tar.extractall(path=destination, members=relevant_members or None)
+
+
+def extract_archive_universal(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
+	logger.info("Extracting archive %s to destination %s", archive, destination)
+	destination.mkdir(parents=True, exist_ok=True)
+	if archive.suffixes and archive.suffixes[-1] == ".zstd":
+		decompressor = zstandard.ZstdDecompressor()
+		with BytesIO() as buffer, open(archive, mode="rb") as archive_handle:
+			_, bytes_written = decompressor.copy_stream(archive_handle, buffer)
+			buffer.seek(0)
+			with tarfile.open(fileobj=buffer, mode="r") as tar_object:
+				untar(tar_object, destination, file_pattern)
+		logger.debug("Wrote zstd stream of %s bytes (using %s bytes of memory)", bytes_written, decompressor.memory_size())
+	else:
+		file_type = get_file_type(archive)
+		if archive.suffixes and ".cpio" in archive.suffixes[-2:] or file_type == "cpio":
+			logger.warning("Found cpio archive. Falling back to old method")
+			if platform.system().lower() != "linux":
+				raise RuntimeError("Extracting cpio archives is only available on linux.")
+			extract_archive(archive, destination, file_pattern=file_pattern)
+			return
+		with tarfile.open(archive, mode="r") as tar_object:  # compression can be None, gz, bz2 or xz
+			untar(tar_object, destination, file_pattern)
 
 
 def compress_command(archive: Path, compression: str) -> str:
@@ -141,3 +181,30 @@ def create_archive(archive: Path, sources: list[Path], base_dir: Path, compressi
 	with chdir(base_dir):
 		logger.debug("Executing %s at %s", cmd, base_dir)
 		subprocess.check_call(cmd, shell=True)
+
+
+def create_archive_universal(
+	archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False
+) -> None:
+	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
+	if archive.exists():
+		archive.unlink()
+	mode = "w|"
+	if compression == "bz2":
+		mode = "w|bz2"
+	elif compression == "gz":
+		mode = "w|gz"
+	if compression == "zstd":
+		with open(archive, mode="wb") as outfile, BytesIO() as buffer:
+			with tarfile.open(fileobj=buffer, mode=mode, dereference=dereference) as tar_object:
+				for source in sources:
+					tar_object.add(source, arcname=source.relative_to(base_dir))
+			compressor = zstandard.ZstdCompressor()
+			buffer.seek(0)
+			_, bytes_written = compressor.copy_stream(buffer, outfile)
+			logger.debug("Wrote zstd stream of %s bytes (using %s bytes of memory)", bytes_written, compressor.memory_size())
+	else:
+		# Remark: everything except gz can handle Path-like archive, gz requires str
+		with tarfile.open(str(archive), mode=mode, dereference=dereference) as tar_object:
+			for source in sources:
+				tar_object.add(source, arcname=source.relative_to(base_dir))
