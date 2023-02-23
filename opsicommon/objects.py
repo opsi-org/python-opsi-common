@@ -259,7 +259,7 @@ class BaseObject:
 	toHash = to_hash
 
 	def to_json(self) -> str:
-		return to_json(self)
+		return to_json(self, deep=False)
 
 	toJson = to_json
 
@@ -3434,5 +3434,5 @@ def from_json(obj: str | bytes, object_type: str | None = None, prevent_object_c
 	return deserialize(obj, prevent_object_creation=prevent_object_creation)
 
 
-def to_json(obj: Any) -> str:
-	return json_encoder.encode(serialize(obj)).decode("utf-8")
+def to_json(obj: Any, deep: bool = False) -> str:
+	return json_encoder.encode(serialize(obj, deep=deep)).decode("utf-8")
