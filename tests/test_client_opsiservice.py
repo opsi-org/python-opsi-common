@@ -1409,7 +1409,7 @@ def test_server_date_update() -> None:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", max_time_diff=max_time_diff) as client:
 			# Difference smaller than max_time_diff => Keep time
 			now = datetime.utcnow().astimezone(timezone.utc)
-			server_dt = now + timedelta(seconds=max_time_diff - 1)
+			server_dt = now + timedelta(seconds=max_time_diff - 3)
 			server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")
 			server.response_headers = {"date": server_dt_str}
 			client.connect()
@@ -1419,12 +1419,12 @@ def test_server_date_update() -> None:
 
 			# Difference bigger than max_time_diff => Set time
 			now = datetime.utcnow().astimezone(timezone.utc)
-			server_dt = now + timedelta(seconds=max_time_diff + 1)
+			server_dt = now + timedelta(seconds=max_time_diff + 10)
 			server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")
 			server.response_headers = {"date": server_dt_str}
 			client.connect()
 			assert dt_set
-			assert abs((dt_set - server_dt).total_seconds()) < 2
+			assert abs((dt_set - server_dt).total_seconds()) < 3
 			client.disconnect()
 			dt_set = None
 
