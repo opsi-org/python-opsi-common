@@ -663,8 +663,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					times, timez = response.headers["date"].rsplit(" ", 1)
 					if timez == "UTC":
 						# Parsing UTC dates only
-						server_dt = datetime.strptime(times, "%a, %d %b %Y %H:%M:%S").astimezone(timezone.utc)
-						local_dt = datetime.utcnow().astimezone(timezone.utc)
+						server_dt = datetime.strptime(times, "%a, %d %b %Y %H:%M:%S").replace(tzinfo=timezone.utc)
+						local_dt = datetime.now(timezone.utc)
 						diff = server_dt - local_dt
 						if diff.total_seconds() > self._max_time_diff:
 							logger.warning(

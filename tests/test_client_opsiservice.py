@@ -1408,7 +1408,7 @@ def test_server_date_update() -> None:
 		max_time_diff = 5
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", max_time_diff=max_time_diff) as client:
 			# Difference smaller than max_time_diff => Keep time
-			now = datetime.utcnow().astimezone(timezone.utc)
+			now = datetime.now(timezone.utc)
 			server_dt = now + timedelta(seconds=max_time_diff - 3)
 			server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")
 			server.response_headers = {"date": server_dt_str}
@@ -1418,7 +1418,7 @@ def test_server_date_update() -> None:
 			dt_set = None
 
 			# Difference bigger than max_time_diff => Set time
-			now = datetime.utcnow().astimezone(timezone.utc)
+			now = datetime.now(timezone.utc)
 			server_dt = now + timedelta(seconds=max_time_diff + 10)
 			server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")
 			server.response_headers = {"date": server_dt_str}
@@ -1429,7 +1429,7 @@ def test_server_date_update() -> None:
 			dt_set = None
 
 			# None UTC time in header => Keep time
-			now = datetime.utcnow().astimezone(timezone.utc)
+			now = datetime.now(timezone.utc)
 			server_dt = now + timedelta(seconds=max_time_diff + 100)
 			server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S GMT")
 			server.response_headers = {"date": server_dt_str}
