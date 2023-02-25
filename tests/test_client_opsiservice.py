@@ -9,14 +9,13 @@ import base64
 import json
 import platform
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Thread
 from typing import Any, Iterable
 from unittest import mock
 from urllib.parse import unquote
 from warnings import catch_warnings, simplefilter
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import lz4.frame  # type: ignore[import,no-redef]
 import pytest
@@ -60,7 +59,6 @@ from opsicommon.messagebus import (
 )
 from opsicommon.objects import OpsiClient
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
-from opsicommon.system import set_system_datetime
 from opsicommon.testing.helpers import (  # type: ignore[import]
 	HTTPTestServerRequestHandler,
 	environment,
@@ -1396,41 +1394,44 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 	assert not listener4.messages_received
 
 
-@pytest.mark.not_in_docker
-@pytest.mark.admin_permissions
 def test_server_date_update() -> None:
-	now = datetime.utcnow()
-	try:
-		server_dt = now + timedelta(seconds=30)
-		try:
-			server_dt_str = datetime.strftime(server_dt.astimezone(ZoneInfo("GMT")), "%a, %d %b %Y %H:%M:%S %Z")
-		except ZoneInfoNotFoundError:
+	dt_set = None
+
+	def mock_set_system_datetime(utc_datetime: datetime) -> None:
+		nonlocal dt_set
+		dt_set = utc_datetime
+
+	with (
+		mock.patch("opsicommon.client.opsiservice.set_system_datetime", mock_set_system_datetime),
+		http_test_server(generate_cert=True) as server,
+	):
+		max_time_diff = 5
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", max_time_diff=max_time_diff) as client:
+			# Difference smaller than max_time_diff => Keep time
+			now = datetime.utcnow().astimezone(timezone.utc)
+			server_dt = now + timedelta(seconds=max_time_diff - 1)
 			server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")
-		with http_test_server(
-			generate_cert=True,
-			response_headers={"date": server_dt_str},
-		) as server:
-			now = datetime.utcnow()
-			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", max_time_diff=5) as client:
-				client.connect()
-				cur = datetime.utcnow()
-				# Assert that local time was set to server time
-				assert abs((server_dt - cur).total_seconds()) < 10
-	finally:
-		set_system_datetime(now)
-
-
-@pytest.mark.admin_permissions
-def test_server_date_update_max_diff() -> None:
-	now = datetime.utcnow()
-	server_dt = now + timedelta(seconds=30)
-	with http_test_server(
-		generate_cert=True, response_headers={"date": datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")}
-	) as server:
-		now = datetime.utcnow()
-		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", max_time_diff=60) as client:
+			server.response_headers = {"date": server_dt_str}
 			client.connect()
-			cur = datetime.utcnow()
-			# Assert that local time was NOT set to server time
-			assert abs((server_dt - cur).total_seconds()) > 20
-			assert abs((server_dt - cur).total_seconds()) > 20
+			assert not dt_set
+			client.disconnect()
+			dt_set = None
+
+			# Difference bigger than max_time_diff => Set time
+			now = datetime.utcnow().astimezone(timezone.utc)
+			server_dt = now + timedelta(seconds=max_time_diff + 1)
+			server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")
+			server.response_headers = {"date": server_dt_str}
+			client.connect()
+			assert dt_set
+			assert abs((dt_set - server_dt).total_seconds()) < 2
+			client.disconnect()
+			dt_set = None
+
+			# None UTC time in header => Keep time
+			now = datetime.utcnow().astimezone(timezone.utc)
+			server_dt = now + timedelta(seconds=max_time_diff + 100)
+			server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S GMT")
+			server.response_headers = {"date": server_dt_str}
+			client.connect()
+			assert not dt_set

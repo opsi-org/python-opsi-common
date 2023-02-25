@@ -20,7 +20,7 @@ from base64 import b64encode
 from contextlib import contextmanager
 from contextvars import copy_context
 from dataclasses import astuple, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from ipaddress import IPv6Address, ip_address
 from pathlib import Path
@@ -660,17 +660,22 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 			if self._max_time_diff >= 0 and "date" in response.headers:
 				try:
-					server_dt = datetime.strptime(response.headers["date"], "%a, %d %b %Y %H:%M:%S %Z")
-					local_dt = datetime.utcnow()
-					diff = server_dt - local_dt
-					if diff.total_seconds() > self._max_time_diff:
-						logger.warning(
-							"Local time %r differs from server time (max diff: %0.3f), setting system time to %r",
-							local_dt.strftime("%Y-%m-%d %H:%M:%S"),
-							self._max_time_diff,
-							server_dt.strftime("%Y-%m-%d %H:%M:%S"),
-						)
-						set_system_datetime(server_dt)
+					times, timez = response.headers["date"].rsplit(" ", 1)
+					if timez == "UTC":
+						# Parsing UTC dates only
+						server_dt = datetime.strptime(times, "%a, %d %b %Y %H:%M:%S").astimezone(timezone.utc)
+						local_dt = datetime.utcnow().astimezone(timezone.utc)
+						diff = server_dt - local_dt
+						if diff.total_seconds() > self._max_time_diff:
+							logger.warning(
+								"Local time %r differs from server time (max diff: %0.3f), setting system time to %r",
+								local_dt.strftime("%Y-%m-%d %H:%M:%S %Z"),
+								self._max_time_diff,
+								server_dt.strftime("%Y-%m-%d %H:%M:%S %Z"),
+							)
+							set_system_datetime(server_dt)
+					else:
+						logger.debug("Not parsing non UTC date header: %s", response.headers["date"])
 				except Exception as err:  # pylint: disable=broad-except
 					logger.warning("Failed to process date header %r: %r", response.headers["date"], err)
 
