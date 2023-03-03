@@ -14,6 +14,7 @@ import gzip
 import os
 import re
 import ssl
+import sys
 import time
 import warnings
 from base64 import b64encode
@@ -1413,7 +1414,7 @@ class BackendManager(ServiceClient):
 			address=opsi_config.get("service", "url"),
 			username=username or opsi_config.get("host", "id"),
 			password=password or opsi_config.get("host", "key"),
-			user_agent=f"BackendManager/{__version__}",
+			user_agent=f"BackendManager/{__version__}/{os.path.basename(sys.argv[0])}",
 			ca_cert_file=CA_CERT_FILE,
 			verify=ServiceVerificationFlags.STRICT_CHECK,
 			jsonrpc_create_objects=True,
@@ -1425,6 +1426,8 @@ class BackendManager(ServiceClient):
 def get_service_client(
 	*, address: str | None = None, username: str | None = None, password: str | None = None, user_agent: str | None = None
 ) -> ServiceClient:
+	if user_agent is None:
+		user_agent = f"service-client/{__version__}/{os.path.basename(sys.argv[0])}"
 	service_client = ServiceClient(
 		address=address or opsi_config.get("service", "url"),
 		username=username or opsi_config.get("host", "id"),
