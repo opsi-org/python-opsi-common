@@ -11,9 +11,9 @@ import ctypes
 from contextlib import contextmanager
 from typing import Any, Generator
 
+import pywintypes
 import win32crypt  # type: ignore[import] # pylint: disable=import-error
 from OpenSSL import crypto  # type: ignore[import]
-
 from opsicommon.logging import get_logger
 
 crypt32 = ctypes.WinDLL("crypt32.dll")  # type: ignore[attr-defined]
@@ -69,7 +69,7 @@ logger = get_logger("opsicommon.general")
 
 @contextmanager
 def _open_cert_store(
-	store_name: str, ctype: bool = False, force_close: bool = True
+	store_name: str, ctype: bool = False, force_close: bool = False
 ) -> Generator[Any, None, None]:  # should be _win32typing.PyCERTSTORE if present
 	_open = win32crypt.CertOpenStore
 	if ctype:
@@ -79,11 +79,15 @@ def _open_cert_store(
 	try:
 		yield store
 	finally:
-		flag = CERT_CLOSE_STORE_FORCE_FLAG if force_close else 0
-		if ctype:
-			crypt32.CertCloseStore(store, flag)
-		else:
-			store.CertCloseStore(flag)
+		# flags are deprecated
+		try:
+			if ctype:
+				crypt32.CertCloseStore(store)
+			else:
+				store.CertCloseStore()
+		except pywintypes.error as err:
+			if err.winerror != -2146885617:  # CRYPT_E_PENDING_CLOSE
+				raise
 
 
 def install_ca(ca_cert: crypto.X509) -> None:
@@ -97,7 +101,7 @@ def install_ca(ca_cert: crypto.X509) -> None:
 		)
 
 
-def load_ca(subject_name: str) -> crypto.X509:
+def load_ca(subject_name: str) -> crypto.X509 | None:
 	store_name = "Root"
 	logger.debug("Trying to find %s in certificate store", subject_name)
 	with _open_cert_store(store_name, force_close=False) as store:
