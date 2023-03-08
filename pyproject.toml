@@ -25,7 +25,8 @@ msgspec = "^0.12"
 psutil = "^5.8"
 pycryptodome = "^3.10"
 pyopenssl = "^23.0"
-pywin32 = {platform = "win32", version = "^303"}
+pywin32 = {platform = "win32", version = "^305"}
+wmi = {platform = "win32", version = "^1.5"}
 requests = "^2.26"
 rich = "^13.0"
 websocket-client = "^1.4"

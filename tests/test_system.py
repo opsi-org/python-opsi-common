@@ -12,9 +12,14 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
+from uuid import UUID
 
 import pytest
-from opsicommon.system import ensure_not_already_running, set_system_datetime
+from opsicommon.system import (
+	ensure_not_already_running,
+	get_system_uuid,
+	set_system_datetime,
+)
 
 
 @pytest.mark.linux
@@ -122,3 +127,9 @@ def test_get_kernel_params(tmpdir: Path) -> None:
 
 	with mock.patch("opsicommon.system.linux.CMDLINE_PATH", str(cmdline_path)):
 		assert get_kernel_params() == {"root": "/root", "rw": "", "quiet": "", "splash": "", "apparmor": "1", "security": "apparmor"}
+
+
+@pytest.mark.linux
+def test_get_system_uuid() -> None:
+	system_uuid = get_system_uuid()
+	assert UUID(system_uuid)

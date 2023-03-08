@@ -10,20 +10,19 @@ import platform
 from functools import lru_cache
 from typing import Iterable
 
+SYSTEM = platform.system().lower()
 
-@lru_cache
+
 def is_linux() -> bool:
-	return platform.system().lower() == "linux"
+	return SYSTEM == "linux"
 
 
-@lru_cache
 def is_windows() -> bool:
-	return platform.system().lower() == "windows"
+	return SYSTEM == "windows"
 
 
-@lru_cache
 def is_macos() -> bool:
-	return platform.system().lower() == "darwin"
+	return SYSTEM == "darwin"
 
 
 @lru_cache

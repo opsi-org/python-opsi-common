@@ -9,6 +9,7 @@ This file is part of opsi - https://www.opsi.org
 from datetime import datetime
 
 import win32api  # type: ignore[import] # pylint: disable=import-error
+import wmi  # type: ignore[import] # pylint: disable=import-error
 
 
 def set_system_datetime(utc_datetime: datetime) -> None:
@@ -22,3 +23,10 @@ def set_system_datetime(utc_datetime: datetime) -> None:
 		utc_datetime.second,
 		0,
 	)
+
+
+def get_system_uuid() -> str:
+	wmi_inst = wmi.WMI()
+	for csp in wmi_inst.Win32_ComputerSystemProduct():
+		return csp.UUID.lower()
+	raise RuntimeError("Failed to find UUID in Win32_ComputerSystemProduct")

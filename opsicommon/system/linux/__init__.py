@@ -117,3 +117,7 @@ def get_kernel_params() -> dict[str, str]:
 		key_value = option.split("=", 1)
 		params[key_value[0].strip().lower()] = "" if len(key_value) == 1 else key_value[1].strip()
 	return params
+
+
+def get_system_uuid() -> str:
+	return Path("/sys/class/dmi/id/product_uuid").read_text(encoding="utf-8").strip().lower()
