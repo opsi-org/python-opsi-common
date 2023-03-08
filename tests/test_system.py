@@ -129,7 +129,6 @@ def test_get_kernel_params(tmpdir: Path) -> None:
 		assert get_kernel_params() == {"root": "/root", "rw": "", "quiet": "", "splash": "", "apparmor": "1", "security": "apparmor"}
 
 
-@pytest.mark.linux
 def test_get_system_uuid() -> None:
 	system_uuid = get_system_uuid()
 	assert UUID(system_uuid)
