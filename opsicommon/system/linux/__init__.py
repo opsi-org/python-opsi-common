@@ -13,15 +13,17 @@ import os
 import pwd
 import subprocess
 from datetime import datetime
+from pathlib import Path
 from typing import Generator, List, Optional
 
 import psutil  # type: ignore[import]
-
 from opsicommon.logging import get_logger
 
 from .. import Session
 
 logger = get_logger("opsicommon.general")
+
+CMDLINE_PATH = "/proc/cmdline"
 
 
 def set_system_datetime(utc_datetime: datetime) -> None:
@@ -99,3 +101,19 @@ def drop_privileges(username: str) -> None:
 	os.setgroups(gids)
 	os.setuid(user.pw_uid)
 	os.environ["HOME"] = user.pw_dir
+
+
+def get_kernel_params() -> dict[str, str]:
+	"""
+	Reads the kernel cmdline and returns a dict containing all key=value pairs.
+	Keys are converted to lower case.
+	"""
+	cmdline_path = Path(CMDLINE_PATH)
+	logger.debug("Reading %s", cmdline_path)
+	cmdline = cmdline_path.read_text(encoding="utf-8").strip()
+
+	params: dict[str, str] = {}
+	for option in cmdline.split():
+		key_value = option.split("=", 1)
+		params[key_value[0].strip().lower()] = "" if len(key_value) == 1 else key_value[1].strip()
+	return params

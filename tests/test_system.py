@@ -14,7 +14,6 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-
 from opsicommon.system import ensure_not_already_running, set_system_datetime
 
 
@@ -33,7 +32,6 @@ def test_get_user_sessions_linux() -> None:
 @pytest.mark.linux
 def test_get_user_sessions_linux_mock() -> None:
 	import psutil  # type: ignore[import]  # pylint: disable=import-outside-toplevel
-
 	from opsicommon.system import (  # pylint: disable=import-outside-toplevel
 		get_user_sessions,
 	)
@@ -113,3 +111,14 @@ def test_set_system_datetime() -> None:
 		assert abs((new_time - cur).total_seconds()) <= 1
 	finally:
 		set_system_datetime(now)
+
+
+@pytest.mark.linux
+def test_get_kernel_params(tmpdir: Path) -> None:
+	cmdline_path = tmpdir / "cmdline"
+	cmdline_path.write_text("root=/root rw quiet splash apparmor=1 security=apparmor", encoding="utf-8")
+	# pylint: disable=import-outside-toplevel
+	from opsicommon.system.linux import get_kernel_params
+
+	with mock.patch("opsicommon.system.linux.CMDLINE_PATH", str(cmdline_path)):
+		assert get_kernel_params() == {"root": "/root", "rw": "", "quiet": "", "splash": "", "apparmor": "1", "security": "apparmor"}
