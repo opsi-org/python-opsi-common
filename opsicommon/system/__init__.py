@@ -12,6 +12,7 @@ from collections import namedtuple
 from typing import Optional
 
 import psutil  # type: ignore[import]
+
 from opsicommon.logging import get_logger
 
 Session = namedtuple("Session", ["id", "type", "username", "terminal", "login_pid", "started"])

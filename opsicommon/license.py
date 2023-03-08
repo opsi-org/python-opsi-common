@@ -36,6 +36,7 @@ from typing import (
 )
 
 import attr
+
 from opsicommon.logging import get_logger
 
 try:

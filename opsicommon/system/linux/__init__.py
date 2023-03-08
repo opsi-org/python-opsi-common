@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Generator, List, Optional
 
 import psutil  # type: ignore[import]
+
 from opsicommon.logging import get_logger
 
 from .. import Session

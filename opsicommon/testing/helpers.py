@@ -33,6 +33,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import lz4  # type: ignore[import]
 import msgspec
+
 from opsicommon.config.opsi import OpsiConfig
 from opsicommon.ssl import as_pem, create_ca, create_server_cert  # type: ignore[import]
 

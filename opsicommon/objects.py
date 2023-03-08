@@ -19,6 +19,7 @@ from types import GeneratorType
 from typing import Any, Callable, Generator, Type, TypeVar
 
 import msgspec
+
 from opsicommon.exceptions import BackendBadValueError, BackendConfigurationError
 from opsicommon.logging import get_logger
 from opsicommon.types import (

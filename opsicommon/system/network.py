@@ -11,6 +11,7 @@ import socket
 from typing import Any, Dict, Generator, Set
 
 import psutil  # type: ignore[import]
+
 from opsicommon.logging import get_logger
 from opsicommon.types import forceFqdn
 

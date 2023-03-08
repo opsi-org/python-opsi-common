@@ -14,6 +14,7 @@ from typing import Any, Generator
 import pywintypes  # type: ignore[import] # pylint: disable=import-error
 import win32crypt  # type: ignore[import] # pylint: disable=import-error
 from OpenSSL import crypto  # type: ignore[import]
+
 from opsicommon.logging import get_logger
 
 crypt32 = ctypes.WinDLL("crypt32.dll")  # type: ignore[attr-defined]
