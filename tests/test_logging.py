@@ -18,7 +18,6 @@ from typing import Any
 
 import pytest
 import requests
-
 from opsicommon.logging import (
 	ContextSecretFormatter,
 	context_filter,
@@ -106,7 +105,7 @@ def test_log_exception_handler() -> None:
 	if os.path.exists(filename):
 		os.remove(filename)
 	try:
-		raise Exception("TESTäöüß")
+		raise Exception("TESTäöüß")  # pylint: disable=broad-exception-raised
 	except Exception as err:  # pylint: disable=broad-except
 		handle_log_exception(exc=err, record=log_record, log=True, temp_file=True, stderr=True)
 		with codecs.open(filename, "r", "utf-8") as file:

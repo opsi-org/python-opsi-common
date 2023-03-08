@@ -20,15 +20,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Generator, Literal, Type, Union
 
 import requests
+from packaging.version import InvalidVersion, Version
+
 from opsicommon.logging import get_logger
 from opsicommon.types import _PACKAGE_VERSION_REGEX, _PRODUCT_VERSION_REGEX
-from packaging.version import InvalidVersion, Version
 
 if platform.system().lower() == "windows":
 	OPSI_TMP_DIR = None  # default %TEMP% of user
 else:
 	OPSI_TMP_DIR = Path("/var/lib/opsi/tmp")
-
 
 if TYPE_CHECKING:
 	from opsicommon.objects import BaseObject as TBaseObject
