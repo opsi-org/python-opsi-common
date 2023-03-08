@@ -8,6 +8,7 @@ import datetime
 import os
 import subprocess
 from contextlib import contextmanager
+from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
 from typing import Generator, Literal
 
 import psutil  # type: ignore[import]
@@ -21,6 +22,7 @@ from opsicommon.utils import (
 	compare_versions,
 	frozen_lru_cache,
 	generate_opsi_host_key,
+	ip_address_in_network,
 	monkeypatch_subprocess_for_frozen,
 	timestamp,
 )
@@ -190,3 +192,20 @@ def test_comparisons_with_differnt_depths_are_made_the_same_depth(ver1: str, ope
 @pytest.mark.parametrize("ver1, operator, ver2", [("1-2", "<", "1-3"), ("1-2.0", "<", "1-2.1")])
 def test_package_versions_are_compared_aswell(ver1: str, operator: Literal["<"], ver2: str) -> None:
 	assert compare_versions(ver1, operator, ver2)
+
+
+@pytest.mark.parametrize(
+	"address, network, expected",
+	[
+		("10.10.1.1", "10.10.0.0/16", True),
+		("10.10.1.1", "10.10.0.0/23", True),
+		("10.10.1.1", "10.10.0.0/24", False),
+		("10.10.1.1", "10.10.0.0/25", False),
+		("10.10.1.1", "0.0.0.0/0", True),
+		("10.10.1.1", "10.10.0.0/255.255.0.0", True),
+		(IPv4Address("192.168.1.1"), IPv4Network("192.168.1.0/24"), True),
+		(IPv4Address("192.168.1.1"), IPv4Network("192.168.2.0/24"), False),
+	],
+)
+def test_ip_address_in_network(address: str | IPv4Address | IPv6Address, network: str | IPv4Network | IPv6Network, expected: bool) -> None:
+	assert ip_address_in_network(address, network) == expected
