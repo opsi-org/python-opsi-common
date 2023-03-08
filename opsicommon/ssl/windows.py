@@ -11,7 +11,7 @@ import ctypes
 from contextlib import contextmanager
 from typing import Any, Generator
 
-import pywintypes
+import pywintypes  # type: ignore[import] # pylint: disable=import-error
 import win32crypt  # type: ignore[import] # pylint: disable=import-error
 from OpenSSL import crypto  # type: ignore[import]
 from opsicommon.logging import get_logger
@@ -69,7 +69,7 @@ logger = get_logger("opsicommon.general")
 
 @contextmanager
 def _open_cert_store(
-	store_name: str, ctype: bool = False, force_close: bool = False
+	store_name: str, ctype: bool = False, force_close: bool = False  # pylint: disable=unused-argument
 ) -> Generator[Any, None, None]:  # should be _win32typing.PyCERTSTORE if present
 	_open = win32crypt.CertOpenStore
 	if ctype:
