@@ -10,17 +10,19 @@ import functools
 import json
 import os
 import platform
+import re
 import secrets
-import socket
 import subprocess
 import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Generator, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Generator, Literal, Type, Union
 
 import requests
 from opsicommon.logging import get_logger
+from opsicommon.types import _PACKAGE_VERSION_REGEX, _PRODUCT_VERSION_REGEX
+from packaging.version import InvalidVersion, Version
 
 if platform.system().lower() == "windows":
 	OPSI_TMP_DIR = None  # default %TEMP% of user
@@ -215,3 +217,102 @@ def make_temp_dir(base: Path | None = None) -> Generator[Path, None, None]:
 		base = None
 	with tempfile.TemporaryDirectory(dir=base) as tmp_dir_name:
 		yield Path(tmp_dir_name)
+
+
+def _legacy_cmpkey(version: str) -> tuple[str, ...]:
+	_legacy_version_component_re = re.compile(r"(\d+ | [a-z]+ | \.| -)", re.VERBOSE)
+	_legacy_version_replacement_map = {
+		"pre": "c",
+		"preview": "c",
+		"-": "final-",
+		"rc": "c",
+		"dev": "@",
+	}
+
+	def _parse_version_parts(instring: str) -> Generator[str, None, None]:
+		for part in _legacy_version_component_re.split(instring):
+			part = _legacy_version_replacement_map.get(part, part)
+
+			if not part or part == ".":
+				continue
+
+			if part[:1] in "0123456789":
+				# pad for numeric comparison
+				yield part.zfill(8)
+			else:
+				yield "*" + part
+
+		# ensure that alpha/beta/candidate are before final
+		yield "*final"
+
+	parts: list[str] = []
+	for part in _parse_version_parts(version.lower()):
+		if part.startswith("*"):
+			# remove "-" before a prerelease tag
+			if part < "*final":
+				while parts and parts[-1] == "*final-":
+					parts.pop()
+
+			# remove trailing zeros from each series of numeric parts
+			while parts and parts[-1] == "00000000":
+				parts.pop()
+
+		parts.append(part)
+
+	return tuple(parts)
+
+
+# Inspired by packaging.version.LegacyVersion (deprecated)
+class LegacyVersion(Version):
+	def __init__(self, version: str):  # pylint: disable=super-init-not-called
+		self._version = str(version)  # type: ignore[assignment]
+		self._key = _legacy_cmpkey(self._version)  # type: ignore[assignment,arg-type]
+
+	def __str__(self) -> str:
+		return str(self._version)
+
+
+def compare_versions(version1: str, condition: Literal["==", "=", "<", "<=", ">", ">="], version2: str) -> bool:
+	"""
+	Compare the versions `v1` and `v2` with the given `condition`.
+
+	`condition` may be one of `==`, `=`, `<`, `<=`, `>`, `>=`.
+
+	:raises ValueError: If invalid value for version or condition if given.
+	:rtype: bool
+	:return: If the comparison matches this will return True.
+	"""
+	# Remove part after wave to not break old behaviour
+	version1 = version1.split("~", 1)[0]
+	version2 = version2.split("~", 1)[0]
+	for version in (version1, version2):
+		parts = version.split("-")
+		if (
+			not _PRODUCT_VERSION_REGEX.search(parts[0])
+			or (len(parts) == 2 and not _PACKAGE_VERSION_REGEX.search(parts[1]))
+			or len(parts) > 2
+		):
+			raise ValueError(f"Bad package version provided: '{version}'")
+
+	try:
+		# Don't use packaging.version.parse() here as packaging.version.Version cannot handle legacy formats
+		first = LegacyVersion(version1)
+		second = LegacyVersion(version2)
+	except InvalidVersion as version_error:
+		raise ValueError("Invalid version provided to compare_versions") from version_error
+
+	if condition in ("==", "=") or not condition:
+		result = first == second
+	elif condition == "<":
+		result = first < second
+	elif condition == "<=":
+		result = first <= second
+	elif condition == ">":
+		result = first > second
+	elif condition == ">=":
+		result = first >= second
+	else:
+		raise ValueError(f"Bad condition {condition} provided to compare_versions")
+
+	logger.debug("%s condition: %s %s %s", "Fullfilled" if result else "Unfulfilled", version1, condition, version2)
+	return result
