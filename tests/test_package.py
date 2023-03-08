@@ -197,6 +197,21 @@ def test_create_package(compression: Literal["zstd", "bz2"]) -> None:
 				assert (temp_dir / part / "control.toml").relative_to(temp_dir) in result_contents
 
 
+def test_create_package_empty() -> None:
+	package = OpsiPackage()
+	test_data = TEST_DATA / "control.toml"
+	with make_temp_dir() as temp_dir:
+		(temp_dir / "OPSI").mkdir()
+		(temp_dir / "CLIENT_DATA").mkdir()
+		copy(test_data, temp_dir / "OPSI")
+		package_archive = package.create_package_archive(temp_dir, destination=temp_dir)
+		with make_temp_dir() as result_dir:
+			OpsiPackage().extract_package_archive(package_archive, result_dir)
+			result_contents = list((_dir.relative_to(result_dir) for _dir in result_dir.rglob("*")))
+			assert (temp_dir / "OPSI").relative_to(temp_dir) in result_contents
+			assert (temp_dir / "CLIENT_DATA").relative_to(temp_dir) in result_contents
+
+
 @pytest.mark.linux
 @pytest.mark.parametrize(
 	"dereference",

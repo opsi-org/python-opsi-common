@@ -206,7 +206,7 @@ class OpsiPackage:
 				# 		tmp.append(file)
 				# 	fileList = tmp
 
-				if not file_list:
+				if not file_list and _dir.name not in ("CLIENT_DATA", "OPSI"):
 					logger.debug("Skipping empty dir '%s'", _dir)
 					continue
 				filename = temp_dir / f"{_dir.name}.tar.{compression}"
