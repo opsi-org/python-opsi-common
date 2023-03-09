@@ -19,6 +19,7 @@ from warnings import catch_warnings, simplefilter
 
 import lz4.frame  # type: ignore[import,no-redef]
 import pytest
+
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
 	MIN_VERSION_GZIP,
@@ -717,15 +718,16 @@ def test_messagebus_reconnect() -> None:
 				time.sleep(3)
 				assert client.messagebus._subscribed_channels == ["chan1", "chan2", "chan3"]  # pylint: disable=protected-access
 
+				rpc_id = 10
 				server.restart(new_cert=True)
 				time.sleep(10)
 				assert client.messagebus._subscribed_channels == ["chan1", "chan2", "chan3"]  # pylint: disable=protected-access
 
-			listener.messages.pop(0)
-			expected_messages = 6
+			print("messages", listener.messages)
+			expected_messages = 6 + 1  # 6 * JSONRPCResponseMessage + 1 * ChannelSubscriptionEventMessage
 			assert len(listener.messages) == expected_messages
-			rpc_ids = sorted([int(m.rpc_id) for m in listener.messages if hasattr(m, "rpc_id")])  # type: ignore[attr-defined]
-			assert rpc_ids[:6] == list(range(1, expected_messages + 1))
+			rpc_ids = [int(m.rpc_id) for m in listener.messages if hasattr(m, "rpc_id")]  # type: ignore[attr-defined]
+			assert all((rpc_id in rpc_ids for rpc_id in [1, 2, 3, 11, 12, 13]))
 
 
 def test_messagebus_reconnect_exception() -> None:
