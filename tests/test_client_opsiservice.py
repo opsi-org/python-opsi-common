@@ -723,13 +723,11 @@ def test_messagebus_reconnect() -> None:
 				time.sleep(10)
 				assert client.messagebus._subscribed_channels == ["chan1", "chan2", "chan3"]  # pylint: disable=protected-access
 
-			print("messages before pop", listener.messages)
-			listener.messages.pop(0)
-			expected_messages = 6
+			print("messages", listener.messages)
+			expected_messages = 6 + 1  # 6 * JSONRPCResponseMessage + 1 * ChannelSubscriptionEventMessage
 			assert len(listener.messages) == expected_messages
-			rpc_ids = sorted([int(m.rpc_id) for m in listener.messages if hasattr(m, "rpc_id")])  # type: ignore[attr-defined]
-			assert rpc_ids[:3] == [1, 2, 3]
-			assert rpc_ids[3:6] == [11, 12, 13]
+			rpc_ids = [int(m.rpc_id) for m in listener.messages if hasattr(m, "rpc_id")]  # type: ignore[attr-defined]
+			assert all((rpc_id in rpc_ids for rpc_id in [1, 2, 3, 11, 12, 13]))
 
 
 def test_messagebus_reconnect_exception() -> None:
