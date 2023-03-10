@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Generator, List, Optional
 
 import psutil  # type: ignore[import]
-
 from opsicommon.logging import get_logger
 
 from .. import Session
@@ -121,4 +120,15 @@ def get_kernel_params() -> dict[str, str]:
 
 
 def get_system_uuid() -> str:
-	return Path("/sys/class/dmi/id/product_uuid").read_text(encoding="utf-8").strip().lower()
+	uuid_path = Path("/sys/class/dmi/id/product_uuid")
+	if uuid_path.exists():
+		return uuid_path.read_text(encoding="utf-8").strip().lower()
+	logger.debug("'%s' not available, trying dmidecode", uuid_path)
+	system_uuid = (
+		subprocess.run(["dmidecode", "-s", "system-uuid"], shell=False, check=True, timeout=10, capture_output=True, encoding="utf-8")
+		.stdout.strip()
+		.lower()
+	)
+	if not system_uuid:
+		raise RuntimeError("Failed to get system uuid from dmidecode")
+	return system_uuid
