@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import gzip
+import locale
 import os
 import re
 import ssl
@@ -664,7 +665,12 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					times, timez = response.headers["date"].rsplit(" ", 1)
 					if timez == "UTC":
 						# Parsing UTC dates only
-						server_dt = datetime.strptime(times, "%a, %d %b %Y %H:%M:%S").replace(tzinfo=timezone.utc)
+						loc = locale.getlocale()
+						locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
+						try:
+							server_dt = datetime.strptime(times, "%a, %d %b %Y %H:%M:%S").replace(tzinfo=timezone.utc)
+						finally:
+							locale.setlocale(locale.LC_ALL, loc)
 						local_dt = datetime.now(timezone.utc)
 						diff = server_dt - local_dt
 						if diff.total_seconds() > self._max_time_diff:
