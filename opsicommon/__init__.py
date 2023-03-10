@@ -6,4 +6,4 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-__version__ = '4.3.0.17'
+__version__ = '4.3.0.19'
