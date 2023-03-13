@@ -1213,7 +1213,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def wait_for_jsonrpc_response_message(self, rpc_id: str, timeout: float | None = None) -> JSONRPCResponseMessage:
 		class JSONRPCResponseListener(MessagebusListener):
 			def __init__(self, rpc_id: str, timeout: float | None = None) -> None:
-				super().__init__((MessageType.JSONRPC_RESPONSE,))
+				super().__init__(message_types=(MessageType.JSONRPC_RESPONSE,))
 				self.rpc_id = rpc_id
 				self.timeout = timeout
 				self.message_received_event = Event()
