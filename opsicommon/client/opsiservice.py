@@ -589,6 +589,14 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			except Exception as err:  # pylint: disable=broad-except
 				logger.error("Failed to create instance method '%s': %s", method, err)
 
+	@contextmanager
+	def connection(self) -> Generator[None, None, None]:
+		self.connect()
+		try:
+			yield
+		finally:
+			self.disconnect()
+
 	def connect(self) -> None:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		if self._connect_lock.locked():
 			return
