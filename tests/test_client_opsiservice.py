@@ -19,7 +19,6 @@ from warnings import catch_warnings, simplefilter
 
 import lz4.frame  # type: ignore[import,no-redef]
 import pytest
-
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
 	MIN_VERSION_GZIP,
@@ -1260,7 +1259,7 @@ def test_messagebus_multi_thread() -> None:
 def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 	class StoringListener(MessagebusListener):
 		def __init__(self, message_types: Iterable[MessageType | str] | None = None) -> None:
-			super().__init__(message_types)
+			super().__init__(message_types=message_types)
 			self.messages_received: list[Message] = []
 			self.expired_messages_received: list[Message] = []
 			self.connection_open_calls = 0
