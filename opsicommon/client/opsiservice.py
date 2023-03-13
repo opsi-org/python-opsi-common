@@ -1020,11 +1020,12 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self.stop()
 
 
-class MessagebusListener:  # pylint: disable=too-few-public-methods
-	def __init__(self, message_types: Iterable[MessageType | str] | None = None) -> None:
+class MessagebusListener:
+	def __init__(self, messagebus: Messagebus | None = None, message_types: Iterable[MessageType | str] | None = None) -> None:
 		"""
 		message_types:
 		"""
+		self.messagebus: Messagebus | None = messagebus
 		self.message_types = {MessageType(mt) for mt in message_types} if message_types else None
 
 	def messagebus_connection_open(self, messagebus: Messagebus) -> None:
@@ -1063,11 +1064,12 @@ class MessagebusListener:  # pylint: disable=too-few-public-methods
 		"""
 		Context manager for register this listener on and off the message bus.
 		"""
+		self.messagebus = messagebus
 		try:
-			messagebus.register_messagebus_listener(self)
+			self.messagebus.register_messagebus_listener(self)
 			yield
 		finally:
-			messagebus.unregister_messagebus_listener(self)
+			self.messagebus.unregister_messagebus_listener(self)
 
 
 class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
