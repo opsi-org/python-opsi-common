@@ -10,6 +10,7 @@ import os
 import platform
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 from typing import Optional
 
 from opsicommon.config import DEFAULT_OPSICONFD_USER, OpsiConfig
@@ -31,7 +32,7 @@ logger = get_logger("opsi.general")
 
 @dataclass
 class FilePermission:
-	path: str
+	path: str | Path
 	username: str | None
 	groupname: str | None
 	file_permissions: int
@@ -62,14 +63,14 @@ class FilePermission:
 			return -1
 		return self.groupname_to_gid(self.groupname)
 
-	def chmod(self, path: str, stat_res: Optional[os.stat_result] = None) -> None:
+	def chmod(self, path: str | Path, stat_res: Optional[os.stat_result] = None) -> None:
 		stat_res = stat_res or os.stat(path, follow_symlinks=False)
 		cur_mode = stat_res.st_mode & 0o7777
 		if cur_mode != self.file_permissions:
 			logger.trace("%s: %o != %o", path, cur_mode, self.file_permissions)
 			os.chmod(path, self.file_permissions, follow_symlinks=not stat.S_ISLNK(stat_res.st_mode))
 
-	def chown(self, path: str, stat_res: Optional[os.stat_result] = None) -> None:
+	def chown(self, path: str | Path, stat_res: Optional[os.stat_result] = None) -> None:
 		stat_res = stat_res or os.stat(path, follow_symlinks=False)
 		# Unprivileged user cannot change file owner
 		uid = self.uid if _HAS_ROOT_RIGHTS else -1
@@ -77,7 +78,7 @@ class FilePermission:
 			logger.trace("%s: %d:%d != %d:%d", path, stat_res.st_uid, stat_res.st_gid, uid, self.gid)
 			os.chown(path, uid, self.gid, follow_symlinks=not stat.S_ISLNK(stat_res.st_mode))
 
-	def apply(self, path: str) -> None:
+	def apply(self, path: str | Path) -> None:
 		stat_res = os.stat(path, follow_symlinks=False)
 		self.chmod(path, stat_res)
 		self.chown(path, stat_res)
@@ -90,7 +91,7 @@ class DirPermission(FilePermission):
 	correct_links: bool = False
 	modify_file_exe: bool = True
 
-	def chmod(self, path: str, stat_res: Optional[os.stat_result] = None) -> None:
+	def chmod(self, path: str | Path, stat_res: Optional[os.stat_result] = None) -> None:
 		stat_res = stat_res or os.stat(path, follow_symlinks=False)
 		if stat.S_ISLNK(stat_res.st_mode) and not self.correct_links:
 			return
@@ -115,7 +116,7 @@ class DirPermission(FilePermission):
 			logger.trace("%s: %o != %o", path, cur_mode, new_mode)
 			os.chmod(path, new_mode, follow_symlinks=not stat.S_ISLNK(stat_res.st_mode))
 
-	def chown(self, path: str, stat_res: Optional[os.stat_result] = None) -> None:
+	def chown(self, path: str | Path, stat_res: Optional[os.stat_result] = None) -> None:
 		stat_res = stat_res or os.stat(path, follow_symlinks=False)
 		if stat.S_ISLNK(stat_res.st_mode) and not self.correct_links:
 			return None
@@ -138,7 +139,7 @@ class PermissionRegistry(metaclass=Singleton):
 
 	def register_permission(self, *permission: FilePermission) -> None:
 		for perm in permission:
-			self._permissions[perm.path] = perm
+			self._permissions[str(perm.path)] = perm
 
 	def remove_permissions(self) -> None:
 		self._permissions = {}
@@ -205,7 +206,8 @@ class PermissionRegistry(metaclass=Singleton):
 		)
 
 
-def set_rights(start_path: str = "/") -> None:  # pylint: disable=too-many-branches
+def set_rights(start_path: str | Path = "/") -> None:  # pylint: disable=too-many-branches
+	start_path = str(start_path)
 	logger.debug("Setting rights on %s", start_path)
 	permissions = PermissionRegistry().permissions
 	permissions_to_process = []
@@ -226,7 +228,7 @@ def set_rights(start_path: str = "/") -> None:  # pylint: disable=too-many-branc
 		path = start_path
 		if not os.path.relpath(permission.path, start_path).startswith(".."):
 			# permission.path is sub path of start_path
-			path = permission.path
+			path = str(permission.path)
 
 		if path in processed_path or not os.path.lexists(path):
 			continue
