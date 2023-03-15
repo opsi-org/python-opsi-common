@@ -9,6 +9,7 @@ General utility functions.
 import functools
 import json
 import os
+import re
 import secrets
 import subprocess
 import time
@@ -295,6 +296,49 @@ def frozen_lru_cache(*decorator_args: Any) -> Callable:
 		# No arguments, this is the decorator
 		return inner(decorator_args[0])
 	return inner
+
+
+def _legacy_cmpkey(version: str) -> tuple[str, ...]:
+	_legacy_version_component_re = re.compile(r"(\d+ | [a-z]+ | \.| -)", re.VERBOSE)
+	_legacy_version_replacement_map = {
+		"pre": "c",
+		"preview": "c",
+		"-": "final-",
+		"rc": "c",
+		"dev": "@",
+	}
+
+	def _parse_version_parts(instring: str) -> Generator[str, None, None]:
+		for part in _legacy_version_component_re.split(instring):
+			part = _legacy_version_replacement_map.get(part, part)
+
+			if not part or part == ".":
+				continue
+
+			if part[:1] in "0123456789":
+				# pad for numeric comparison
+				yield part.zfill(8)
+			else:
+				yield "*" + part
+
+		# ensure that alpha/beta/candidate are before final
+		yield "*final"
+
+	parts: list[str] = []
+	for part in _parse_version_parts(version.lower()):
+		if part.startswith("*"):
+			# remove "-" before a prerelease tag
+			if part < "*final":
+				while parts and parts[-1] == "*final-":
+					parts.pop()
+
+			# remove trailing zeros from each series of numeric parts
+			while parts and parts[-1] == "00000000":
+				parts.pop()
+
+		parts.append(part)
+
+	return tuple(parts)
 
 
 # Inspired by packaging.version.LegacyVersion (deprecated)
