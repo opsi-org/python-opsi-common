@@ -16,7 +16,7 @@ url = "http://pypi.uib.gmbh:8080/simple"
 secondary = true
 
 [tool.poetry.dependencies]
-python = ">=3.8,<=3.11"
+python = ">=3.10,<=3.11"
 colorlog = "^6.6"
 distro = "^1.6"
 lz4 = "^4.0"
@@ -28,6 +28,7 @@ pywin32 = {platform = "win32", version = "^303"}
 requests = "^2.26"
 websocket-client = "^1.4.0"
 orjson = "^3.8.0"
+packaging = "^23.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^5.0"
