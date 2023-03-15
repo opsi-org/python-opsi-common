@@ -18,7 +18,6 @@ from urllib.parse import unquote
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
-
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
 	MIN_VERSION_GZIP,
@@ -48,6 +47,7 @@ from opsicommon.messagebus import (
 	JSONRPCResponseMessage,
 	Message,
 	MessageType,
+	timestamp,
 )
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
 from opsicommon.system import set_system_datetime
@@ -818,7 +818,7 @@ def test_messagebus_listener() -> None:
 	assert listener4.message_types == {MessageType.FILE_CHUNK}
 
 	def ws_connect_callback(handler: HTTPTestServerRequestHandler) -> None:
-		now = int(time.time())
+		now = timestamp()
 		handler.ws_send_message(
 			JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
 				id="11111111-1111-1111-1111-111111111111",
