@@ -14,7 +14,18 @@ import subprocess
 import time
 import types
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, Union
+from typing import (
+	TYPE_CHECKING,
+	Any,
+	Callable,
+	Dict,
+	Generator,
+	List,
+	Literal,
+	Optional,
+	Type,
+	Union,
+)
 
 import requests
 from packaging.version import InvalidVersion, Version
