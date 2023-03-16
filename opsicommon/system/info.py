@@ -55,7 +55,7 @@ def linux_distro_id_like_contains(search: str | Iterable[str]) -> bool:
 	Returns true if any string in ID_LIKE contains one of the search strings passed in `search`.
 	"""
 	if isinstance(search, str):
-		search = [search]
+		search = [search]  # pylint: disable=use-tuple-over-list
 	for did in linux_distro_id_like():
 		for entry in search:
 			if entry in did:
