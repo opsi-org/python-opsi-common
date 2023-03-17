@@ -435,7 +435,7 @@ class LegacyControlFile:
 		lines.append(f"id: {self.product.getId()}")
 		lines.append(f"name: {self.product.getName()}")
 		lines.append("description: ")
-		descLines = self.product.getDescription().split("\n")  # pylint: disable=invalid-name
+		descLines = (self.product.getDescription() or "").split("\n")  # pylint: disable=invalid-name
 		if len(descLines) > 0:
 			lines[-1] += descLines[0]
 			if len(descLines) > 1:
@@ -494,7 +494,7 @@ class LegacyControlFile:
 				lines.append(f"editable: {productProperty.getEditable()}")
 			if productProperty.getDescription():
 				lines.append("description: ")
-				descLines = productProperty.getDescription().split("\n")  # type: ignore  # pylint: disable=invalid-name
+				descLines = (productProperty.getDescription() or "").split("\n")  # type: ignore  # pylint: disable=invalid-name
 				if len(descLines) > 0:
 					lines[-1] += descLines[0]
 					if len(descLines) > 1:
@@ -512,6 +512,6 @@ class LegacyControlFile:
 
 		if self.product.getChangelog():
 			lines.append("[Changelog]")
-			lines.extend(self.product.getChangelog().split("\n"))
+			lines.extend((self.product.getChangelog() or "").split("\n"))
 
 		control_file.write_text("\n".join(lines))
