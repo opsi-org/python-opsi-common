@@ -803,6 +803,11 @@ def test_get() -> None:
 				assert headers["x-2"] == "2"
 				assert content == response_body
 
+		client = ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all")
+		with client.connection():
+			(status_code, reason, headers, content) = thread.response
+			assert status_code == 202
+
 
 def test_timeouts() -> None:
 	listener = MyConnectionListener()
