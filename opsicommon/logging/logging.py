@@ -542,6 +542,9 @@ class ObservableHandler(Handler, metaclass=Singleton):
 		self._observers: list[Any] = []
 
 	def attach_observer(self, observer: Any) -> None:
+		if self not in get_all_handlers(ObservableHandler):
+			logging.root.addHandler(self)
+
 		if observer not in self._observers:
 			self._observers.append(observer)
 
@@ -550,6 +553,9 @@ class ObservableHandler(Handler, metaclass=Singleton):
 	def detach_observer(self, observer: Any) -> None:
 		if observer in self._observers:
 			self._observers.remove(observer)
+
+		if not self._observers:
+			remove_all_handlers(handler_type=ObservableHandler)
 
 	detachObserver = detach_observer
 
@@ -657,9 +663,6 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 			logging.root.addHandler(shandler)
 		for hdlr in get_all_handlers((StreamHandler, RichConsoleHandler)):
 			hdlr.setLevel(stderr_level)
-
-	if observable_handler not in get_all_handlers(ObservableHandler):
-		logging.root.addHandler(observable_handler)
 
 	min_value = NONE
 	for hdlr in get_all_handlers():

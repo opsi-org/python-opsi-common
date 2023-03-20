@@ -20,7 +20,9 @@ import pytest
 import requests
 from opsicommon.logging import (
 	ContextSecretFormatter,
+	ObservableHandler,
 	context_filter,
+	get_all_handlers,
 	get_logger,
 	handle_log_exception,
 	init_logging,
@@ -282,10 +284,14 @@ def test_observable_handler() -> None:  # pylint: disable=redefined-outer-name
 		def messageChanged(self, handler: logging.Handler, message: Any) -> None:  # pylint: disable=unused-argument,invalid-name
 			self.messages.append(message)
 
+	assert not get_all_handlers(ObservableHandler)
+
 	with log_stream(LOG_SECRET):
 		log_observer = LogObserver()
 		observable_handler.attach_observer(log_observer)
+		assert get_all_handlers(ObservableHandler)
 		observable_handler.attach_observer(log_observer)
+
 		logger.error("error")
 		logger.warning("warning")
 		logger.info("in%s%s", "f", "o")
@@ -295,6 +301,8 @@ def test_observable_handler() -> None:  # pylint: disable=redefined-outer-name
 		observable_handler.detach_observer(log_observer)
 		logger.error("error2")
 		assert log_observer.messages == ["error", "warning", "info"]
+
+	assert not get_all_handlers(ObservableHandler)
 
 
 def test_simple_colored() -> None:  # pylint: disable=redefined-outer-name
