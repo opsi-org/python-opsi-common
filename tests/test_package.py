@@ -178,9 +178,9 @@ def test_extract_package(new_product_id: str | None) -> None:
 
 @pytest.mark.parametrize(
 	"compression",
-	("zstd", "bz2"),
+	("zstd", "bz2", "gz"),
 )
-def test_create_package(compression: Literal["zstd", "bz2"]) -> None:
+def test_create_package(compression: Literal["zstd", "bz2", "gz"]) -> None:
 	package = OpsiPackage()
 	test_data = TEST_DATA / "control.toml"
 	with make_temp_dir() as temp_dir:
