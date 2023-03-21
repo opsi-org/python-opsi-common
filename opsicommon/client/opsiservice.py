@@ -669,17 +669,24 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				except ValueError as error:
 					logger.error("Could not get OpsiHostKey from header: %s", error, exc_info=True)
 
-			if self._max_time_diff >= 0 and "date" in response.headers:
+			if self._max_time_diff >= 0:
 				try:
-					times, timez = response.headers["date"].rsplit(" ", 1)
-					if timez == "UTC":
-						# Parsing UTC dates only
-						loc = locale.getlocale()
-						locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
-						try:
-							server_dt = datetime.strptime(times, "%a, %d %b %Y %H:%M:%S").replace(tzinfo=timezone.utc)
-						finally:
-							locale.setlocale(locale.LC_ALL, loc)
+					server_dt = None
+					uxts_hdr = response.headers.get("x-date-unix-timestamp")
+					date_hdr = response.headers.get("date")
+					if uxts_hdr:
+						server_dt = datetime.fromtimestamp(int(uxts_hdr), tz=timezone.utc)
+					elif date_hdr:
+						times, timez = date_hdr.rsplit(" ", 1)
+						if timez == "UTC":
+							# Parsing UTC dates only
+							loc = locale.getlocale()
+							locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
+							try:
+								server_dt = datetime.strptime(times, "%a, %d %b %Y %H:%M:%S").replace(tzinfo=timezone.utc)
+							finally:
+								locale.setlocale(locale.LC_ALL, loc)
+					if server_dt:
 						local_dt = datetime.now(timezone.utc)
 						diff = server_dt - local_dt
 						if diff.total_seconds() > self._max_time_diff:
@@ -693,7 +700,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					else:
 						logger.debug("Not parsing non UTC date header: %s", response.headers["date"])
 				except Exception as err:  # pylint: disable=broad-except
-					logger.warning("Failed to process date header %r: %r", response.headers["date"], err)
+					logger.warning("Failed to process date header %r: %r", response.headers["date"], err, exc_info=True)
 
 			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file:
 				try:

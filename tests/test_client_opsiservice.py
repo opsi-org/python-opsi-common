@@ -1423,31 +1423,41 @@ def test_server_date_update() -> None:
 	):
 		max_time_diff = 5
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", max_time_diff=max_time_diff) as client:
-			# Difference smaller than max_time_diff => Keep time
-			now = datetime.now(timezone.utc)
-			server_dt = now + timedelta(seconds=max_time_diff - 3)
-			server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")
-			server.response_headers = {"date": server_dt_str}
-			client.connect()
-			assert not dt_set
-			client.disconnect()
-			dt_set = None
+			for hdr in "date", "x-date-unix-timestamp":
+				# Difference smaller than max_time_diff => Keep time
+				now = datetime.now(timezone.utc)
+				server_dt = now + timedelta(seconds=max_time_diff - 3)
+				if hdr == "date":
+					server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")
+					server.response_headers = {hdr: server_dt_str}
+				else:
+					server_dt_str = str(int(server_dt.timestamp()))
+					server.response_headers = {hdr: server_dt_str}
+				client.connect()
+				assert not dt_set
+				client.disconnect()
+				dt_set = None
 
-			# Difference bigger than max_time_diff => Set time
-			now = datetime.now(timezone.utc)
-			server_dt = now + timedelta(seconds=max_time_diff + 10)
-			server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")
-			server.response_headers = {"date": server_dt_str}
-			client.connect()
-			assert dt_set
-			assert abs((dt_set - server_dt).total_seconds()) < 3
-			client.disconnect()
-			dt_set = None
+				# Difference bigger than max_time_diff => Set time
+				now = datetime.now(timezone.utc)
+				server_dt = now + timedelta(seconds=max_time_diff + 10)
+				if hdr == "date":
+					server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")
+					server.response_headers = {hdr: server_dt_str}
+				else:
+					server_dt_str = str(int(server_dt.timestamp()))
+					server.response_headers = {hdr: server_dt_str}
+				client.connect()
+				assert dt_set
+				assert abs((dt_set - server_dt).total_seconds()) < 3
+				client.disconnect()
+				dt_set = None
 
-			# None UTC time in header => Keep time
-			now = datetime.now(timezone.utc)
-			server_dt = now + timedelta(seconds=max_time_diff + 100)
-			server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S GMT")
-			server.response_headers = {"date": server_dt_str}
-			client.connect()
-			assert not dt_set
+				if hdr == "date":
+					# None UTC time in header => Keep time
+					now = datetime.now(timezone.utc)
+					server_dt = now + timedelta(seconds=max_time_diff + 100)
+					server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S GMT")
+					server.response_headers = {hdr: server_dt_str}
+					client.connect()
+					assert not dt_set
