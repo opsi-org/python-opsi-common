@@ -48,6 +48,7 @@ def use_pigz() -> bool:
 		return False
 	try:
 		pigz_version = subprocess.check_output(["pigz", "--version"], stderr=subprocess.STDOUT).decode("utf-8")
+		pigz_version = pigz_version.replace("pigz", "").strip()
 		if packaging.version.parse(pigz_version) < packaging.version.parse("2.2.3"):
 			raise ValueError("pigz too old")
 		return True
