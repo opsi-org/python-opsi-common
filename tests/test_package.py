@@ -197,6 +197,30 @@ def test_create_package(compression: Literal["zstd", "bz2", "gz"]) -> None:
 				assert (temp_dir / part / "control.toml").relative_to(temp_dir) in result_contents
 
 
+@pytest.mark.parametrize(
+	"dirs",
+	(("OPSI", "CLIENT_DATA.custom"), ("OPSI", "CLIENT_DATA", "CLIENT_DATA.custom")),
+)
+def test_create_package_custom(dirs: list[str]) -> None:
+	package = OpsiPackage()
+	test_data = TEST_DATA / "control.toml"
+	with make_temp_dir() as temp_dir:
+		use_dirs = [temp_dir / dirname for dirname in dirs]
+		for _dir in use_dirs:
+			_dir.mkdir()
+			copy(test_data, _dir)
+		copy(test_data, temp_dir / "OPSI")
+		package_archive = package.create_package_archive(temp_dir, destination=temp_dir, use_dirs=use_dirs)
+		with make_temp_dir() as result_dir:
+			OpsiPackage().extract_package_archive(package_archive, result_dir)
+			print(list(result_dir.rglob("*")))
+			result_contents = list((_dir.relative_to(result_dir) for _dir in result_dir.rglob("*")))
+			print(result_contents)
+			assert (temp_dir / "OPSI" / "control.toml").relative_to(temp_dir) in result_contents
+			for part in dirs:
+				assert (temp_dir / part / "control.toml").relative_to(temp_dir) in result_contents
+
+
 def test_create_package_empty() -> None:
 	package = OpsiPackage()
 	test_data = TEST_DATA / "control.toml"

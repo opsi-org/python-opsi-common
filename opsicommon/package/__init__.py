@@ -59,7 +59,10 @@ class OpsiPackage:
 			logger.debug("Extracting archive %s", package_archive)
 			extract_archive_universal(package_archive, temp_dir)
 			for archive in temp_dir.iterdir():
-				extract_archive_universal(archive, destination / archive.name.split(".")[0])
+				archive_name = archive.name
+				while archive_name.endswith((".zstd", ".gz", ".bz2", ".cpio", ".tar")):
+					archive_name = ".".join(archive_name.split(".")[:-1])  # allow CLIENT_DATA.custom
+				extract_archive_universal(archive, destination / archive_name)
 		if new_product_id:
 			opsi_package = OpsiPackage()  # TODO: rename scripts? why? see OPSI.Util.Product
 			control_file = opsi_package.find_and_parse_control_file(destination)
@@ -159,30 +162,20 @@ class OpsiPackage:
 		control_file.write_text(tomlkit.dumps(data_dict))
 
 	# compression zstd, gz or bz2
-	def create_package_archive(
+	def create_package_archive(  # pylint: disable=too-many-arguments
 		self,
 		base_dir: Path,
 		compression: Literal["zstd", "bz2", "gz"] = "zstd",
 		destination: Path | None = None,
 		dereference: bool = False,
+		use_dirs: list[Path] | None = None,
 	) -> Path:
 		self.find_and_parse_control_file(base_dir)
 
 		archives = []
-		dirs = [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
+		dirs = use_dirs or [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
 		if not (base_dir / "OPSI").exists():
 			raise FileNotFoundError(f"Did not find OPSI directory at '{base_dir}'")
-		# TODO: custom_name stuff?
-		# if custom_name:
-		# 	found = False
-		# 	for _dir in dirs.copy():
-		# 		if Path(f"{_dir.name}.{custom_name}").exists():
-		# 			if custom_only:
-		# 				dirs.pop(_dir)
-		# 			dirs.append(Path(f"{_dir.name}.{custom_name}"))
-		# 			found = True
-		# 	if not found:
-		# 		raise RuntimeError(f"No custom dirs found for '{custom_name}'")
 
 		with make_temp_dir(self.temp_dir) as temp_dir:
 			for _dir in dirs:
