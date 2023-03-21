@@ -158,11 +158,11 @@ class OpsiPackage:
 			(control_file.parent / "changelog.txt").write_text(self.changelog.strip(), encoding="utf-8")
 		control_file.write_text(tomlkit.dumps(data_dict))
 
-	# compression zstd or bz2
+	# compression zstd, gz or bz2
 	def create_package_archive(
 		self,
 		base_dir: Path,
-		compression: Literal["zstd", "bz2"] = "zstd",
+		compression: Literal["zstd", "bz2", "gz"] = "zstd",
 		destination: Path | None = None,
 		dereference: bool = False,
 	) -> Path:
