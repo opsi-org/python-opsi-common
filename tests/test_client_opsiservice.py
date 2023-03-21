@@ -709,7 +709,8 @@ def test_messagebus_reconnect() -> None:
 		generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
 	) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
-			client.messagebus.reconnect_wait = 5
+			client.messagebus.reconnect_wait_min = 5
+			client.messagebus.reconnect_wait_max = 5
 			listener = MBListener()
 
 			with listener.register(client.messagebus):
@@ -747,29 +748,37 @@ def test_messagebus_reconnect_exception() -> None:
 	def ws_connect_callback(handler: HTTPTestServerRequestHandler) -> None:
 		nonlocal num
 		num += 1
-		if num == 1:
+		if num == 2:
+			handler._ws_close(1013, "Maintenance mode\nRetry-After: 5")  # pylint: disable=protected-access
+		else:
 			smsg = ChannelSubscriptionEventMessage(
 				sender="service:worker:test:1", channel="host:test-client.uib.local", subscribed_channels=["chan1", "chan2", "chan3"]
 			)
 			handler.ws_send_message(lz4.frame.compress(smsg.to_msgpack(), compression_level=0, block_linked=True))
-			handler._ws_close()  # pylint: disable=protected-access
-		else:
-			handler._ws_close(1013, "Maintenance mode\nRetry-After: 3")  # pylint: disable=protected-access
+			if num <= 3:
+				handler._ws_close()  # pylint: disable=protected-access
 
 	with http_test_server(
 		generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
 	) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
-			client.messagebus.reconnect_wait = 2
+			client.messagebus.reconnect_wait_min = 1
+			client.messagebus.reconnect_wait_max = 3
 			listener = MBListener()
 
 			with listener.register(client.messagebus):
 				client.connect_messagebus()
-				time.sleep(8)
+				time.sleep(15)
 
-			assert listener.established == 2
-			assert listener.closed == 2
-			assert listener.next_connect_wait == [2, 3]
+			assert listener.established == 3
+			assert listener.closed == 3
+
+			# Between reconnect_wait min and max
+			assert 1 <= listener.next_connect_wait[0] <= 3
+			# # Between reconnect_wait min and max + retry-after
+			assert 6 <= listener.next_connect_wait[1] <= 8
+			# Between reconnect_wait min and max
+			assert 1 <= listener.next_connect_wait[2] <= 3
 
 
 def test_get() -> None:
@@ -1358,7 +1367,8 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 				listener4.register(client.messagebus),
 			):
 				assert len(client.messagebus._listener) == 4  # pylint: disable=protected-access
-				client.messagebus.reconnect_wait = 2
+				client.messagebus.reconnect_wait_min = 2
+				client.messagebus.reconnect_wait_max = 2
 				client.messagebus._connect_timeout = 2  # pylint: disable=protected-access
 				client.connect_messagebus()
 				# Receive messages for 3 seconds

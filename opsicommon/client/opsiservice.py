@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from ipaddress import IPv6Address, ip_address
 from pathlib import Path
+from random import randint
 from threading import Event, Lock, Thread
 from traceback import TracebackException
 from types import MethodType, TracebackType
@@ -1101,7 +1102,9 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self._connect_timeout = 10.0
 		self.ping_interval = 15.0  # Send ping every specified period in seconds.
 		self.ping_timeout = 10.0  # Ping timeout in seconds.
-		self.reconnect_wait = 5.0  # After connection lost, reconnect after specified seconds.
+		# After connection lost, reconnect after specified seconds (min/max).
+		self.reconnect_wait_min = 5
+		self.reconnect_wait_max = 5
 		self._connect_attempt = 0
 		self._next_connect_wait = 0.0
 		self._subscribed_channels: list[str] = []
@@ -1122,7 +1125,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		logger.debug("Websocket opened")
 		if not self._connected:
 			logger.notice("Connected to opsi messagebus")
-		self._next_connect_wait = self.reconnect_wait
+		self._next_connect_wait = 0.0
 		self._connected = True
 		self._connected_result.set()
 		if self._subscribed_channels:
@@ -1158,9 +1161,10 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			except ValueError:
 				pass
 		else:
-			self._next_connect_wait = max(
-				self.reconnect_wait, min(int(self.reconnect_wait * self._connect_attempt * 1.25), self.reconnect_wait * 10)
-			)
+			self._next_connect_wait = 0
+
+		# Add random wait time to reduce the load on the server
+		self._next_connect_wait += float(randint(self.reconnect_wait_min, self.reconnect_wait_max))
 
 		for listener in self._listener:
 			self._run_listener_callback(listener, "messagebus_connection_closed", messagebus=self)
@@ -1407,10 +1411,8 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 							if self._should_stop.wait(1):
 								return
 					logger.debug("Calling _connect()")
-					# Call of _connect() will block
+					# Call of _connect() will block until the connection is lost
 					self._connect()
-				if self._next_connect_wait == 0.0:
-					self._next_connect_wait = self.reconnect_wait
 		except Exception as err:  # pylint: disable=broad-except
 			logger.error(err, exc_info=True)
 
