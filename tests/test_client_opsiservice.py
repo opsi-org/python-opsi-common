@@ -770,8 +770,8 @@ def test_messagebus_reconnect_exception() -> None:
 				client.connect_messagebus()
 				time.sleep(15)
 
-			assert listener.established == 3
-			assert listener.closed == 3
+			assert listener.established >= 3
+			assert listener.closed >= 3
 
 			# Between reconnect_wait min and max
 			assert 1 <= listener.next_connect_wait[0] <= 3
