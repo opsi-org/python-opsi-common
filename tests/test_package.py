@@ -230,6 +230,8 @@ def test_create_package_empty() -> None:
 		(temp_dir / "OPSI").mkdir()
 		(temp_dir / "CLIENT_DATA").mkdir()
 		copy(test_data, temp_dir / "OPSI")
+		print(list(temp_dir.rglob("*")))
+		print(list(temp_dir.rglob("control*")))
 		package_archive = package.create_package_archive(temp_dir, destination=temp_dir)
 		with make_temp_dir() as result_dir:
 			OpsiPackage().extract_package_archive(package_archive, result_dir)
