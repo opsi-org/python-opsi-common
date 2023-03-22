@@ -63,7 +63,7 @@ class OpsiPackage:
 				while archive_name.endswith((".zstd", ".gz", ".bz2", ".cpio", ".tar")):
 					archive_name = ".".join(archive_name.split(".")[:-1])  # allow CLIENT_DATA.custom
 				extract_archive_universal(archive, destination / archive_name)
-		control_file = self.find_and_parse_control_file(destination / archive_name)
+		control_file = self.find_and_parse_control_file(destination)
 		if new_product_id:
 			self.product.setId(new_product_id)
 			self.generate_control_file(control_file)
