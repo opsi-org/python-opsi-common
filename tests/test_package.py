@@ -162,7 +162,9 @@ def test_load_package(product_type: str, form: str) -> None:
 )
 def test_extract_package(new_product_id: str | None) -> None:
 	with make_temp_dir() as temp_dir:
-		OpsiPackage().extract_package_archive(TEST_DATA / "localboot_legacy_42.0-1337.opsi", temp_dir, new_product_id=new_product_id)
+		test_package = OpsiPackage()
+		test_package.extract_package_archive(TEST_DATA / "localboot_legacy_42.0-1337.opsi", temp_dir, new_product_id=new_product_id)
+		assert test_package.product.getId() == (new_product_id or "localboot_legacy")
 		contents = list(temp_dir.rglob("*"))
 		for _file in (
 			temp_dir / "OPSI" / "control",
@@ -171,9 +173,9 @@ def test_extract_package(new_product_id: str | None) -> None:
 			temp_dir / "CLIENT_DATA" / "setup.opsiscript",
 		):
 			assert _file in contents
-			result = OpsiPackage()
-			result.find_and_parse_control_file(temp_dir)
-			assert result.product.id == "newproductid" if new_product_id else "localboot_legacy"
+		result = OpsiPackage()
+		result.find_and_parse_control_file(temp_dir)
+		assert result.product.getId() == (new_product_id or "localboot_legacy")
 
 
 @pytest.mark.parametrize(
@@ -228,6 +230,8 @@ def test_create_package_empty() -> None:
 		(temp_dir / "OPSI").mkdir()
 		(temp_dir / "CLIENT_DATA").mkdir()
 		copy(test_data, temp_dir / "OPSI")
+		print(list(temp_dir.rglob("*")))
+		print(list(temp_dir.rglob("control*")))
 		package_archive = package.create_package_archive(temp_dir, destination=temp_dir)
 		with make_temp_dir() as result_dir:
 			OpsiPackage().extract_package_archive(package_archive, result_dir)
