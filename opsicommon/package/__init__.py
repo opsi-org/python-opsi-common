@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Literal
 
 import tomlkit
-
 from opsicommon.logging import get_logger
 from opsicommon.objects import Product, ProductDependency, ProductProperty
 from opsicommon.package.archive import (

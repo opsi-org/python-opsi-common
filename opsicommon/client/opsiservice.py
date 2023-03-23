@@ -629,14 +629,21 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 			for address_index in range(len(self._addresses)):
 				self._address_index = address_index
+
+				# Accept status 405 for older opsiconfd versions
+				allow_status_codes = [200, 405]
+				addr = urlparse(self._addresses[self._address_index])
+				if addr.hostname in ("127.0.0.1", "localhost") and addr.port == 4441:
+					# Accept status 500 for older opsiclientd versions
+					allow_status_codes.append(500)
+
 				try:
 					response = self._request(
 						method="HEAD",
 						path=self._jsonrpc_path,
 						timeout=(self._connect_timeout, self._connect_timeout),
 						verify=verify,
-						# Accept status 405 for older opsiconfd versions
-						allow_status_codes=(200, 405),
+						allow_status_codes=allow_status_codes,
 					)
 					break
 				except OpsiServiceError as err:
