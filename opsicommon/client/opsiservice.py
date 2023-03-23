@@ -638,6 +638,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				# Accept status 405 for older opsiconfd versions
 				allow_status_codes = [200, 405]
 				if self.service_is_opsiclientd():
+					logger.notice("Connecting to local opsiclientd, skipping verification and allowing error 500")
 					# Accept status 500 for older opsiclientd versions
 					allow_status_codes.append(500)
 					verify_addr = False
@@ -681,7 +682,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				except ValueError as error:
 					logger.error("Could not get OpsiHostKey from header: %s", error, exc_info=True)
 
-			if self._max_time_diff >= 0:
+			if self._max_time_diff >= 0 and not self.service_is_opsiclientd():
 				try:
 					server_dt = None
 					uxts_hdr = response.headers.get("x-date-unix-timestamp")
@@ -714,7 +715,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				except Exception as err:  # pylint: disable=broad-except
 					logger.warning("Failed to process date header %r: %r", response.headers["date"], err, exc_info=True)
 
-			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file:
+			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file and not self.service_is_opsiclientd():
 				try:
 					self.fetch_opsi_ca(skip_verify=not verify)
 				except Exception as err:  # pylint: disable=broad-except
