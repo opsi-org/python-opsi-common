@@ -403,6 +403,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	def base_url(self) -> str:
 		return self._addresses[self._address_index]
 
+	def service_is_opsiclientd(self) -> bool:
+		addr = urlparse(self._addresses[self._address_index])
+		return addr.hostname in ("127.0.0.1", "localhost") and addr.port == 4441
+
 	@property
 	def verify(self) -> list[ServiceVerificationFlags]:
 		return self._verify
@@ -630,19 +634,20 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			for address_index in range(len(self._addresses)):
 				self._address_index = address_index
 
+				verify_addr = verify
 				# Accept status 405 for older opsiconfd versions
 				allow_status_codes = [200, 405]
-				addr = urlparse(self._addresses[self._address_index])
-				if addr.hostname in ("127.0.0.1", "localhost") and addr.port == 4441:
+				if self.service_is_opsiclientd():
 					# Accept status 500 for older opsiclientd versions
 					allow_status_codes.append(500)
+					verify_addr = False
 
 				try:
 					response = self._request(
 						method="HEAD",
 						path=self._jsonrpc_path,
 						timeout=(self._connect_timeout, self._connect_timeout),
-						verify=verify,
+						verify=verify_addr,
 						allow_status_codes=allow_status_codes,
 					)
 					break
