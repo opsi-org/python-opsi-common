@@ -16,7 +16,6 @@ from typing import Generator
 
 import packaging.version
 import zstandard
-
 from opsicommon.config.opsi import OpsiConfig
 from opsicommon.logging import get_logger
 
@@ -118,7 +117,11 @@ def extract_archive(archive: Path, destination: Path, file_pattern: str | None =
 		create_input = f"cat {archive.absolute()}"
 	process_archive = extract_command(archive.absolute(), file_pattern=file_pattern)
 	with chdir(destination):
-		subprocess.check_call(f"{create_input} | {process_archive}", shell=True)
+		cmd = f"{create_input} | {process_archive}"
+		proc = subprocess.run(cmd, shell=True, check=False, capture_output=True, text=True)
+		logger.debug("%s output: %s", cmd, proc.stdout + proc.stderr)
+		if proc.returncode != 0:
+			raise RuntimeError(f"Command {cmd} failed: {proc.stdout + proc.stderr}")
 
 
 def untar(tar: tarfile.TarFile, destination: Path, file_pattern: str | None = None) -> None:
@@ -161,7 +164,7 @@ def compress_command(archive: Path, compression: str) -> str:
 		return f"bzip2 --quiet - > '{archive}'"
 	if compression == "zstd":
 		try:
-			subprocess.check_call("zstd --version > /dev/null", shell=True)
+			subprocess.run("zstd --version", shell=True, capture_output=True, check=True)
 		except subprocess.CalledProcessError as error:
 			raise RuntimeError("Zstd not available.") from error
 		return f"zstd - -o '{archive}' 2> /dev/null"  # --no-progress is not available for deb9 zstd
@@ -181,7 +184,10 @@ def create_archive(archive: Path, sources: list[Path], base_dir: Path, compressi
 		cmd = f"{TAR_CREATE_COMMAND} {archive} {dereference_string} {source_string}"
 	with chdir(base_dir):
 		logger.debug("Executing %s at %s", cmd, base_dir)
-		subprocess.check_call(cmd, shell=True)
+		proc = subprocess.run(cmd, shell=True, check=False, capture_output=True, text=True)
+		logger.debug("%s output: %s", cmd, proc.stdout + proc.stderr)
+		if proc.returncode != 0:
+			raise RuntimeError(f"Command {cmd} failed: {proc.stdout + proc.stderr}")
 
 
 def create_archive_universal(
