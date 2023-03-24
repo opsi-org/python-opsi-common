@@ -199,11 +199,8 @@ class OpsiPackage:
 					logger.warning("Skipping invalid directory '%s'", _dir)
 
 				if not _dir.exists():
-					err = f"Directory '{_dir}' does not exist"
-					if dir_type == "SERVER_DATA":
-						logger.info(err)
-						continue
-					raise FileNotFoundError(err)
+					logger.info("Directory '%s' does not exist", _dir)
+					continue
 
 				file_list = [  # TODO: behaviour for symlinks
 					file
