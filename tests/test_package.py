@@ -27,6 +27,49 @@ def print_info(package: OpsiPackage) -> None:
 	print(package.package_dependencies)
 
 
+def test_find_and_parse_control_file() -> None:
+	control = TEST_DATA / "control"
+	control_toml = TEST_DATA / "control.toml"
+	test_package = OpsiPackage()
+	with make_temp_dir() as temp_dir:
+		copy(control, temp_dir / "control")
+		assert test_package.find_and_parse_control_file(temp_dir) == temp_dir / "control"
+
+	with make_temp_dir() as temp_dir:
+		copy(control_toml, temp_dir / "control.toml")
+		assert test_package.find_and_parse_control_file(temp_dir) == temp_dir / "control.toml"
+
+	with make_temp_dir() as temp_dir:
+		copy(control, temp_dir / "control")
+		copy(control_toml, temp_dir / "control.toml")
+		assert test_package.find_and_parse_control_file(temp_dir) == temp_dir / "control.toml"
+
+	with make_temp_dir() as temp_dir:
+		opsi_dir = temp_dir / "OPSI"
+		opsi_dir.mkdir()
+		copy(control, opsi_dir / "control")
+		assert test_package.find_and_parse_control_file(temp_dir) == opsi_dir / "control"
+
+	with make_temp_dir() as temp_dir:
+		opsi_dir = temp_dir / "OPSI"
+		opsi_custom_dir = temp_dir / "OPSI.custom"
+		opsi_dir.mkdir()
+		opsi_custom_dir.mkdir()
+		copy(control, opsi_dir / "control")
+		copy(control_toml, opsi_custom_dir / "control.toml")
+		assert test_package.find_and_parse_control_file(temp_dir) == opsi_custom_dir / "control.toml"
+
+	# Prefer toml over custom
+	with make_temp_dir() as temp_dir:
+		opsi_dir = temp_dir / "OPSI"
+		opsi_custom_dir = temp_dir / "OPSI.test"
+		opsi_dir.mkdir()
+		opsi_custom_dir.mkdir()
+		copy(control_toml, opsi_dir / "control.toml")
+		copy(control, opsi_custom_dir / "control")
+		assert test_package.find_and_parse_control_file(temp_dir) == opsi_dir / "control.toml"
+
+
 @pytest.mark.parametrize(
 	"form",
 	("legacy", "new"),
@@ -230,12 +273,9 @@ def test_create_package_custom(custom_only: bool) -> None:
 			# Test custom priority
 			assert pkg.product.priority == 20
 
-			# Test extract_package_archive()
+			# Test extract_package_archive(custom_separated=False)
 			pkg = OpsiPackage()
-			pkg.extract_package_archive(package_archive, result_dir)
-
-			# import subprocess
-			# subprocess.run(f"ls -lR {result_dir}", shell=True)
+			pkg.extract_package_archive(package_archive, result_dir, custom_separated=False)
 
 			# Test custom priority
 			assert pkg.product.priority == 20
@@ -249,6 +289,31 @@ def test_create_package_custom(custom_only: bool) -> None:
 			else:
 				assert (result_dir / "CLIENT_DATA" / "testfile3").read_text(encoding="utf-8") == "MAIN3"
 			assert (result_dir / "CLIENT_DATA" / "testfile4").read_text(encoding="utf-8") == "CUSTOM4"
+
+		with make_temp_dir() as result_dir:
+			# Test extract_package_archive(custom_separated=True)
+			pkg = OpsiPackage()
+			pkg.extract_package_archive(package_archive, result_dir, custom_separated=True)
+
+			files = [f.name for f in (result_dir / "CLIENT_DATA.custom").iterdir()]
+			assert sorted(files) == ["testfile2", "testfile4"]
+			assert (result_dir / "CLIENT_DATA.custom" / "testfile2").read_text(encoding="utf-8") == "CUSTOM2"
+			assert (result_dir / "CLIENT_DATA.custom" / "testfile4").read_text(encoding="utf-8") == "CUSTOM4"
+
+			files = [f.name for f in (result_dir / "OPSI.custom").iterdir()]
+			assert sorted(files) == ["control.toml"]
+			assert "priority = 20" in (result_dir / "OPSI.custom" / "control.toml").read_text(encoding="utf-8")
+
+			if not custom_only:
+				files = [f.name for f in (result_dir / "CLIENT_DATA").iterdir()]
+				assert sorted(files) == ["testfile1", "testfile2", "testfile3"]
+				assert (result_dir / "CLIENT_DATA" / "testfile1").read_text(encoding="utf-8") == "MAIN1"
+				assert (result_dir / "CLIENT_DATA" / "testfile2").read_text(encoding="utf-8") == "MAIN2"
+				assert (result_dir / "CLIENT_DATA" / "testfile3").read_text(encoding="utf-8") == "MAIN3"
+
+				files = [f.name for f in (result_dir / "OPSI").iterdir()]
+				assert sorted(files) == ["control.toml"]
+				assert "priority = 10" in (result_dir / "OPSI" / "control.toml").read_text(encoding="utf-8")
 
 
 def test_create_package_empty() -> None:

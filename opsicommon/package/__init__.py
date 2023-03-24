@@ -53,23 +53,31 @@ class OpsiPackage:
 		if package_archive:
 			self.from_package_archive(package_archive)
 
-	def extract_package_archive(self, package_archive: Path, destination: Path, new_product_id: str | None = None) -> None:
-		metadata_dir = None
+	def extract_package_archive(
+		self, package_archive: Path, destination: Path, *, new_product_id: str | None = None, custom_separated: bool = False
+	) -> None:
+		"""
+		Extact `package_archive` to `destination`.
+		If `new_product_id` is supplied, the control file will be patched accordingly.
+		If `custom_separated` is `True` the custom archives will be extracted to custom named directories.
+		If `custom_separated` is `False` the archives will be extracted in a combined folder.
+		"""
 		with make_temp_dir(self.temp_dir) as temp_dir:
 			logger.debug("Extracting archive %s", package_archive)
 			extract_archive_universal(package_archive, temp_dir)
 			# Extract <OPSI|CLIENT_DATA|SERVER_DATA>.<custom> after <OPSI|CLIENT_DATA|SERVER_DATA>
-			# into the same folder because custom archive has precedence
+			# If data is extracted into the same folder custom archive has precedence.
 			for archive in sorted(temp_dir.iterdir(), key=lambda a: len(a.name.split("."))):
-				archive_name = archive.name.split(".", 1)[0]
-				extract_archive_universal(archive, destination / archive_name)
-				if archive_name == "OPSI":
-					metadata_dir = destination / archive_name
+				folder_name = archive.name
+				if custom_separated:
+					while folder_name.endswith((".zstd", ".gz", ".bz2", ".cpio", ".tar")):
+						folder_name = folder_name.rsplit(".", 1)[0]
+				else:
+					# Same folder for CLIENT_DATA and CLIENT_DATA.<custom>
+					folder_name = archive.name.split(".", 1)[0]
+				extract_archive_universal(archive, destination / folder_name)
 
-		if not metadata_dir:
-			raise RuntimeError(f"No OPSI directory in archive '{package_archive}'")
-
-		control_file = self.find_and_parse_control_file(metadata_dir)
+		control_file = self.find_and_parse_control_file(destination)
 		if new_product_id:
 			self.product.setId(new_product_id)
 			self.generate_control_file(control_file)
@@ -78,26 +86,35 @@ class OpsiPackage:
 		with make_temp_dir(self.temp_dir) as temp_dir:
 			logger.debug("Extracting archive %s", package_archive)
 			extract_archive_universal(package_archive, temp_dir, file_pattern="OPSI.*")
-			content = list(temp_dir.glob("OPSI.*"))
-			if len(content) == 0:
+			archives = list(temp_dir.glob("OPSI.*"))
+			if len(archives) == 0:
 				raise RuntimeError(f"No OPSI archive '{package_archive}'")
 
-			# Prefer OPSI.<custom>
-			content.sort(key=lambda a: len(a.name.split(".")), reverse=True)
+			# Extract custom last
+			for archive in sorted(archives, key=lambda a: len(a.name.split("."))):
+				extract_archive_universal(archive, temp_dir, file_pattern="control*")  # or OPSI? difference tar and cpio
 
-			extract_archive_universal(content[0], temp_dir, file_pattern="control*")  # or OPSI? difference tar and cpio
 			self.find_and_parse_control_file(temp_dir)
 
-	def find_and_parse_control_file(self, metadata_dir: Path) -> Path:
-		control_toml = metadata_dir / "control.toml"
-		if control_toml.exists():
-			self.parse_control_file(control_toml)
-			return control_toml
+	def find_and_parse_control_file(self, search_dir: Path) -> Path:
+		opsi_dirs = []
+		for _dir in search_dir.glob("OPSI*"):
+			if _dir.is_dir() and _dir.name == "OPSI" or _dir.name.startswith("OPSI."):
+				opsi_dirs.append(_dir)
 
-		control = metadata_dir / "control"
-		if control.exists():
-			self.parse_control_file_legacy(control)
-			return control
+		# Sort custom first
+		for _dir in [search_dir] + sorted(opsi_dirs, reverse=True):
+			control_toml = _dir / "control.toml"
+			if control_toml.exists():
+				self.parse_control_file(control_toml)
+				return control_toml
+
+		# Sort custom first
+		for _dir in [search_dir] + sorted(opsi_dirs, reverse=True):
+			control = _dir / "control"
+			if control.exists():
+				self.parse_control_file_legacy(control)
+				return control
 
 		raise RuntimeError("No control file found.")
 
