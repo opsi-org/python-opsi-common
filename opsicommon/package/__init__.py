@@ -54,15 +54,22 @@ class OpsiPackage:
 			self.from_package_archive(package_archive)
 
 	def extract_package_archive(self, package_archive: Path, destination: Path, new_product_id: str | None = None) -> None:
+		metadata_dir = None
 		with make_temp_dir(self.temp_dir) as temp_dir:
 			logger.debug("Extracting archive %s", package_archive)
 			extract_archive_universal(package_archive, temp_dir)
-			for archive in temp_dir.iterdir():
-				archive_name = archive.name
-				while archive_name.endswith((".zstd", ".gz", ".bz2", ".cpio", ".tar")):
-					archive_name = ".".join(archive_name.split(".")[:-1])  # allow CLIENT_DATA.custom
+			# Extract <OPSI|CLIENT_DATA|SERVER_DATA>.<custom> after <OPSI|CLIENT_DATA|SERVER_DATA>
+			# into the same folder because custom archive has precedence
+			for archive in sorted(temp_dir.iterdir(), key=lambda a: len(a.name.split("."))):
+				archive_name = archive.name.split(".", 1)[0]
 				extract_archive_universal(archive, destination / archive_name)
-		control_file = self.find_and_parse_control_file(destination)
+				if archive_name == "OPSI":
+					metadata_dir = destination / archive_name
+
+		if not metadata_dir:
+			raise RuntimeError(f"No OPSI directory in archive '{package_archive}'")
+
+		control_file = self.find_and_parse_control_file(metadata_dir)
 		if new_product_id:
 			self.product.setId(new_product_id)
 			self.generate_control_file(control_file)
@@ -73,22 +80,25 @@ class OpsiPackage:
 			extract_archive_universal(package_archive, temp_dir, file_pattern="OPSI.*")
 			content = list(temp_dir.glob("OPSI.*"))
 			if len(content) == 0:
-				raise RuntimeError(f"No OPSI directory in archive '{package_archive}'")
-			if len(content) > 1:
-				raise RuntimeError(f"Multiple OPSI directories in archive '{package_archive}'.")
+				raise RuntimeError(f"No OPSI archive '{package_archive}'")
+
+			# Prefer OPSI.<custom>
+			content.sort(key=lambda a: len(a.name.split(".")), reverse=True)
+
 			extract_archive_universal(content[0], temp_dir, file_pattern="control*")  # or OPSI? difference tar and cpio
 			self.find_and_parse_control_file(temp_dir)
 
-	def find_and_parse_control_file(self, base_dir: Path) -> Path:
-		content = list(base_dir.rglob("control*"))
-		for path in (base_dir / "control.toml", base_dir / "OPSI" / "control.toml"):
-			if path in content:
-				self.parse_control_file(path)
-				return path
-		for path in (base_dir / "control", base_dir / "OPSI" / "control"):
-			if path in content:
-				self.parse_control_file_legacy(path)
-				return path
+	def find_and_parse_control_file(self, metadata_dir: Path) -> Path:
+		control_toml = metadata_dir / "control.toml"
+		if control_toml.exists():
+			self.parse_control_file(control_toml)
+			return control_toml
+
+		control = metadata_dir / "control"
+		if control.exists():
+			self.parse_control_file_legacy(control)
+			return control
+
 		raise RuntimeError("No control file found.")
 
 	def parse_control_file_legacy(self, control_file: Path) -> None:
@@ -160,7 +170,7 @@ class OpsiPackage:
 		control_file.write_text(tomlkit.dumps(data_dict))
 
 	# compression zstd, gz or bz2
-	def create_package_archive(  # pylint: disable=too-many-arguments
+	def create_package_archive(  # pylint: disable=too-many-arguments, too-many-locals
 		self,
 		base_dir: Path,
 		compression: Literal["zstd", "bz2", "gz"] = "zstd",
@@ -168,18 +178,33 @@ class OpsiPackage:
 		dereference: bool = False,
 		use_dirs: list[Path] | None = None,
 	) -> Path:
-		self.find_and_parse_control_file(base_dir)
-
 		archives = []
 		dirs = use_dirs or [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
-		if not (base_dir / "OPSI").exists():
-			raise FileNotFoundError(f"Did not find OPSI directory at '{base_dir}'")
+
+		# Prefer OPSI.<custom>
+		opsi_dirs = [d for d in sorted(dirs, reverse=True) if d.name.startswith("OPSI")]
+		if not opsi_dirs:
+			raise ValueError(f"No OPSI directory in '{[d.name for d in dirs]}'")
+		opsi_dir = opsi_dirs[0]
+
+		if not opsi_dir.exists():
+			raise FileNotFoundError(f"Did not find OPSI directory '{opsi_dir}'")
+
+		self.find_and_parse_control_file(opsi_dir)
 
 		with make_temp_dir(self.temp_dir) as temp_dir:
 			for _dir in dirs:
+				dir_type = _dir.name.split(".", 1)[0]
+				if dir_type not in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
+					logger.warning("Skipping invalid directory '%s'", _dir)
+
 				if not _dir.exists():
-					logger.info("Directory '%s' does not exist", _dir)
-					continue
+					err = f"Directory '{_dir}' does not exist"
+					if dir_type == "SERVER_DATA":
+						logger.info(err)
+						continue
+					raise FileNotFoundError(err)
+
 				file_list = [  # TODO: behaviour for symlinks
 					file
 					for file in _dir.iterdir()
@@ -197,9 +222,10 @@ class OpsiPackage:
 				# 		tmp.append(file)
 				# 	fileList = tmp
 
-				if not file_list and _dir.name not in ("CLIENT_DATA", "OPSI"):
+				if not file_list and dir_type == "SERVER_DATA":
 					logger.debug("Skipping empty dir '%s'", _dir)
 					continue
+
 				filename = temp_dir / f"{_dir.name}.tar.{compression}"
 				logger.info("Creating archive %s", filename)
 				create_archive_universal(filename, file_list, base_dir=_dir, compression=compression, dereference=dereference)

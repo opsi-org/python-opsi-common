@@ -150,7 +150,7 @@ def extract_archive_universal(archive: Path, destination: Path, file_pattern: st
 	else:
 		file_type = get_file_type(archive)
 		if archive.suffixes and ".cpio" in archive.suffixes[-2:] or file_type == "cpio":
-			logger.warning("Found cpio archive. Falling back to old method")
+			logger.info("Found cpio archive. Falling back to old method")
 			if platform.system().lower() != "linux":
 				raise RuntimeError("Extracting cpio archives is only available on linux.")
 			extract_archive(archive, destination, file_pattern=file_pattern)

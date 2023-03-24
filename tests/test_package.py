@@ -8,7 +8,6 @@ from shutil import copy
 from typing import Literal
 
 import pytest
-
 from opsicommon.objects import NetbootProduct
 from opsicommon.package import OpsiPackage
 from opsicommon.package.associated_files import (
@@ -174,7 +173,7 @@ def test_extract_package(new_product_id: str | None) -> None:
 		):
 			assert _file in contents
 		result = OpsiPackage()
-		result.find_and_parse_control_file(temp_dir)
+		result.find_and_parse_control_file(temp_dir / "OPSI")
 		assert result.product.getId() == (new_product_id or "localboot_legacy")
 
 
@@ -199,28 +198,57 @@ def test_create_package(compression: Literal["zstd", "bz2", "gz"]) -> None:
 				assert (temp_dir / part / "control.toml").relative_to(temp_dir) in result_contents
 
 
-@pytest.mark.parametrize(
-	"dirs",
-	(("OPSI", "CLIENT_DATA.custom"), ("OPSI", "CLIENT_DATA", "CLIENT_DATA.custom")),
-)
-def test_create_package_custom(dirs: list[str]) -> None:
+@pytest.mark.parametrize("custom_only", (True, False))
+def test_create_package_custom(custom_only: bool) -> None:
 	package = OpsiPackage()
-	test_data = TEST_DATA / "control.toml"
+	control = TEST_DATA / "control.toml"
 	with make_temp_dir() as temp_dir:
-		use_dirs = [temp_dir / dirname for dirname in dirs]
-		for _dir in use_dirs:
+		opsi_dir = temp_dir / "OPSI"
+		opsi_dir_custom = temp_dir / "OPSI.custom"
+		client_dir = temp_dir / "CLIENT_DATA"
+		client_dir_custom = temp_dir / "CLIENT_DATA.custom"
+		dirs = [opsi_dir, opsi_dir_custom, client_dir, client_dir_custom]
+		for _dir in dirs:
 			_dir.mkdir()
-			copy(test_data, _dir)
-		copy(test_data, temp_dir / "OPSI")
-		package_archive = package.create_package_archive(temp_dir, destination=temp_dir, use_dirs=use_dirs)
+		data = control.read_text(encoding="utf-8")
+		(opsi_dir / "control.toml").write_text(data.replace("priority = 0", "priority = 10"), encoding="utf-8")
+		(opsi_dir_custom / "control.toml").write_text(data.replace("priority = 0", "priority = 20"), encoding="utf-8")
+		(client_dir / "testfile1").write_text("MAIN1", encoding="utf-8")
+		(client_dir / "testfile2").write_text("MAIN2", encoding="utf-8")
+		(client_dir / "testfile3").write_text("MAIN3", encoding="utf-8")
+		(client_dir_custom / "testfile2").write_text("CUSTOM2", encoding="utf-8")
+		(client_dir_custom / "testfile4").write_text("CUSTOM4", encoding="utf-8")
+
+		if custom_only:
+			dirs = [opsi_dir_custom, client_dir_custom]
+		package_archive = package.create_package_archive(temp_dir, destination=temp_dir, use_dirs=dirs)
+
 		with make_temp_dir() as result_dir:
-			OpsiPackage().extract_package_archive(package_archive, result_dir)
-			print(list(result_dir.rglob("*")))
-			result_contents = list((_dir.relative_to(result_dir) for _dir in result_dir.rglob("*")))
-			print(result_contents)
-			assert (temp_dir / "OPSI" / "control.toml").relative_to(temp_dir) in result_contents
-			for part in dirs:
-				assert (temp_dir / part / "control.toml").relative_to(temp_dir) in result_contents
+			# Test from_package_archive()
+			pkg = OpsiPackage()
+			pkg.from_package_archive(package_archive)
+			# Test custom priority
+			assert pkg.product.priority == 20
+
+			# Test extract_package_archive()
+			pkg = OpsiPackage()
+			pkg.extract_package_archive(package_archive, result_dir)
+
+			# import subprocess
+			# subprocess.run(f"ls -lR {result_dir}", shell=True)
+
+			# Test custom priority
+			assert pkg.product.priority == 20
+			if custom_only:
+				assert not (result_dir / "CLIENT_DATA" / "testfile1").exists()
+			else:
+				assert (result_dir / "CLIENT_DATA" / "testfile1").read_text(encoding="utf-8") == "MAIN1"
+			assert (result_dir / "CLIENT_DATA" / "testfile2").read_text(encoding="utf-8") == "CUSTOM2"
+			if custom_only:
+				assert not (result_dir / "CLIENT_DATA" / "testfile3").exists()
+			else:
+				assert (result_dir / "CLIENT_DATA" / "testfile3").read_text(encoding="utf-8") == "MAIN3"
+			assert (result_dir / "CLIENT_DATA" / "testfile4").read_text(encoding="utf-8") == "CUSTOM4"
 
 
 def test_create_package_empty() -> None:
@@ -319,7 +347,7 @@ def test_extract_package_tar_zstd() -> None:
 		):
 			assert _file in contents
 			result = OpsiPackage()
-			result.find_and_parse_control_file(temp_dir)
+			result.find_and_parse_control_file(temp_dir / "OPSI")
 			assert result.product.id == "localboot_new"
 
 
