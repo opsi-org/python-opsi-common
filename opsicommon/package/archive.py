@@ -169,7 +169,7 @@ def extract_archive(archive: Path, destination: Path, file_pattern: str | None =
 
 
 def compress_command(archive: Path, compression: str) -> str:
-	if archive.suffix in (".gzip", ".gz"):
+	if compression in ("gzip", "gz"):
 		if use_pigz():
 			return f"pigz --quiet - > '{archive}'"
 		return f"gzip --quiet - > '{archive}'"
