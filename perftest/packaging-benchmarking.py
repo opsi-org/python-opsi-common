@@ -12,10 +12,10 @@ from pathlib import Path
 from typing import Callable
 
 from opsicommon.package.archive import (
-	create_archive,
-	create_archive_universal,
-	extract_archive,
-	extract_archive_universal,
+	create_archive_external,
+	create_archive_internal,
+	extract_archive_external,
+	extract_archive_internal,
 )
 from opsicommon.utils import make_temp_dir
 
@@ -51,10 +51,8 @@ def benchmark_tar_create() -> None:
 			text = "".join(random.choices(string.ascii_uppercase + string.digits, k=CHARS_PER_FILE))
 			(temp_dir / "source" / str(filename)).write_text(text)
 		for compression in (None, "zstd", "bz2", "gz"):
-			for method in (create_archive, create_archive_universal):
-				if compression == "gz" and method is create_archive:
-					continue
-				if platform.system().lower() != "linux" and method is create_archive:
+			for method in (create_archive_internal, create_archive_external):
+				if platform.system().lower() != "linux" and method is create_archive_external:
 					continue
 				time_tar_create(temp_dir, method, compression)
 
@@ -83,9 +81,9 @@ def benchmark_tar_extract() -> None:
 			(temp_dir / "source" / str(filename)).write_text(text)
 		for compression in (None, "zstd", "bz2", "gz"):
 			archive = temp_dir / f"archive.tar{f'.{compression}' if compression else ''}"
-			create_archive_universal(archive, [temp_dir / "source"], temp_dir, compression=compression)
-			for method in (extract_archive, extract_archive_universal):
-				if platform.system().lower() != "linux" and method is extract_archive:
+			create_archive_internal(archive, [temp_dir / "source"], temp_dir, compression=compression)
+			for method in (extract_archive_external, extract_archive_internal):
+				if platform.system().lower() != "linux" and method is extract_archive_external:
 					continue
 				time_tar_extract(archive, method, compression)
 
