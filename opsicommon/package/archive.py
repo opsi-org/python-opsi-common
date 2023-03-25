@@ -4,7 +4,6 @@ handling of archives
 
 import fnmatch
 import os
-import platform
 import re
 import subprocess
 import tarfile
