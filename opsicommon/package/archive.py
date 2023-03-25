@@ -121,7 +121,7 @@ def untar(tar: tarfile.TarFile, destination: Path, file_pattern: str | None = No
 
 
 # Warning: this is specific for linux!
-def extract_archive_with_commands(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
+def extract_archive_external(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
 	logger.info("Extracting archive %s to destination %s", archive, destination)
 	destination.mkdir(parents=True, exist_ok=True)
 	if archive.suffixes and archive.suffixes[-1] in (".zstd", ".gz", ".gzip", ".bz2", ".bzip2"):
@@ -137,7 +137,7 @@ def extract_archive_with_commands(archive: Path, destination: Path, file_pattern
 			raise RuntimeError(f"Command {cmd} failed: {proc.stdout + proc.stderr}")
 
 
-def extract_archive_universal(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
+def extract_archive_internal(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
 	logger.info("Extracting archive %s to destination %s", archive, destination)
 	destination.mkdir(parents=True, exist_ok=True)
 	if archive.suffixes and archive.suffixes[-1] == ".zstd":
@@ -151,19 +151,22 @@ def extract_archive_universal(archive: Path, destination: Path, file_pattern: st
 	else:
 		file_type = get_file_type(archive)
 		if archive.suffixes and ".cpio" in archive.suffixes[-2:] or file_type == "cpio":
-			logger.info("Found cpio archive. Falling back to old method")
-			if platform.system().lower() != "linux":
-				raise RuntimeError("Extracting cpio archives is only available on linux.")
-			extract_archive(archive, destination, file_pattern=file_pattern)
-			return
+			raise RuntimeError("Extracting cpio archives is not available on this platform.")
 		with tarfile.open(archive, mode="r") as tar_object:  # compression can be None, gz, bz2 or xz
 			untar(tar_object, destination, file_pattern)
 
 
 def extract_archive(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
-	if archive.suffixes and archive.suffixes[-1] in (".gz", ".gzip") and is_linux() and use_pigz():
-		return extract_archive_with_commands(archive, destination, file_pattern)
-	return extract_archive_universal(archive, destination, file_pattern)
+	use_commands = False
+	if is_linux():
+		file_type = get_file_type(archive)
+		if archive.suffixes and ".cpio" in archive.suffixes[-2:] or file_type == "cpio":
+			use_commands = True
+		elif (archive.suffixes and archive.suffixes[-1] in (".gz", ".gzip") or file_type == "gz") and use_pigz():
+			use_commands = True
+	if use_commands:
+		return extract_archive_external(archive, destination, file_pattern)
+	return extract_archive_internal(archive, destination, file_pattern)
 
 
 def compress_command(archive: Path, compression: str) -> str:
@@ -183,7 +186,7 @@ def compress_command(archive: Path, compression: str) -> str:
 
 
 # Warning: this is specific for linux!
-def create_archive_with_commands(
+def create_archive_external(
 	archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False
 ) -> None:
 	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
@@ -203,7 +206,7 @@ def create_archive_with_commands(
 			raise RuntimeError(f"Command {cmd} failed: {proc.stdout + proc.stderr}")
 
 
-def create_archive_universal(
+def create_archive_internal(
 	archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False
 ) -> None:
 	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
@@ -232,5 +235,5 @@ def create_archive_universal(
 
 def create_archive(archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False) -> None:
 	if compression == "gz" and is_linux() and use_pigz():
-		return create_archive_with_commands(archive, sources, base_dir, compression, dereference)
-	return create_archive_universal(archive, sources, base_dir, compression, dereference)
+		return create_archive_external(archive, sources, base_dir, compression, dereference)
+	return create_archive_internal(archive, sources, base_dir, compression, dereference)
