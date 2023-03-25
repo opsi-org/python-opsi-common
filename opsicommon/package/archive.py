@@ -18,6 +18,7 @@ import packaging.version
 import zstandard
 from opsicommon.config.opsi import OpsiConfig
 from opsicommon.logging import get_logger
+from opsicommon.system.info import is_linux
 
 logger = get_logger("opsicommon.package")
 
@@ -94,7 +95,7 @@ def extract_command(archive: Path, file_pattern: str | None = None) -> str:
 def decompress_command(archive: Path) -> str:
 	if archive.suffix in (".gzip", ".gz"):
 		if use_pigz():
-			return f"pigz --stdout --decompress '{archive}'"
+			return f"pigz --stdout --quiet --decompress '{archive}'"
 		return f"zcat --stdout --quiet --decompress '{archive}'"
 	if archive.suffix in (".bzip2", ".bz2"):
 		return f"bzcat --stdout --quiet --decompress '{archive}'"
@@ -107,8 +108,20 @@ def decompress_command(archive: Path) -> str:
 	raise RuntimeError(f"Unknown compression of file '{archive}'")
 
 
+def untar(tar: tarfile.TarFile, destination: Path, file_pattern: str | None = None) -> None:
+	relevant_members = []
+	if file_pattern:
+		for member in tar.getmembers():
+			if fnmatch.fnmatch(member.name, file_pattern):
+				relevant_members.append(member)
+		if not relevant_members:
+			raise FileNotFoundError(f"Did not find file pattern {file_pattern} in tar file")
+		logger.debug("Extracting members according to file pattern %s: %s", file_pattern, relevant_members)
+	tar.extractall(path=destination, members=relevant_members or None)
+
+
 # Warning: this is specific for linux!
-def extract_archive(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
+def extract_archive_with_commands(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
 	logger.info("Extracting archive %s to destination %s", archive, destination)
 	destination.mkdir(parents=True, exist_ok=True)
 	if archive.suffixes and archive.suffixes[-1] in (".zstd", ".gz", ".gzip", ".bz2", ".bzip2"):
@@ -122,18 +135,6 @@ def extract_archive(archive: Path, destination: Path, file_pattern: str | None =
 		logger.debug("%s output: %s", cmd, proc.stdout + proc.stderr)
 		if proc.returncode != 0:
 			raise RuntimeError(f"Command {cmd} failed: {proc.stdout + proc.stderr}")
-
-
-def untar(tar: tarfile.TarFile, destination: Path, file_pattern: str | None = None) -> None:
-	relevant_members = []
-	if file_pattern:
-		for member in tar.getmembers():
-			if fnmatch.fnmatch(member.name, file_pattern):
-				relevant_members.append(member)
-		if not relevant_members:
-			raise FileNotFoundError(f"Did not find file pattern {file_pattern} in tar file")
-		logger.debug("Extracting members according to file pattern %s: %s", file_pattern, relevant_members)
-	tar.extractall(path=destination, members=relevant_members or None)
 
 
 def extract_archive_universal(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
@@ -159,7 +160,17 @@ def extract_archive_universal(archive: Path, destination: Path, file_pattern: st
 			untar(tar_object, destination, file_pattern)
 
 
+def extract_archive(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
+	if archive.suffixes and archive.suffixes[-1] in (".gz", ".gzip") and is_linux() and use_pigz():
+		return extract_archive_with_commands(archive, destination, file_pattern)
+	return extract_archive_universal(archive, destination, file_pattern)
+
+
 def compress_command(archive: Path, compression: str) -> str:
+	if archive.suffix in (".gzip", ".gz"):
+		if use_pigz():
+			return f"pigz --quiet - > '{archive}'"
+		return f"gzip --quiet - > '{archive}'"
 	if compression in ("bzip2", "bz2"):
 		return f"bzip2 --quiet - > '{archive}'"
 	if compression == "zstd":
@@ -172,7 +183,9 @@ def compress_command(archive: Path, compression: str) -> str:
 
 
 # Warning: this is specific for linux!
-def create_archive(archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False) -> None:
+def create_archive_with_commands(
+	archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False
+) -> None:
 	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
 	if archive.exists():
 		archive.unlink()
@@ -215,3 +228,9 @@ def create_archive_universal(
 		with tarfile.open(str(archive), mode=mode, dereference=dereference) as tar_object:
 			for source in sources:
 				tar_object.add(source, arcname=source.relative_to(base_dir))
+
+
+def create_archive(archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False) -> None:
+	if compression == "gz" and is_linux() and use_pigz():
+		return create_archive_with_commands(archive, sources, base_dir, compression, dereference)
+	return create_archive_universal(archive, sources, base_dir, compression, dereference)

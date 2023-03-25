@@ -10,10 +10,7 @@ from typing import Literal
 import tomlkit
 from opsicommon.logging import get_logger
 from opsicommon.objects import Product, ProductDependency, ProductProperty
-from opsicommon.package.archive import (
-	create_archive_universal,
-	extract_archive_universal,
-)
+from opsicommon.package.archive import create_archive, extract_archive
 from opsicommon.package.control_file_handling import (
 	create_package_dependencies,
 	create_product,
@@ -64,7 +61,7 @@ class OpsiPackage:
 		"""
 		with make_temp_dir(self.temp_dir) as temp_dir:
 			logger.debug("Extracting archive %s", package_archive)
-			extract_archive_universal(package_archive, temp_dir)
+			extract_archive(package_archive, temp_dir)
 			# Extract <OPSI|CLIENT_DATA|SERVER_DATA>.<custom> after <OPSI|CLIENT_DATA|SERVER_DATA>
 			# If data is extracted into the same folder custom archive has precedence.
 			for archive in sorted(temp_dir.iterdir(), key=lambda a: len(a.name.split("."))):
@@ -75,7 +72,7 @@ class OpsiPackage:
 				else:
 					# Same folder for CLIENT_DATA and CLIENT_DATA.<custom>
 					folder_name = archive.name.split(".", 1)[0]
-				extract_archive_universal(archive, destination / folder_name)
+				extract_archive(archive, destination / folder_name)
 
 		control_file = self.find_and_parse_control_file(destination)
 		if new_product_id:
@@ -85,14 +82,14 @@ class OpsiPackage:
 	def from_package_archive(self, package_archive: Path) -> None:
 		with make_temp_dir(self.temp_dir) as temp_dir:
 			logger.debug("Extracting archive %s", package_archive)
-			extract_archive_universal(package_archive, temp_dir, file_pattern="OPSI.*")
+			extract_archive(package_archive, temp_dir, file_pattern="OPSI.*")
 			archives = list(temp_dir.glob("OPSI.*"))
 			if len(archives) == 0:
 				raise RuntimeError(f"No OPSI archive '{package_archive}'")
 
 			# Extract custom last
 			for archive in sorted(archives, key=lambda a: len(a.name.split("."))):
-				extract_archive_universal(archive, temp_dir, file_pattern="control*")  # or OPSI? difference tar and cpio
+				extract_archive(archive, temp_dir, file_pattern="control*")  # or OPSI? difference tar and cpio
 
 			self.find_and_parse_control_file(temp_dir)
 
@@ -242,12 +239,12 @@ class OpsiPackage:
 
 				filename = temp_dir / f"{_dir.name}.tar.{compression}"
 				logger.info("Creating archive %s", filename)
-				create_archive_universal(filename, file_list, base_dir=_dir, compression=compression, dereference=dereference)
+				create_archive(filename, file_list, base_dir=_dir, compression=compression, dereference=dereference)
 				# TODO: progress tracking
 				archives.append(filename)
 
 			destination = (destination or Path()).absolute()
 			package_archive = destination / self.package_archive_name()
 			logger.info("Creating archive %s", package_archive.absolute())
-			create_archive_universal(package_archive, archives, temp_dir)
+			create_archive(package_archive, archives, temp_dir)
 		return package_archive
