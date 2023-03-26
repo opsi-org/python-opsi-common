@@ -59,9 +59,9 @@ from opsicommon.types import (
 	forceProductVersion,
 	forceRequirementType,
 	forceSoftwareLicenseId,
-	forceUnicode,
-	forceUnicodeList,
-	forceUnicodeLower,
+	forceString,
+	forceStringList,
+	forceStringLower,
 	forceUnsignedInt,
 	forceUrl,
 	forceUUIDString,
@@ -168,7 +168,7 @@ class BaseObject:
 		return get_ident_attributes(self.__class__)  # type: ignore[arg-type]
 
 	def getIdent(self, returnType: str = "unicode") -> list[str] | tuple[str, ...] | dict[str, str] | str:  # pylint: disable=invalid-name
-		returnType = forceUnicodeLower(returnType)
+		returnType = forceStringLower(returnType)
 		ident_attributes = self.getIdentAttributes()
 
 		def get_ident_value(attribute: str) -> str:
@@ -181,7 +181,7 @@ class BaseObject:
 			except AttributeError:
 				return ""
 
-		ident_values = [forceUnicode(get_ident_value(attribute)) for attribute in ident_attributes]
+		ident_values = [forceString(get_ident_value(attribute)) for attribute in ident_attributes]
 
 		if returnType == "list":
 			return ident_values
@@ -195,7 +195,7 @@ class BaseObject:
 		pass
 
 	def emptyValues(self, keepAttributes: list[str] | None = None) -> None:  # pylint: disable=invalid-name
-		keep_attributes = set(forceUnicodeList(keepAttributes or []))
+		keep_attributes = set(forceStringList(keepAttributes or []))
 		for attribute in self.getIdentAttributes():
 			keep_attributes.add(attribute)
 		keep_attributes.add("type")
@@ -391,7 +391,7 @@ def objects_differ(  # pylint: disable=too-many-return-statements,too-many-branc
 	if exclude_attributes is None:
 		exclude_attributes = []
 	else:
-		exclude_attributes = forceUnicodeList(exclude_attributes)
+		exclude_attributes = forceStringList(exclude_attributes)
 
 	if obj1 != obj2:
 		return True
@@ -509,39 +509,37 @@ class Object(Entity):
 		return self.description
 
 	def setDescription(self, description: str) -> None:  # pylint: disable=invalid-name
-		self.description = forceUnicode(description)
+		self.description = forceString(description)
 
 	def getNotes(self) -> str | None:  # pylint: disable=invalid-name
 		return self.notes
 
 	def setNotes(self, notes: str) -> None:  # pylint: disable=invalid-name
-		self.notes = forceUnicode(notes)
+		self.notes = forceString(notes)
 
 
 Entity.sub_classes["Object"] = Object
 
 
-class User(Object):
+class User(Entity):
 	sub_classes: dict[str, type] = {}
-	foreign_id_attributes = Object.foreign_id_attributes + ["userId"]
+	foreign_id_attributes = Entity.foreign_id_attributes + ["userId"]
 	backend_method_prefix = "user"
 
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		id: str,  # pylint: disable=redefined-builtin
-		description: str | None = None,
-		notes: str | None = None,
+		id: str,  # pylint: disable=redefined-builtin,disable=invalid-name
 		created: str | None = None,
-		lastLogin: str | None = None,
-		mfaState: str | None = None,
-		otpSecret: str | None = None,
+		lastLogin: str | None = None,  # pylint: disable=invalid-name
+		mfaState: str | None = None,  # pylint: disable=invalid-name
+		otpSecret: str | None = None,  # pylint: disable=invalid-name
 	) -> None:
-		Object.__init__(self, id, description, notes)
 		self.created: str | None = None  # pylint: disable=invalid-name
 		self.lastLogin: str | None = None  # pylint: disable=invalid-name
 		self.mfaState: str | None = None  # pylint: disable=invalid-name
 		self.otpSecret: str | None = None  # pylint: disable=invalid-name
 
+		self.setId(id)
 		if created is not None:
 			self.setCreated(created)
 		if lastLogin is not None:
@@ -550,6 +548,19 @@ class User(Object):
 			self.setMfaState(mfaState)
 		if otpSecret is not None:
 			self.setOtpSecret(otpSecret)
+
+	def setDefaults(self) -> None:
+		Entity.setDefaults(self)
+		if self.created is None:
+			self.setCreated(timestamp())
+		if self.mfaState is None:
+			self.mfaState = "inactive"
+
+	def getId(self) -> str:  # pylint: disable=invalid-name
+		return self.id
+
+	def setId(self, id: str) -> None:  # pylint: disable=redefined-builtin,invalid-name
+		self.id = forceStringLower(id)  # pylint: disable=invalid-name
 
 	def getLastLogin(self) -> str | None:  # pylint: disable=invalid-name
 		return self.lastLogin
@@ -574,6 +585,9 @@ class User(Object):
 
 	def setOtpSecret(self, otpSecret: str) -> None:  # pylint: disable=invalid-name
 		self.otpSecret = otpSecret
+
+
+Entity.sub_classes["User"] = User
 
 
 class Host(Object):
@@ -635,7 +649,7 @@ class Host(Object):
 		return self.inventoryNumber
 
 	def setInventoryNumber(self, inventoryNumber: str) -> None:  # pylint: disable=invalid-name
-		self.inventoryNumber = forceUnicode(inventoryNumber)
+		self.inventoryNumber = forceString(inventoryNumber)
 
 	def getSystemUUID(self) -> str | None:  # pylint: disable=invalid-name
 		return self.systemUUID
@@ -712,7 +726,7 @@ class OpsiClient(Host):
 		return self.oneTimePassword
 
 	def setOneTimePassword(self, oneTimePassword: str) -> None:  # pylint: disable=invalid-name
-		self.oneTimePassword = forceUnicode(oneTimePassword)
+		self.oneTimePassword = forceString(oneTimePassword)
 
 
 Host.sub_classes["OpsiClient"] = OpsiClient
@@ -942,7 +956,7 @@ Host.sub_classes["OpsiConfigserver"] = OpsiConfigserver
 
 class Config(Entity):
 	sub_classes: dict[str, type] = {}
-	foreign_id_attributes = Object.foreign_id_attributes + ["configId"]
+	foreign_id_attributes = Entity.foreign_id_attributes + ["configId"]
 	backend_method_prefix = "config"
 
 	def __init__(  # pylint: disable=too-many-arguments
@@ -993,7 +1007,7 @@ class Config(Entity):
 		return self.description
 
 	def setDescription(self, description: str) -> None:  # pylint: disable=invalid-name
-		self.description = forceUnicode(description)
+		self.description = forceString(description)
 
 	def _updateValues(self) -> None:  # pylint: disable=invalid-name
 		if self.possibleValues is None:
@@ -1074,10 +1088,10 @@ class UnicodeConfig(Config):
 			self.setDefaultValues(defaultValues)
 
 	def setPossibleValues(self, possibleValues: list[Any]) -> None:
-		Config.setPossibleValues(self, forceUnicodeList(possibleValues))
+		Config.setPossibleValues(self, forceStringList(possibleValues))
 
 	def setDefaultValues(self, defaultValues: list[Any]) -> None:
-		Config.setDefaultValues(self, forceUnicodeList(defaultValues))
+		Config.setDefaultValues(self, forceStringList(defaultValues))
 
 
 Config.sub_classes["UnicodeConfig"] = UnicodeConfig
@@ -1156,7 +1170,7 @@ Relationship.sub_classes["ConfigState"] = ConfigState
 
 class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
 	sub_classes: dict[str, type] = {}
-	foreign_id_attributes = Object.foreign_id_attributes + ["productId"]
+	foreign_id_attributes = Entity.foreign_id_attributes + ["productId"]
 	backend_method_prefix = "product"
 
 	def __init__(  # pylint: disable=too-many-arguments,too-many-instance-attributes,too-many-public-methods,too-many-locals,too-many-branches
@@ -1289,7 +1303,7 @@ class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-
 		return self.name
 
 	def setName(self, name: str) -> None:  # pylint: disable=invalid-name
-		self.name = forceUnicode(name)
+		self.name = forceString(name)
 
 	def getLicenseRequired(self) -> bool | None:  # pylint: disable=invalid-name
 		return self.licenseRequired
@@ -1349,32 +1363,32 @@ class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-
 		return self.description
 
 	def setDescription(self, description: str) -> None:  # pylint: disable=invalid-name
-		self.description = forceUnicode(description)
+		self.description = forceString(description)
 
 	def getAdvice(self) -> str | None:  # pylint: disable=invalid-name
 		return self.advice
 
 	def setAdvice(self, advice: str) -> None:  # pylint: disable=invalid-name
-		self.advice = forceUnicode(advice)
+		self.advice = forceString(advice)
 
 	def getChangelog(self) -> str | None:  # pylint: disable=invalid-name
 		return self.changelog
 
 	def setChangelog(self, changelog: str) -> None:  # pylint: disable=invalid-name
-		self.changelog = forceUnicode(changelog)
+		self.changelog = forceString(changelog)
 
 	def getProductClassIds(self) -> list[str] | None:  # pylint: disable=invalid-name
 		return self.productClassIds
 
 	def setProductClassIds(self, productClassIds: list[str]) -> None:  # pylint: disable=invalid-name
-		self.productClassIds = forceUnicodeList(productClassIds)
+		self.productClassIds = forceStringList(productClassIds)
 		self.productClassIds.sort()
 
 	def getWindowsSoftwareIds(self) -> list[str] | None:  # pylint: disable=invalid-name
 		return self.windowsSoftwareIds
 
 	def setWindowsSoftwareIds(self, windowsSoftwareIds: list[str]) -> None:  # pylint: disable=invalid-name
-		self.windowsSoftwareIds = forceUnicodeList(windowsSoftwareIds)
+		self.windowsSoftwareIds = forceStringList(windowsSoftwareIds)
 		self.windowsSoftwareIds.sort()
 
 	def __str__(self) -> str:
@@ -1585,7 +1599,7 @@ class ProductProperty(Entity):  # pylint: disable=too-many-instance-attributes,t
 		return self.description
 
 	def setDescription(self, description: str) -> None:  # pylint: disable=invalid-name
-		self.description = forceUnicode(description)
+		self.description = forceString(description)
 
 	def _updateValues(self) -> None:  # pylint: disable=invalid-name
 		if self.possibleValues is None:
@@ -1684,10 +1698,10 @@ class UnicodeProductProperty(ProductProperty):
 			self.setDefaultValues(defaultValues)
 
 	def setPossibleValues(self, possibleValues: list[Any]) -> None:
-		ProductProperty.setPossibleValues(self, forceUnicodeList(possibleValues))
+		ProductProperty.setPossibleValues(self, forceStringList(possibleValues))
 
 	def setDefaultValues(self, defaultValues: list[Any]) -> None:
-		ProductProperty.setDefaultValues(self, forceUnicodeList(defaultValues))
+		ProductProperty.setDefaultValues(self, forceStringList(defaultValues))
 
 
 ProductProperty.sub_classes["UnicodeProductProperty"] = UnicodeProductProperty
@@ -2336,19 +2350,19 @@ class LicenseContract(Entity):
 		return self.description
 
 	def setDescription(self, description: str) -> None:  # pylint: disable=invalid-name
-		self.description = forceUnicode(description)
+		self.description = forceString(description)
 
 	def getNotes(self) -> str | None:  # pylint: disable=invalid-name
 		return self.notes
 
 	def setNotes(self, notes: str) -> None:  # pylint: disable=invalid-name
-		self.notes = forceUnicode(notes)
+		self.notes = forceString(notes)
 
 	def getPartner(self) -> str | None:  # pylint: disable=invalid-name
 		return self.partner
 
 	def setPartner(self, partner: str) -> None:  # pylint: disable=invalid-name
-		self.partner = forceUnicode(partner)
+		self.partner = forceString(partner)
 
 	def getConclusionDate(self) -> str | None:  # pylint: disable=invalid-name
 		return self.conclusionDate
@@ -2594,7 +2608,7 @@ class LicensePool(Entity):
 		return self.description
 
 	def setDescription(self, description: str) -> None:  # pylint: disable=invalid-name
-		self.description = forceUnicode(description)
+		self.description = forceString(description)
 
 	def getProductIds(self) -> list[str] | None:  # pylint: disable=invalid-name
 		return self.productIds
@@ -2638,7 +2652,7 @@ class AuditSoftwareToLicensePool(Relationship):
 		self.licensePoolId = forceLicensePoolId(licensePoolId)  # pylint: disable=invalid-name
 
 	def setName(self, name: str) -> None:  # pylint: disable=invalid-name
-		self.name = forceUnicode(name)
+		self.name = forceString(name)
 
 	def getName(self) -> str:  # pylint: disable=invalid-name
 		return self.name
@@ -2647,7 +2661,7 @@ class AuditSoftwareToLicensePool(Relationship):
 		if not version:
 			self.version = ""
 		else:
-			self.version = forceUnicodeLower(version)
+			self.version = forceStringLower(version)
 
 	def getVersion(self) -> str:  # pylint: disable=invalid-name
 		return self.version
@@ -2656,7 +2670,7 @@ class AuditSoftwareToLicensePool(Relationship):
 		if not subVersion:
 			self.subVersion = ""  # pylint: disable=invalid-name
 		else:
-			self.subVersion = forceUnicodeLower(subVersion)
+			self.subVersion = forceStringLower(subVersion)
 
 	def getSubVersion(self) -> str:  # pylint: disable=invalid-name
 		return self.subVersion
@@ -2733,7 +2747,7 @@ class SoftwareLicenseToLicensePool(Relationship):
 		return self.licenseKey
 
 	def setLicenseKey(self, licenseKey: str) -> None:  # pylint: disable=invalid-name
-		self.licenseKey = forceUnicode(licenseKey)
+		self.licenseKey = forceString(licenseKey)
 
 
 Relationship.sub_classes["SoftwareLicenseToLicensePool"] = SoftwareLicenseToLicensePool
@@ -2792,13 +2806,13 @@ class LicenseOnClient(Relationship):
 		return self.licenseKey
 
 	def setLicenseKey(self, licenseKey: str) -> None:  # pylint: disable=invalid-name
-		self.licenseKey = forceUnicode(licenseKey)
+		self.licenseKey = forceString(licenseKey)
 
 	def getNotes(self) -> str | None:  # pylint: disable=invalid-name
 		return self.notes
 
 	def setNotes(self, notes: str) -> None:  # pylint: disable=invalid-name
-		self.notes = forceUnicode(notes)
+		self.notes = forceString(notes)
 
 
 Relationship.sub_classes["LicenseOnClient"] = LicenseOnClient
@@ -2846,19 +2860,19 @@ class AuditSoftware(Entity):  # pylint: disable=too-many-instance-attributes,too
 			self.setInstallSize(0)
 
 	def setName(self, name: str) -> None:  # pylint: disable=invalid-name
-		self.name = forceUnicode(name)
+		self.name = forceString(name)
 
 	def getName(self) -> str:  # pylint: disable=invalid-name
 		return self.name
 
 	def setVersion(self, version: str) -> None:  # pylint: disable=invalid-name
-		self.version = forceUnicodeLower(version)
+		self.version = forceStringLower(version)
 
 	def getVersion(self) -> str:  # pylint: disable=invalid-name
 		return self.version
 
 	def setSubVersion(self, subVersion: str) -> None:  # pylint: disable=invalid-name
-		self.subVersion = forceUnicodeLower(subVersion)  # pylint: disable=invalid-name
+		self.subVersion = forceStringLower(subVersion)  # pylint: disable=invalid-name
 
 	def getSubVersion(self) -> str:  # pylint: disable=invalid-name
 		return self.subVersion
@@ -2885,19 +2899,19 @@ class AuditSoftware(Entity):  # pylint: disable=too-many-instance-attributes,too
 		return self.windowsSoftwareId
 
 	def setWindowsSoftwareId(self, windowsSoftwareId: str) -> None:  # pylint: disable=invalid-name
-		self.windowsSoftwareId = forceUnicodeLower(windowsSoftwareId)
+		self.windowsSoftwareId = forceStringLower(windowsSoftwareId)
 
 	def getWindowsDisplayName(self) -> str | None:  # pylint: disable=invalid-name
 		return self.windowsDisplayName
 
 	def setWindowsDisplayName(self, windowsDisplayName: str) -> None:  # pylint: disable=invalid-name
-		self.windowsDisplayName = forceUnicode(windowsDisplayName)
+		self.windowsDisplayName = forceString(windowsDisplayName)
 
 	def getWindowsDisplayVersion(self) -> str | None:  # pylint: disable=invalid-name
 		return self.windowsDisplayVersion
 
 	def setWindowsDisplayVersion(self, windowsDisplayVersion: str) -> None:  # pylint: disable=invalid-name
-		self.windowsDisplayVersion = forceUnicode(windowsDisplayVersion)
+		self.windowsDisplayVersion = forceString(windowsDisplayVersion)
 
 	def getInstallSize(self) -> int | None:  # pylint: disable=invalid-name
 		return self.installSize
@@ -2981,19 +2995,19 @@ class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-
 			self.setLastUsed("0000-00-00 00:00:00")
 
 	def setName(self, name: str) -> None:  # pylint: disable=invalid-name
-		self.name = forceUnicode(name)
+		self.name = forceString(name)
 
 	def getName(self) -> str:  # pylint: disable=invalid-name
 		return self.name
 
 	def setVersion(self, version: str) -> None:  # pylint: disable=invalid-name
-		self.version = forceUnicodeLower(version)
+		self.version = forceStringLower(version)
 
 	def getVersion(self) -> str:  # pylint: disable=invalid-name
 		return self.version
 
 	def setSubVersion(self, subVersion: str) -> None:  # pylint: disable=invalid-name
-		self.subVersion = forceUnicodeLower(subVersion)  # pylint: disable=invalid-name
+		self.subVersion = forceStringLower(subVersion)  # pylint: disable=invalid-name
 
 	def getSubVersion(self) -> str:  # pylint: disable=invalid-name
 		return self.subVersion
@@ -3026,13 +3040,13 @@ class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-
 		return self.uninstallString
 
 	def setUninstallString(self, uninstallString: str) -> None:  # pylint: disable=invalid-name
-		self.uninstallString = forceUnicode(uninstallString)
+		self.uninstallString = forceString(uninstallString)
 
 	def getBinaryName(self) -> str | None:  # pylint: disable=invalid-name
 		return self.binaryName
 
 	def setBinaryName(self, binaryName: str) -> None:  # pylint: disable=invalid-name
-		self.binaryName = forceUnicode(binaryName)
+		self.binaryName = forceString(binaryName)
 
 	def getFirstseen(self) -> str | None:  # pylint: disable=invalid-name
 		return self.firstseen
@@ -3068,7 +3082,7 @@ class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-
 		return self.licenseKey
 
 	def setLicenseKey(self, licenseKey: str) -> None:  # pylint: disable=invalid-name
-		self.licenseKey = forceUnicode(licenseKey)
+		self.licenseKey = forceString(licenseKey)
 
 
 Relationship.sub_classes["AuditSoftwareOnClient"] = AuditSoftwareOnClient
@@ -3103,7 +3117,7 @@ class AuditHardware(Entity):
 					continue
 
 				if attr_type.startswith("varchar"):
-					kwargs[attribute] = forceUnicode(value).strip()
+					kwargs[attribute] = forceString(value).strip()
 					try:
 						size = int(attr_type.split("(")[1].split(")")[0].strip())
 
@@ -3137,7 +3151,7 @@ class AuditHardware(Entity):
 			new_kwargs = {}
 			for (attribute, value) in kwargs.items():
 				if isinstance(value, str):
-					new_kwargs[attribute] = forceUnicode(value).strip()
+					new_kwargs[attribute] = forceString(value).strip()
 				else:
 					new_kwargs[attribute] = value
 
@@ -3185,7 +3199,7 @@ class AuditHardware(Entity):
 		Entity.setDefaults(self)
 
 	def setHardwareClass(self, hardwareClass: str) -> None:  # pylint: disable=invalid-name
-		self.hardwareClass = forceUnicode(hardwareClass)  # pylint: disable=invalid-name
+		self.hardwareClass = forceString(hardwareClass)  # pylint: disable=invalid-name
 
 	def getHardwareClass(self) -> str:  # pylint: disable=invalid-name
 		return self.hardwareClass
@@ -3280,7 +3294,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 					continue
 
 				if attr_type.startswith("varchar"):
-					kwargs[attribute] = forceUnicode(value).strip()
+					kwargs[attribute] = forceString(value).strip()
 					try:
 						size = int(attr_type.split("(")[1].split(")")[0].strip())
 
@@ -3310,7 +3324,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 		else:
 			for (attribute, value) in kwargs.items():
 				if isinstance(value, str):
-					kwargs[attribute] = forceUnicode(value).strip()
+					kwargs[attribute] = forceString(value).strip()
 
 		self.__dict__.update(kwargs)
 		if firstseen is not None:
@@ -3370,7 +3384,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 		self.hostId = forceHostId(hostId)  # pylint: disable=invalid-name
 
 	def setHardwareClass(self, hardwareClass: str) -> None:  # pylint: disable=invalid-name
-		self.hardwareClass = forceUnicode(hardwareClass)  # pylint: disable=invalid-name
+		self.hardwareClass = forceString(hardwareClass)  # pylint: disable=invalid-name
 
 	def getHardwareClass(self) -> str:  # pylint: disable=invalid-name
 		return self.hardwareClass
