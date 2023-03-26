@@ -19,7 +19,6 @@ from types import GeneratorType
 from typing import Any, Callable, Generator, Type, TypeVar
 
 import msgspec
-
 from opsicommon.exceptions import BackendBadValueError, BackendConfigurationError
 from opsicommon.logging import get_logger
 from opsicommon.types import (
@@ -520,6 +519,61 @@ class Object(Entity):
 
 
 Entity.sub_classes["Object"] = Object
+
+
+class User(Object):
+	sub_classes: dict[str, type] = {}
+	foreign_id_attributes = Object.foreign_id_attributes + ["userId"]
+	backend_method_prefix = "user"
+
+	def __init__(  # pylint: disable=too-many-arguments
+		self,
+		id: str,  # pylint: disable=redefined-builtin
+		description: str | None = None,
+		notes: str | None = None,
+		created: str | None = None,
+		lastLogin: str | None = None,
+		mfaState: str | None = None,
+		otpSecret: str | None = None,
+	) -> None:
+		Object.__init__(self, id, description, notes)
+		self.created: str | None = None  # pylint: disable=invalid-name
+		self.lastLogin: str | None = None  # pylint: disable=invalid-name
+		self.mfaState: str | None = None  # pylint: disable=invalid-name
+		self.otpSecret: str | None = None  # pylint: disable=invalid-name
+
+		if created is not None:
+			self.setCreated(created)
+		if lastLogin is not None:
+			self.setLastLogin(lastLogin)
+		if mfaState is not None:
+			self.setMfaState(mfaState)
+		if otpSecret is not None:
+			self.setOtpSecret(otpSecret)
+
+	def getLastLogin(self) -> str | None:  # pylint: disable=invalid-name
+		return self.lastLogin
+
+	def setLastLogin(self, lastLogin: str) -> None:  # pylint: disable=invalid-name
+		self.lastLogin = forceOpsiTimestamp(lastLogin)
+
+	def getCreated(self) -> str | None:  # pylint: disable=invalid-name
+		return self.created
+
+	def setCreated(self, created: str) -> None:  # pylint: disable=invalid-name
+		self.created = forceOpsiTimestamp(created)
+
+	def getMfaState(self) -> str | None:  # pylint: disable=invalid-name
+		return self.mfaState
+
+	def setMfaState(self, mfaState: str) -> None:  # pylint: disable=invalid-name
+		self.mfaState = mfaState
+
+	def getOtpSecret(self) -> str | None:  # pylint: disable=invalid-name
+		return self.otpSecret
+
+	def setOtpSecret(self, otpSecret: str) -> None:  # pylint: disable=invalid-name
+		self.otpSecret = otpSecret
 
 
 class Host(Object):
