@@ -16,6 +16,7 @@ import subprocess
 import tempfile
 import time
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from ipaddress import (
 	IPv4Address,
 	IPv4Network,
@@ -28,10 +29,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Generator, Literal, Type, Union
 
 import requests
-from packaging.version import InvalidVersion, Version
-
 from opsicommon.logging import get_logger
 from opsicommon.types import _PACKAGE_VERSION_REGEX, _PRODUCT_VERSION_REGEX
+from packaging.version import InvalidVersion, Version
 
 if platform.system().lower() == "windows":
 	OPSI_TMP_DIR = None  # default %TEMP% of user
@@ -72,12 +72,20 @@ def generate_opsi_host_key() -> str:
 
 
 def timestamp(secs: float = 0.0, date_only: bool = False) -> str:
-	"""Returns a timestamp of the current system time format: YYYY-mm-dd[ HH:MM:SS]"""
+	"""Returns a timestamp of the current system time in format YYYY-mm-dd[ HH:MM:SS]"""
 	if not secs:
 		secs = time.time()
 	if date_only:
 		return time.strftime("%Y-%m-%d", time.localtime(secs))
 	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(secs))
+
+
+def utc_timestamp(date_only: bool = False) -> str:
+	"""Returns a utc timestamp in format YYYY-mm-dd[ HH:MM:SS]"""
+	now = datetime.now(timezone.utc)
+	if date_only:
+		return now.strftime("%Y-%m-%d")
+	return now.strftime("%Y-%m-%d %H:%M:%S")
 
 
 class Singleton(type):
