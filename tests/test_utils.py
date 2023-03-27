@@ -25,6 +25,7 @@ from opsicommon.utils import (
 	ip_address_in_network,
 	monkeypatch_subprocess_for_frozen,
 	timestamp,
+	utc_timestamp,
 )
 
 from .helpers import environment
@@ -46,8 +47,17 @@ def test_generate_opsi_host_key() -> None:
 def test_timestamp() -> None:
 	now = datetime.datetime.now()
 	assert timestamp(now.timestamp()) == now.strftime("%Y-%m-%d %H:%M:%S")
+	now = datetime.datetime.now()
 	assert timestamp(now.timestamp(), date_only=True) == now.strftime("%Y-%m-%d")
-	assert timestamp() == datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+	now = datetime.datetime.now()
+	assert timestamp() == now.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def test_utc_timestamp() -> None:
+	now = datetime.datetime.now(datetime.timezone.utc)
+	assert utc_timestamp() == now.strftime("%Y-%m-%d %H:%M:%S")
+	now = datetime.datetime.now(datetime.timezone.utc)
+	assert utc_timestamp(date_only=True) == now.strftime("%Y-%m-%d")
 
 
 def test_singleton() -> None:

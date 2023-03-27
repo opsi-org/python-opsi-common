@@ -62,6 +62,7 @@ from opsicommon.objects import (  # pylint: disable=wrong-import-position,unused
 	SoftwareLicenseToLicensePool,
 	UnicodeConfig,
 	UnicodeProductProperty,
+	User,
 	VolumeSoftwareLicense,
 )
 
@@ -70,6 +71,7 @@ object_classes = [_obj for _name, _obj in dict(globals()).items() if _name not i
 
 def test_object_classes() -> None:
 	objs = (
+		User("testuser", "2023-01-01 07:07:07", "2023-01-01 08:08:08", "totp_active", "Q23E3B6XN5MTTPV67LL7EVNZHPZO6XN7"),
 		Host("test.dom.tld", "desc", "notes", "00:01:02:03:04:05", "172.16.1.1", "inv001"),
 		OpsiClient(
 			"client.dom.tld",
