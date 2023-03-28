@@ -89,9 +89,11 @@ MIN_VERSION_GZIP = version.parse("4.2.0.0")
 MIN_VERSION_SESSION_API = version.parse("4.2.0.285")
 
 RPC_TIMEOUTS = {
-	"depot_installPackage": 3600,
+	"depot_installPackage": 4 * 3600,
 	"depot_librsyncPatchFile": 24 * 3600,
 	"depot_getMD5Sum": 3600,
+	"depot_createMd5SumFile": 3600,
+	"depot_createZsyncFile": 3600,
 }
 
 _DEFAULT_HTTPS_PORT = 4447

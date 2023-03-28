@@ -78,9 +78,11 @@ class TimeoutHTTPAdapter(HTTPAdapter):
 
 class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	_rpc_timeouts = {
-		"depot_installPackage": 3600,
+		"depot_installPackage": 4 * 3600,
 		"depot_librsyncPatchFile": 24 * 3600,
 		"depot_getMD5Sum": 3600,
+		"depot_createMd5SumFile": 3600,
+		"depot_createZsyncFile": 3600,
 	}
 	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]
 
