@@ -684,7 +684,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				except ValueError as error:
 					logger.error("Could not get OpsiHostKey from header: %s", error, exc_info=True)
 
-			if self._max_time_diff >= 0 and not self.service_is_opsiclientd():
+			if self._max_time_diff > 0 and not self.service_is_opsiclientd():
 				try:
 					server_dt = None
 					uxts_hdr = response.headers.get("x-date-unix-timestamp")
