@@ -99,7 +99,7 @@ RPC_TIMEOUTS = {
 _DEFAULT_HTTPS_PORT = 4447
 
 # It is possible to set multiple certificates as UIB_OPSI_CA
-UIB_OPSI_CA_PEM = """-----BEGIN CERTIFICATE-----
+UIB_OPSI_CA = """-----BEGIN CERTIFICATE-----
 MIIFvjCCA6agAwIBAgIWb3BzaS11aWItY2EtMjE1NzMwODcwNzANBgkqhkiG9w0B
 AQsFADB+MQswCQYDVQQGEwJERTELMAkGA1UECAwCUlAxDjAMBgNVBAcMBU1haW56
 MREwDwYDVQQKDAh1aWIgR21iSDENMAsGA1UECwwEb3BzaTEUMBIGA1UEAwwLdWli
@@ -327,9 +327,6 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		if not self._verify:
 			self._verify = [ServiceVerificationFlags.STRICT_CHECK]
 
-		if ServiceVerificationFlags.UIB_OPSI_CA in self._verify:
-			self.add_uib_opsi_ca_to_cert_file()
-
 		if session_cookie and "=" not in session_cookie:
 			raise ValueError("Invalid session cookie, <name>=<value> is needed")
 		self._session_cookie = session_cookie or None
@@ -366,7 +363,16 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		if ServiceVerificationFlags.ACCEPT_ALL in self._verify:
 			self._session.verify = False
 		else:
-			self._session.verify = str(self._ca_cert_file) if self._ca_cert_file else True
+			if self._ca_cert_file:
+				self._session.verify = str(self._ca_cert_file)
+				if (
+					ServiceVerificationFlags.UIB_OPSI_CA in self._verify
+					and self._ca_cert_file.exists()
+					and self._ca_cert_file.stat().st_size > 0
+				):
+					self.add_uib_opsi_ca_to_cert_file()
+			else:
+				self._session.verify = True
 
 	def set_addresses(self, address: Iterable[str] | str) -> None:
 		self._addresses = []
@@ -501,7 +507,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		data = "\n".join([dump_certificate(FILETYPE_PEM, cert).decode("utf-8") for cert in ca_certs])
 		if ServiceVerificationFlags.UIB_OPSI_CA in self._verify:
-			data += "\n" + UIB_OPSI_CA_PEM
+			data += "\n" + UIB_OPSI_CA
 
 		self._ca_cert_file.write_text(data, encoding="utf-8")
 
@@ -514,14 +520,14 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		certs = ""
 		if self._ca_cert_file.exists():
 			# Read all certs from file except UIB_OPSI_CA
-			uib_opsi_ca_cert = load_certificate(FILETYPE_PEM, UIB_OPSI_CA_PEM.encode("ascii"))
+			uib_opsi_ca_cert = load_certificate(FILETYPE_PEM, UIB_OPSI_CA.encode("ascii"))
 			data = self._ca_cert_file.read_text(encoding="utf-8")
 			for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):
 				cert = load_certificate(FILETYPE_PEM, match.group(1).encode("ascii"))
 				if cert.get_subject().CN != uib_opsi_ca_cert.get_subject().CN:
 					certs += dump_certificate(FILETYPE_PEM, cert).decode("ascii")
 
-		certs += UIB_OPSI_CA_PEM
+		certs += UIB_OPSI_CA
 		self._ca_cert_file.write_text(certs, encoding="utf-8")
 		logger.info("UIB OPSI CA added to cert file '%s'", self._ca_cert_file)
 
