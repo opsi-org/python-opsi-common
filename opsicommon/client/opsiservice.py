@@ -607,6 +607,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	def connect(self) -> None:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		if self._connect_lock.locked():
 			return
+		logger.debug("service_is_opsiclientd: %r", self.service_is_opsiclientd())
 
 		self.disconnect()
 		with self._connect_lock:
@@ -684,11 +685,13 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				except ValueError as error:
 					logger.error("Could not get OpsiHostKey from header: %s", error, exc_info=True)
 
+			logger.debug("max_time_diff: %r", self._max_time_diff)
 			if self._max_time_diff > 0 and not self.service_is_opsiclientd():
 				try:
 					server_dt = None
 					uxts_hdr = response.headers.get("x-date-unix-timestamp")
 					date_hdr = response.headers.get("date")
+					logger.debug("uxts_hdr: %r, date_hdr: %r", uxts_hdr, date_hdr)
 					if uxts_hdr:
 						server_dt = datetime.fromtimestamp(int(uxts_hdr), tz=timezone.utc)
 					elif date_hdr:
@@ -704,6 +707,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					if server_dt:
 						local_dt = datetime.now(timezone.utc)
 						diff = server_dt - local_dt
+						logger.debug("server_dt: %r, local_dt: %r, diff: %r", server_dt, local_dt, diff)
 						if diff.total_seconds() > self._max_time_diff:
 							logger.warning(
 								"Local time %r differs from server time (max diff: %0.3f), setting system time to %r",
