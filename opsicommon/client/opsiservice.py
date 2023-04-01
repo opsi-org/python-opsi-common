@@ -613,6 +613,14 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		with self._connect_lock:
 			ca_cert_file_exists = self._ca_cert_file and self._ca_cert_file.exists()
 			verify = self._session.verify
+			logger.debug(
+				"ca_cert_file: %r, exists: %r, verify_flags: %r, session.verify: %r, verify: %r",
+				self._ca_cert_file,
+				ca_cert_file_exists,
+				self._session.verify,
+				self._verify,
+				verify,
+			)
 			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file:
 				if not ca_cert_file_exists or self._ca_cert_file.stat().st_size == 0:
 					logger.info(
@@ -725,8 +733,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				try:
 					self.fetch_opsi_ca(skip_verify=not verify)
 				except Exception as err:  # pylint: disable=broad-except
-					if ServiceVerificationFlags.OPSI_CA in self._verify:
-						logger.error(err)
+					logger.error(err)
 
 		try:
 			self.jsonrpc_interface = self.jsonrpc("backend_getInterface")
