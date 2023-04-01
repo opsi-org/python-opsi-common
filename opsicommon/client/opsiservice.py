@@ -316,7 +316,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			raise ValueError(f"ca_cert_file required for selected {ServiceVerificationFlags.OPSI_CA}")
 
 		# TODO: Better test needed here (running in opsiclientd context on opsi configserver)
-		if ServiceVerificationFlags.OPSI_CA in self._verify and "opsi-client-agent" not in str(opsi_config.config_file):
+		if ServiceVerificationFlags.OPSI_CA in self._verify and "opsi-client-agent" not in str(self._ca_cert_file):
 			try:
 				if os.path.exists(opsi_config.config_file) and opsi_config.get("host", "server-role") == "configserver":
 					# Never fetch opsi ca on configserver
