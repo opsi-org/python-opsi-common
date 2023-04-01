@@ -1205,7 +1205,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			expired = msg.expires and msg.expires <= timestamp()
 			if expired:
 				callback = "expired_message_received"
-				logger.debug("Received expired message: %r", msg)
+				logger.info("Received expired message: %r", msg)
 			else:
 				callback = "message_received"
 				logger.debug("Received message: %r", msg)
