@@ -99,7 +99,7 @@ RPC_TIMEOUTS = {
 _DEFAULT_HTTPS_PORT = 4447
 
 # It is possible to set multiple certificates as UIB_OPSI_CA
-UIB_OPSI_CA = """-----BEGIN CERTIFICATE-----
+UIB_OPSI_CA_PEM = """-----BEGIN CERTIFICATE-----
 MIIFvjCCA6agAwIBAgIWb3BzaS11aWItY2EtMjE1NzMwODcwNzANBgkqhkiG9w0B
 AQsFADB+MQswCQYDVQQGEwJERTELMAkGA1UECAwCUlAxDjAMBgNVBAcMBU1haW56
 MREwDwYDVQQKDAh1aWIgR21iSDENMAsGA1UECwwEb3BzaTEUMBIGA1UEAwwLdWli
@@ -315,7 +315,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		if ServiceVerificationFlags.OPSI_CA in self._verify and not self._ca_cert_file:
 			raise ValueError(f"ca_cert_file required for selected {ServiceVerificationFlags.OPSI_CA}")
 
-		if ServiceVerificationFlags.OPSI_CA in self._verify:
+		# TODO: Better test needed here (running in opsiclientd context on opsi configserver)
+		if ServiceVerificationFlags.OPSI_CA in self._verify and "opsi-client-agent" not in str(opsi_config.config_file):
 			try:
 				if os.path.exists(opsi_config.config_file) and opsi_config.get("host", "server-role") == "configserver":
 					# Never fetch opsi ca on configserver
@@ -325,6 +326,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		if not self._verify:
 			self._verify = [ServiceVerificationFlags.STRICT_CHECK]
+
+		if ServiceVerificationFlags.UIB_OPSI_CA in self._verify:
+			self.add_uib_opsi_ca_to_cert_file()
 
 		if session_cookie and "=" not in session_cookie:
 			raise ValueError("Invalid session cookie, <name>=<value> is needed")
@@ -497,10 +501,29 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		data = "\n".join([dump_certificate(FILETYPE_PEM, cert).decode("utf-8") for cert in ca_certs])
 		if ServiceVerificationFlags.UIB_OPSI_CA in self._verify:
-			data += "\n" + UIB_OPSI_CA
+			data += "\n" + UIB_OPSI_CA_PEM
+
 		self._ca_cert_file.write_text(data, encoding="utf-8")
 
 		logger.info("CA cert file '%s' successfully updated", self._ca_cert_file)
+
+	def add_uib_opsi_ca_to_cert_file(self) -> None:
+		if not self._ca_cert_file:
+			raise RuntimeError("CA cert file not set")
+
+		certs = ""
+		if self._ca_cert_file.exists():
+			# Read all certs from file except UIB_OPSI_CA
+			uib_opsi_ca_cert = load_certificate(FILETYPE_PEM, UIB_OPSI_CA_PEM.encode("ascii"))
+			data = self._ca_cert_file.read_text(encoding="utf-8")
+			for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):
+				cert = load_certificate(FILETYPE_PEM, match.group(1).encode("ascii"))
+				if cert.get_subject().CN != uib_opsi_ca_cert.get_subject().CN:
+					certs += dump_certificate(FILETYPE_PEM, cert).decode("ascii")
+
+		certs += UIB_OPSI_CA_PEM
+		self._ca_cert_file.write_text(certs, encoding="utf-8")
+		logger.info("UIB OPSI CA added to cert file '%s'", self._ca_cert_file)
 
 	def opsi_ca_certs_expired(self) -> bool:
 		if not self._ca_cert_file or not self._ca_cert_file.exists():
@@ -617,8 +640,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				"ca_cert_file: %r, exists: %r, verify_flags: %r, session.verify: %r, verify: %r",
 				self._ca_cert_file,
 				ca_cert_file_exists,
-				self._session.verify,
 				self._verify,
+				self._session.verify,
 				verify,
 			)
 			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file:
