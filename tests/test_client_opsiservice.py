@@ -1439,19 +1439,20 @@ def test_server_date_update() -> None:
 				dt_set = None
 
 				# Difference bigger than max_time_diff => Set time
-				now = datetime.now(timezone.utc)
-				server_dt = now + timedelta(seconds=max_time_diff + 10)
-				if hdr == "date":
-					server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")
-					server.response_headers = {hdr: server_dt_str}
-				else:
-					server_dt_str = str(int(server_dt.timestamp()))
-					server.response_headers = {hdr: server_dt_str}
-				client.connect()
-				assert dt_set
-				assert abs((dt_set - server_dt).total_seconds()) < 3
-				client.disconnect()
-				dt_set = None
+				for delta in (10, -10):
+					now = datetime.now(timezone.utc)
+					server_dt = now + timedelta(seconds=max_time_diff + delta)
+					if hdr == "date":
+						server_dt_str = datetime.strftime(server_dt, "%a, %d %b %Y %H:%M:%S UTC")
+						server.response_headers = {hdr: server_dt_str}
+					else:
+						server_dt_str = str(int(server_dt.timestamp()))
+						server.response_headers = {hdr: server_dt_str}
+					client.connect()
+					assert dt_set
+					assert abs((dt_set - server_dt).total_seconds()) < 3
+					client.disconnect()
+					dt_set = None
 
 				if hdr == "date":
 					# None UTC time in header => Keep time

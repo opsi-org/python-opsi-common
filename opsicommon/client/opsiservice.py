@@ -706,9 +706,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 								locale.setlocale(locale.LC_ALL, loc)
 					if server_dt:
 						local_dt = datetime.now(timezone.utc)
-						diff = server_dt - local_dt
+						diff = (server_dt - local_dt).total_seconds()
 						logger.debug("server_dt: %r, local_dt: %r, diff: %r", server_dt, local_dt, diff)
-						if diff.total_seconds() > self._max_time_diff:
+						if abs(diff) > self._max_time_diff:
 							logger.warning(
 								"Local time %r differs from server time (max diff: %0.3f), setting system time to %r",
 								local_dt.strftime("%Y-%m-%d %H:%M:%S %Z"),
