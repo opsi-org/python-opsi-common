@@ -27,10 +27,12 @@ if SYSTEM == "linux":
 		run_process_in_session,
 		set_system_datetime,
 	)
+	from .posix import lock_file
 elif SYSTEM == "windows":
-	from .windows import get_system_uuid, set_system_datetime
+	from .windows import get_system_uuid, set_system_datetime, lock_file
 elif SYSTEM == "darwin":
 	from .darwin import get_system_uuid, set_system_datetime
+	from .posix import lock_file
 
 
 logger = get_logger("opsicommon.general")

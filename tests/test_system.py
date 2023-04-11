@@ -13,13 +13,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
 from uuid import UUID
+import threading
+import multiprocessing
+import queue
 
 import pytest
-from opsicommon.system import (
-	ensure_not_already_running,
-	get_system_uuid,
-	set_system_datetime,
-)
+from opsicommon.system import ensure_not_already_running, get_system_uuid, set_system_datetime, lock_file
 
 
 @pytest.mark.linux
@@ -132,3 +131,82 @@ def test_get_kernel_params(tmpdir: Path) -> None:
 def test_get_system_uuid() -> None:
 	system_uuid = get_system_uuid()
 	assert UUID(system_uuid)
+
+
+@pytest.mark.parametrize(
+	"ptype",
+	(threading.Thread, multiprocessing.Process),
+)
+def test_lock_file(tmp_path: Path, ptype: type) -> None:
+	test_file = tmp_path / "test.bin"
+	res_queue: queue.Queue = queue.Queue() if ptype == threading.Thread else multiprocessing.Queue()
+
+	class Task(ptype):  # type: ignore  # pylint: disable=too-few-public-methods
+		def __init__(  # pylint: disable=too-many-arguments
+			self, task_id: int, file: Path, res_queue: queue.Queue, exclusive: bool, timeout: float, wait: float
+		) -> None:
+			super().__init__()
+			self.task_id = task_id
+			self.file = file
+			self.exclusive = exclusive
+			self.timeout = timeout
+			self.wait = wait
+			self.res_queue = res_queue
+
+		def run(self) -> None:
+			start = time.time()
+			result: str | Exception | None = None
+			try:
+				with open(self.file, "a+", encoding="utf8") as test_fh:
+					with lock_file(test_fh, exclusive=self.exclusive, timeout=self.timeout):
+						test_fh.seek(0)
+						data = test_fh.read()
+						if self.exclusive:
+							test_fh.seek(0)
+							test_fh.write(",".join([str(self.task_id)] * 10))
+							test_fh.truncate()
+						result = data
+						time.sleep(self.wait)
+			except Exception as err:  # pylint: disable=broad-exception-caught
+				result = err
+			self.res_queue.put((result, time.time() - start))
+
+	# Exclusive lock / write lock
+	num_tasks = 10
+	tasks = [
+		Task(task_id=task_id, file=test_file, res_queue=res_queue, exclusive=True, timeout=1.0, wait=3.0) for task_id in range(num_tasks)
+	]
+	for task in tasks:
+		task.start()
+	for task in tasks:
+		task.join()
+
+	results = [res_queue.get() for _ in range(num_tasks)]
+	err_results = [r for r in results if isinstance(r[0], Exception)]
+	assert len(err_results) == num_tasks - 1
+	for res in err_results:
+		assert 1.0 < res[1] < 2.0
+
+	task_ids = test_file.read_text(encoding="utf-8").split(",")
+	assert len(task_ids) == 10
+	for task_id in task_ids:
+		assert task_id == task_ids[0]
+
+	file_data = "opsi" * 10
+	test_file.write_text(file_data)
+
+	# Shared lock / read lock
+	num_tasks = 10
+	tasks = [
+		Task(task_id=task_id, file=test_file, res_queue=res_queue, exclusive=False, timeout=1.0, wait=3.0) for task_id in range(num_tasks)
+	]
+	for task in tasks:
+		task.start()
+	for task in tasks:
+		task.join()
+
+	results = [res_queue.get() for _ in range(num_tasks)]
+	success_results = [r for r in results if not isinstance(r[0], Exception)]
+	assert len(success_results) == num_tasks
+	for res in success_results:
+		assert res[0] == file_data
