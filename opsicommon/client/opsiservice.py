@@ -75,7 +75,7 @@ from ..messagebus import (
 	timestamp,
 )
 from ..objects import deserialize, serialize
-from ..system import set_system_datetime
+from ..system import set_system_datetime, lock_file
 from ..types import forceHostId, forceOpsiHostKey
 from ..utils import prepare_proxy_environment
 
@@ -505,37 +505,47 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		if not ca_certs:
 			raise OpsiServiceError("Failed to fetch opsi-ca-cert.pem: No certificates in response")
 
-		data = "\n".join([dump_certificate(FILETYPE_PEM, cert).decode("utf-8") for cert in ca_certs])
+		certs = [dump_certificate(FILETYPE_PEM, cert).decode("utf-8") for cert in ca_certs]
 		if ServiceVerificationFlags.UIB_OPSI_CA in self._verify:
-			data += "\n" + UIB_OPSI_CA
+			certs.append(UIB_OPSI_CA)
 
-		self._ca_cert_file.write_text(data, encoding="utf-8")
+		with open(self._ca_cert_file, "a+", encoding="utf-8") as file:
+			with lock_file(file=file, exclusive=True, timeout=5.0):
+				file.seek(0)
+				file.truncate()
+				file.write("\n".join(certs))
 
-		logger.info("CA cert file '%s' successfully updated", self._ca_cert_file)
+		logger.info("CA cert file '%s' successfully updated (%d certificates total)", self._ca_cert_file, len(certs))
 
 	def add_uib_opsi_ca_to_cert_file(self) -> None:
 		if not self._ca_cert_file:
 			raise RuntimeError("CA cert file not set")
 
-		certs = ""
-		if self._ca_cert_file.exists():
-			# Read all certs from file except UIB_OPSI_CA
-			uib_opsi_ca_cert = load_certificate(FILETYPE_PEM, UIB_OPSI_CA.encode("ascii"))
-			data = self._ca_cert_file.read_text(encoding="utf-8")
-			for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):
-				cert = load_certificate(FILETYPE_PEM, match.group(1).encode("ascii"))
-				if cert.get_subject().CN != uib_opsi_ca_cert.get_subject().CN:
-					certs += dump_certificate(FILETYPE_PEM, cert).decode("ascii")
+		uib_opsi_ca_cert = load_certificate(FILETYPE_PEM, UIB_OPSI_CA.encode("ascii"))
 
-		certs += UIB_OPSI_CA
-		self._ca_cert_file.write_text(certs, encoding="utf-8")
-		logger.info("UIB OPSI CA added to cert file '%s'", self._ca_cert_file)
+		with open(self._ca_cert_file, "a+", encoding="utf-8") as file:
+			with lock_file(file=file, exclusive=True, timeout=5.0):
+				certs = []
+				file.seek(0)
+				# Read all certs from file except UIB_OPSI_CA
+				for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", file.read(), re.DOTALL):
+					cert = load_certificate(FILETYPE_PEM, match.group(1).encode("ascii"))
+					if cert.get_subject().CN != uib_opsi_ca_cert.get_subject().CN:
+						certs.append(dump_certificate(FILETYPE_PEM, cert).decode("ascii"))
+				certs.append(UIB_OPSI_CA)
+				file.seek(0)
+				file.truncate()
+				file.write("\n".join(certs))
+				logger.info("UIB OPSI CA added to cert file '%s' (%d certificates total)", self._ca_cert_file, len(certs))
 
 	def opsi_ca_certs_expired(self) -> bool:
 		if not self._ca_cert_file or not self._ca_cert_file.exists():
 			return False
 
-		data = self._ca_cert_file.read_text(encoding="utf-8")
+		with open(self._ca_cert_file, "r", encoding="utf-8") as file:
+			with lock_file(file=file, exclusive=False, timeout=5.0):
+				data = file.read()
+
 		now = datetime.now()
 		for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):
 			try:
@@ -554,7 +564,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		if not self._ca_cert_file or not self._ca_cert_file.exists() or self._ca_cert_file.stat().st_size == 0:
 			return ca_certs
 		try:
-			data = self._ca_cert_file.read_text(encoding="utf-8")
+			with open(self._ca_cert_file, "r", encoding="utf-8") as file:
+				with lock_file(file=file, exclusive=False, timeout=5.0):
+					data = file.read()
 			for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):
 				try:
 					ca_certs.append(load_certificate(FILETYPE_PEM, match.group(1).encode("utf-8")))
