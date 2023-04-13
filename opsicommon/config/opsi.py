@@ -156,6 +156,14 @@ class OpsiConfig(metaclass=Singleton):
 		self._upgrade_config = upgrade_config
 		self._upgrade_done = False
 
+	@property
+	def upgrade_config(self) -> bool:
+		return self._upgrade_config
+
+	@upgrade_config.setter
+	def upgrade_config(self, upgrade_config: bool) -> None:
+		self._upgrade_config = bool(upgrade_config)
+
 	@staticmethod
 	def _merge_config(destination: dict[str, Any], source: dict[str, Any]) -> None:
 		for key in source:
