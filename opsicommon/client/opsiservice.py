@@ -484,8 +484,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		if not self._ca_cert_file:
 			raise RuntimeError("CA cert file not set")
 
-		logger.info("Fetching opsi CA from service")
 		verify = False if skip_verify else self._session.verify
+		logger.info("Fetching opsi CA from service (verify=%s)", verify)
 
 		ca_certs = []
 		self._ca_cert_file.parent.mkdir(exist_ok=True)
@@ -774,7 +774,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				try:
 					self.fetch_opsi_ca(skip_verify=not verify)
 				except Exception as err:  # pylint: disable=broad-except
-					logger.error(err)
+					logger.error(err, exc_info=True)
 
 		try:
 			self.jsonrpc_interface = self.jsonrpc("backend_getInterface")
