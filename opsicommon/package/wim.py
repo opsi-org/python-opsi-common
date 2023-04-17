@@ -20,8 +20,8 @@ logger = get_logger("opsicommon.package")
 
 
 def wim_capture(
-	source: Path,
-	wim_file: Path,
+	source: Path | str,
+	wim_file: Path | str,
 	*,
 	image_name: str | None,
 	image_description: str | None,
@@ -29,6 +29,11 @@ def wim_capture(
 	dereference: bool = False,
 	unix_data: bool = True,
 ) -> None:
+	if not isinstance(source, Path):
+		source = Path(source)
+	if not isinstance(wim_file, Path):
+		wim_file = Path(wim_file)
+
 	cmd = ["wimlib-imagex", "capture", str(source), str(wim_file)]
 	if image_name or image_description:
 		cmd.append(image_name or "")
@@ -81,6 +86,8 @@ class WIMImageInfo:  # pylint: disable=too-many-instance-attributes
 	description: str | None = None
 	display_name: str | None = None
 	display_description: str | None = None
+	# Distinguish from the wiminfo --xml output whether an attribute
+	# belongs to WIMImageInfo or WIMImageWindowsInfo
 	windows_info: WIMImageWindowsInfo | None = None
 
 
@@ -98,7 +105,10 @@ class WIMInfo:  # pylint: disable=too-many-instance-attributes
 	images: list[WIMImageInfo]
 
 
-def wim_info(wim_file: Path) -> WIMInfo:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+def wim_info(wim_file: Path | str) -> WIMInfo:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+	if not isinstance(wim_file, Path):
+		wim_file = Path(wim_file)
+
 	cmd = ["wimlib-imagex", "info", str(wim_file)]
 
 	logger.info("Executing %s", cmd)
