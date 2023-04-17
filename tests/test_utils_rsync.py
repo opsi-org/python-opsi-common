@@ -13,9 +13,11 @@ from itertools import combinations_with_replacement
 
 import pytest
 
-from opsicommon.utils.rsync import librsync_delta_file, librsync_patch_file, librsync_signature
-
 IMPORT_FAILED = False
+try:
+	from opsicommon.utils.rsync import librsync_delta_file, librsync_patch_file, librsync_signature
+except ImportError:
+	IMPORT_FAILED = True
 
 
 @pytest.fixture
