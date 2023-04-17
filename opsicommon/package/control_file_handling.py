@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+
+# Copyright (c) uib GmbH <info@uib.de>
+# License: AGPL-3.0
 """
 handling for opsi control files
 """
@@ -25,15 +29,15 @@ def multiline_string(value: str) -> tomlkit.items.String:
 def create_package_dependencies(pdeps: list[dict[str, str | None]]) -> list[dict[str, str | None]]:
 	result = []
 	for pdep in forceDictList(pdeps):
-		if not pdep.get('package'):
+		if not pdep.get("package"):
 			raise ValueError(f"No package given: {pdep}")
-		if not pdep.get('version'):
-			pdep['version'] = None
-			pdep['condition'] = None
+		if not pdep.get("version"):
+			pdep["version"] = None
+			pdep["condition"] = None
 		else:
-			if not pdep.get('condition'):
-				pdep['condition'] = '='
-			if pdep['condition'] not in ('=', '<', '<=', '>', '>='):
+			if not pdep.get("condition"):
+				pdep["condition"] = "="
+			if pdep["condition"] not in ("=", "<", "<=", ">", ">="):
 				raise ValueError(f"Bad condition string '{pdep['condition']}' in package dependency")
 		result.append(pdep)
 	return result
@@ -75,11 +79,13 @@ def create_product_properties(pid: str, prod_v: str, pack_v: str, props: list[di
 		if p_type in ("boolproductproperty", "bool"):
 			pp_class = BoolProductProperty
 		elif p_type in ("unicodeproductproperty", "unicode", ""):
-			kwargs.update({
-				"possibleValues": prop.get("values", []),
-				"editable": [prop.get("editable", not prop.get("values", []))],
-				"multiValue": prop.get("multivalue"),
-			})
+			kwargs.update(
+				{
+					"possibleValues": prop.get("values", []),
+					"editable": [prop.get("editable", not prop.get("values", []))],
+					"multiValue": prop.get("multivalue"),
+				}
+			)
 		else:
 			raise ValueError(f"Error in control file: unknown product property type '{prop.get('type')}'")
 		result.append(pp_class(**kwargs))

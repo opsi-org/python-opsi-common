@@ -17,6 +17,7 @@ from opsicommon.system.info import (
 	is_deb_based,
 	is_linux,
 	is_macos,
+	is_unix,
 	is_pacman_based,
 	is_rpm_based,
 	is_windows,
@@ -38,6 +39,10 @@ def test_is_linux() -> None:
 
 def test_is_macos() -> None:
 	assert is_macos() == bool(platform.system() == "Darwin")
+
+
+def test_is_unix() -> None:
+	assert is_unix() == bool(platform.system() in ("Linux", "Darwin"))
 
 
 @pytest.mark.linux

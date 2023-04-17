@@ -1,3 +1,5 @@
+# Copyright (c) uib GmbH <info@uib.de>
+# License: AGPL-3.0
 """
 tests for opsicommon.package
 """

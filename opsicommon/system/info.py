@@ -25,6 +25,10 @@ def is_macos() -> bool:
 	return SYSTEM == "darwin"
 
 
+def is_unix() -> bool:
+	return SYSTEM in ("linux", "darwin")
+
+
 @lru_cache
 def linux_distro_id() -> str:
 	return platform.freedesktop_os_release()["ID"]

@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+
+# Copyright (c) uib GmbH <info@uib.de>
+# License: AGPL-3.0
 """
 handling of package content, hash files and more
 """
