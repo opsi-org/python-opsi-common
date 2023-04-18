@@ -282,6 +282,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self._username = ""
 		self._password = ""
 
+		self._uib_opsi_ca_cert = load_certificate(FILETYPE_PEM, UIB_OPSI_CA.encode("ascii"))
+
 		self._msgpack_decoder = msgspec.msgpack.Decoder()
 		self._msgpack_encoder = msgspec.msgpack.Encoder()
 		self._json_decoder = msgspec.json.Decoder()
@@ -527,8 +529,6 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		if not self._ca_cert_file:
 			raise RuntimeError("CA cert file not set")
 
-		uib_opsi_ca_cert = load_certificate(FILETYPE_PEM, UIB_OPSI_CA.encode("ascii"))
-
 		with open(self._ca_cert_file, "a+", encoding="utf-8") as file:
 			with lock_file(file=file, exclusive=True, timeout=5.0):
 				certs = []
@@ -536,7 +536,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				# Read all certs from file except UIB_OPSI_CA
 				for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", file.read(), re.DOTALL):
 					cert = load_certificate(FILETYPE_PEM, match.group(1).encode("ascii"))
-					if cert.get_subject().CN != uib_opsi_ca_cert.get_subject().CN:
+					if cert.get_subject().CN != self._uib_opsi_ca_cert.get_subject().CN:
 						certs.append(dump_certificate(FILETYPE_PEM, cert).decode("ascii"))
 				certs.append(UIB_OPSI_CA)
 				file.seek(0)
@@ -563,9 +563,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 	def get_opsi_ca_state(self) -> OpsiCaState:
 		now = datetime.now()
-		uib_opsi_ca_cert = load_certificate(FILETYPE_PEM, UIB_OPSI_CA.encode("ascii"))
 		for cert in self.get_opsi_ca_certs():
-			if cert.get_subject().CN != uib_opsi_ca_cert.get_subject().CN:
+			if cert.get_subject().CN != self._uib_opsi_ca_cert.get_subject().CN:
 				enddate = datetime.strptime((cert.get_notAfter() or b"").decode("utf-8"), "%Y%m%d%H%M%SZ")
 				if enddate <= now:
 					logger.notice("Expired certificate found: %r", cert)
