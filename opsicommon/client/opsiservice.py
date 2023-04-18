@@ -146,6 +146,12 @@ class ServiceVerificationFlags(str, Enum):
 	REPLACE_EXPIRED_CA = "replace_expired_ca"
 
 
+class OpsiCaState(str, Enum):
+	UNAVAILABLE = "unavailable"
+	AVAILABLE = "available"
+	EXPIRED = "expired"
+
+
 class CallbackThread(Thread):
 	def __init__(self, callback: Callable, **kwargs: Any) -> None:
 		super().__init__()
@@ -538,27 +544,6 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				file.write("\n".join(certs))
 				logger.info("UIB OPSI CA added to cert file '%s' (%d certificates total)", self._ca_cert_file, len(certs))
 
-	def opsi_ca_certs_expired(self) -> bool:
-		if not self._ca_cert_file or not self._ca_cert_file.exists():
-			return False
-
-		with open(self._ca_cert_file, "r", encoding="utf-8") as file:
-			with lock_file(file=file, exclusive=False, timeout=5.0):
-				data = file.read()
-
-		now = datetime.now()
-		for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):
-			try:
-				cert = load_certificate(FILETYPE_PEM, match.group(1).encode("utf-8"))
-				enddate = datetime.strptime((cert.get_notAfter() or b"").decode("utf-8"), "%Y%m%d%H%M%SZ")
-				if enddate <= now:
-					logger.notice("Expired certificate found: %r", cert)
-					return True
-			except Exception as err:  # pylint: disable=broad-except
-				logger.error(err, exc_info=True)
-				return True
-		return False
-
 	def get_opsi_ca_certs(self) -> list[X509]:
 		ca_certs: list[X509] = []
 		if not self._ca_cert_file or not self._ca_cert_file.exists() or self._ca_cert_file.stat().st_size == 0:
@@ -575,6 +560,18 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		except Exception as err:  # pylint: disable=broad-except
 			logger.warning(err, exc_info=True)
 		return ca_certs
+
+	def get_opsi_ca_state(self) -> OpsiCaState:
+		now = datetime.now()
+		uib_opsi_ca_cert = load_certificate(FILETYPE_PEM, UIB_OPSI_CA.encode("ascii"))
+		for cert in self.get_opsi_ca_certs():
+			if cert.get_subject().CN != uib_opsi_ca_cert.get_subject().CN:
+				enddate = datetime.strptime((cert.get_notAfter() or b"").decode("utf-8"), "%Y%m%d%H%M%SZ")
+				if enddate <= now:
+					logger.notice("Expired certificate found: %r", cert)
+					return OpsiCaState.EXPIRED
+				return OpsiCaState.AVAILABLE
+		return OpsiCaState.UNAVAILABLE
 
 	def create_jsonrpc_methods(self, instance: Any = None) -> None:  # pylint: disable=too-many-locals
 		if self.jsonrpc_interface is None:
@@ -663,13 +660,14 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				verify,
 			)
 			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file:
-				if not ca_cert_file_exists or self._ca_cert_file.stat().st_size == 0:
+				opsi_ca_state = self.get_opsi_ca_state()
+				if opsi_ca_state == OpsiCaState.UNAVAILABLE:
 					logger.info(
-						"Service verification enabled, but CA cert file %r does not exist or is empty, skipping verification",
+						"Service verification enabled, but %r does not contain opsi CA, skipping verification",
 						self._ca_cert_file,
 					)
 					verify = False
-				elif ServiceVerificationFlags.REPLACE_EXPIRED_CA in self._verify and self.opsi_ca_certs_expired():
+				elif ServiceVerificationFlags.REPLACE_EXPIRED_CA in self._verify and opsi_ca_state == OpsiCaState.EXPIRED:
 					logger.info(
 						"Service verification enabled, but a certificate from CA cert file %r is expired, skipping verification",
 						self._ca_cert_file,

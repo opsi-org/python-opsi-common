@@ -283,12 +283,19 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert)
 			assert client.get("/")[0] == 200
 
-		# uib_opsi_ca
+		# uib_opsi_ca (means uib_opsi_ca + opsi_ca)
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="uib_opsi_ca") as client:
 			client.connect()
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + "\n" + UIB_OPSI_CA
 
+		# Empty client ca file => accept once
 		opsi_ca_file_on_client.write_text("", encoding="utf-8")
+		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="uib_opsi_ca") as client:
+			client.connect()
+			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + "\n" + UIB_OPSI_CA
+
+		# Only uib opsi ca in ca file => accept once
+		opsi_ca_file_on_client.write_text(UIB_OPSI_CA, encoding="utf-8")
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="uib_opsi_ca") as client:
 			client.connect()
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + "\n" + UIB_OPSI_CA
