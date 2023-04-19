@@ -65,6 +65,7 @@ from ..exceptions import (
 	OpsiServiceVerificationError,
 )
 from ..logging import get_logger, secret_filter
+from ..logging.constants import TRACE
 from ..messagebus import (
 	ChannelSubscriptionEventMessage,
 	ChannelSubscriptionRequestMessage,
@@ -964,6 +965,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			"method": method,
 			"params": serialize(params),
 		}
+		if logger.isEnabledFor(TRACE):
+			logger.trace("RPC: %s", data_dict)
 
 		serialization = "msgpack" if self.server_version >= MIN_VERSION_MSGPACK else "json"
 		if serialization == "msgpack":
