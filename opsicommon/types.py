@@ -115,6 +115,7 @@ _HARDWARE_ID_REGEX = re.compile(r"^[a-fA-F0-9]{4}$")
 _OPSI_TIMESTAMP_REGEX = re.compile(r"^(\d{4})-?(\d{2})-?(\d{2})\s?(\d{2}):?(\d{2}):?(\d{2})\.?\d*$")
 _OPSI_DATE_REGEX = re.compile(r"^(\d{4})-?(\d{2})-?(\d{2})$")
 _FQDN_REGEX = re.compile(r"^[a-z0-9][a-z0-9\-]{,63}\.((\w+\-+)|(\w+\.))*\w{1,63}\.\w{2,16}\.?$")
+_USERNAME_REGEX = re.compile(r"^[a-z0-9\-_\.]{1,64}$")
 _HARDWARE_ADDRESS_REGEX = re.compile(
 	r"^([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})$"
 )
@@ -344,6 +345,16 @@ def forceOpsiTimestamp(var: Any) -> str:  # pylint: disable=invalid-name
 			raise ValueError(f"Bad opsi timestamp: {var}")
 		return f"{match.group(1)}-{match.group(2)}-{match.group(3)} 00:00:00"
 	return f"{match.group(1)}-{match.group(2)}-{match.group(3)}" f" {match.group(4)}:{match.group(5)}:{match.group(6)}"
+
+
+def forceUsername(var: Any) -> str:  # pylint: disable=invalid-name
+	var = forceStringLower(var)
+	if not _USERNAME_REGEX.search(var):
+		raise ValueError(f"Bad username: {var!r}")
+	return var
+
+
+forceUserId = forceUsername
 
 
 def forceFqdn(var: Any) -> str:  # pylint: disable=invalid-name

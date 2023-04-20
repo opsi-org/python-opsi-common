@@ -37,6 +37,7 @@ from opsicommon.types import (
 	forceHardwareAddress,
 	forceHardwareDeviceId,
 	forceHardwareVendorId,
+	forceUserId,
 	forceHostId,
 	forceInstallationStatus,
 	forceInt,
@@ -560,7 +561,7 @@ class User(Entity):
 		return self.id
 
 	def setId(self, id: str) -> None:  # pylint: disable=redefined-builtin,invalid-name
-		self.id = forceStringLower(id)  # pylint: disable=invalid-name
+		self.id = forceUserId(id)  # pylint: disable=invalid-name
 
 	def getLastLogin(self) -> str | None:  # pylint: disable=invalid-name
 		return self.lastLogin
