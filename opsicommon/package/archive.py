@@ -9,6 +9,7 @@ handling of archives
 import fnmatch
 import os
 import re
+import shlex
 import subprocess
 import tarfile
 from contextlib import contextmanager
@@ -19,6 +20,7 @@ from typing import Generator
 
 import packaging.version
 import zstandard
+
 from opsicommon.config.opsi import OpsiConfig
 from opsicommon.logging import get_logger
 from opsicommon.system.info import is_linux
@@ -195,7 +197,7 @@ def create_archive_external(
 	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
 	if archive.exists():
 		archive.unlink()
-	source_string = " ".join((str(source.relative_to(base_dir)) for source in sources))
+	source_string = " ".join((shlex.quote(f"{source.relative_to(base_dir)}") for source in sources))
 	dereference_string = "--dereference" if dereference else ""
 	if compression:
 		cmd = f"{TAR_CREATE_COMMAND} - {dereference_string} {source_string} | {compress_command(archive, compression)}"
