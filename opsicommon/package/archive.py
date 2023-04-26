@@ -40,7 +40,7 @@ def chdir(new_dir: Path) -> Generator[None, None, None]:
 
 # IDEA: tar can use --zstd
 CPIO_EXTRACT_COMMAND = "cpio --unconditional --extract --quiet --no-preserve-owner --no-absolute-filenames"
-TAR_EXTRACT_COMMAND = "tar -xf - --wildcards"
+TAR_EXTRACT_COMMAND = "tar -xf - --wildcards --no-same-owner"
 TAR_CREATE_COMMAND = "tar -cf"
 EXCLUDE_DIRS_ON_PACK_REGEX = re.compile(r"(^\.svn$)|(^\.git$)")
 EXCLUDE_FILES_ON_PACK_REGEX = re.compile(r"(~$)|(^[Tt]humbs\.db$)|(^\.[Dd][Ss]_[Ss]tore$)")
