@@ -68,11 +68,11 @@ def create_package_zsync_file(package_path: Path, filename: Path | None = None) 
 		filename = Path(f"{package_path}.zsync")
 
 	try:
-		subprocess.check_call(f"zsyncmake -u '{package_path.name}' -o '{filename}' '{package_path}'", shell=True)
-	except subprocess.CalledProcessError:
+		subprocess.run(["zsyncmake", "-u", package_path.name, "-o", filename, package_path], capture_output=True, check=True)
+	except (subprocess.CalledProcessError, FileNotFoundError):
 		try:
-			subprocess.check_call(f"zsyncmake-curl -u '{package_path.name}' -o '{filename}' '{package_path}'", shell=True)
-		except subprocess.CalledProcessError as error:
-			raise FileNotFoundError("zsyncmake(-curl) binary not found in PATH") from error
+			subprocess.run(["zsyncmake-curl", "-u", package_path.name, "-o", filename, package_path], capture_output=True, check=True)
+		except (subprocess.CalledProcessError, FileNotFoundError) as err:
+			raise FileNotFoundError("zsyncmake(-curl) binary not found in PATH") from err
 	# In old versions, the mtime was removed here - keeping it for now
 	return filename

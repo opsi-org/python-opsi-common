@@ -47,7 +47,7 @@ def wim_capture(
 		cmd.append("--unix-data")
 
 	logger.info("Executing %s", cmd)
-	proc = run(cmd, shell=False, check=False, text=True, stdout=PIPE, stderr=STDOUT)
+	proc = run(cmd, check=False, text=True, stdout=PIPE, stderr=STDOUT)
 	logger.debug("Command returncode: %d, output %s", proc.returncode, proc.stdout)
 	if proc.returncode != 0:
 		raise RuntimeError(f"Failed to execute wimlib-imagex: {proc.returncode} - {proc.stdout}")
@@ -112,7 +112,7 @@ def wim_info(wim_file: Path | str) -> WIMInfo:  # pylint: disable=too-many-local
 	cmd = ["wimlib-imagex", "info", str(wim_file)]
 
 	logger.info("Executing %s", cmd)
-	proc = run(cmd, shell=False, check=False, text=True, stdout=PIPE, stderr=STDOUT)
+	proc = run(cmd, check=False, text=True, stdout=PIPE, stderr=STDOUT)
 	logger.debug("Command returncode: %d, output %s", proc.returncode, proc.stdout)
 	if proc.returncode != 0:
 		raise RuntimeError(f"Failed to execute wimlib-imagex: {proc.returncode} - {proc.stdout}")

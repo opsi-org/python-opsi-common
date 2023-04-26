@@ -40,8 +40,8 @@ def chdir(new_dir: Path) -> Generator[None, None, None]:
 
 # IDEA: tar can use --zstd
 CPIO_EXTRACT_COMMAND = "cpio --unconditional --extract --quiet --no-preserve-owner --no-absolute-filenames"
-TAR_EXTRACT_COMMAND = "tar -xf - --wildcards --no-same-owner"
-TAR_CREATE_COMMAND = "tar -cf"
+TAR_EXTRACT_COMMAND = "tar --wildcards --no-same-owner --extract --file -"
+TAR_CREATE_COMMAND = "tar --owner=nobody --group=nogroup --create --file"
 EXCLUDE_DIRS_ON_PACK_REGEX = re.compile(r"(^\.svn$)|(^\.git$)")
 EXCLUDE_FILES_ON_PACK_REGEX = re.compile(r"(~$)|(^[Tt]humbs\.db$)|(^\.[Dd][Ss]_[Ss]tore$)")
 
@@ -106,9 +106,9 @@ def decompress_command(archive: Path) -> str:
 		return f"bzcat --stdout --quiet --decompress '{archive}'"
 	if archive.suffix == ".zstd":
 		try:
-			subprocess.check_call("zstdcat --version > /dev/null", shell=True)
-		except subprocess.CalledProcessError as error:
-			raise RuntimeError("Zstd not available.") from error
+			subprocess.run(["zstdcat", "--version"], capture_output=True, check=True)
+		except (subprocess.CalledProcessError, FileNotFoundError) as error:
+			raise RuntimeError("Zstdcat not available.") from error
 		return f"zstdcat --stdout --quiet --decompress '{archive}'"
 	raise RuntimeError(f"Unknown compression of file '{archive}'")
 
@@ -183,8 +183,8 @@ def compress_command(archive: Path, compression: str) -> str:
 		return f"bzip2 --quiet - > '{archive}'"
 	if compression == "zstd":
 		try:
-			subprocess.run("zstd --version", shell=True, capture_output=True, check=True)
-		except subprocess.CalledProcessError as error:
+			subprocess.run(["zstd", "--version"], capture_output=True, check=True)
+		except (subprocess.CalledProcessError, FileNotFoundError) as error:
 			raise RuntimeError("Zstd not available.") from error
 		return f"zstd - -o '{archive}' 2> /dev/null"  # --no-progress is not available for deb9 zstd
 	raise RuntimeError(f"Unknown compression '{compression}'")
@@ -222,11 +222,19 @@ def create_archive_internal(
 		mode = "w|bz2"
 	elif compression == "gz":
 		mode = "w|gz"
+
+	def set_tarinfo(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo:
+		tarinfo.uid = 65534
+		tarinfo.uname = "nobody"
+		tarinfo.gid = 65534
+		tarinfo.gname = "nogroup"
+		return tarinfo
+
 	if compression == "zstd":
 		with open(archive, mode="wb") as outfile, BytesIO() as buffer:
 			with tarfile.open(fileobj=buffer, mode=mode, dereference=dereference) as tar_object:
 				for source in sources:
-					tar_object.add(source, arcname=source.relative_to(base_dir))
+					tar_object.add(source, arcname=source.relative_to(base_dir), filter=set_tarinfo)
 			compressor = zstandard.ZstdCompressor()
 			buffer.seek(0)
 			_, bytes_written = compressor.copy_stream(buffer, outfile)
@@ -235,7 +243,7 @@ def create_archive_internal(
 		# Remark: everything except gz can handle Path-like archive, gz requires str
 		with tarfile.open(str(archive), mode=mode, dereference=dereference) as tar_object:
 			for source in sources:
-				tar_object.add(source, arcname=source.relative_to(base_dir))
+				tar_object.add(source, arcname=source.relative_to(base_dir), filter=set_tarinfo)
 
 
 def create_archive(archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False) -> None:
