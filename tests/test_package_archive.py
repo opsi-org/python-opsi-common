@@ -10,6 +10,7 @@ from random import randbytes
 from typing import Literal
 
 import pytest
+from hypothesis.strategies import binary, from_regex
 
 from opsicommon.package.archive import (
 	create_archive_external,
@@ -17,6 +18,16 @@ from opsicommon.package.archive import (
 	extract_archive_external,
 	extract_archive_internal,
 )
+
+
+def make_source_files_hypothesis(path: Path) -> Path:
+	source = path / "source"
+	source.mkdir()
+	filenames = from_regex(r"^[^/\\<>?]{4,64}$")
+	data = binary(max_size=4096)
+	for _ in range(10):
+		(source / filenames.example()).write_bytes(data.example())
+	return source
 
 
 def make_source_files(path: Path) -> Path:
@@ -36,8 +47,17 @@ def make_source_files(path: Path) -> Path:
 	"compression",
 	("zstd", "bz2", "gz"),
 )
-def test_create_extract_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"]) -> None:
-	source = make_source_files(tmp_path)
+@pytest.mark.parametrize(
+	"strategy",
+	("static", "hypothesis"),
+)
+def test_create_extract_archive_external(
+	tmp_path: Path, compression: Literal["zstd", "bz2", "gz"], strategy: Literal["static", "hypothesis"]
+) -> None:
+	if strategy == "hypothesis":
+		source = make_source_files_hypothesis(tmp_path)
+	else:
+		source = make_source_files(tmp_path)
 	create_archive_external(
 		tmp_path / f"archive.tar.{compression}",
 		list(source.glob("*")),
