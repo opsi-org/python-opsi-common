@@ -5,12 +5,14 @@ tests for opsicommon.package.archive
 """
 
 import platform
+import tempfile
 from pathlib import Path
 from random import randbytes
 from typing import Literal
 
 import pytest
-from hypothesis.strategies import binary, from_regex
+from hypothesis import given
+from hypothesis.strategies import binary, from_regex, sampled_from
 
 from opsicommon.package.archive import (
 	create_archive_external,
@@ -18,16 +20,6 @@ from opsicommon.package.archive import (
 	extract_archive_external,
 	extract_archive_internal,
 )
-
-
-def make_source_files_hypothesis(path: Path) -> Path:
-	source = path / "source"
-	source.mkdir()
-	filenames = from_regex(r"^[^/\\<>?]{4,64}$")
-	data = binary(max_size=4096)
-	for _ in range(10):
-		(source / filenames.example()).write_bytes(data.example())
-	return source
 
 
 def make_source_files(path: Path) -> Path:
@@ -42,22 +34,35 @@ def make_source_files(path: Path) -> Path:
 	return source
 
 
+# Cannot use function scoped fixtures with hypothesis
+@pytest.mark.linux
+@given(from_regex(r"^[^/\\]{4,64}$"), binary(max_size=4096), sampled_from(("zstd", "bz2", "gz")))
+def test_archive_external_hypothesis(filename: str, data: bytes, compression: Literal["zstd", "bz2", "gz"]) -> None:
+	with tempfile.TemporaryDirectory() as tempdir:
+		tmp_path = Path(tempdir)
+		source = tmp_path / "source"
+		source.mkdir()
+		(source / filename).write_bytes(data)
+		create_archive_external(
+			tmp_path / f"archive.tar.{compression}",
+			list(source.glob("*")),
+			source,
+			compression=compression,
+		)
+		destination = tmp_path / "destination"
+		extract_archive_external(tmp_path / f"archive.tar.{compression}", destination)
+		contents = [file.relative_to(destination) for file in destination.rglob("*")]
+		for file in source.rglob("*"):
+			assert file.relative_to(source) in contents
+
+
 @pytest.mark.linux
 @pytest.mark.parametrize(
 	"compression",
 	("zstd", "bz2", "gz"),
 )
-@pytest.mark.parametrize(
-	"strategy",
-	("static", "hypothesis"),
-)
-def test_create_extract_archive_external(
-	tmp_path: Path, compression: Literal["zstd", "bz2", "gz"], strategy: Literal["static", "hypothesis"]
-) -> None:
-	if strategy == "hypothesis":
-		source = make_source_files_hypothesis(tmp_path)
-	else:
-		source = make_source_files(tmp_path)
+def test_create_extract_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"]) -> None:
+	source = make_source_files(tmp_path)
 	create_archive_external(
 		tmp_path / f"archive.tar.{compression}",
 		list(source.glob("*")),
