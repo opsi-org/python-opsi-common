@@ -52,7 +52,9 @@ def use_pigz() -> bool:
 	if not opsi_conf.get("packages", "use_pigz"):
 		return False
 	try:
-		pigz_version = subprocess.check_output(["pigz", "--version"], stderr=subprocess.STDOUT).decode("utf-8")
+		process = subprocess.run(["pigz", "--version"], capture_output=True, check=True)
+		# Depending on pigz version, version is put to stdout or stderr
+		pigz_version = process.stderr.decode("utf-8") + process.stdout.decode("utf-8")
 		pigz_version = pigz_version.replace("pigz", "").strip()
 		if packaging.version.parse(pigz_version) < packaging.version.parse("2.2.3"):
 			raise ValueError("pigz too old")
@@ -199,10 +201,11 @@ def create_archive_external(
 		archive.unlink()
 	source_string = " ".join((shlex.quote(f"{source.relative_to(base_dir)}") for source in sources))
 	dereference_string = "--dereference" if dereference else ""
+	# Use -- to signal that no options should be processed afterwards
 	if compression:
-		cmd = f"{TAR_CREATE_COMMAND} - {dereference_string} {source_string} | {compress_command(archive, compression)}"
+		cmd = f"{TAR_CREATE_COMMAND} - {dereference_string} -- {source_string} | {compress_command(archive, compression)}"
 	else:
-		cmd = f"{TAR_CREATE_COMMAND} {archive} {dereference_string} {source_string}"
+		cmd = f"{TAR_CREATE_COMMAND} {archive} {dereference_string} -- {source_string}"
 	with chdir(base_dir):
 		logger.debug("Executing %s at %s", cmd, base_dir)
 		proc = subprocess.run(cmd, shell=True, check=False, capture_output=True, text=True)
