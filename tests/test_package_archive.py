@@ -21,6 +21,10 @@ from opsicommon.package.archive import (
 	extract_archive_internal,
 )
 
+# File may not
+# * contain slash/backslash path delimiters
+FILENAME_REGEX = r"^[^/\\]{4,64}$"
+
 
 def make_source_files(path: Path) -> Path:
 	source = path / "source"
@@ -36,7 +40,7 @@ def make_source_files(path: Path) -> Path:
 
 # Cannot use function scoped fixtures with hypothesis
 @pytest.mark.linux
-@given(from_regex(r"^[^/\\]{4,64}$"), binary(max_size=4096), sampled_from(("zstd", "bz2", "gz")))
+@given(from_regex(FILENAME_REGEX), binary(max_size=4096), sampled_from(("zstd", "bz2", "gz")))
 def test_archive_external_hypothesis(filename: str, data: bytes, compression: Literal["zstd", "bz2", "gz"]) -> None:
 	with tempfile.TemporaryDirectory() as tempdir:
 		tmp_path = Path(tempdir)
@@ -91,6 +95,5 @@ def test_create_extract_archive_internal(tmp_path: Path, compression: Literal["z
 	destination = tmp_path / "destination"
 	extract_archive_internal(tmp_path / f"archive.tar.{compression}", destination)
 	contents = [file.relative_to(destination) for file in destination.rglob("*")]
-	print(contents)
 	for file in source.rglob("*"):
 		assert file.relative_to(source) in contents
