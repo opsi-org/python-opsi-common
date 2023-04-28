@@ -9,7 +9,7 @@ import getpass
 try:
 	import grp
 except ModuleNotFoundError:  # not present for windows
-	grp = None
+	pass
 import platform
 import shutil
 import tempfile
