@@ -5,7 +5,11 @@ tests for opsicommon.package.archive
 """
 
 import getpass
-import grp
+
+try:
+	import grp
+except ModuleNotFoundError:  # not present for windows
+	grp = None
 import platform
 import shutil
 import tempfile
