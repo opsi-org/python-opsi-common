@@ -4,7 +4,14 @@
 tests for opsicommon.package.archive
 """
 
+import getpass
+
+try:
+	import grp
+except ModuleNotFoundError:  # not present for windows
+	pass
 import platform
+import shutil
 import tempfile
 from pathlib import Path
 from random import randbytes
@@ -47,14 +54,10 @@ def test_archive_external_hypothesis(filename: str, data: bytes, compression: Li
 		source = tmp_path / "source"
 		source.mkdir()
 		(source / filename).write_bytes(data)
-		create_archive_external(
-			tmp_path / f"archive.tar.{compression}",
-			list(source.glob("*")),
-			source,
-			compression=compression,
-		)
+		archive = tmp_path / f"archive.tar.{compression}"
+		create_archive_external(archive, list(source.glob("*")), source, compression=compression)
 		destination = tmp_path / "destination"
-		extract_archive_external(tmp_path / f"archive.tar.{compression}", destination)
+		extract_archive_external(archive, destination)
 		contents = [file.relative_to(destination) for file in destination.rglob("*")]
 		for file in source.rglob("*"):
 			assert file.relative_to(source) in contents
@@ -65,16 +68,20 @@ def test_archive_external_hypothesis(filename: str, data: bytes, compression: Li
 	"compression",
 	("zstd", "bz2", "gz"),
 )
-def test_create_extract_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"]) -> None:
+def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"]) -> None:
 	source = make_source_files(tmp_path)
-	create_archive_external(
-		tmp_path / f"archive.tar.{compression}",
-		list(source.glob("*")),
-		source,
-		compression=compression,
-	)
+	# setting group ownership of source to adm group - assuming this is present on every linux
+	shutil.chown(source, None, "adm")
+	archive = tmp_path / f"archive.tar.{compression}"
+	create_archive_external(archive, list(source.glob("*")), source, compression=compression)
+	# ownership of archive should be current user group
+	assert archive.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
+	# setting group ownership of archive to adm group - assuming this is present on every linux
+	shutil.chown(archive, None, "adm")
 	destination = tmp_path / "destination"
-	extract_archive_external(tmp_path / f"archive.tar.{compression}", destination)
+	extract_archive_external(archive, destination)
+	# ownership of archive should be current user group
+	assert destination.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
 	contents = [file.relative_to(destination) for file in destination.rglob("*")]
 	for file in source.rglob("*"):
 		assert file.relative_to(source) in contents
@@ -84,16 +91,12 @@ def test_create_extract_archive_external(tmp_path: Path, compression: Literal["z
 	"compression",
 	("zstd", "bz2", "gz"),
 )
-def test_create_extract_archive_internal(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"]) -> None:
+def test_archive_internal(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"]) -> None:
 	source = make_source_files(tmp_path)
-	create_archive_internal(
-		tmp_path / f"archive.tar.{compression}",
-		list(source.glob("*")),
-		source,
-		compression=compression,
-	)
+	archive = tmp_path / f"archive.tar.{compression}"
+	create_archive_internal(archive, list(source.glob("*")), source, compression=compression)
 	destination = tmp_path / "destination"
-	extract_archive_internal(tmp_path / f"archive.tar.{compression}", destination)
+	extract_archive_internal(archive, destination)
 	contents = [file.relative_to(destination) for file in destination.rglob("*")]
 	for file in source.rglob("*"):
 		assert file.relative_to(source) in contents
