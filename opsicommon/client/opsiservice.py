@@ -348,6 +348,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		self.default_headers = {
 			"User-Agent": self._user_agent,
+			"X-opsi-version": __version__,
 			"X-opsi-session-lifetime": str(self._session_lifetime),
 		}
 
