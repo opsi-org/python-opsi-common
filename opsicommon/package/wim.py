@@ -61,7 +61,6 @@ class WIMImageWindowsInfo:  # pylint: disable=too-many-instance-attributes
 	installation_type: str
 	product_type: str
 	product_suite: str
-	hal: str
 	languages: list[str]
 	default_language: str
 	system_root: str
@@ -70,6 +69,7 @@ class WIMImageWindowsInfo:  # pylint: disable=too-many-instance-attributes
 	build: int
 	service_pack_build: int
 	service_pack_level: int
+	hal: str | None = None
 
 
 @dataclass(kw_only=True)

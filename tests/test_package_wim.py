@@ -21,7 +21,7 @@ except (FileNotFoundError, CalledProcessError) as err:
 	WIMLIB_ERROR = str(err)
 
 
-WIM_INFO = """
+WIM_INFO_WIN10 = """
 WIM Information:
 ----------------
 Path:           install.wim
@@ -97,9 +97,307 @@ WIMBoot compatible:     no
 """
 
 
+WIM_INFO_WIN11 = """
+WIM Information:
+----------------
+Path:           install.wim
+GUID:           0xce35b4fd1961994d840f371c26c44d93
+Version:        68864
+Image Count:    10
+Compression:    LZX
+Chunk Size:     32768 bytes
+Part Number:    1/1
+Boot Index:     0
+Size:           4691546479 bytes
+Attributes:     Relative path junction
+
+Available Images:
+-----------------
+Index:                  1
+Name:                   Windows 11 Education
+Description:            Windows 11 Education
+Display Name:           Windows 11 Education
+Display Description:    Windows 11 Education
+Directory Count:        23285
+File Count:             104336
+Total Bytes:            16509227097
+Hard Link Bytes:        7343709159
+Creation Time:          Sat Aug 06 09:27:06 2022 UTC
+Last Modification Time: Sat Aug 06 09:50:55 2022 UTC
+Architecture:           x86_64
+Product Name:           Microsoft® Windows® Operating System
+Edition ID:             Education
+Installation Type:      Client
+Product Type:           WinNT
+Product Suite:          Terminal Server
+Languages:              de-DE
+Default Language:       de-DE
+System Root:            WINDOWS
+Major Version:          10
+Minor Version:          0
+Build:                  22621
+Service Pack Build:     382
+Service Pack Level:     0
+Flags:                  Education
+WIMBoot compatible:     no
+
+Index:                  2
+Name:                   Windows 11 Education N
+Description:            Windows 11 Education N
+Display Name:           Windows 11 Education N
+Display Description:    Windows 11 Education N
+Directory Count:        22586
+File Count:             99181
+Total Bytes:            15856937140
+Hard Link Bytes:        7073218382
+Creation Time:          Sat Aug 06 09:29:32 2022 UTC
+Last Modification Time: Sat Aug 06 09:51:15 2022 UTC
+Architecture:           x86_64
+Product Name:           Microsoft® Windows® Operating System
+Edition ID:             EducationN
+Installation Type:      Client
+Product Type:           WinNT
+Product Suite:          Terminal Server
+Languages:              de-DE
+Default Language:       de-DE
+System Root:            WINDOWS
+Major Version:          10
+Minor Version:          0
+Build:                  22621
+Service Pack Build:     382
+Service Pack Level:     0
+Flags:                  EducationN
+WIMBoot compatible:     no
+
+Index:                  3
+Name:                   Windows 11 Enterprise
+Description:            Windows 11 Enterprise
+Display Name:           Windows 11 Enterprise
+Display Description:    Windows 11 Enterprise
+Directory Count:        23285
+File Count:             104341
+Total Bytes:            16509351612
+Hard Link Bytes:        7343709159
+Creation Time:          Sat Aug 06 09:37:47 2022 UTC
+Last Modification Time: Sat Aug 06 09:51:34 2022 UTC
+Architecture:           x86_64
+Product Name:           Microsoft® Windows® Operating System
+Edition ID:             Enterprise
+Installation Type:      Client
+Product Type:           WinNT
+Product Suite:          Terminal Server
+Languages:              de-DE
+Default Language:       de-DE
+System Root:            WINDOWS
+Major Version:          10
+Minor Version:          0
+Build:                  22621
+Service Pack Build:     382
+Service Pack Level:     0
+Flags:                  Enterprise
+WIMBoot compatible:     no
+
+Index:                  4
+Name:                   Windows 11 Enterprise N
+Description:            Windows 11 Enterprise N
+Display Name:           Windows 11 Enterprise N
+Display Description:    Windows 11 Enterprise N
+Directory Count:        22586
+File Count:             99178
+Total Bytes:            15856861105
+Hard Link Bytes:        7073218382
+Creation Time:          Sat Aug 06 09:23:16 2022 UTC
+Last Modification Time: Sat Aug 06 09:51:52 2022 UTC
+Architecture:           x86_64
+Product Name:           Microsoft® Windows® Operating System
+Edition ID:             EnterpriseN
+Installation Type:      Client
+Product Type:           WinNT
+Product Suite:          Terminal Server
+Languages:              de-DE
+Default Language:       de-DE
+System Root:            WINDOWS
+Major Version:          10
+Minor Version:          0
+Build:                  22621
+Service Pack Build:     382
+Service Pack Level:     0
+Flags:                  EnterpriseN
+WIMBoot compatible:     no
+
+Index:                  5
+Name:                   Windows 11 Pro
+Description:            Windows 11 Pro
+Display Name:           Windows 11 Pro
+Display Description:    Windows 11 Pro
+Directory Count:        23285
+File Count:             104332
+Total Bytes:            16507300701
+Hard Link Bytes:        7343709159
+Creation Time:          Sat Aug 06 09:18:25 2022 UTC
+Last Modification Time: Sat Aug 06 09:52:12 2022 UTC
+Architecture:           x86_64
+Product Name:           Microsoft® Windows® Operating System
+Edition ID:             Professional
+Installation Type:      Client
+Product Type:           WinNT
+Product Suite:          Terminal Server
+Languages:              de-DE
+Default Language:       de-DE
+System Root:            WINDOWS
+Major Version:          10
+Minor Version:          0
+Build:                  22621
+Service Pack Build:     382
+Service Pack Level:     0
+Flags:                  Professional
+WIMBoot compatible:     no
+
+Index:                  6
+Name:                   Windows 11 Pro N
+Description:            Windows 11 Pro N
+Display Name:           Windows 11 Pro N
+Display Description:    Windows 11 Pro N
+Directory Count:        22586
+File Count:             99176
+Total Bytes:            15857883527
+Hard Link Bytes:        7073218382
+Creation Time:          Sat Aug 06 09:18:50 2022 UTC
+Last Modification Time: Sat Aug 06 09:52:30 2022 UTC
+Architecture:           x86_64
+Product Name:           Microsoft® Windows® Operating System
+Edition ID:             ProfessionalN
+Installation Type:      Client
+Product Type:           WinNT
+Product Suite:          Terminal Server
+Languages:              de-DE
+Default Language:       de-DE
+System Root:            WINDOWS
+Major Version:          10
+Minor Version:          0
+Build:                  22621
+Service Pack Build:     382
+Service Pack Level:     0
+Flags:                  ProfessionalN
+WIMBoot compatible:     no
+
+Index:                  7
+Name:                   Windows 11 Pro Education
+Description:            Windows 11 Pro Education
+Display Name:           Windows 11 Pro Education
+Display Description:    Windows 11 Pro Education
+Directory Count:        23285
+File Count:             104334
+Total Bytes:            16509177307
+Hard Link Bytes:        7343709159
+Creation Time:          Sat Aug 06 09:22:51 2022 UTC
+Last Modification Time: Sat Aug 06 09:52:49 2022 UTC
+Architecture:           x86_64
+Product Name:           Microsoft® Windows® Operating System
+Edition ID:             ProfessionalEducation
+Installation Type:      Client
+Product Type:           WinNT
+Product Suite:          Terminal Server
+Languages:              de-DE
+Default Language:       de-DE
+System Root:            WINDOWS
+Major Version:          10
+Minor Version:          0
+Build:                  22621
+Service Pack Build:     382
+Service Pack Level:     0
+Flags:                  ProfessionalEducation
+WIMBoot compatible:     no
+
+Index:                  8
+Name:                   Windows 11 Pro Education N
+Description:            Windows 11 Pro Education N
+Display Name:           Windows 11 Pro Education N
+Display Description:    Windows 11 Pro Education N
+Directory Count:        22586
+File Count:             99179
+Total Bytes:            15856886450
+Hard Link Bytes:        7073218382
+Creation Time:          Sat Aug 06 09:25:20 2022 UTC
+Last Modification Time: Sat Aug 06 09:53:07 2022 UTC
+Architecture:           x86_64
+Product Name:           Microsoft® Windows® Operating System
+Edition ID:             ProfessionalEducationN
+Installation Type:      Client
+Product Type:           WinNT
+Product Suite:          Terminal Server
+Languages:              de-DE
+Default Language:       de-DE
+System Root:            WINDOWS
+Major Version:          10
+Minor Version:          0
+Build:                  22621
+Service Pack Build:     382
+Service Pack Level:     0
+Flags:                  ProfessionalEducationN
+WIMBoot compatible:     no
+
+Index:                  9
+Name:                   Windows 11 Pro for Workstations
+Description:            Windows 11 Pro for Workstations
+Display Name:           Windows 11 Pro for Workstations
+Display Description:    Windows 11 Pro for Workstations
+Directory Count:        23285
+File Count:             104335
+Total Bytes:            16509202202
+Hard Link Bytes:        7343709159
+Creation Time:          Sat Aug 06 09:24:59 2022 UTC
+Last Modification Time: Sat Aug 06 09:53:26 2022 UTC
+Architecture:           x86_64
+Product Name:           Microsoft® Windows® Operating System
+Edition ID:             ProfessionalWorkstation
+Installation Type:      Client
+Product Type:           WinNT
+Product Suite:          Terminal Server
+Languages:              de-DE
+Default Language:       de-DE
+System Root:            WINDOWS
+Major Version:          10
+Minor Version:          0
+Build:                  22621
+Service Pack Build:     382
+Service Pack Level:     0
+Flags:                  ProfessionalWorkstation
+WIMBoot compatible:     no
+
+Index:                  10
+Name:                   Windows 11 Pro N for Workstations
+Description:            Windows 11 Pro N for Workstations
+Display Name:           Windows 11 Pro N for Workstations
+Display Description:    Windows 11 Pro N for Workstations
+Directory Count:        22586
+File Count:             99180
+Total Bytes:            15856911795
+Hard Link Bytes:        7073218382
+Creation Time:          Sat Aug 06 09:27:28 2022 UTC
+Last Modification Time: Sat Aug 06 09:53:44 2022 UTC
+Architecture:           x86_64
+Product Name:           Microsoft® Windows® Operating System
+Edition ID:             ProfessionalWorkstationN
+Installation Type:      Client
+Product Type:           WinNT
+Product Suite:          Terminal Server
+Languages:              de-DE
+Default Language:       de-DE
+System Root:            WINDOWS
+Major Version:          10
+Minor Version:          0
+Build:                  22621
+Service Pack Build:     382
+Service Pack Level:     0
+Flags:                  ProfessionalWorkstationN
+WIMBoot compatible:     no
+"""
+
+
 def test_wim_info() -> None:
 	class Proc:  # pylint: disable=too-few-public-methods
-		stdout = WIM_INFO
+		stdout = WIM_INFO_WIN10
 		returncode = 0
 
 	with patch("opsicommon.package.wim.run", PropertyMock(return_value=Proc())):
@@ -179,6 +477,15 @@ def test_wim_info() -> None:
 				),
 			],
 		)
+
+	Proc.stdout = WIM_INFO_WIN11
+
+	with patch("opsicommon.package.wim.run", PropertyMock(return_value=Proc())):
+		info = wim_info("fake.wim")
+		assert info
+		assert info.guid == "ce35b4fd1961994d840f371c26c44d93"
+		assert info.version == 68864
+		assert len(info.images) == 10
 
 
 @pytest.mark.skipif(WIMLIB_MISSING, reason=WIMLIB_ERROR)
