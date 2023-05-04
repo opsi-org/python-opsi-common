@@ -19,6 +19,7 @@ from warnings import catch_warnings, simplefilter
 
 import lz4.frame  # type: ignore[import,no-redef]
 import pytest
+
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
 	MIN_VERSION_GZIP,
@@ -37,6 +38,8 @@ from opsicommon.client.opsiservice import (
 	OpsiServiceTimeoutError,
 	OpsiServiceUnavailableError,
 	OpsiServiceVerificationError,
+	RequestsResponse,
+	Response,
 	ServiceClient,
 	ServiceConnectionListener,
 	ServiceVerificationFlags,
@@ -598,6 +601,20 @@ def test_requests() -> None:
 			assert response.reason == server.response_status[1]
 			assert response.headers["server"] == server.response_headers["server"]
 			assert response.content == server.response_body
+
+
+def test_raw_requests() -> None:
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)"}) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.connect()
+
+			server.response_status = (201, "reason")
+			server.response_body = b"content"
+			response = client.get("/")
+			assert isinstance(response, Response)
+			raw_response = client.get("/", raw_response=True)
+			assert isinstance(raw_response, RequestsResponse)
+			raw_response.raise_for_status()
 
 
 def test_request_exceptions() -> None:  # pylint: disable=too-many-statements
