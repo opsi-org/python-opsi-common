@@ -30,7 +30,7 @@ from random import randint
 from threading import Event, Lock, Thread
 from traceback import TracebackException
 from types import MethodType, TracebackType
-from typing import Any, Callable, Generator, Iterable, Type
+from typing import Any, Callable, Generator, Iterable, Literal, Type, overload
 from urllib.parse import quote, unquote, urlparse
 from uuid import uuid4
 
@@ -76,7 +76,7 @@ from ..messagebus import (
 	timestamp,
 )
 from ..objects import deserialize, serialize
-from ..system import set_system_datetime, lock_file
+from ..system import lock_file, set_system_datetime
 from ..types import forceHostId, forceOpsiHostKey
 from ..utils import prepare_proxy_environment
 
@@ -893,6 +893,48 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		except Exception as err:  # pylint: disable=broad-except
 			raise OpsiServiceConnectionError(str(err)) from err
 
+	@overload
+	def request(
+		self,
+		method: str,
+		path: str,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0,
+		data: bytes | None = None,
+		allow_status_codes: Iterable[int] | None = None,
+		raw_response: Literal[False] = ...,
+	) -> Response:
+		...
+
+	@overload
+	def request(
+		self,
+		method: str,
+		path: str,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0,
+		data: bytes | None = None,
+		allow_status_codes: Iterable[int] | None = None,
+		raw_response: Literal[True],
+	) -> RequestsResponse:
+		...
+
+	@overload
+	def request(
+		self,
+		method: str,
+		path: str,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0,
+		data: bytes | None = None,
+		allow_status_codes: Iterable[int] | None = None,
+		raw_response: bool = ...,
+	) -> RequestsResponse | Response:
+		...
+
 	def request(  # pylint: disable=too-many-arguments
 		self,
 		method: str,
@@ -902,12 +944,51 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		read_timeout: float = 60.0,
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
-	) -> Response:
+		raw_response: bool = False,
+	) -> Response | RequestsResponse:
 		self._assert_connected()
 		response = self._request(
 			method=method, path=path, headers=headers, timeout=read_timeout, data=data, allow_status_codes=allow_status_codes
 		)
+		if raw_response:
+			return response
 		return Response(status_code=response.status_code, reason=response.reason, headers=response.headers, content=response.content)
+
+	@overload
+	def get(
+		self,
+		path: str,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0,
+		allow_status_codes: Iterable[int] | None = None,
+		raw_response: Literal[False] = ...,
+	) -> Response:
+		...
+
+	@overload
+	def get(
+		self,
+		path: str,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0,
+		allow_status_codes: Iterable[int] | None = None,
+		raw_response: Literal[True],
+	) -> RequestsResponse:
+		...
+
+	@overload
+	def get(
+		self,
+		path: str,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0,
+		allow_status_codes: Iterable[int] | None = None,
+		raw_response: bool = ...,
+	) -> RequestsResponse | Response:
+		...
 
 	def get(
 		self,
@@ -916,8 +997,50 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		headers: dict[str, str] | None = None,
 		read_timeout: float = 60.0,
 		allow_status_codes: Iterable[int] | None = None,
+		raw_response: bool = False,
+	) -> Response | RequestsResponse:
+		return self.request(
+			"GET", path=path, headers=headers, read_timeout=read_timeout, allow_status_codes=allow_status_codes, raw_response=raw_response
+		)
+
+	@overload
+	def post(
+		self,
+		path: str,
+		data: bytes | None = None,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0,
+		allow_status_codes: Iterable[int] | None = None,
+		raw_response: Literal[False] = ...,
 	) -> Response:
-		return self.request("GET", path=path, headers=headers, read_timeout=read_timeout, allow_status_codes=allow_status_codes)
+		...
+
+	@overload
+	def post(
+		self,
+		path: str,
+		data: bytes | None = None,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0,
+		allow_status_codes: Iterable[int] | None = None,
+		raw_response: Literal[True],
+	) -> RequestsResponse:
+		...
+
+	@overload
+	def post(
+		self,
+		path: str,
+		data: bytes | None = None,
+		*,
+		headers: dict[str, str] | None = None,
+		read_timeout: float = 60.0,
+		allow_status_codes: Iterable[int] | None = None,
+		raw_response: bool = ...,
+	) -> RequestsResponse | Response:
+		...
 
 	def post(
 		self,
@@ -927,8 +1050,17 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		headers: dict[str, str] | None = None,
 		read_timeout: float = 60.0,
 		allow_status_codes: Iterable[int] | None = None,
-	) -> Response:
-		return self.request("POST", path=path, headers=headers, read_timeout=read_timeout, data=data, allow_status_codes=allow_status_codes)
+		raw_response: bool = False,
+	) -> Response | RequestsResponse:
+		return self.request(
+			"POST",
+			path=path,
+			headers=headers,
+			read_timeout=read_timeout,
+			data=data,
+			allow_status_codes=allow_status_codes,
+			raw_response=raw_response,
+		)
 
 	def jsonrpc(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		self,
@@ -1004,7 +1136,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		start_time = time.time()
 
 		allow_status_codes = (200, 500) if return_result_only else ...
-		response = self.post(
+		response = self.post(  # type: ignore[call-overload]  # ellipsis -> object
 			self._jsonrpc_path,
 			headers=headers,
 			data=data,

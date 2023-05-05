@@ -19,6 +19,7 @@ from warnings import catch_warnings, simplefilter
 
 import lz4.frame  # type: ignore[import,no-redef]
 import pytest
+
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
 	MIN_VERSION_GZIP,
@@ -37,6 +38,8 @@ from opsicommon.client.opsiservice import (
 	OpsiServiceTimeoutError,
 	OpsiServiceUnavailableError,
 	OpsiServiceVerificationError,
+	RequestsResponse,
+	Response,
 	ServiceClient,
 	ServiceConnectionListener,
 	ServiceVerificationFlags,
@@ -580,19 +583,19 @@ def test_requests() -> None:
 			server.response_body = b"content"
 			response = client.get("/")
 
-			status_code, reason, headers, content = response
+			status_code, reason, headers, content = response  # pylint: disable=unsubscriptable-object
 			assert status_code == server.response_status[0]
 			assert reason == server.response_status[1]
 			assert headers["server"] == server.response_headers["server"]  # type: ignore  # pylint: disable=unsubscriptable-object
 			assert content == server.response_body
 
-			assert response[0] == server.response_status[0]
-			assert response[1] == server.response_status[1]
+			assert response[0] == server.response_status[0]  # pylint: disable=unsubscriptable-object
+			assert response[1] == server.response_status[1]  # pylint: disable=unsubscriptable-object
 			assert response[2]["server"] == server.response_headers["server"]  # type: ignore  # pylint: disable=unsubscriptable-object
-			assert response[3] == server.response_body
+			assert response[3] == server.response_body  # pylint: disable=unsubscriptable-object
 
 			with pytest.raises(IndexError):
-				response[4]  # pylint: disable=pointless-statement
+				response[4]  # pylint: disable=pointless-statement,unsubscriptable-object
 
 			assert response.status_code == server.response_status[0]
 			assert response.reason == server.response_status[1]
@@ -600,12 +603,26 @@ def test_requests() -> None:
 			assert response.content == server.response_body
 
 
+def test_raw_requests() -> None:
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)"}) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.connect()
+
+			server.response_status = (201, "reason")
+			server.response_body = b"content"
+			response = client.get("/")
+			assert isinstance(response, Response)
+			raw_response = client.get("/", raw_response=True)
+			assert isinstance(raw_response, RequestsResponse)
+			raw_response.raise_for_status()
+
+
 def test_request_exceptions() -> None:  # pylint: disable=too-many-statements
 	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)"}) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			server.response_status = (200, "OK")
 			client.connect()
-			assert client.get("/")[0] == 200
+			assert client.get("/")[0] == 200  # pylint: disable=unsubscriptable-object
 
 			server.response_status = (500, "Internal Server Error")
 			server.response_body = b"content"
@@ -613,7 +630,7 @@ def test_request_exceptions() -> None:  # pylint: disable=too-many-statements
 				client.get("/")
 			assert exc_info.value.content == "content"
 			assert exc_info.value.status_code == 500
-			assert client.get("/", allow_status_codes=[500])[0] == 500
+			assert client.get("/", allow_status_codes=[500])[0] == 500  # pylint: disable=unsubscriptable-object
 
 			server.response_status = (401, "Unauthorized")
 			with pytest.raises(OpsiServiceAuthenticationError) as exc_info:
@@ -629,7 +646,7 @@ def test_request_exceptions() -> None:  # pylint: disable=too-many-statements
 
 			server.response_status = (200, "OK")
 			with pytest.raises(OpsiServiceConnectionError) as exc_info:
-				client.get("/", read_timeout="FAIL")  # type: ignore[arg-type]
+				client.get("/", read_timeout="FAIL")  # type: ignore[arg-type,call-overload]
 
 			now = time.time()
 			server.response_status = (503, "Unavail")
@@ -846,7 +863,7 @@ def test_timeouts() -> None:
 				client.get("/", read_timeout=2)
 			assert round(time.time() - start) >= 2
 
-			assert client.get("/", read_timeout=4)[0] == 200
+			assert client.get("/", read_timeout=4)[0] == 200  # pylint: disable=call-overload
 
 
 def test_messagebus_ping() -> None:
