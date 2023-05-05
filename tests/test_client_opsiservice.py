@@ -284,7 +284,7 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 			client.connect()
 
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert)
-			assert client.get("/")[0] == 200
+			assert client.get("/")[0] == 200  # pylint: disable=unsubscriptable-object
 
 		# uib_opsi_ca (means uib_opsi_ca + opsi_ca)
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="uib_opsi_ca") as client:
@@ -583,7 +583,7 @@ def test_requests() -> None:
 			server.response_body = b"content"
 			response = client.get("/")
 
-			status_code, reason, headers, content = response  # pylint: disable=unsubscriptable-object
+			status_code, reason, headers, content = response  # pylint: disable=unsubscriptable-object,unpacking-non-sequence
 			assert status_code == server.response_status[0]
 			assert reason == server.response_status[1]
 			assert headers["server"] == server.response_headers["server"]  # type: ignore  # pylint: disable=unsubscriptable-object
@@ -863,7 +863,7 @@ def test_timeouts() -> None:
 				client.get("/", read_timeout=2)
 			assert round(time.time() - start) >= 2
 
-			assert client.get("/", read_timeout=4)[0] == 200  # pylint: disable=call-overload
+			assert client.get("/", read_timeout=4)[0] == 200  # pylint: disable=unsubscriptable-object
 
 
 def test_messagebus_ping() -> None:
