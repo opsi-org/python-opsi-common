@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Literal
 
 import tomlkit
+
 from opsicommon.logging import get_logger
 from opsicommon.objects import Product, ProductDependency, ProductProperty
 from opsicommon.package.archive import create_archive, extract_archive
@@ -225,17 +226,6 @@ class OpsiPackage:
 					for file in _dir.iterdir()
 					if not EXCLUDE_DIRS_ON_PACK_REGEX.match(file.name) and not EXCLUDE_FILES_ON_PACK_REGEX.match(file.name)
 				]
-				# TODO: SERVER_DATA stuff - restrict to only /tftpboot?
-				# TODO: what is the right instance to enforce this?
-				# if _dir.name == "SERVER_DATA":
-				# 	# Never change permissions of existing directories in / ???
-				# 	tmp = []
-				# 	for file in fileList:
-				# 		if str(file).find(os.sep) == -1:
-				# 			logger.info("Skipping dir '%s'", file)
-				# 			continue
-				# 		tmp.append(file)
-				# 	fileList = tmp
 
 				if not file_list and dir_type == "SERVER_DATA":
 					logger.debug("Skipping empty dir '%s'", _dir)
