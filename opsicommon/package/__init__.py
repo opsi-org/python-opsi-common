@@ -221,7 +221,7 @@ class OpsiPackage:
 					logger.info("Directory '%s' does not exist", _dir)
 					continue
 
-				file_list = [  # TODO: behaviour for symlinks
+				file_list = [
 					file
 					for file in _dir.iterdir()
 					if not EXCLUDE_DIRS_ON_PACK_REGEX.match(file.name) and not EXCLUDE_FILES_ON_PACK_REGEX.match(file.name)
