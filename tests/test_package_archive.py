@@ -155,6 +155,7 @@ def read_zsync_blocksums(zsync_file: Path) -> list[tuple[int, int, bytes]]:  # p
 		return blocks
 
 
+@pytest.mark.linux
 @pytest.mark.parametrize(
 	"mode, compression",
 	(
