@@ -179,16 +179,23 @@ def extract_archive(archive: Path, destination: Path, file_pattern: str | None =
 def compress_command(archive: Path, compression: str) -> str:
 	if compression in ("gzip", "gz"):
 		if use_pigz():
-			return f"pigz --quiet - > '{archive}'"
-		return f"gzip --quiet - > '{archive}'"
+			return f"pigz --rsyncable --quiet - > '{archive}'"
+		return f"gzip --rsyncable --quiet - > '{archive}'"
 	if compression in ("bzip2", "bz2"):
 		return f"bzip2 --quiet - > '{archive}'"
 	if compression == "zstd":
+		zstd_version = "0"
 		try:
-			subprocess.run(["zstd", "--version"], capture_output=True, check=True)
+			match = re.search(r"\sv([\d\.]+)", subprocess.run(["zstd", "--version"], capture_output=True, check=True, text=True).stdout)
+			if match:
+				zstd_version = match.group(1)
 		except (subprocess.CalledProcessError, FileNotFoundError) as error:
 			raise RuntimeError("Zstd not available.") from error
-		return f"zstd - -o '{archive}' 2> /dev/null"  # --no-progress is not available for deb9 zstd
+		opts = ""
+		if packaging.version.parse(zstd_version) >= packaging.version.parse("1.3.8"):
+			# With version 1.3.8 zstd introduced --rsyncable mode.
+			opts = "--rsyncable"
+		return f"zstd - {opts} -o '{archive}' 2> /dev/null"  # --no-progress is not available for deb9 zstd
 	raise RuntimeError(f"Unknown compression '{compression}'")
 
 
@@ -238,6 +245,7 @@ def create_archive_internal(
 			with tarfile.open(fileobj=buffer, mode=mode, dereference=dereference) as tar_object:
 				for source in sources:
 					tar_object.add(source, arcname=source.relative_to(base_dir), filter=set_tarinfo)
+			# TODO: Set ZSTD_c_rsyncable / ZSTD_c_experimentalParam1 / 500 = 1
 			compressor = zstandard.ZstdCompressor()
 			buffer.seek(0)
 			_, bytes_written = compressor.copy_stream(buffer, outfile)
@@ -250,6 +258,6 @@ def create_archive_internal(
 
 
 def create_archive(archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False) -> None:
-	if compression == "gz" and is_linux() and use_pigz():
+	if (compression == "gz" and is_linux() and use_pigz()) or (compression == "zstd" and is_linux()):
 		return create_archive_external(archive, sources, base_dir, compression, dereference)
 	return create_archive_internal(archive, sources, base_dir, compression, dereference)
