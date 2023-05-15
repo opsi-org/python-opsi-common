@@ -198,9 +198,9 @@ def test_syncable_external(tmp_path: Path, mode: Literal["external", "internal"]
 	create_package_zsync_file(archive_new, zsync_new)
 
 	blocksums_old = read_zsync_blocksums(zsync_old)
-	assert len(blocksums_old)
+	assert blocksums_old
 	blocksums_new = read_zsync_blocksums(zsync_new)
-	assert len(blocksums_new)
+	assert blocksums_new
 
 	same_blocksums = [b for b in blocksums_new if b in blocksums_old]
 	percent_same = len(same_blocksums) / len(blocksums_new)
