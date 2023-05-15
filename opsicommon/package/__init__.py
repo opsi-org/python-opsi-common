@@ -227,7 +227,7 @@ class OpsiPackage:
 					if not EXCLUDE_DIRS_ON_PACK_REGEX.match(file.name) and not EXCLUDE_FILES_ON_PACK_REGEX.match(file.name)
 				]
 
-				if not file_list and dir_type == "SERVER_DATA":
+				if not file_list and dir_type in ("CLIENT_DATA", "SERVER_DATA"):
 					logger.debug("Skipping empty dir '%s'", _dir)
 					continue
 
