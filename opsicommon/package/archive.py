@@ -245,6 +245,7 @@ def create_archive_internal(
 			with tarfile.open(fileobj=buffer, mode=mode, dereference=dereference) as tar_object:
 				for source in sources:
 					tar_object.add(source, arcname=source.relative_to(base_dir), filter=set_tarinfo)
+			logger.warning("Creating unsyncable package (no zsync or rsync support)")
 			# TODO: Set ZSTD_c_rsyncable / ZSTD_c_experimentalParam1 / 500 = 1
 			compressor = zstandard.ZstdCompressor()
 			buffer.seek(0)
