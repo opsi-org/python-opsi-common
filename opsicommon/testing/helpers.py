@@ -84,7 +84,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			for name, value in self.server.response_headers.items():
 				if name.lower() == "server":
 					continue
-				value = value.replace("{server_address}", f"{self.server.server_address[0]}:{self.server.server_address[1]}")
+				value = value.replace("{server_address}", f"{self.server.server_address[0]!r}:{self.server.server_address[1]!r}")
 				value = value.replace("{host}", self.headers["Host"])
 				self.send_header(name, value)
 		super().end_headers()
