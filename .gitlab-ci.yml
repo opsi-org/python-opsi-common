@@ -1,4 +1,4 @@
-image: docker.uib.gmbh/opsi/dev/pybuilder:uib-python-3.10
+image: docker.uib.gmbh/opsi/dev/pybuilder:uib-python-3.11
 
 stages:
   - test
@@ -9,7 +9,7 @@ pytest-darwin:
   #when: manual
   stage: test
   tags:
-    - macos_catalina
+    - catalina-py311-x64
   script:
     - poetry install
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_darwin1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
@@ -29,7 +29,7 @@ pytest-windows:
   #when: manual
   stage: test
   tags:
-    - win10-py310
+    - win10-py311-x86
   script:
     - Invoke-WebRequest -UseBasicParsing -Uri "$OPSIDEVTOOLS_URL_WINDOWS_X86" -OutFile opsi-dev-tools.zip
     - Expand-Archive opsi-dev-tools.zip -DestinationPath .
