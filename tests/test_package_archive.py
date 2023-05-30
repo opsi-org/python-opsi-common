@@ -4,8 +4,6 @@
 tests for opsicommon.package.archive
 """
 
-import mmap
-import struct
 import getpass
 
 try:
@@ -22,6 +20,7 @@ from typing import Literal
 import pytest
 from hypothesis import given
 from hypothesis.strategies import binary, from_regex, sampled_from
+from pyzsync import get_patch_instructions, read_zsync_file, Source  # type: ignore[import]
 
 from opsicommon.package.archive import (
 	create_archive,
@@ -108,72 +107,30 @@ def test_archive_internal(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 		assert file.relative_to(source) in contents
 
 
-def read_zsync_blocksums(zsync_file: Path) -> list[tuple[int, int, bytes]]:  # pylint: disable=too-many-locals
-	checksum_bytes = 16
-	rsum_bytes = 4
-	seq_matches = 1
-	nzblocks = 0
-	filelen = 0
-	blocksize = 0
-	blocks = []
-	with open(zsync_file, "r+b") as file:
-		memm = mmap.mmap(file.fileno(), 0)
-		while True:
-			line = memm.readline().decode("utf-8").strip()
-			if len(line) == 0:
-				break
-			attr, value = line.split(":", 1)
-			attr = attr.strip().lower()
-			value = value.strip()
-			# print(attr, "=", value)
-			if attr == "length":
-				filelen = int(value)
-			elif attr == "blocksize":
-				blocksize = int(value)
-			elif attr == "z-map2":
-				nzblocks = int(value)
-				# Read Z-Map
-				_zmap = memm.read(nzblocks * 4)
-			elif attr == "hash-lengths":
-				seq_matches, rsum_bytes, checksum_bytes = [int(v) for v in value.split(",")]
-				if rsum_bytes < 1 or rsum_bytes > 4:
-					raise ValueError("rsum_bytes out of range")
-				if checksum_bytes < 3 or checksum_bytes > 16:
-					raise ValueError("checksum_bytes out of range")
-				if seq_matches < 1 or seq_matches > 2:
-					raise ValueError("seq_matches out of range")
-
-		block_count = int((filelen + blocksize - 1) / blocksize)
-		# print(filelen, blocksize, block_count)
-		for _block_id in range(block_count):
-			# struct rsum { unsigned short a; unsigned short b;}
-			rsum = struct.unpack("!HH", memm.read(rsum_bytes).ljust(4, b"\x00"))
-			checksum = memm.read(checksum_bytes)
-			# print(rsum, checksum.hex())
-			blocks.append((rsum[0], rsum[1], checksum))
-		memm.close()
-		return blocks
-
-
 @pytest.mark.linux
 @pytest.mark.parametrize(
-	"mode, compression",
+	"mode, compression, expect_min_percent_same",
 	(
-		("external", None),
-		("external", "zstd"),
-		("external", "bz2"),
-		("external", "gz"),
-		("internal", None),
-		("internal", "zstd"),
-		("internal", "bz2"),
-		("internal", "gz"),
-		("auto", None),
-		("auto", "zstd"),
-		("auto", "bz2"),
-		("auto", "gz"),
+		# external
+		("external", None, 89),
+		("external", "zstd", 88),
+		("external", "bz2", 0),
+		("external", "gz", 74),
+		# internal
+		("internal", None, 90),
+		("internal", "zstd", 89),
+		("internal", "bz2", 0),
+		("internal", "gz", 64),
+		# auto
+		("auto", None, 90),
+		("auto", "zstd", 88),
+		("auto", "bz2", 0),
+		("auto", "gz", 74),
 	),
 )
-def test_syncable_external(tmp_path: Path, mode: Literal["external", "internal"], compression: Literal["zstd", "bz2", "gz"]) -> None:
+def test_syncable(
+	tmp_path: Path, mode: Literal["external", "internal"], compression: Literal["zstd", "bz2", "gz"], expect_min_percent_same: float
+) -> None:
 	create_archive_func = create_archive
 	if mode == "external":
 		create_archive_func = create_archive_external
@@ -186,9 +143,7 @@ def test_syncable_external(tmp_path: Path, mode: Literal["external", "internal"]
 	(source / "file1.dat").write_bytes(randbytes(100_000))
 	(source / "file2.dat").write_bytes(randbytes(10_000))
 	archive_old = tmp_path / f"archive-old.tar.{compression}"
-	zsync_old = tmp_path / f"archive-old.tar.{compression}.zsync"
 	create_archive_func(archive_old, list(source.glob("*")), source, compression=compression)
-	create_package_zsync_file(archive_old, zsync_old)
 
 	# Keep file1.dat, change file2.dat
 	(source / "file2.dat").write_bytes(randbytes(10_000))
@@ -197,19 +152,12 @@ def test_syncable_external(tmp_path: Path, mode: Literal["external", "internal"]
 	create_archive_func(archive_new, list(source.glob("*")), source, compression=compression)
 	create_package_zsync_file(archive_new, zsync_new)
 
-	blocksums_old = read_zsync_blocksums(zsync_old)
-	assert blocksums_old
-	blocksums_new = read_zsync_blocksums(zsync_new)
-	assert blocksums_new
+	zsync_info = read_zsync_file(zsync_new)
+	instructions = get_patch_instructions(zsync_info, archive_old)
 
-	same_blocksums = [b for b in blocksums_new if b in blocksums_old]
-	percent_same = len(same_blocksums) / len(blocksums_new)
-	# print(len(same_blocksums), len(blocksums_new), percent_same)
-	if compression == "bz2":
-		# No --rsyncable with bz2
-		pass
-	elif compression == "zstd" and mode == "internal":
-		# Currently not possible to set ZSTD_c_rsyncable
-		pass
-	else:
-		assert percent_same > 0.8
+	same_bytes = sum([i.size for i in instructions if i.source == Source.Local])  # pylint: disable=consider-using-generator
+	percent_same = same_bytes * 100 / zsync_info.length
+
+	print(mode, compression, expect_min_percent_same, percent_same)
+
+	assert percent_same >= expect_min_percent_same

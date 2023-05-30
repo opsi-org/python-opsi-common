@@ -204,6 +204,9 @@ def create_archive_external(
 	archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False
 ) -> None:
 	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
+	if compression == "bz2":
+		logger.warning("Creating unsyncable package (no zsync or rsync support)")
+
 	if archive.exists():
 		archive.unlink()
 	source_string = " ".join((shlex.quote(f"{source.relative_to(base_dir)}") for source in sources))
@@ -225,6 +228,9 @@ def create_archive_internal(
 	archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False
 ) -> None:
 	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
+	if compression == "bz2":
+		logger.warning("Creating unsyncable package (no zsync or rsync support)")
+
 	if archive.exists():
 		archive.unlink()
 	mode = "w|"
@@ -245,7 +251,6 @@ def create_archive_internal(
 			with tarfile.open(fileobj=buffer, mode=mode, dereference=dereference) as tar_object:
 				for source in sources:
 					tar_object.add(source, arcname=source.relative_to(base_dir), filter=set_tarinfo)
-			logger.warning("Creating unsyncable package (no zsync or rsync support)")
 			# TODO: Set ZSTD_c_rsyncable / ZSTD_c_experimentalParam1 / 500 = 1
 			compressor = zstandard.ZstdCompressor()
 			buffer.seek(0)
@@ -259,6 +264,6 @@ def create_archive_internal(
 
 
 def create_archive(archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False) -> None:
-	if (compression == "gz" and is_linux() and use_pigz()) or (compression == "zstd" and is_linux()):
+	if compression == "gz" and is_linux() and use_pigz():
 		return create_archive_external(archive, sources, base_dir, compression, dereference)
 	return create_archive_internal(archive, sources, base_dir, compression, dereference)

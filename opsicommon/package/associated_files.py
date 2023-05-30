@@ -9,6 +9,7 @@ import os
 import subprocess
 from hashlib import md5
 from pathlib import Path
+from pyzsync import create_zsync_file
 
 from opsicommon.logging import get_logger
 
@@ -66,13 +67,5 @@ def create_package_md5_file(package_path: Path, filename: Path | None = None) ->
 def create_package_zsync_file(package_path: Path, filename: Path | None = None) -> Path:
 	if not filename:
 		filename = Path(f"{package_path}.zsync")
-
-	try:
-		subprocess.run(["zsyncmake", "-u", package_path.name, "-o", filename, package_path], capture_output=True, check=True)
-	except (subprocess.CalledProcessError, FileNotFoundError):
-		try:
-			subprocess.run(["zsyncmake-curl", "-u", package_path.name, "-o", filename, package_path], capture_output=True, check=True)
-		except (subprocess.CalledProcessError, FileNotFoundError) as err:
-			raise FileNotFoundError("zsyncmake(-curl) binary not found in PATH") from err
-	# In old versions, the mtime was removed here - keeping it for now
+	create_zsync_file(file=package_path, zsync_file=filename)
 	return filename
