@@ -6,10 +6,9 @@
 handling of package content, hash files and more
 """
 import os
-import subprocess
 from hashlib import md5
 from pathlib import Path
-from pyzsync import create_zsync_file
+from pyzsync import create_zsync_file  # type: ignore[import]
 
 from opsicommon.logging import get_logger
 
