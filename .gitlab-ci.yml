@@ -126,6 +126,7 @@ apidoc:
 uibpypi:
   stage: publish
   script:
+    - poetry lock --no-update
     - poetry install
     - poetry run opsi-dev-tool -l info --uib-pypi-publish
   only:
