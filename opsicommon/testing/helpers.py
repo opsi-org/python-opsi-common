@@ -18,14 +18,13 @@ import ssl
 import struct
 import threading
 import time
-from uuid import uuid4
 from base64 import b64encode
 from contextlib import closing, contextmanager
 from email.utils import parsedate_to_datetime
 from hashlib import sha1
 from http import HTTPStatus
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from io import BufferedReader, BytesIO
+from io import BufferedReader, BytesIO, UnsupportedOperation
 from pathlib import Path
 from socketserver import BaseServer, ThreadingMixIn
 from tempfile import NamedTemporaryFile
@@ -280,9 +279,12 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			file = self.send_head()
 			if file:
 				try:
-					fst = os.fstat(file.fileno())
 					response = b""
-					ranges = self._get_ranges(fst.st_size)
+					try:
+						file_size = os.fstat(file.fileno()).st_size
+					except UnsupportedOperation:
+						file_size = 0
+					ranges = self._get_ranges(file_size)
 					if ranges:
 						if len(ranges) == 1:
 							file.seek(ranges[0][0])
@@ -292,7 +294,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 							ctype = self.guess_type(path)
 							boundary = "c293f38bd87c48919123cae944ab3486"
 							for range_ in ranges:
-								response += f"\n--{boundary}\nContent-Type: {ctype}\nContent-Range: bytes {range_[0]}-{range_[1]}/{fst.st_size}\n\n".encode(
+								response += f"\n--{boundary}\nContent-Type: {ctype}\nContent-Range: bytes {range_[0]}-{range_[1]}/{file_size}\n\n".encode(
 									"ascii"
 								)
 								file.seek(range_[0])
