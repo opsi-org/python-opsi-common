@@ -10,6 +10,7 @@ import time
 from base64 import b64decode
 from email.utils import formatdate
 from pathlib import Path
+from random import randbytes
 
 import requests
 import websocket  # type: ignore[import]
@@ -131,6 +132,49 @@ def test_test_http_server_serve_files(tmp_path: Path) -> None:
 
 		res = requests.request("MKCOL", f"http://127.0.0.1:{server.port}/newdir", timeout=10)
 		assert res.status_code == 201
+
+
+def test_test_http_server_ranges(tmp_path: Path) -> None:
+	test_file = tmp_path / "file1"
+	data = randbytes(1_000)
+	test_file.write_bytes(data)
+	with http_test_server(serve_directory=tmp_path) as server:
+		res = requests.get(f"http://127.0.0.1:{server.port}/file1", timeout=10, headers={"Range": "bytes=0-99"})
+		assert res.status_code == 206
+		dat = res.content
+		assert len(dat) == 100
+		assert dat == data[:100]
+
+		res = requests.get(f"http://127.0.0.1:{server.port}/file1", timeout=10, headers={"Range": "bytes=-99"})
+		assert res.status_code == 206
+		dat = res.content
+		assert len(dat) == 100
+		assert dat == data[:100]
+
+		res = requests.get(f"http://127.0.0.1:{server.port}/file1", timeout=10, headers={"Range": "bytes=100-"})
+		assert res.status_code == 206
+		dat = res.content
+		assert len(dat) == 900
+		assert dat == data[100:]
+
+		res = requests.get(f"http://127.0.0.1:{server.port}/file1", timeout=10, headers={"Range": "bytes=0-99,200-299"})
+		assert res.status_code == 206
+		dat = res.content
+		boundary = b"\n--" + res.headers["Content-Type"].split("boundary=")[1].encode("ascii")
+		parts = [p.split(b"\n\n", 1)[1] for p in dat.split(boundary)[1:-1]]
+		assert len(parts) == 2
+		assert len(parts[0]) == 100
+		assert parts[0] == data[:100]
+		assert len(parts[1]) == 100
+		assert parts[1] == data[200:300]
+
+		res = requests.get(f"http://127.0.0.1:{server.port}/file1", timeout=10, headers={"Range": "bytes=-399,400-499,500-"})
+		assert res.status_code == 206
+		dat = res.content
+		boundary = b"\n--" + res.headers["Content-Type"].split("boundary=")[1].encode("ascii")
+		parts = [p.split(b"\n\n", 1)[1] for p in dat.split(boundary)[1:-1]]
+		assert len(parts) == 3
+		assert b"".join(parts) == data
 
 
 def test_http_server_websocket(tmp_path: Path) -> None:

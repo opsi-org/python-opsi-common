@@ -18,6 +18,7 @@ import ssl
 import struct
 import threading
 import time
+from uuid import uuid4
 from base64 import b64encode
 from contextlib import closing, contextmanager
 from email.utils import parsedate_to_datetime
@@ -89,6 +90,21 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 				self.send_header(name, value)
 		super().end_headers()
 
+	def _get_ranges(self, file_size: int) -> list[tuple[int, int]]:
+		ranges: list[tuple[int, int]] = []
+		range_head = self.headers.get("Range")
+		if not range_head:
+			return ranges
+
+		for rah in [r.strip() for r in range_head.split("=")[1].split(",")]:
+			start_byte, end_byte = rah.split("-")
+			start_byte = int(start_byte or 0)
+			end_byte = int(end_byte or file_size)
+			if end_byte >= file_size:
+				end_byte = file_size - 1
+			ranges.append((start_byte, end_byte))
+		return ranges
+
 	def send_head(self) -> BufferedReader | BytesIO | None:  # pylint: disable=too-many-branches,too-many-statements
 		"""Common code for GET and HEAD commands.
 
@@ -113,8 +129,8 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 				self.end_headers()
 				return None
 			for index in "index.html", "index.htm":
-				index = os.path.join(path, index)  # pylint: disable=dotted-import-in-loop
-				if os.path.exists(index):  # pylint: disable=dotted-import-in-loop
+				index = os.path.join(path, index)
+				if os.path.exists(index):
 					path = index
 					break
 			else:
@@ -162,22 +178,33 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 							file.close()
 							return None
 
-			range_ = self.headers.get("Range")
-			if range_:
+			ranges = self._get_ranges(fst.st_size)
+			if ranges:
 				self.send_response(HTTPStatus.PARTIAL_CONTENT)
 			else:
 				self.send_response(HTTPStatus.OK)
-			self.send_header("Content-type", ctype)
-			if range_:
-				start_byte, end_byte = range_.split("=")[1].split("-")
-				start_byte = int(start_byte or 0)
-				end_byte = int(end_byte or fst[6])
-				if end_byte >= fst[6]:
-					end_byte = fst[6] - 1
-				self.send_header("Content-Length", str(end_byte - start_byte + 1))
-				self.send_header("Content-Range", f"bytes {start_byte}-{end_byte}/{fst[6]}")
+			if ranges:
+				if len(ranges) == 1:
+					self.send_header("Content-Type", ctype)
+					length = ranges[0][1] - ranges[0][0] + 1
+					self.send_header("Content-Length", str(length))
+					self.send_header("Content-Range", f"bytes {ranges[0][0]}-{ranges[0][1]}/{fst.st_size}")
+				else:
+					boundary = "c293f38bd87c48919123cae944ab3486"
+					self.send_header("Content-Type", f"multipart/byteranges; boundary={boundary}")
+					length = 0
+					for range_ in ranges:
+						length += len(
+							f"\n--{boundary}\nContent-Type: {ctype}\nContent-Range: bytes {range_[0]}-{range_[1]}/{fst.st_size}\n\n".encode(
+								"ascii"
+							)
+						)
+						length += range_[1] - range_[0] + 1
+					length += len(f"\n--{boundary}--".encode("ascii"))
+					self.send_header("Content-Length", str(length))
 			else:
-				self.send_header("Content-Length", str(fst[6]))
+				self.send_header("Content-Type", ctype)
+				self.send_header("Content-Length", str(fst.st_size))
 			self.send_header("Last-Modified", self.date_time_string(round(fst.st_mtime)))
 			self.end_headers()
 			return file
@@ -235,7 +262,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			response = response[: self.server.send_max_bytes]
 		self.wfile.write(response)
 
-	def do_GET(self) -> None:  # pylint: disable=invalid-name,too-many-branches
+	def do_GET(self) -> None:  # pylint: disable=invalid-name,too-many-branches,too-many-statements
 		self._log({"method": "GET", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
 		if self.headers.get("Upgrade") == "websocket":
 			if self.server.response_status:
@@ -249,23 +276,30 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self._ws_read_messages()
 			return None
 
-		if self.server.serve_directory:
+		if self.server.serve_directory:  # pylint: disable=too-many-nested-blocks
 			file = self.send_head()
 			if file:
 				try:
-					range_ = self.headers.get("Range")
+					fst = os.fstat(file.fileno())
 					response = b""
-					if range_:
-						#  Range: bytes=0-2047
-						fst = os.fstat(file.fileno())
-						start_byte, end_byte = range_.split("=")[1].split("-")
-						start_byte = int(start_byte or 0)
-						end_byte = int(end_byte or fst[6])
-						file.seek(start_byte)
-						response = file.read(end_byte - start_byte + 1)
+					ranges = self._get_ranges(fst.st_size)
+					if ranges:
+						if len(ranges) == 1:
+							file.seek(ranges[0][0])
+							response = file.read(ranges[0][1] - ranges[0][0] + 1)
+						else:
+							path = self.translate_path(self.path)
+							ctype = self.guess_type(path)
+							boundary = "c293f38bd87c48919123cae944ab3486"
+							for range_ in ranges:
+								response += f"\n--{boundary}\nContent-Type: {ctype}\nContent-Range: bytes {range_[0]}-{range_[1]}/{fst.st_size}\n\n".encode(
+									"ascii"
+								)
+								file.seek(range_[0])
+								response += file.read(range_[1] - range_[0] + 1)
+							response += f"\n--{boundary}--".encode("ascii")
 					else:
 						response = file.read()
-
 					if self.server.send_max_bytes:
 						response = response[: self.server.send_max_bytes]
 					self.wfile.write(response)
