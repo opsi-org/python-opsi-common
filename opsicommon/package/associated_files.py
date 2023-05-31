@@ -66,5 +66,5 @@ def create_package_md5_file(package_path: Path, filename: Path | None = None) ->
 def create_package_zsync_file(package_path: Path, filename: Path | None = None) -> Path:
 	if not filename:
 		filename = Path(f"{package_path}.zsync")
-	create_zsync_file(file=package_path, zsync_file=filename)
+	create_zsync_file(file=package_path, zsync_file=filename, legacy_mode=True)
 	return filename
