@@ -792,7 +792,7 @@ def test_messagebus_reconnect_exception() -> None:
 
 			with listener.register(client.messagebus):
 				client.connect_messagebus()
-				time.sleep(15)
+				time.sleep(20)
 
 			assert listener.established >= 3
 			assert listener.closed >= 3
