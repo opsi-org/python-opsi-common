@@ -194,9 +194,9 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 					length = 0
 					for range_ in ranges:
 						length += len(
-							f"\n--{boundary}\nContent-Type: {ctype}\nContent-Range: bytes {range_[0]}-{range_[1]}/{fst.st_size}\n\n".encode(
-								"ascii"
-							)
+							(
+								f"\n--{boundary}\nContent-Type: {ctype}\nContent-Range: bytes {range_[0]}-{range_[1]}/{fst.st_size}\n\n"
+							).encode("ascii")
 						)
 						length += range_[1] - range_[0] + 1
 					length += len(f"\n--{boundary}--".encode("ascii"))
@@ -294,9 +294,10 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 							ctype = self.guess_type(path)
 							boundary = "c293f38bd87c48919123cae944ab3486"
 							for range_ in ranges:
-								response += f"\n--{boundary}\nContent-Type: {ctype}\nContent-Range: bytes {range_[0]}-{range_[1]}/{file_size}\n\n".encode(
-									"ascii"
-								)
+								response += (
+									f"\n--{boundary}\nContent-Type: {ctype}\n"
+									f"Content-Range: bytes {range_[0]}-{range_[1]}/{file_size}\n\n"
+								).encode("ascii")
 								file.seek(range_[0])
 								response += file.read(range_[1] - range_[0] + 1)
 							response += f"\n--{boundary}--".encode("ascii")

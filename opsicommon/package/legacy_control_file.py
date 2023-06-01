@@ -317,7 +317,8 @@ class LegacyControlFile:
 		if not productVersion:
 			logger.warning("No product version given! Assuming 1.0.")
 			productVersion = 1.0  # pylint: disable=invalid-name
-		packageVersion = self._sections.get("package", [{}])[0].get("version") or product.get(  # type: ignore  # pylint: disable=invalid-name
+		# type: ignore  # pylint: disable=invalid-name
+		packageVersion = self._sections.get("package", [{}])[0].get("version") or product.get(
 			"packageversion"
 		)  # pylint: disable=invalid-name
 		if not packageVersion:

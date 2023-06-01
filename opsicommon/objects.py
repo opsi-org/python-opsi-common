@@ -1174,7 +1174,8 @@ class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-
 	foreign_id_attributes = Entity.foreign_id_attributes + ["productId"]
 	backend_method_prefix = "product"
 
-	def __init__(  # pylint: disable=too-many-arguments,too-many-instance-attributes,too-many-public-methods,too-many-locals,too-many-branches
+	# pylint: disable=too-many-arguments,too-many-instance-attributes,too-many-public-methods,too-many-locals,too-many-branches
+	def __init__(
 		self,
 		id: str,  # pylint: disable=redefined-builtin,invalid-name
 		productVersion: str,  # pylint: disable=invalid-name
@@ -3169,7 +3170,8 @@ class AuditHardware(Entity):
 
 		try:
 			if getattr(self, "subsystemVendorId", None):
-				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)  # type: ignore[has-type] # pylint: disable=invalid-name
+				# type: ignore[has-type] # pylint: disable=invalid-name
+				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)
 		except AttributeError:
 			pass
 
@@ -3181,7 +3183,8 @@ class AuditHardware(Entity):
 
 		try:
 			if getattr(self, "subsystemDeviceId", None):
-				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)  # type: ignore[has-type] # pylint: disable=invalid-name
+				# type: ignore[has-type] # pylint: disable=invalid-name
+				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)
 		except AttributeError:
 			pass
 
@@ -3343,7 +3346,8 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 
 		try:
 			if getattr(self, "subsystemVendorId", None):
-				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)  # type: ignore[has-type] # pylint: disable=invalid-name
+				# type: ignore[has-type] # pylint: disable=invalid-name
+				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)
 		except AttributeError:
 			pass
 
@@ -3355,7 +3359,8 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 
 		try:
 			if getattr(self, "subsystemDeviceId", None):
-				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)  # type: ignore[has-type] # pylint: disable=invalid-name
+				# type: ignore[has-type] # pylint: disable=invalid-name
+				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)
 		except AttributeError:
 			pass
 
