@@ -3170,8 +3170,8 @@ class AuditHardware(Entity):
 
 		try:
 			if getattr(self, "subsystemVendorId", None):
-				# type: ignore[has-type] # pylint: disable=invalid-name
-				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)
+				# pylint: disable=invalid-name
+				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)  # type: ignore[has-type]
 		except AttributeError:
 			pass
 
@@ -3183,8 +3183,8 @@ class AuditHardware(Entity):
 
 		try:
 			if getattr(self, "subsystemDeviceId", None):
-				# type: ignore[has-type] # pylint: disable=invalid-name
-				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)
+				# pylint: disable=invalid-name
+				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)  # type: ignore[has-type]
 		except AttributeError:
 			pass
 
@@ -3346,8 +3346,8 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 
 		try:
 			if getattr(self, "subsystemVendorId", None):
-				# type: ignore[has-type] # pylint: disable=invalid-name
-				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)
+				# pylint: disable=invalid-name
+				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)  # type: ignore[has-type]
 		except AttributeError:
 			pass
 
@@ -3359,8 +3359,8 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 
 		try:
 			if getattr(self, "subsystemDeviceId", None):
-				# type: ignore[has-type] # pylint: disable=invalid-name
-				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)
+				# pylint: disable=invalid-name
+				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)  # type: ignore[has-type]
 		except AttributeError:
 			pass
 
