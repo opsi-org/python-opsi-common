@@ -160,8 +160,8 @@ def test_test_http_server_ranges(tmp_path: Path) -> None:
 		res = requests.get(f"http://127.0.0.1:{server.port}/file1", timeout=10, headers={"Range": "bytes=0-99,200-299"})
 		assert res.status_code == 206
 		dat = res.content
-		boundary = b"\n--" + res.headers["Content-Type"].split("boundary=")[1].encode("ascii")
-		parts = [p.split(b"\n\n", 1)[1] for p in dat.split(boundary)[1:-1]]
+		boundary = b"\r\n--" + res.headers["Content-Type"].split("boundary=")[1].encode("ascii")
+		parts = [p.split(b"\r\n\r\n", 1)[1] for p in dat.split(boundary)[1:-1]]
 		assert len(parts) == 2
 		assert len(parts[0]) == 100
 		assert parts[0] == data[:100]
@@ -171,8 +171,8 @@ def test_test_http_server_ranges(tmp_path: Path) -> None:
 		res = requests.get(f"http://127.0.0.1:{server.port}/file1", timeout=10, headers={"Range": "bytes=-399,400-499,500-"})
 		assert res.status_code == 206
 		dat = res.content
-		boundary = b"\n--" + res.headers["Content-Type"].split("boundary=")[1].encode("ascii")
-		parts = [p.split(b"\n\n", 1)[1] for p in dat.split(boundary)[1:-1]]
+		boundary = b"\r\n--" + res.headers["Content-Type"].split("boundary=")[1].encode("ascii")
+		parts = [p.split(b"\r\n\r\n", 1)[1] for p in dat.split(boundary)[1:-1]]
 		assert len(parts) == 3
 		assert b"".join(parts) == data
 
