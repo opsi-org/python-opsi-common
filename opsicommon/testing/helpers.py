@@ -195,11 +195,11 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 					for range_ in ranges:
 						length += len(
 							(
-								f"\n--{boundary}\nContent-Type: {ctype}\nContent-Range: bytes {range_[0]}-{range_[1]}/{fst.st_size}\n\n"
+								f"\r\n--{boundary}\nContent-Type: {ctype}\r\nContent-Range: bytes {range_[0]}-{range_[1]}/{fst.st_size}\r\n\r\n"
 							).encode("ascii")
 						)
 						length += range_[1] - range_[0] + 1
-					length += len(f"\n--{boundary}--".encode("ascii"))
+					length += len(f"\r\n--{boundary}--".encode("ascii"))
 					self.send_header("Content-Length", str(length))
 			else:
 				self.send_header("Content-Type", ctype)
@@ -295,12 +295,12 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 							boundary = "c293f38bd87c48919123cae944ab3486"
 							for range_ in ranges:
 								response += (
-									f"\n--{boundary}\nContent-Type: {ctype}\n"
-									f"Content-Range: bytes {range_[0]}-{range_[1]}/{file_size}\n\n"
+									f"\r\n--{boundary}\r\nContent-Type: {ctype}\r\n"
+									f"Content-Range: bytes {range_[0]}-{range_[1]}/{file_size}\r\n\r\n"
 								).encode("ascii")
 								file.seek(range_[0])
 								response += file.read(range_[1] - range_[0] + 1)
-							response += f"\n--{boundary}--".encode("ascii")
+							response += f"\r\n--{boundary}--".encode("ascii")
 					else:
 						response = file.read()
 					if self.server.send_max_bytes:
