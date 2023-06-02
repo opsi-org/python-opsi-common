@@ -195,7 +195,8 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 					for range_ in ranges:
 						length += len(
 							(
-								f"\r\n--{boundary}\r\nContent-Type: {ctype}\r\nContent-Range: bytes {range_[0]}-{range_[1]}/{fst.st_size}\r\n\r\n"
+								f"\r\n--{boundary}\r\nContent-Type: {ctype}\r\n"
+								f"Content-Range: bytes {range_[0]}-{range_[1]}/{fst.st_size}\r\n\r\n"
 							).encode("ascii")
 						)
 						length += range_[1] - range_[0] + 1
