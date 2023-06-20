@@ -59,7 +59,7 @@ def use_pigz() -> bool:
 		if packaging.version.parse(pigz_version) < packaging.version.parse("2.2.3"):
 			raise ValueError("pigz too old")
 		return True
-	except (subprocess.CalledProcessError, ValueError):
+	except (FileNotFoundError, subprocess.CalledProcessError, ValueError):
 		return False
 
 
