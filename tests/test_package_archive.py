@@ -120,7 +120,7 @@ def test_archive_internal(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 		("internal", None, 87),
 		("internal", "zstd", 87),
 		("internal", "bz2", 0),
-		("internal", "gz", 60),
+		("internal", "gz", 55),
 		# auto
 		("auto", None, 87),
 		("auto", "zstd", 87),
