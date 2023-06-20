@@ -7,7 +7,7 @@ This file is part of opsi - https://www.opsi.org
 """
 
 from datetime import datetime
-from typing import BinaryIO, Generator, TextIO
+from typing import BinaryIO, Generator, TextIO, IO
 from contextlib import contextmanager
 from time import time, sleep
 
@@ -43,7 +43,7 @@ def get_system_uuid() -> str:
 
 
 @contextmanager
-def lock_file(file: TextIO | BinaryIO, exclusive: bool = False, timeout: float = 5.0) -> Generator[None, None, None]:
+def lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: float = 5.0) -> Generator[None, None, None]:
 	"""
 	An exclusive or write lock gives a process exclusive access for writing to the specified part of the file.
 	While a write lock is in place, no other process can lock that part of the file.
