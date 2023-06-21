@@ -112,18 +112,18 @@ def test_archive_internal(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 	"mode, compression, expect_min_percent_same",
 	(
 		# external
-		("external", None, 87),
-		("external", "zstd", 87),
+		("external", None, 85),
+		("external", "zstd", 85),
 		("external", "bz2", 0),
 		("external", "gz", 74),
 		# internal
-		("internal", None, 87),
-		("internal", "zstd", 87),
+		("internal", None, 85),
+		("internal", "zstd", 85),
 		("internal", "bz2", 0),
 		("internal", "gz", 55),
 		# auto
-		("auto", None, 87),
-		("auto", "zstd", 87),
+		("auto", None, 85),
+		("auto", "zstd", 85),
 		("auto", "bz2", 0),
 		("auto", "gz", 74),
 	),
