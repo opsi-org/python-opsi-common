@@ -163,9 +163,7 @@ class RepoMetaPackageCollection:
 		logger.notice("Scanning opsi packages in %s", directory)
 		for package_file in directory.rglob("*.opsi"):
 			# Allow multiple versions for the same product in full scan
-			package = self.add_package(directory, package_file, num_allowed_versions=0)
-			if add_callback:
-				add_callback(package)
+			self.add_package(directory, package_file, num_allowed_versions=0, add_callback=add_callback)
 		logger.info("Finished scanning opsi packages")
 
 	def limit_versions(self, name: str, num_allowed_versions: int = 1) -> None:
@@ -183,20 +181,15 @@ class RepoMetaPackageCollection:
 		*,
 		num_allowed_versions: int = 1,
 		url: str | None = None,
-		compatibility: list[RepoMetaPackageCompatibility] | None = None,
-		changelog_url: str | None = None,
-		release_notes_url: str | None = None,
-		icon_url: str | None = None,
+		add_callback: Callable | None = None,
 	) -> RepoMetaPackage:
 		if not url:
 			url = str(package_file.relative_to(directory))
 		url = str(url).replace("\\", "/")  # Cannot instantiate PosixPath on windows
 
 		package = RepoMetaPackage.from_package_file(package_file=package_file, url=url)
-		package.compatibility = compatibility or None
-		package.changelog_url = changelog_url or None
-		package.release_notes_url = release_notes_url or None
-		package.icon_url = icon_url or None
+		if add_callback:
+			add_callback(package)
 
 		# Key only consists of only product id (otw11 revision 03.05.)
 		if package.product_id not in self.packages or num_allowed_versions == 1:
