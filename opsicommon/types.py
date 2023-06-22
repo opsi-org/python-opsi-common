@@ -18,6 +18,7 @@ import re
 import sys
 import time
 import types
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Callable, Optional, Type, Union
 from uuid import UUID
 
@@ -107,6 +108,7 @@ __all__ = (
 )
 
 logger = get_logger("opsicommon.general")
+
 encoding = sys.getfilesystemencoding()
 get_object_type: Callable | None = None
 from_json: Callable | None = None
@@ -141,6 +143,19 @@ _SOFTWARE_LICENSE_ID_REGEX = re.compile(r"^[a-z0-9][a-z0-9-_. :]*$")
 _LICENSE_POOL_ID_REGEX = re.compile(r"^[a-z0-9][a-z0-9-_. :]*$")
 _LANGUAGE_CODE_REGEX = re.compile(r"^([a-z]{2,3})[-_]?([a-z]{4})?[-_]?([a-z]{2})?$")
 _ARCHITECTURE_REGEX = re.compile(r"^(x86|x64)$")
+
+
+class OperatingSystem(StrEnum):
+	WINDOWS = "windows"
+	MACOS = "macos"
+	LINUX = "linux"
+
+
+class Architecture(StrEnum):
+	ALL = "all"
+	X86 = "x86"
+	X64 = "x64"
+	ARM64 = "arm64"
 
 
 def forceList(var: Any) -> list[Any]:  # pylint: disable=invalid-name
