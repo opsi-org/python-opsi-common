@@ -12,7 +12,7 @@ import hashlib
 from dataclasses import asdict, dataclass, field, fields
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import packaging.version as packver
 import zstandard
@@ -24,8 +24,6 @@ from opsicommon.system import lock_file
 from opsicommon.types import OperatingSystem, Architecture
 
 logger = get_logger("opsicommon.package")
-
-CHANGELOG_SERVER = "https://changelog.opsi.org"
 
 
 @dataclass
@@ -122,16 +120,7 @@ class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
 		return f"{self.product_version}-{self.package_version}"
 
 	@classmethod
-	def from_package_file(  # pylint: disable=too-many-arguments
-		cls,
-		package_file: Path,
-		*,
-		url: str,
-		compatibility: list[RepoMetaPackageCompatibility] | None = None,
-		changelog_url: str | None = None,
-		release_notes_url: str | None = None,
-		icon_url: str | None = None,
-	) -> RepoMetaPackage:
+	def from_package_file(cls, package_file: Path, url: str) -> RepoMetaPackage:  # pylint: disable=too-many-arguments
 		logger.notice("Reading package file %s", package_file)
 		data: dict[str, Any] = {"url": url, "size": package_file.stat().st_size}
 		with open(package_file, "rb", buffering=0) as file_handle:
@@ -140,8 +129,6 @@ class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
 			data["sha256_hash"] = hashlib.file_digest(file_handle, "sha256").hexdigest()  # type: ignore
 		if package_file.with_name(f"{package_file.name}.zsync").exists():
 			data["zsync_url"] = f"{url}.zsync"
-		if compatibility:
-			data["compatibility"] = compatibility
 
 		opsi_package = OpsiPackage(package_file)
 		data["product_id"] = opsi_package.product.id
@@ -150,9 +137,7 @@ class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
 		data["description"] = opsi_package.product.description
 		data["product_dependencies"] = [RepoMetaProductDependency.from_product_dependency(d) for d in opsi_package.product_dependencies]
 		data["package_dependencies"] = [RepoMetaPackageDependency.from_package_dependency(d) for d in opsi_package.package_dependencies]
-		data["changelog_url"] = changelog_url or None
-		data["release_notes_url"] = release_notes_url or None
-		data["icon_url"] = icon_url or None
+
 		return RepoMetaPackage(**data)
 
 	@classmethod
@@ -174,11 +159,13 @@ class RepoMetaPackageCollection:
 	metadata_files: list[RepoMetaMetadataFile] = field(default_factory=list)
 	packages: dict[str, dict[str, RepoMetaPackage]] = field(default_factory=dict)
 
-	def scan_packages(self, directory: Path) -> None:
+	def scan_packages(self, directory: Path, add_callback: Callable | None = None) -> None:
 		logger.notice("Scanning opsi packages in %s", directory)
-		for package in directory.rglob("*.opsi"):
+		for package_file in directory.rglob("*.opsi"):
 			# Allow multiple versions for the same product in full scan
-			self.add_package(directory, package, num_allowed_versions=0)
+			package = self.add_package(directory, package_file, num_allowed_versions=0)
+			if add_callback:
+				add_callback(package)
 		logger.info("Finished scanning opsi packages")
 
 	def limit_versions(self, name: str, num_allowed_versions: int = 1) -> None:
@@ -195,14 +182,22 @@ class RepoMetaPackageCollection:
 		package_file: Path,
 		*,
 		num_allowed_versions: int = 1,
-		compatibility: list[RepoMetaPackageCompatibility] | None = None,
 		url: str | None = None,
-	) -> None:
+		compatibility: list[RepoMetaPackageCompatibility] | None = None,
+		changelog_url: str | None = None,
+		release_notes_url: str | None = None,
+		icon_url: str | None = None,
+	) -> RepoMetaPackage:
 		if not url:
 			url = str(package_file.relative_to(directory))
 		url = str(url).replace("\\", "/")  # Cannot instantiate PosixPath on windows
 
-		package = RepoMetaPackage.from_package_file(package_file=package_file, url=url, compatibility=compatibility)
+		package = RepoMetaPackage.from_package_file(package_file=package_file, url=url)
+		package.compatibility = compatibility or None
+		package.changelog_url = changelog_url or None
+		package.release_notes_url = release_notes_url or None
+		package.icon_url = icon_url or None
+
 		# Key only consists of only product id (otw11 revision 03.05.)
 		if package.product_id not in self.packages or num_allowed_versions == 1:
 			# if only one version is allowed, always delete previous version, EVEN IF IT HAS HIGHER VERSION
@@ -211,6 +206,7 @@ class RepoMetaPackageCollection:
 		# num_allowed_versions = 0 means unlimited
 		if num_allowed_versions and len(self.packages[package.product_id]) > num_allowed_versions:
 			self.limit_versions(package.product_id, num_allowed_versions)
+		return package
 
 	def remove_package(self, name: str, version: str) -> None:
 		if name in self.packages and version in self.packages[name]:

@@ -94,21 +94,7 @@ def test_repo_meta_package(tmp_path: Path) -> None:
 	shutil.copy(TEST_REPO / "localboot_new_42.0-1337.opsi", tmp_path)
 	(tmp_path / "localboot_new_42.0-1337.opsi.zsync").touch()
 	url = "path/to/localboot_new_42.0-1337.opsi"
-	compatibility = [
-		RepoMetaPackageCompatibility(os=OperatingSystem.WINDOWS, arch=Architecture.ALL),
-		RepoMetaPackageCompatibility(os=OperatingSystem.LINUX, arch=Architecture.X64),
-	]
-	changelog_url = "https://changelog.opsi.org/changelog.txt"
-	release_notes_url = "path/to/releasenotes.txt"
-	icon_url = "path/to/icon.png"
-	repo_meta_package = RepoMetaPackage.from_package_file(
-		tmp_path / "localboot_new_42.0-1337.opsi",
-		url=url,
-		compatibility=compatibility,
-		changelog_url=changelog_url,
-		release_notes_url=release_notes_url,
-		icon_url=icon_url,
-	)
+	repo_meta_package = RepoMetaPackage.from_package_file(tmp_path / "localboot_new_42.0-1337.opsi", url=url)
 	assert repo_meta_package.url == url
 	assert repo_meta_package.size == 10240
 	assert repo_meta_package.md5_hash == "15329eb8cd987f46024b593f200b5295"
@@ -138,10 +124,6 @@ def test_repo_meta_package(tmp_path: Path) -> None:
 		RepoMetaPackageDependency(package="opsi-client-agent"),
 	]
 	assert repo_meta_package.description == "this is a localboot new test package"
-	assert repo_meta_package.compatibility == compatibility
-	assert repo_meta_package.changelog_url == changelog_url
-	assert repo_meta_package.release_notes_url == release_notes_url
-	assert repo_meta_package.icon_url == icon_url
 	assert repo_meta_package.zsync_url == "path/to/localboot_new_42.0-1337.opsi.zsync"
 
 	data = asdict(repo_meta_package)
@@ -170,7 +152,32 @@ def test_repo_meta_package_collection_scan_packages(tmp_path: Path) -> None:
 
 		package_collection_read = RepoMetaPackageCollection()
 		package_collection_read.read_metafile(metafile)
+
 		assert package_collection_read == package_collection
+
+	# Test add_callback
+	compatibility = [
+		RepoMetaPackageCompatibility(os=OperatingSystem.WINDOWS, arch=Architecture.ALL),
+		RepoMetaPackageCompatibility(os=OperatingSystem.LINUX, arch=Architecture.X64),
+	]
+	changelog_url = "https://changelog.opsi.org/changelog.txt"
+	release_notes_url = "path/to/releasenotes.txt"
+	icon_url = "path/to/icon.png"
+
+	def add_callback(package_meta: RepoMetaPackage) -> None:
+		package_meta.compatibility = compatibility
+		package_meta.changelog_url = changelog_url
+		package_meta.release_notes_url = release_notes_url
+		package_meta.icon_url = icon_url
+
+	package_collection = RepoMetaPackageCollection()
+	package_collection.scan_packages(repository_dir, add_callback=add_callback)
+
+	for package in package_collection.packages["localboot_new"].values():
+		assert package.compatibility == compatibility
+		assert package.changelog_url == changelog_url
+		assert package.release_notes_url == release_notes_url
+		assert package.icon_url == icon_url
 
 
 def test_repo_meta_package_collection_add_package(tmp_path: Path) -> None:
@@ -210,7 +217,7 @@ def test_repo_meta_package_collection_remove_package(tmp_path: Path) -> None:
 	assert len(package_collection.packages["localboot_new"]) == 3
 
 	package_collection.remove_package("localboot_new", "1.0-1")
-	assert list(package_collection.packages["localboot_new"]) == ["2.0-1", "42.0-1337"]
+	assert sorted(list(package_collection.packages["localboot_new"])) == ["2.0-1", "42.0-1337"]
 
 	package_collection.remove_package("localboot_new", "42.0-1337")
 	assert list(package_collection.packages["localboot_new"]) == ["2.0-1"]
