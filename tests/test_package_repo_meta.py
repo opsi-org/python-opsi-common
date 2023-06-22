@@ -6,23 +6,24 @@ tests for opsicommon.package.repo_meta
 
 
 import shutil
-from pathlib import Path
 from dataclasses import asdict
+from pathlib import Path
+
+import pytest
 import zstandard
 from msgspec import json, msgpack
 
-from opsicommon.types import OperatingSystem, Architecture
 from opsicommon.objects import ProductDependency
 from opsicommon.package import PackageDependency
 from opsicommon.package.repo_meta import (
 	RepoMetaMetadataFileType,
-	RepoMetaPackageCompatibility,
-	RepoMetaProductDependency,
-	RepoMetaPackageDependency,
 	RepoMetaPackage,
 	RepoMetaPackageCollection,
+	RepoMetaPackageCompatibility,
+	RepoMetaPackageDependency,
+	RepoMetaProductDependency,
 )
-import pytest
+from opsicommon.types import Architecture, OperatingSystem
 
 TEST_REPO = Path() / "tests/data/repo_meta"
 
