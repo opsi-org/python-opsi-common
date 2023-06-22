@@ -160,6 +160,8 @@ class RepoMetaPackageCollection:
 	packages: dict[str, dict[str, RepoMetaPackage]] = field(default_factory=dict)
 
 	def scan_packages(self, directory: Path, add_callback: Callable | None = None) -> None:
+		if add_callback and not callable(add_callback):
+			raise ValueError("add_callback must be callable")
 		logger.notice("Scanning opsi packages in %s", directory)
 		for package_file in directory.rglob("*.opsi"):
 			# Allow multiple versions for the same product in full scan
@@ -181,13 +183,18 @@ class RepoMetaPackageCollection:
 		*,
 		num_allowed_versions: int = 1,
 		url: str | None = None,
+		compatibility: list[RepoMetaPackageCompatibility] | None = None,
 		add_callback: Callable | None = None,
 	) -> RepoMetaPackage:
 		if not url:
 			url = str(package_file.relative_to(directory))
 		url = str(url).replace("\\", "/")  # Cannot instantiate PosixPath on windows
 
+		if add_callback and not callable(add_callback):
+			raise ValueError("add_callback must be callable")
+
 		package = RepoMetaPackage.from_package_file(package_file=package_file, url=url)
+		package.compatibility = compatibility or None
 		if add_callback:
 			add_callback(package)
 
