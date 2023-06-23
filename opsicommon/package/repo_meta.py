@@ -214,32 +214,38 @@ class RepoMetaPackageCollection:
 			if len(self.packages[name]) == 0:
 				del self.packages[name]
 
+	def get_packages(self):
+		for _name, versions in self.packages.items():
+			for _version, package in versions.items():
+				yield package
+
+	def read_metafile_data(self, data: bytes) -> None:
+		p_data: dict[str, Any] = {}
+		head = data[0:4].hex()
+		if head == "28b52ffd":
+			decompressor = zstandard.ZstdDecompressor()
+			data = decompressor.decompress(data)
+
+		if data.startswith(b"{"):
+			p_data = json.decode(data)
+		else:
+			p_data = msgpack.decode(data)
+
+		self.schema_version = p_data.get("schema_version", self.schema_version)
+		self.repository = RepoMetaRepository(**p_data.get("repository", {}))
+		self.metadata_files = [RepoMetaMetadataFile(entry.get("type"), entry.get("urls")) for entry in p_data.get("metadata_files", [])]
+		self.packages = {}
+		for name, product in p_data.get("packages", {}).items():
+			if name not in self.packages:
+				self.packages[name] = {}
+			self.packages[name] = {version: RepoMetaPackage.from_dict(data) for version, data in product.items()}
+
 	def read_metafile(self, path: Path) -> None:
 		with open(path, mode="rb") as file:
 			with lock_file(file):
-				data: dict[str, Any] = {}
-				bdata = file.read()
-				if bdata:
-					head = bdata[0:4].hex()
-					if head == "28b52ffd":
-						decompressor = zstandard.ZstdDecompressor()
-						bdata = decompressor.decompress(bdata)
-
-					if bdata.startswith(b"{"):
-						data = json.decode(bdata)
-					else:
-						data = msgpack.decode(bdata)
-
-				self.schema_version = data.get("schema_version", self.schema_version)
-				self.repository = RepoMetaRepository(**data.get("repository", {}))
-				self.metadata_files = [
-					RepoMetaMetadataFile(entry.get("type"), entry.get("urls")) for entry in data.get("metadata_files", [])
-				]
-				self.packages = {}
-				for name, product in data.get("packages", {}).items():
-					if name not in self.packages:
-						self.packages[name] = {}
-					self.packages[name] = {version: RepoMetaPackage.from_dict(data) for version, data in product.items()}
+				data = file.read()
+				if data:
+					self.read_metafile_data(data)
 
 	def write_metafile(self, path: Path) -> None:
 		encoding = "json"
