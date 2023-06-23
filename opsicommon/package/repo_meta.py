@@ -12,7 +12,7 @@ import hashlib
 from dataclasses import asdict, dataclass, field, fields
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Generator
 
 import packaging.version as packver
 import zstandard
@@ -214,7 +214,7 @@ class RepoMetaPackageCollection:
 			if len(self.packages[name]) == 0:
 				del self.packages[name]
 
-	def get_packages(self):
+	def get_packages(self) -> Generator[RepoMetaPackage, None, None]:
 		for _name, versions in self.packages.items():
 			for _version, package in versions.items():
 				yield package
