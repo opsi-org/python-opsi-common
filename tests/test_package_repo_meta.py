@@ -147,12 +147,19 @@ def test_repo_meta_package_collection_scan_packages(tmp_path: Path) -> None:
 	assert package_collection.packages["localboot_new"]["42.0-1337"].url == "localboot_new_42.0-1337.opsi"
 	assert package_collection.packages["test-netboot"]["1.0-2"].url == "subdir/test-netboot_1.0-2.opsi"
 
+	assert len(list(package_collection.get_packages())) == 4
+
 	for suffix in formats:
 		metafile = repository_dir / f"packages.{suffix}"
 		package_collection.write_metafile(metafile)
 
 		package_collection_read = RepoMetaPackageCollection()
 		package_collection_read.read_metafile(metafile)
+
+		assert package_collection_read == package_collection
+
+		package_collection_read = RepoMetaPackageCollection()
+		package_collection_read.read_metafile_data(metafile.read_bytes())
 
 		assert package_collection_read == package_collection
 
