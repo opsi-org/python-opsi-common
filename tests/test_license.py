@@ -785,6 +785,55 @@ def test_license_state_revoked() -> None:
 				assert lic.get_state() == OPSI_LICENSE_STATE_REVOKED
 
 
+def test_license_revoke_legacy(tmp_path: Path) -> None:
+	private_key, public_key = generate_key_pair(return_pem=False)
+	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
+		olp = OpsiLicensePool(modules_file_path="tests/data/license/modules")
+		olp.load()
+		legacy_ids = []
+		legacy_licenses = list(olp.get_licenses())
+		for lic in legacy_licenses:
+			legacy_ids.append(lic.id)
+			# print(lic.id, lic.valid_from, lic.valid_until)
+
+			check_date = lic.valid_from + timedelta(days=5)
+			assert lic.get_state(test_revoked=True, at_date=check_date) == OPSI_LICENSE_STATE_VALID
+			check_date = lic.valid_from - timedelta(days=5)
+			assert lic.get_state(test_revoked=True, at_date=check_date) == OPSI_LICENSE_STATE_NOT_YET_VALID
+
+			check_date = lic.valid_until + timedelta(days=5)
+			assert lic.get_state(test_revoked=True, at_date=check_date) == OPSI_LICENSE_STATE_EXPIRED
+			check_date = lic.valid_until - timedelta(days=5)
+			assert lic.get_state(test_revoked=True, at_date=check_date) == OPSI_LICENSE_STATE_VALID
+
+		# Add a license with revoke
+		new_lic = OpsiLicense(**LIC1)
+		new_lic.type = OPSI_LICENSE_TYPE_STANDARD
+		new_lic.valid_from = legacy_licenses[0].valid_from + timedelta(days=10)
+		new_lic.valid_until = legacy_licenses[0].valid_until - timedelta(days=10)
+		new_lic.revoked_ids = legacy_ids
+		new_lic.sign(private_key)
+		olp.add_license(new_lic)
+
+		check_date = new_lic.valid_from - timedelta(days=5)
+		for lic in olp.get_licenses():
+			if lic.id in legacy_ids:
+				# print(lic.id, lic.valid_from, lic.valid_until, lic.get_state(test_revoked=True, at_date=check_date))
+				assert lic.get_state(test_revoked=True, at_date=check_date) == OPSI_LICENSE_STATE_VALID
+
+		check_date = new_lic.valid_from + timedelta(days=5)
+		for lic in olp.get_licenses():
+			if lic.id in legacy_ids:
+				# print(lic.id, lic.valid_from, lic.valid_until, lic.get_state(test_revoked=True, at_date=check_date))
+				assert lic.get_state(test_revoked=True, at_date=check_date) == OPSI_LICENSE_STATE_REVOKED
+
+		check_date = new_lic.valid_until + timedelta(days=5)
+		for lic in olp.get_licenses():
+			if lic.id in legacy_ids:
+				# print(lic.id, lic.valid_from, lic.valid_until, lic.get_state(test_revoked=True, at_date=check_date))
+				assert lic.get_state(test_revoked=True, at_date=check_date) == OPSI_LICENSE_STATE_VALID
+
+
 def test_opsi_modules_file(tmp_path: Path) -> None:
 	orig_modules_file = "tests/data/license/modules"
 	raw_data = Path(orig_modules_file).read_text(encoding="utf-8")
