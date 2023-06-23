@@ -785,7 +785,7 @@ def test_license_state_revoked() -> None:
 				assert lic.get_state() == OPSI_LICENSE_STATE_REVOKED
 
 
-def test_license_revoke_legacy(tmp_path: Path) -> None:
+def test_license_revoke_legacy() -> None:
 	private_key, public_key = generate_key_pair(return_pem=False)
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
 		olp = OpsiLicensePool(modules_file_path="tests/data/license/modules")
