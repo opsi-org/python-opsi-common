@@ -154,7 +154,7 @@ def test_get_config(tmp_path: Path) -> None:
 	OpsiConfig.config_file = str(config_file)
 	data = """
 	[groups]
-	fileadmingroup = "fag"
+	fileadmingroup = "FaG"
 	"""
 	config_file.write_text(dedent(data), encoding="utf-8")
 	config = OpsiConfig()

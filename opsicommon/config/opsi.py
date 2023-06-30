@@ -242,7 +242,6 @@ class OpsiConfig(metaclass=Singleton):
 			lines[idx] = line
 
 		new_data = "\n".join(lines)
-		print(new_data)
 		config = loads(new_data)
 		if not config.get("host"):
 			config["host"] = {}
@@ -271,7 +270,11 @@ class OpsiConfig(metaclass=Singleton):
 			file = Path(self.config_file)
 			if file.exists():
 				data = file.read_text(encoding="utf-8")
-				self._merge_config(self._config, loads(data))
+				conf = loads(data)
+				if "groups" in conf and isinstance(conf["groups"], dict):
+					# lowercase groups
+					conf["groups"] = {str(k).lower(): str(v).lower() for k, v in conf["groups"].items()}
+				self._merge_config(self._config, conf)
 				self._config_file_read = True
 				self._config_file_mtime = file.stat().st_mtime
 
