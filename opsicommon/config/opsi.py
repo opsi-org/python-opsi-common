@@ -229,6 +229,8 @@ class OpsiConfig(metaclass=Singleton):
 		key_val_regex = re.compile(r"([^=]+)=(\s*)(.+)")
 		lines = data.split("\n")
 		for idx, line in enumerate(lines):
+			# Replace backslash with double backslash
+			line = re.sub(r"([^\\])\\([^\\])", r"\1\\\\\2", line)
 			match = key_val_regex.search(line)
 			if not match:
 				continue
@@ -240,6 +242,7 @@ class OpsiConfig(metaclass=Singleton):
 			lines[idx] = line
 
 		new_data = "\n".join(lines)
+		print(new_data)
 		config = loads(new_data)
 		if not config.get("host"):
 			config["host"] = {}

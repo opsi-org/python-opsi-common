@@ -21,7 +21,8 @@ def test_upgrade_config_from_ini(tmp_path: Path) -> None:
 	data = """
 	[groups]
 	fileadmingroup = opsifileadmins
-	#fileadmingroup = commented
+	#fileadmingroup = DOMAIN\\\\commented
+	admingroup = DOMAIN\\opsiadmin
 
 	[packages]
 	use_pigz = True
@@ -40,7 +41,8 @@ def test_upgrade_config_from_ini(tmp_path: Path) -> None:
 			"""
 	[groups]
 	fileadmingroup = "opsifileadmins"
-	#fileadmingroup = "commented"
+	#fileadmingroup = "DOMAIN\\\\commented"
+	admingroup = "DOMAIN\\\\opsiadmin"
 
 	[packages]
 	use_pigz = true
