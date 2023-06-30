@@ -486,5 +486,5 @@ def test_load_package_tar_zstd() -> None:
 	),
 )
 def test_create_product_dependencies(dep_args: list[str | list[dict[str, str]]], result_dict: dict[str, str | None]) -> None:
-	result = create_product_dependencies(*dep_args)
+	result = create_product_dependencies(*dep_args)  # type: ignore
 	assert result[0].to_hash() == result_dict
