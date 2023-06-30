@@ -117,7 +117,7 @@ _HARDWARE_ID_REGEX = re.compile(r"^[a-fA-F0-9]{4}$")
 _OPSI_TIMESTAMP_REGEX = re.compile(r"^(\d{4})-?(\d{2})-?(\d{2})\s?(\d{2}):?(\d{2}):?(\d{2})\.?\d*$")
 _OPSI_DATE_REGEX = re.compile(r"^(\d{4})-?(\d{2})-?(\d{2})$")
 _FQDN_REGEX = re.compile(r"^[a-z0-9][a-z0-9\-]{,63}\.((\w+\-+)|(\w+\.))*\w{1,63}\.\w{2,16}\.?$")
-_USERNAME_REGEX = re.compile(r"^[a-z0-9\-_\.@]{1,64}$")
+_USERNAME_REGEX = re.compile(r"^[a-z0-9\-_\.@\\]{1,64}$")
 _HARDWARE_ADDRESS_REGEX = re.compile(
 	r"^([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})[:-]?([0-9a-f]{2})$"
 )
