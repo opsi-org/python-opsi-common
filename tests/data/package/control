@@ -11,7 +11,7 @@ advice: use the new one
 version: 42.0
 priority: 0
 licenseRequired: False
-productClasses: 
+productClasses:
 setupScript: setup.opsiscript
 uninstallScript: uninstall.opsiscript
 updateScript: update.opsiscript
@@ -23,7 +23,6 @@ userLoginScript: userlogin.opsiscript
 [ProductDependency]
 action: setup
 requiredProduct: hwaudit
-requiredAction: setup
 requirementType: before
 requiredStatus: installed
 

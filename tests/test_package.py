@@ -10,6 +10,7 @@ from shutil import copy
 from typing import Literal
 
 import pytest
+
 from opsicommon.objects import NetbootProduct
 from opsicommon.package import OpsiPackage
 from opsicommon.package.associated_files import (
@@ -17,6 +18,7 @@ from opsicommon.package.associated_files import (
 	create_package_md5_file,
 	create_package_zsync_file,
 )
+from opsicommon.package.control_file_handling import create_product_dependencies
 from opsicommon.utils import make_temp_dir
 
 TEST_DATA = Path("tests") / "data" / "package"
@@ -112,7 +114,6 @@ def test_load_control(form: str) -> None:
 	assert len(package.product_dependencies) == 1
 	assert package.product_dependencies[0].productAction == "setup"
 	assert package.product_dependencies[0].requiredProductId == "hwaudit"
-	assert package.product_dependencies[0].requiredAction == "setup"
 	assert package.product_dependencies[0].requiredInstallationStatus == "installed"
 	assert package.product_dependencies[0].requirementType == "before"
 
@@ -195,7 +196,6 @@ def test_load_package(product_type: str, form: str) -> None:
 	assert package.product_dependencies[0].productAction == "setup"
 	assert package.product_dependencies[0].requiredProductId == "hwaudit"
 	assert package.product_dependencies[0].requiredAction == "setup"
-	assert package.product_dependencies[0].requiredInstallationStatus == "installed"
 	assert package.product_dependencies[0].requirementType == "before"
 
 
@@ -422,3 +422,69 @@ def test_load_package_tar_zstd() -> None:
 	package = OpsiPackage(TEST_DATA / "tar_zstd_packaged_42.0-1337.opsi")
 	print_info(package)
 	assert package.product.id == "localboot_new"
+
+
+@pytest.mark.parametrize(
+	"dep_args, result_dict",
+	(
+		(
+			[
+				"testid",
+				"1.0",
+				"1",
+				[
+					{
+						"action": "once",
+						"requiredProduct": "otherid",
+					}
+				],
+			],
+			{
+				"type": "ProductDependency",
+				"packageVersion": "1",
+				"productAction": "once",
+				"productId": "testid",
+				"productVersion": "1.0",
+				"requiredProductId": "otherid",
+				"requiredProductVersion": None,
+				"requiredPackageVersion": None,
+				"requiredAction": None,
+				"requiredInstallationStatus": None,
+				"requirementType": "before",
+			},
+		),
+		(
+			[
+				"testid",
+				"1.0",
+				"1",
+				[
+					{
+						"action": "setup",
+						"requiredProduct": "otherid",
+						"requiredProductVersion": "1.0",
+						"requiredPackageVersion": "1",
+						"requiredStatus": "installed",
+						"requirementType": "before",
+					}
+				],
+			],
+			{
+				"type": "ProductDependency",
+				"packageVersion": "1",
+				"productVersion": "1.0",
+				"productAction": "setup",
+				"productId": "testid",
+				"requiredProductId": "otherid",
+				"requiredProductVersion": "1.0",
+				"requiredPackageVersion": "1",
+				"requiredAction": None,
+				"requiredInstallationStatus": "installed",
+				"requirementType": "before",
+			},
+		),
+	),
+)
+def test_create_product_dependencies(dep_args: list[str | list[dict[str, str]]], result_dict: dict[str, str | None]) -> None:
+	result = create_product_dependencies(*dep_args)  # type: ignore
+	assert result[0].to_hash() == result_dict

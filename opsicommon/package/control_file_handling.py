@@ -54,8 +54,8 @@ def create_product_dependencies(pid: str, prod_v: str, pack_v: str, pdeps: list[
 			dep["requiredProduct"],
 			requiredProductVersion=dep.get("requiredProductVersion"),
 			requiredPackageVersion=dep.get("requiredPackageVersion"),
-			requiredAction=dep.get("requiredAction", "setup"),
-			requiredInstallationStatus=dep.get("requiredStatus", "installed"),
+			requiredAction=dep.get("requiredAction"),
+			requiredInstallationStatus=dep.get("requiredStatus"),
 			requirementType=dep.get("requirementType", "before"),
 		)
 		result.append(dependency)
