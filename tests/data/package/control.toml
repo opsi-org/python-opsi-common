@@ -43,5 +43,4 @@ default = [false]
 requiredProduct = "hwaudit"
 action = "setup"
 requirementType = "before"
-requiredAction = "setup"
-requiredState = "installed"
+requiredStatus = "installed"
