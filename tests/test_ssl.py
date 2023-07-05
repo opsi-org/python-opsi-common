@@ -12,7 +12,7 @@ from typing import Any, Optional, Type
 from unittest import mock
 
 import pytest
-from OpenSSL.crypto import X509, PKey  # type: ignore[import]
+from OpenSSL.crypto import X509, X509Store, X509StoreContext, PKey  # type: ignore[import]
 
 from opsicommon.ssl import (
 	as_pem,
@@ -27,17 +27,20 @@ from opsicommon.testing.helpers import http_test_server  # type: ignore[import]
 
 
 @pytest.mark.linux
-@pytest.mark.parametrize("distro_id, distro_like, expected_path, expected_cmd, exc", (
-	("centos", "", "/etc/pki/ca-trust/source/anchors", "update-ca-trust", None),
-	("somedist", "abc xyz rhel", "/etc/pki/ca-trust/source/anchors", "update-ca-trust", None),
-	("debian", "", "/usr/local/share/ca-certificates", "update-ca-certificates", None),
-	("", "ubuntu", "/usr/local/share/ca-certificates", "update-ca-certificates", None),
-	("sles", "sles", "/usr/share/pki/trust/anchors", "update-ca-certificates", None),
-	("suse", "", "/usr/share/pki/trust/anchors", "update-ca-certificates", None),
-	("unknown", "", "", "", RuntimeError),
-	("", "", "", "", RuntimeError),
-	(None, None, "", "", RuntimeError)
-))
+@pytest.mark.parametrize(
+	"distro_id, distro_like, expected_path, expected_cmd, exc",
+	(
+		("centos", "", "/etc/pki/ca-trust/source/anchors", "update-ca-trust", None),
+		("somedist", "abc xyz rhel", "/etc/pki/ca-trust/source/anchors", "update-ca-trust", None),
+		("debian", "", "/usr/local/share/ca-certificates", "update-ca-certificates", None),
+		("", "ubuntu", "/usr/local/share/ca-certificates", "update-ca-certificates", None),
+		("sles", "sles", "/usr/share/pki/trust/anchors", "update-ca-certificates", None),
+		("suse", "", "/usr/share/pki/trust/anchors", "update-ca-certificates", None),
+		("unknown", "", "", "", RuntimeError),
+		("", "", "", "", RuntimeError),
+		(None, None, "", "", RuntimeError),
+	),
+)
 def test_get_cert_path_and_cmd(
 	distro_id: str, distro_like: str, expected_path: str, expected_cmd: str, exc: Optional[Type[Exception]]
 ) -> None:
@@ -45,7 +48,7 @@ def test_get_cert_path_and_cmd(
 		_get_cert_path_and_cmd,
 	)
 
-	with mock.patch('distro.id', lambda: distro_id), mock.patch('distro.like', lambda: distro_like):
+	with mock.patch("distro.id", lambda: distro_id), mock.patch("distro.like", lambda: distro_like):
 		if exc:
 			with pytest.raises(exc):
 				_get_cert_path_and_cmd()
@@ -61,17 +64,43 @@ def test_create_x590_name() -> None:
 
 
 def test_create_ca() -> None:
-	subject = {
-		"CN": "opsi CA",
-		"OU": "opsi",
-		"emailAddress": "opsi@opsi.org"
-	}
-	cert, key = create_ca(subject, 100)
-	assert isinstance(cert, X509)
-	assert isinstance(key, PKey)
-	assert cert.get_subject().CN == subject["CN"]
-	assert cert.get_subject().OU == subject["OU"]
-	assert cert.get_subject().emailAddress == subject["emailAddress"]
+	subject = {"CN": "opsi CA", "OU": "opsi", "emailAddress": "opsi@opsi.org"}
+	ca_cert, ca_key = create_ca(subject, 100)
+	assert isinstance(ca_cert, X509)
+	assert isinstance(ca_key, PKey)
+	assert ca_cert.get_subject().CN == subject["CN"]
+	assert ca_cert.get_subject().OU == subject["OU"]
+	assert ca_cert.get_subject().emailAddress == subject["emailAddress"]
+
+	permitted_domains = [".mycompany.com", "mycompany.org", "localhost"]
+	ca_cert, ca_key = create_ca(subject, 100, permitted_domains=permitted_domains)
+
+	name_constraints = [
+		ca_cert.get_extension(idx)
+		for idx in range(ca_cert.get_extension_count())
+		if ca_cert.get_extension(idx).get_short_name() == b"nameConstraints"
+	][0]
+	assert name_constraints.get_critical() == 1
+	assert name_constraints.get_data() == b"02\xa000\x10\x82\x0e.mycompany.com0\x0f\x82\rmycompany.org0\x0b\x82\tlocalhost"
+
+	for domain in permitted_domains[:-1] + ["other.tld"]:
+		kwargs: dict[str, Any] = {
+			"subject": {"emailAddress": f"opsi@{domain}", "CN": f"server.{domain}"},
+			"valid_days": 100,
+			"ip_addresses": {"172.0.0.1", "::1", "192.168.1.1"},
+			"hostnames": {f"server.{domain}", "localhost"},
+			"ca_key": ca_key,
+			"ca_cert": ca_cert,
+		}
+		srv_cert, _srv_key = create_server_cert(**kwargs)
+		store = X509Store()
+		store.add_cert(ca_cert)
+		store_ctx = X509StoreContext(store, srv_cert)
+		if domain in permitted_domains:
+			store_ctx.verify_certificate()
+		else:
+			with pytest.raises(Exception, match="permitted subtree violation"):
+				store_ctx.verify_certificate()
 
 	del subject["CN"]
 	with pytest.raises(ValueError):
@@ -79,11 +108,7 @@ def test_create_ca() -> None:
 
 
 def test_create_server_cert() -> None:
-	subject = {
-		"CN": "opsi CA",
-		"OU": "opsi",
-		"emailAddress": "opsi@opsi.org"
-	}
+	subject = {"CN": "opsi CA", "OU": "opsi", "emailAddress": "opsi@opsi.org"}
 	ca_cert, ca_key = create_ca(subject, 1000)
 	kwargs: dict[str, Any] = {
 		"subject": {"emailAddress": "opsi@opsi.org"},
@@ -91,7 +116,7 @@ def test_create_server_cert() -> None:
 		"ip_addresses": {"172.0.0.1", "::1", "192.168.1.1"},
 		"hostnames": {"localhost", "opsi", "opsi.dom.tld"},
 		"ca_key": ca_key,
-		"ca_cert": ca_cert
+		"ca_cert": ca_cert,
 	}
 	with pytest.raises(ValueError) as err:
 		cert, key = create_server_cert(**kwargs)
@@ -123,11 +148,7 @@ def test_create_server_cert() -> None:
 
 
 def test_as_pem() -> None:
-	subject = {
-		"CN": "opsi CA",
-		"OU": "opsi",
-		"emailAddress": "opsi@opsi.org"
-	}
+	subject = {"CN": "opsi CA", "OU": "opsi", "emailAddress": "opsi@opsi.org"}
 	cert, key = create_ca(subject, 100)
 	pem = as_pem(cert, "")
 	assert pem.startswith("-----BEGIN CERTIFICATE-----")
@@ -168,7 +189,7 @@ def test_wget(tmp_path: Path) -> None:  # pylint: disable=redefined-outer-name, 
 		"ip_addresses": {"172.0.0.1", "::1"},
 		"hostnames": {"localhost", "ip6-localhost"},
 		"ca_key": ca_key,
-		"ca_cert": ca_cert
+		"ca_cert": ca_cert,
 	}
 	cert, key = create_server_cert(**kwargs)
 
@@ -181,16 +202,34 @@ def test_wget(tmp_path: Path) -> None:  # pylint: disable=redefined-outer-name, 
 		install_ca(ca_cert)
 		try:
 			if platform.system().lower() == "windows":
-				assert subprocess.call([
-					"powershell", "-ExecutionPolicy", "Bypass", "-Command", f"Invoke-WebRequest -UseBasicParsing https://localhost:{server.port}"
-				]) == 0
+				assert (
+					subprocess.call(
+						[
+							"powershell",
+							"-ExecutionPolicy",
+							"Bypass",
+							"-Command",
+							f"Invoke-WebRequest -UseBasicParsing https://localhost:{server.port}",
+						]
+					)
+					== 0
+				)
 			else:
 				assert subprocess.call(["wget", f"https://localhost:{server.port}", "-O-"]) == 0
 		finally:
 			remove_ca(ca_cert.get_subject().CN)
 			if platform.system().lower() == "windows":
-				assert subprocess.call([
-					"powershell", "-ExecutionPolicy", "Bypass", "-Command", f"Invoke-WebRequest -UseBasicParsing https://localhost:{server.port}"
-				]) == 1
+				assert (
+					subprocess.call(
+						[
+							"powershell",
+							"-ExecutionPolicy",
+							"Bypass",
+							"-Command",
+							f"Invoke-WebRequest -UseBasicParsing https://localhost:{server.port}",
+						]
+					)
+					== 1
+				)
 			else:
 				assert subprocess.call(["wget", f"https://localhost:{server.port}", "-O-"]) == 5

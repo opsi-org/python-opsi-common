@@ -66,7 +66,13 @@ def create_x590_name(subject: Optional[Dict[str, Optional[str]]] = None) -> X509
 	return x509_name
 
 
-def create_ca(subject: dict, valid_days: int, key: Optional[PKey] = None, bits: int = CA_KEY_BITS) -> Tuple[X509, PKey]:
+def create_ca(
+	subject: dict,
+	valid_days: int,
+	key: Optional[PKey] = None,
+	bits: int = CA_KEY_BITS,
+	permitted_domains: list[str] | set[str] | tuple[str] | None = None,
+) -> Tuple[X509, PKey]:
 	common_name = subject.get("commonName", subject.get("CN"))
 	if not common_name:
 		raise ValueError("commonName missing in subject")
@@ -91,13 +97,30 @@ def create_ca(subject: dict, valid_days: int, key: Optional[PKey] = None, bits: 
 
 	ca_cert.set_issuer(ca_subject)
 	ca_cert.set_subject(ca_subject)
-	ca_cert.add_extensions(
-		[
-			X509Extension(b"subjectKeyIdentifier", False, b"hash", subject=ca_cert),
-			X509Extension(b"basicConstraints", True, b"CA:true, pathlen:0"),
-			X509Extension(b"keyUsage", True, b"digitalSignature, cRLSign, keyCertSign"),
-		]
-	)
+	extensions = [
+		X509Extension(b"subjectKeyIdentifier", False, b"hash", subject=ca_cert),
+		# The CA must not issue intermediate CA certificates (pathlen=0)
+		X509Extension(b"basicConstraints", True, b"CA:true, pathlen:0"),
+		X509Extension(b"keyUsage", True, b"digitalSignature, cRLSign, keyCertSign"),
+	]
+	if permitted_domains:
+		# https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.10
+		# When the constraint begins with a period, it MAY be
+		# expanded with one or more labels.  That is, the constraint
+		# ".example.com" is satisfied by both host.example.com and
+		# my.host.example.com.  However, the constraint ".example.com" is not
+		# satisfied by "example.com".
+
+		# The name constraints extension is a multi-valued extension.
+		# The name should begin with the word permitted or excluded followed by a ;.
+		# The rest of the name and the value follows the syntax of subjectAltName
+		# except email:copy is not supported and the IP form should consist of
+		# an IP addresses and subnet mask separated by a /.
+
+		permitted = ", ".join([f"permitted;DNS:{dom}" for dom in permitted_domains])
+		extensions.append(X509Extension(b"nameConstraints", True, permitted.encode("utf-8")))
+
+	ca_cert.add_extensions(extensions)
 	ca_cert.sign(key, "sha256")
 
 	return (ca_cert, key)
