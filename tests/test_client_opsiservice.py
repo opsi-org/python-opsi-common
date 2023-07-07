@@ -473,7 +473,7 @@ def test_proxy(tmp_path: Path) -> None:
 
 		# Use system proxy
 		proxy_env = {
-			"http_proxy": f"http://localhost:{server.port}",
+			"http_proxy": f"http://localhost:{proxy_port}",
 			"https_proxy": f"http://localhost:{proxy_port}",
 			"no_proxy": "company.net",
 		}
