@@ -47,6 +47,7 @@ tan = ">=22.2"
 types-orjson = ">=3.6"
 types-requests = ">=2.27"
 opsi-dev-tools = "^1.10.0"
+pproxy = "^2.7.8"
 
 [tool.ruff]
 line-length = 140

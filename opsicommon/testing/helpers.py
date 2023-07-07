@@ -197,7 +197,9 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 							(
 								f"\r\n--{boundary}\r\nContent-Type: {ctype}\r\n"
 								f"Content-Range: bytes {range_[0]}-{range_[1]}/{fst.st_size}\r\n\r\n"
-							).encode("ascii")
+							).encode(
+								"ascii"
+							)
 						)
 						length += range_[1] - range_[0] + 1
 					length += len(f"\r\n--{boundary}--".encode("ascii"))

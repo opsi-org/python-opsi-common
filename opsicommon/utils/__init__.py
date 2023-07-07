@@ -116,17 +116,20 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 		return "://".join((protocol, host))
 
 	if no_proxy_addresses is None:
-		no_proxy_addresses = []
+		no_proxy_addresses = ["::1", "127.0.0.1", "ip6-localhost", "localhost"]
 	if session is None:
 		session = requests.Session()
 	if proxy_url:
 		# Use a proxy
+		no_proxy = [x.strip() for x in os.environ.get("no_proxy", "").split(",") if x.strip()]
 		if proxy_url.lower() == "system":
 			# Making sure system proxy has correct form
 			if os.environ.get("http_proxy"):
 				os.environ["http_proxy"] = add_protocol(os.environ.get("http_proxy", ""))
 			if os.environ.get("https_proxy"):
 				os.environ["https_proxy"] = add_protocol(os.environ.get("https_proxy", ""))  # protocol=https?
+			if no_proxy != ["*"]:
+				no_proxy.extend(no_proxy_addresses)
 		else:
 			proxy_url = add_protocol(proxy_url)
 			if hostname in no_proxy_addresses:
@@ -141,15 +144,19 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 				for key in ("http_proxy", "https_proxy"):
 					if key in os.environ:
 						del os.environ[key]
+			no_proxy = no_proxy_addresses
 
-		no_proxy = [x.strip() for x in os.environ.get("no_proxy", "").split(",") if x.strip()]
-		if no_proxy != ["*"]:
-			no_proxy.extend(no_proxy_addresses)
 		os.environ["no_proxy"] = ",".join(set(no_proxy))
 	else:
 		# Do not use a proxy
 		os.environ["no_proxy"] = "*"
 
+	print(
+		"Using proxy settings: http_proxy=%r, https_proxy=%r, no_proxy=%r",
+		proxy_url if proxy_url and proxy_url.lower() != "system" else os.environ.get("http_proxy"),
+		proxy_url if proxy_url and proxy_url.lower() != "system" else os.environ.get("https_proxy"),
+		os.environ.get("no_proxy"),
+	)
 	logger.info(
 		"Using proxy settings: http_proxy=%r, https_proxy=%r, no_proxy=%r",
 		proxy_url if proxy_url and proxy_url.lower() != "system" else os.environ.get("http_proxy"),

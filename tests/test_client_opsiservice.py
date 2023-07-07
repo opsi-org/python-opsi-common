@@ -5,20 +5,29 @@ This file is part of opsi - https://www.opsi.org
 """
 # pylint: disable=too-many-lines
 
+from __future__ import annotations
 import base64
+from contextlib import contextmanager
 import json
+import socket
 import platform
 import time
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Thread
-from typing import Any, Iterable
+from typing import Any, Generator, Iterable
 from unittest import mock
 from urllib.parse import unquote
 from warnings import catch_warnings, simplefilter
+import asyncio
+from socket import AF_INET
 
+import pproxy  # type: ignore[import]
+import psutil
 import lz4.frame  # type: ignore[import,no-redef]
 import pytest
+import websocket  # type: ignore[import]
 
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
@@ -355,91 +364,171 @@ def test_cookie_handling(tmp_path: Path) -> None:
 			assert unquote(req4["headers"].get("Cookie")) == session_cookie
 
 
+def get_local_ipv4_address() -> str | None:
+	for _interface, snics in psutil.net_if_addrs().items():
+		for snic in snics:
+			if snic.family != AF_INET or not snic.netmask or snic.address == "127.0.0.1":
+				continue
+			return snic.address
+	raise RuntimeError("No local IPv4 address found")
+
+
+class HTTPProxy(Thread):
+	REQUEST_RE = re.compile(r"^http\s+([\d\.]+):(\d+) -> ([\d\.]+):(\d+)$")
+
+	def __init__(self, port: int):
+		super().__init__()
+		self._port = port
+		self._loop = asyncio.get_event_loop()
+		self._should_stop = False
+		self._requests: list[dict[str, str | int]] = []
+
+	def get_and_clear_requests(self) -> list[dict[str, str | int]]:
+		requests = self._requests.copy()
+		self._requests = []
+		return requests
+
+	def verbose(self, msg: str) -> None:
+		# http 127.0.0.1:54464 -> 172.24.0.3:55987
+		match = self.REQUEST_RE.search(msg)
+		if match:
+			self._requests.append(
+				{
+					"client_address": match.group(1),
+					"client_port": int(match.group(2)),
+					"server_address": match.group(3),
+					"server_port": int(match.group(4)),
+				}
+			)
+
+	async def main(self) -> None:
+		args: dict[str, Any] = {"rserver": [], "verbose": self.verbose}
+		proxy_server = pproxy.Server(f"http://:{self._port}")
+		server = proxy_server.start_server(args)
+		server_task = asyncio.create_task(server)
+		while not self._should_stop:
+			await asyncio.sleep(0.3)
+		server_task.cancel()
+		await self._loop.shutdown_asyncgens()
+
+	def run(self) -> None:
+		self._loop.run_until_complete(self.main())
+
+	def stop(self) -> None:
+		self._should_stop = True
+
+
+@contextmanager
+def run_proxy(port: int = 8080) -> Generator[HTTPProxy, None, None]:
+	proxy = HTTPProxy(port)
+	proxy.daemon = True
+	proxy.start()
+	time.sleep(2)
+	yield proxy
+	proxy.stop()
+	proxy.join(2)
+
+
 def test_proxy(tmp_path: Path) -> None:
-	log_file = tmp_path / "request.log"
-	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}) as server:
-		with ServiceClient(
-			f"https://localhost:{server.port+1}", proxy_url=f"http://localhost:{server.port}", verify="accept_all", connect_timeout=2
-		) as client:
-			# Proxy will not be used for localhost (no_proxy_addresses)
-			with pytest.raises(OpsiServiceConnectionError):
+	local_ip = get_local_ipv4_address()
+	server_log_file = tmp_path / "server-request.log"
+	no_proxy_addresses = ["::1", "127.0.0.1", "ip6-localhost", "localhost"]
+
+	def get_server_requests() -> list[dict[str, Any]]:
+		if not server_log_file.exists():
+			return []
+		res = [json.loads(line) for line in server_log_file.read_text(encoding="utf-8").strip().split("\n")]
+		server_log_file.unlink()
+		return res
+
+	proxy_port = 18181
+	with run_proxy(proxy_port) as proxy_server, http_test_server(
+		generate_cert=True, log_file=server_log_file, response_headers={"server": "opsiconfd 4.3.1.0 (uvicorn)"}
+	) as server, mock.patch("opsicommon.client.opsiservice.ServiceClient.no_proxy_addresses", no_proxy_addresses):
+		# Proxy must not be used (no_proxy_addresses)
+		with mock.patch(
+			"opsicommon.client.opsiservice.ServiceClient.no_proxy_addresses", ["::1", "127.0.0.1", "ip6-localhost", "localhost", local_ip]
+		):
+			with ServiceClient(
+				f"https://{local_ip}:{server.port}", proxy_url=f"http://localhost:{server.port+1}", verify="accept_all", connect_timeout=2
+			) as client:
 				client.connect()
+				client.connect_messagebus()
 
-		proxy_env = {"http_proxy": f"http://localhost:{server.port}", "https_proxy": f"http://localhost:{server.port}"}
-		with environment(proxy_env), pytest.raises(OpsiServiceConnectionError):
-			with ServiceClient(f"https://localhost:{server.port+1}", proxy_url="system", verify="accept_all", connect_timeout=2) as client:
+			requests = get_server_requests()
+			assert requests
+			assert not proxy_server.get_and_clear_requests()
+
+		# Use no proxy, proxy from env must not be used
+		proxy_env = {"http_proxy": "http://should-not-be-used", "https_proxy": "http://should-not-be-used"}
+		with environment(proxy_env):
+			with ServiceClient(f"https://{local_ip}:{server.port}", proxy_url=None, verify="accept_all", connect_timeout=2) as client:
+				assert client.no_proxy_addresses == no_proxy_addresses
 				client.connect()
+				client.connect_messagebus()
 
-		with mock.patch("opsicommon.client.opsiservice.ServiceClient.no_proxy_addresses", []):
-			# Now proxy will be used for localhost
+			requests = get_server_requests()
+			assert requests
+			assert not proxy_server.get_and_clear_requests()
 
-			proxy_env = {"http_proxy": "http://should-not-be-used", "https_proxy": "http://should-not-be-used"}
-			with environment(proxy_env):
-				for host, proxy_host in (
-					("localhost", "localhost"),
-					("localhost", "127.0.0.1"),
-					("127.0.0.1", "localhost"),
-					("127.0.0.1", "127.0.0.1"),
-				):
-					with ServiceClient(
-						f"https://{host}:{server.port+1}",
-						proxy_url=f"https://{proxy_host}:{server.port}",
-						verify="accept_all",
-						connect_timeout=2,
-					) as client:
-						with pytest.raises(OpsiServiceConnectionError):
-							# HTTPTestServer sends error 501 on CONNECT requests
-							client.connect()
-						request = json.loads(log_file.read_text(encoding="utf-8"))
-						# print(request)
-						assert request["method"] == "CONNECT"
-						assert request["path"] == f"{host}:{server.port+1}"
-						log_file.write_bytes(b"")
+		# Use system proxy
+		proxy_env = {
+			"http_proxy": f"http://localhost:{server.port}",
+			"https_proxy": f"http://localhost:{proxy_port}",
+			"no_proxy": "company.net",
+		}
+		with environment(proxy_env):
+			with ServiceClient(f"https://{local_ip}:{server.port}", proxy_url="system", verify="accept_all", connect_timeout=2) as client:
+				client.connect()
+				client.connect_messagebus()
 
-			proxy_env = {
-				"http_proxy": f"http://localhost:{server.port+2}",
-				"https_proxy": f"https://localhost:{server.port}",
-				"no_proxy": "",
-			}
-			with environment(proxy_env):
-				with ServiceClient(
-					f"https://localhost:{server.port+1}",
-					proxy_url="system",
-					verify="accept_all",
-					connect_timeout=2,
-				) as client:
-					with pytest.raises(OpsiServiceConnectionError):
-						# HTTPTestServer sends error 501 on CONNECT requests
-						client.connect()
-					request = json.loads(log_file.read_text(encoding="utf-8"))
-					# print(request)
-					assert request["method"] == "CONNECT"
-					assert request.get("path") == f"localhost:{server.port+1}"
-					log_file.write_bytes(b"")
+			requests = get_server_requests()
+			assert requests
+			assert len(proxy_server.get_and_clear_requests()) == len(requests)
 
-			proxy_env = {"http_proxy": "http://should-not-be-used", "https_proxy": "https://should-not-be-used"}
-			with environment(proxy_env):
-				with ServiceClient(
-					f"https://localhost:{server.port}",
-					proxy_url=None,  # Do not use any proxy
-					verify="accept_all",
-					connect_timeout=2,
-				) as client:
+			assert requests[0]["method"] == "HEAD"
+			assert requests[0]["path"] == "/rpc"
+
+			assert requests[1]["method"] == "POST"
+
+			assert requests[2]["method"] == "GET"
+			assert requests[2]["path"] == "/messagebus/v1?compression=lz4"
+			assert requests[2]["headers"]["Upgrade"] == "websocket"
+
+		# Use exlicit proxy
+		proxy_env = {"http_proxy": "http://should-not-be-used", "https_proxy": "https://should-not-be-used", "no_proxy": ""}
+		with environment(proxy_env):
+			with ServiceClient(
+				f"https://{local_ip}:{server.port}", proxy_url=f"http://localhost:{proxy_port}", verify="accept_all", connect_timeout=2
+			) as client:
+				client.connect()
+				client.messagebus.connect()
+
+			requests = get_server_requests()
+			assert requests
+			assert len(proxy_server.get_and_clear_requests()) == len(requests)
+
+			assert requests[0]["method"] == "HEAD"
+			assert requests[1]["method"] == "POST"
+			assert requests[2]["headers"]["Upgrade"] == "websocket"
+
+		# Test proxy address can't be resolved
+		proxy_env = {"http_proxy": "http://will-not-resolve:991", "https_proxy": "http://will-not-resolve:991", "no_proxy": ""}
+		with environment(proxy_env):
+			with ServiceClient(f"https://{local_ip}:{server.port}", proxy_url="system", verify="accept_all", connect_timeout=2) as client:
+				with pytest.raises(OpsiServiceConnectionError, match=".*Failed to resolve 'will-not-resolve'.*"):
 					client.connect()
-					client.connect_messagebus()
+				with pytest.raises(OpsiServiceConnectionError, match=".*Name or service not known.*"):
+					client.messagebus.connect()
 
-					reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
-					# print(reqs)
-					assert reqs[0]["method"] == "HEAD"
-					assert reqs[0]["path"] == "/rpc"
-
-					assert reqs[1]["method"] == "POST"
-
-					assert reqs[2]["method"] == "GET"
-					assert reqs[2]["path"] == "/messagebus/v1?compression=lz4"
-					assert reqs[2]["headers"]["Upgrade"] == "websocket"
-
-					log_file.write_bytes(b"")
+		# Bug in https://github.com/websocket-client (uses http_proxy for ssl if https_proxy is not set)
+		# proxy_env = {"http_proxy": "http://will-not-resolve:991", "https_proxy": "", "no_proxy": ""}
+		# with environment(proxy_env):
+		# 	with ServiceClient(f"https://{local_ip}:{server.port}", proxy_url="system", verify="accept_all", connect_timeout=2) as client:
+		# 		# with pytest.raises(OpsiServiceConnectionError, match=".*Failed to resolve 'will-not-resolve'.*"):
+		# 		client.connect()
+		# 		# with pytest.raises(OpsiServiceConnectionError, match=".*Name or service not known.*"):
+		# 		client.messagebus.connect()
 
 
 @pytest.mark.parametrize(
@@ -500,8 +589,7 @@ def test_server_name_handling(  # pylint: disable=too-many-arguments
 
 
 def test_connect_disconnect() -> None:  # pylint: disable=too-many-statements
-
-	with (log_level_stderr(9), http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server):
+	with log_level_stderr(9), http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
 		listener = MyConnectionListener()
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			with listener.register(client):

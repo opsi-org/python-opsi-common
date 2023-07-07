@@ -363,6 +363,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			self._session.cookies.set(cookie_name, quote(cookie_value))  # type: ignore[no-untyped-call]
 
 		service_hostname = urlparse(self.base_url).hostname or ""
+
 		self._session = prepare_proxy_environment(
 			service_hostname,
 			self._proxy_url,
@@ -1501,9 +1502,10 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 				self._connect_exception = OpsiServiceTimeoutError(
 					f"Timed out after {self._connect_timeout} seconds while waiting for connect result"
 				)
+				raise self._connect_exception
 			if self._connect_exception:
 				logger.debug("Raising connect exception %r", self._connect_exception)
-				raise self._connect_exception
+				raise OpsiServiceConnectionError(str(self._connect_exception)) from self._connect_exception
 
 	def disconnect(self, wait: bool = True) -> None:
 		self._should_be_connected = False
@@ -1529,6 +1531,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		if self._client.ca_cert_file:
 			sslopt["ca_certs"] = str(self._client.ca_cert_file)
 
+		proxy_type = None
 		http_proxy_host = None
 		http_proxy_port = None
 		http_proxy_auth = None
@@ -1546,6 +1549,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			proxy_url = self._client.proxy_url
 
 		if proxy_url:
+			proxy_type = "http"
 			purl = urlparse(proxy_url)
 			http_proxy_host = purl.hostname
 			http_proxy_port = purl.port or None
@@ -1580,9 +1584,24 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		for listener in self._listener:
 			self._run_listener_callback(listener, "messagebus_connection_open", messagebus=self)
 
+		logger.debug(
+			"Websocket connection params: sslopt=%r, "
+			"proxy_type=%r, http_proxy_host=%r, http_proxy_port=%r, http_proxy_auth=%r, http_no_proxy=%r, "
+			"connect_timeout=%r, ping_interval=%r, ping_timeout=%r",
+			sslopt,
+			proxy_type,
+			http_proxy_host,
+			http_proxy_port,
+			http_proxy_auth,
+			http_no_proxy,
+			self._connect_timeout,
+			self.ping_interval,
+			self.ping_timeout,
+		)
 		self._app.run_forever(  # type: ignore[attr-defined]
 			sslopt=sslopt,
 			skip_utf8_validation=True,
+			proxy_type=proxy_type,
 			http_proxy_host=http_proxy_host,
 			http_proxy_port=http_proxy_port,
 			http_proxy_auth=http_proxy_auth,
