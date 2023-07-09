@@ -108,6 +108,7 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 	* emptystring or None to disable proxy usage.
 	If session is given its proxy settings are adapted. Else a new session is created and returned.
 	"""
+	print("http: %r || https: %r", os.environ.get("http_proxy"), os.environ.get("https_proxy"))
 
 	def add_protocol(host: str, protocol: str = "http") -> str:
 		if not host or "://" in host:
@@ -127,7 +128,7 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 			if os.environ.get("http_proxy"):
 				os.environ["http_proxy"] = add_protocol(os.environ.get("http_proxy", ""))
 			if os.environ.get("https_proxy"):
-				os.environ["https_proxy"] = add_protocol(os.environ.get("https_proxy", ""))  # protocol=https?
+				os.environ["https_proxy"] = add_protocol(os.environ.get("https_proxy", ""))
 			if no_proxy != ["*"]:
 				no_proxy.extend(no_proxy_addresses)
 		else:
@@ -151,6 +152,14 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 		# Do not use a proxy
 		os.environ["no_proxy"] = "*"
 
+	print(
+		"Using proxy settings: http_proxy=%r, https_proxy=%r, no_proxy=%r"
+		% (
+			proxy_url if proxy_url and proxy_url.lower() != "system" else os.environ.get("http_proxy"),
+			proxy_url if proxy_url and proxy_url.lower() != "system" else os.environ.get("https_proxy"),
+			os.environ.get("no_proxy"),
+		)
+	)
 	logger.info(
 		"Using proxy settings: http_proxy=%r, https_proxy=%r, no_proxy=%r",
 		proxy_url if proxy_url and proxy_url.lower() != "system" else os.environ.get("http_proxy"),
