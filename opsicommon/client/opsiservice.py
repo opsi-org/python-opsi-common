@@ -645,6 +645,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			self.disconnect()
 
 	def connect(self) -> None:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+		print(os.environ)
 		if self._connect_lock.locked():
 			return
 		logger.debug("service_is_opsiclientd: %r", self.service_is_opsiclientd())
