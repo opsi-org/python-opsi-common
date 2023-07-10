@@ -374,7 +374,7 @@ def get_local_ipv4_address() -> str | None:
 
 
 class HTTPProxy(Thread):
-	REQUEST_RE = re.compile(r"^http\s+([\d\.]+):(\d+) -> ([\d\.]+):(\d+)$")
+	REQUEST_RE = re.compile(r"^http\s+([\d\.a-f:]+):(\d+) -> ([\d\.a-f:]+):(\d+)$")
 
 	def __init__(self, port: int):
 		super().__init__()
@@ -390,6 +390,7 @@ class HTTPProxy(Thread):
 
 	def verbose(self, msg: str) -> None:
 		# http 127.0.0.1:54464 -> 172.24.0.3:55987
+		# http ::1:58297 -> 192.168.109.63:58037
 		print("Proxy request:", msg)
 		match = self.REQUEST_RE.search(msg)
 		if match:

@@ -108,7 +108,6 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 	* emptystring or None to disable proxy usage.
 	If session is given its proxy settings are adapted. Else a new session is created and returned.
 	"""
-	print("http: %r || https: %r", os.environ.get("http_proxy"), os.environ.get("https_proxy"))
 
 	def add_protocol(host: str, protocol: str = "http") -> str:
 		if not host or "://" in host:
