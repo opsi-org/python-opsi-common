@@ -9,7 +9,6 @@ from __future__ import annotations
 import base64
 from contextlib import contextmanager
 import json
-import socket
 import platform
 import time
 import re
@@ -27,9 +26,9 @@ import pproxy  # type: ignore[import]
 import psutil
 import lz4.frame  # type: ignore[import,no-redef]
 import pytest
-import websocket  # type: ignore[import]
 
 from opsicommon import __version__
+from opsicommon.system.info import is_macos, is_windows
 from opsicommon.client.opsiservice import (
 	MIN_VERSION_GZIP,
 	MIN_VERSION_LZ4,
@@ -520,7 +519,13 @@ def test_proxy(tmp_path: Path) -> None:
 			with ServiceClient(f"https://{local_ip}:{server.port}", proxy_url="system", verify="accept_all", connect_timeout=2) as client:
 				with pytest.raises(OpsiServiceConnectionError, match=".*Failed to resolve 'will-not-resolve'.*"):
 					client.connect()
-				with pytest.raises(OpsiServiceConnectionError, match=".*Name or service not known.*"):
+
+				match = ".*Name or service not known.*"
+				if is_macos():
+					match = ".*nodename nor servname provided, or not known.*"
+				elif is_windows():
+					match = ".*getaddrinfo failed.*"
+				with pytest.raises(OpsiServiceConnectionError, match=match):
 					client.messagebus.connect()
 
 		# Bug in https://github.com/websocket-client (uses http_proxy for ssl if https_proxy is not set)
