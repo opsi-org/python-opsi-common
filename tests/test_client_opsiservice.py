@@ -191,6 +191,7 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 	# proxy_url
 	assert ServiceClient("::1", proxy_url="system")._proxy_url == "system"  # pylint: disable=protected-access
 	assert ServiceClient("::1", proxy_url=None)._proxy_url is None  # type: ignore[arg-type]  # pylint: disable=protected-access
+	assert ServiceClient("::1", proxy_url="none")._proxy_url is None  # type: ignore[arg-type]  # pylint: disable=protected-access
 	assert ServiceClient("::1", proxy_url="https://proxy:1234")._proxy_url == "https://proxy:1234"  # pylint: disable=protected-access
 
 	# user_agent

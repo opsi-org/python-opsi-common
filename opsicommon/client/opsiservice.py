@@ -341,7 +341,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self._session_cookie = session_cookie or None
 
 		self._session_lifetime = max(1, int(session_lifetime))
-		self._proxy_url = str(proxy_url) if proxy_url else None
+		self._proxy_url = str(proxy_url) if proxy_url and proxy_url != "none" else None
 
 		self._user_agent = f"opsi-service-client/{__version__}" if user_agent is None else str(user_agent)
 		self._connect_timeout = max(0.0, float(connect_timeout))
