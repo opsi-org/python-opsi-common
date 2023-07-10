@@ -471,6 +471,23 @@ def test_proxy(tmp_path: Path) -> None:
 			assert requests
 			assert not proxy_server.get_and_clear_requests()
 
+		# Use exlicit proxy
+		proxy_env = {"http_proxy": "http://should-not-be-used", "https_proxy": "https://should-not-be-used", "no_proxy": ""}
+		with environment(proxy_env):
+			with ServiceClient(
+				f"https://{local_ip}:{server.port}", proxy_url=f"http://localhost:{proxy_port}", verify="accept_all", connect_timeout=2
+			) as client:
+				client.connect()
+				client.messagebus.connect()
+
+			requests = get_server_requests()
+			assert requests
+			assert len(proxy_server.get_and_clear_requests()) == len(requests)
+
+			assert requests[0]["method"] == "HEAD"
+			assert requests[1]["method"] == "POST"
+			assert requests[2]["headers"]["Upgrade"] == "websocket"
+
 		# Use system proxy
 		proxy_env = {
 			"http_proxy": f"http://localhost:{proxy_port}",
@@ -493,23 +510,6 @@ def test_proxy(tmp_path: Path) -> None:
 
 			assert requests[2]["method"] == "GET"
 			assert requests[2]["path"] == "/messagebus/v1?compression=lz4"
-			assert requests[2]["headers"]["Upgrade"] == "websocket"
-
-		# Use exlicit proxy
-		proxy_env = {"http_proxy": "http://should-not-be-used", "https_proxy": "https://should-not-be-used", "no_proxy": ""}
-		with environment(proxy_env):
-			with ServiceClient(
-				f"https://{local_ip}:{server.port}", proxy_url=f"http://localhost:{proxy_port}", verify="accept_all", connect_timeout=2
-			) as client:
-				client.connect()
-				client.messagebus.connect()
-
-			requests = get_server_requests()
-			assert requests
-			assert len(proxy_server.get_and_clear_requests()) == len(requests)
-
-			assert requests[0]["method"] == "HEAD"
-			assert requests[1]["method"] == "POST"
 			assert requests[2]["headers"]["Upgrade"] == "websocket"
 
 		# Test proxy address can't be resolved
