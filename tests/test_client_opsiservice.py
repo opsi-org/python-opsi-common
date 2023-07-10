@@ -390,6 +390,7 @@ class HTTPProxy(Thread):
 
 	def verbose(self, msg: str) -> None:
 		# http 127.0.0.1:54464 -> 172.24.0.3:55987
+		print("Proxy request:", msg)
 		match = self.REQUEST_RE.search(msg)
 		if match:
 			self._requests.append(
@@ -471,7 +472,7 @@ def test_proxy(tmp_path: Path) -> None:
 			assert requests
 			assert not proxy_server.get_and_clear_requests()
 
-		# Use exlicit proxy
+		# Use explicit proxy
 		proxy_env = {"http_proxy": "http://should-not-be-used", "https_proxy": "https://should-not-be-used", "no_proxy": ""}
 		with environment(proxy_env):
 			with ServiceClient(
