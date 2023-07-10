@@ -151,14 +151,6 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 		# Do not use a proxy
 		os.environ["no_proxy"] = "*"
 
-	print(
-		"Using proxy settings: http_proxy=%r, https_proxy=%r, no_proxy=%r"
-		% (
-			proxy_url if proxy_url and proxy_url.lower() != "system" else os.environ.get("http_proxy"),
-			proxy_url if proxy_url and proxy_url.lower() != "system" else os.environ.get("https_proxy"),
-			os.environ.get("no_proxy"),
-		)
-	)
 	logger.info(
 		"Using proxy settings: http_proxy=%r, https_proxy=%r, no_proxy=%r",
 		proxy_url if proxy_url and proxy_url.lower() != "system" else os.environ.get("http_proxy"),
