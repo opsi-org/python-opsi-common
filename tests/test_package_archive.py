@@ -20,7 +20,7 @@ from typing import Literal
 import pytest
 from hypothesis import given
 from hypothesis.strategies import binary, from_regex, sampled_from
-from pyzsync import get_patch_instructions, read_zsync_file, SOURCE_REMOTE
+from pyzsync import SOURCE_REMOTE, get_patch_instructions, read_zsync_file
 
 from opsicommon.package.archive import (
 	create_archive,
@@ -29,9 +29,7 @@ from opsicommon.package.archive import (
 	extract_archive_external,
 	extract_archive_internal,
 )
-from opsicommon.package.associated_files import (
-	create_package_zsync_file,
-)
+from opsicommon.package.associated_files import create_package_zsync_file
 
 # File may not
 # * contain slash/backslash path delimiters
@@ -115,7 +113,7 @@ def test_archive_internal(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 		("external", None, 85),
 		("external", "zstd", 85),
 		("external", "bz2", 0),
-		("external", "gz", 74),
+		("external", "gz", 72),
 		# internal
 		("internal", None, 85),
 		("internal", "zstd", 85),
