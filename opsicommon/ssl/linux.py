@@ -7,13 +7,13 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import os
-import subprocess
 from typing import Tuple
 
 import distro
 from OpenSSL import crypto  # type: ignore[import]
 
 from opsicommon.logging import get_logger
+from opsicommon.utils import execute
 
 __all__ = ("install_ca", "load_ca", "remove_ca")
 
@@ -47,8 +47,7 @@ def install_ca(ca_cert: crypto.X509) -> None:
 	with open(cert_file, "wb") as file:
 		file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, ca_cert))
 
-	output = subprocess.check_output([cmd], shell=False)
-	logger.debug("Output of '%s': %s", cmd, output)
+	execute([cmd])
 
 
 def load_ca(subject_name: str) -> crypto.X509:
@@ -87,6 +86,5 @@ def remove_ca(subject_name: str) -> bool:
 		logger.info("CA '%s' not found in '%s', nothing to remove", subject_name, system_cert_path)
 		return False
 
-	output = subprocess.check_output([cmd], shell=False)
-	logger.debug("Output of '%s': %s", cmd, output)
+	execute([cmd])
 	return True

@@ -13,6 +13,7 @@ import tempfile
 from OpenSSL import crypto  # type: ignore[import]
 
 from opsicommon.logging import get_logger
+from opsicommon.utils import execute
 
 __all__ = ("install_ca", "load_ca", "remove_ca")
 
@@ -27,10 +28,7 @@ def install_ca(ca_cert: crypto.X509) -> None:
 	pem_file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, ca_cert))
 	pem_file.close()
 	try:
-		subprocess.check_call(
-			["security", "add-trusted-cert", "-d", "-r", "trustRoot", "-k", "/Library/Keychains/System.keychain", pem_file.name],
-			shell=False,
-		)
+		execute(["security", "add-trusted-cert", "-d", "-r", "trustRoot", "-k", "/Library/Keychains/System.keychain", pem_file.name])
 	finally:
 		os.remove(pem_file.name)
 
@@ -65,9 +63,7 @@ def remove_ca(subject_name: str) -> bool:
 		sha1_hash = ca_cert.digest("sha1").decode("ascii").replace(":", "")
 		if removed_sha1_hash and sha1_hash == removed_sha1_hash:
 			raise RuntimeError(f"Failed to remove certficate {removed_sha1_hash}")
-		subprocess.check_call(
-			["security", "delete-certificate", "-Z", sha1_hash, "/Library/Keychains/System.keychain", "-t"], shell=False
-		)
+		execute(["security", "delete-certificate", "-Z", sha1_hash, "/Library/Keychains/System.keychain", "-t"])
 		removed_sha1_hash = sha1_hash
 		ca_cert = load_ca(subject_name)
 	return True

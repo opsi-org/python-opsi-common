@@ -26,6 +26,7 @@ from ipaddress import (
 	ip_network,
 )
 from pathlib import Path
+from types import EllipsisType
 from typing import TYPE_CHECKING, Any, Callable, Generator, Literal, Type, Union
 
 import requests
@@ -356,3 +357,21 @@ def ip_address_in_network(address: str | IPv4Address | IPv6Address, network: str
 		network = ip_network(network)
 
 	return address in network
+
+
+def execute(
+	cmd: list[str], allow_exit_codes: list[int | EllipsisType] | tuple[int | EllipsisType] | None = None
+) -> subprocess.CompletedProcess:
+	allow_exit_codes = allow_exit_codes or [0]
+	logger.info("Executing: %s", cmd)
+	try:
+		proc = subprocess.run(cmd, shell=False, check=False, capture_output=True, text=True, encoding="utf-8")
+		out = proc.stderr + proc.stdout
+		logger.debug("Command %s output: %s", cmd, out)
+		if ... not in allow_exit_codes and proc.returncode not in allow_exit_codes:
+			err = f"Command failed: {proc.returncode} - {out}"
+			raise RuntimeError(err)
+		return proc
+	except FileNotFoundError as exc:
+		err = f"Command {cmd[0]!r} not found"
+		raise RuntimeError(err) from exc
