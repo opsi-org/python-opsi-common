@@ -53,6 +53,10 @@ def test_repo_meta_package_compatibility() -> None:
 	assert comp.os == "linux"
 	assert comp.arch == "arm64"
 
+	comp = RepoMetaPackageCompatibility.from_string("opsi-local-image-x64")
+	assert comp.os == "opsi-local-image"
+	assert comp.arch == "x64"
+
 	for string in ("linux-invalid", "invalid-all", "linux", "all", "linux-amd64"):
 		with pytest.raises(ValueError):
 			comp = RepoMetaPackageCompatibility.from_string(string)

@@ -17,11 +17,12 @@ from typing import Any, Callable, Generator
 import packaging.version as packver
 import zstandard
 from msgspec import json, msgpack
+
 from opsicommon.logging import get_logger
 from opsicommon.objects import ProductDependency
 from opsicommon.package import OpsiPackage, PackageDependency
 from opsicommon.system import lock_file
-from opsicommon.types import OperatingSystem, Architecture
+from opsicommon.types import Architecture, OperatingSystem
 
 logger = get_logger("opsicommon.package")
 
@@ -54,9 +55,10 @@ class RepoMetaPackageCompatibility:
 	@classmethod
 	def from_string(cls, data: str) -> RepoMetaPackageCompatibility:
 		os_arch = data.split("-")
-		if len(os_arch) != 2:
+		if len(os_arch) < 2:
 			raise ValueError(f"Invalid compatibility string: {data!r} (<os>-<arch> needed)")
-		return RepoMetaPackageCompatibility(os=OperatingSystem(os_arch[0]), arch=Architecture(os_arch[1]))
+		# operating system may contain "-" like opsi-local-image
+		return RepoMetaPackageCompatibility(os=OperatingSystem("-".join(os_arch[:-1])), arch=Architecture(os_arch[-1]))
 
 
 @dataclass
