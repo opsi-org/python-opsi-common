@@ -13,7 +13,11 @@ packages = [
 [[tool.poetry.source]]
 name = "uibpypi"
 url = "http://pypi.uib.gmbh:8080/simple"
-secondary = true
+priority = "supplemental"
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
@@ -31,7 +35,7 @@ requests = ">=2.26"
 rich = ">=13.0"
 websocket-client = ">=1.4"
 zstandard = ">=0.21"
-pyzsync = ">=0.9"
+pyzsync = ">=1.2"
 
 [tool.poetry.group.dev.dependencies]
 hypothesis = ">=6.32"
