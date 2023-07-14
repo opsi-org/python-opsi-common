@@ -199,7 +199,7 @@ class MultiprocessTask(multiprocessing.Process):
 )
 def test_lock_file(tmp_path: Path, task_type: type) -> None:
 	test_file = tmp_path / "test.bin"
-	res_queue: queue.Queue = queue.Queue() if task_type == ThreadTask else multiprocessing.Queue()
+	res_queue: queue.Queue | multiprocessing.Queue = queue.Queue() if task_type == ThreadTask else multiprocessing.Queue()
 
 	# Exclusive lock / write lock
 	num_tasks = 10
