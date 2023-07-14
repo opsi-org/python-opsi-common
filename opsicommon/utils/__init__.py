@@ -232,7 +232,7 @@ def make_temp_dir(base: Path | None = None) -> Generator[Path, None, None]:
 		if base and not base.exists():
 			base.mkdir(parents=True)
 	except PermissionError as error:
-		logger.error("Failed to create temporary directory at %s, falling back to default: %s", base, error)
+		logger.info("Failed to create temporary directory at %s, falling back to default: %s", base, error)
 		base = None
 	with tempfile.TemporaryDirectory(dir=base) as tmp_dir_name:
 		yield Path(tmp_dir_name)
