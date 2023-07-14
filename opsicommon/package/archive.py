@@ -134,7 +134,7 @@ def extract_archive_external(archive: Path, destination: Path, file_pattern: str
 	if archive.suffixes and archive.suffixes[-1] in (".zstd", ".gz", ".gzip", ".bz2", ".bzip2"):
 		create_input = decompress_command(archive.absolute())
 	else:
-		create_input = f"cat {archive.absolute()}"
+		create_input = f"cat '{archive.absolute()}'"
 	process_archive = extract_command(archive.absolute(), file_pattern=file_pattern)
 	with chdir(destination):
 		cmd = f"{create_input} | {process_archive}"
