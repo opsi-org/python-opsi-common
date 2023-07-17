@@ -480,13 +480,13 @@ files = [
 
 [[package]]
 name = "hypothesis"
-version = "6.81.1"
+version = "6.81.2"
 description = "A library for property-based testing"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "hypothesis-6.81.1-py3-none-any.whl", hash = "sha256:f370dc76c2c036298e345dc207ec80f2ce695f95166a5d358988464b34a53e0f"},
-    {file = "hypothesis-6.81.1.tar.gz", hash = "sha256:89c1afad5000a1cc89409fff4187e6118816a6cac80195c8c719efda14a8ce52"},
+    {file = "hypothesis-6.81.2-py3-none-any.whl", hash = "sha256:4dafc0d3fc0e802ee5fa863e05e2cde54b9336e300d6c46f4e78b23b00cfa67a"},
+    {file = "hypothesis-6.81.2.tar.gz", hash = "sha256:e35165a73064370d30d476d7218f600d2bf861ff218192c9e994cb36aa190ae7"},
 ]
 
 [package.dependencies]
@@ -1063,13 +1063,13 @@ pylint = ">=2.12.0,<3.0"
 
 [[package]]
 name = "platformdirs"
-version = "3.8.1"
+version = "3.9.1"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "platformdirs-3.8.1-py3-none-any.whl", hash = "sha256:cec7b889196b9144d088e4c57d9ceef7374f6c39694ad1577a0aab50d27ea28c"},
-    {file = "platformdirs-3.8.1.tar.gz", hash = "sha256:f87ca4fcff7d2b0f81c6a748a77973d7af0f4d526f98f308477c3c436c74d528"},
+    {file = "platformdirs-3.9.1-py3-none-any.whl", hash = "sha256:ad8291ae0ae5072f66c16945166cb11c63394c7a3ad1b1bc9828ca3162da8c2f"},
+    {file = "platformdirs-3.9.1.tar.gz", hash = "sha256:1b42b450ad933e981d56e59f1b97495428c9bd60698baab9f3eb3d00d5822421"},
 ]
 
 [package.extras]
