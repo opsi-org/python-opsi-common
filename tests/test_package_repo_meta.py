@@ -105,6 +105,8 @@ def test_repo_meta_package(tmp_path: Path) -> None:
 	assert repo_meta_package.md5_hash == "15329eb8cd987f46024b593f200b5295"
 	assert repo_meta_package.sha256_hash == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 	assert repo_meta_package.product_id == "localboot_new"
+	assert repo_meta_package.name == "localboot new"
+	assert repo_meta_package.priority == 10
 	assert repo_meta_package.product_version == "42.0"
 	assert repo_meta_package.package_version == "1337"
 	assert repo_meta_package.product_dependencies == [
@@ -211,6 +213,8 @@ def test_repo_meta_package_collection_add_package(tmp_path: Path) -> None:
 	assert len(package_collection.packages["localboot_new"]) == 1
 	assert package_collection.packages["localboot_new"]["1.0-1"].url == "localboot_new_1.0-1.opsi"
 	assert package_collection.packages["localboot_new"]["1.0-1"].compatibility == compatibility
+	assert package_collection.packages["localboot_new"]["1.0-1"].priority == 0
+	assert package_collection.packages["localboot_new"]["1.0-1"].name == "localboot_new"
 
 	# Check if update adds new package and keeps others with --num-allowed-versions
 	package_collection.add_package(repository_dir, repository_dir / "localboot_new_2.0-1.opsi", num_allowed_versions=2, url="my/url.opsi")

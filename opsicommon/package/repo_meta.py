@@ -106,8 +106,10 @@ class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
 	md5_hash: str
 	sha256_hash: str
 	product_id: str
+	name: str
 	product_version: str
 	package_version: str
+	priority: int = 0
 	product_dependencies: list[RepoMetaPackageDependency] = field(default_factory=list)
 	package_dependencies: list[RepoMetaProductDependency] = field(default_factory=list)
 	description: str | None = None
@@ -134,8 +136,10 @@ class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
 
 		opsi_package = OpsiPackage(package_file)
 		data["product_id"] = opsi_package.product.id
+		data["name"] = opsi_package.product.name
 		data["product_version"] = opsi_package.product.productVersion
 		data["package_version"] = opsi_package.product.packageVersion
+		data["priority"] = opsi_package.product.priority or 0
 		data["description"] = opsi_package.product.description
 		data["product_dependencies"] = [RepoMetaProductDependency.from_product_dependency(d) for d in opsi_package.product_dependencies]
 		data["package_dependencies"] = [RepoMetaPackageDependency.from_package_dependency(d) for d in opsi_package.package_dependencies]
