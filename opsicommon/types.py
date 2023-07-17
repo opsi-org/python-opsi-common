@@ -149,7 +149,7 @@ class OperatingSystem(StrEnum):
 	WINDOWS = "windows"
 	MACOS = "macos"
 	LINUX = "linux"
-	OPSILOCALIMAGE = "opsi-local-image"
+	OPSI_LOCAL_IMAGE = "opsi-local-image"
 
 
 class Architecture(StrEnum):
