@@ -106,9 +106,9 @@ class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
 	md5_hash: str
 	sha256_hash: str
 	product_id: str
-	name: str
 	product_version: str
 	package_version: str
+	name: str | None = None
 	priority: int = 0
 	product_dependencies: list[RepoMetaPackageDependency] = field(default_factory=list)
 	package_dependencies: list[RepoMetaProductDependency] = field(default_factory=list)
