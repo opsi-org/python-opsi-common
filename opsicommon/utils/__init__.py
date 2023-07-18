@@ -6,6 +6,8 @@
 General utility functions.
 """
 
+from __future__ import annotations
+
 import functools
 import json
 import os
@@ -29,7 +31,6 @@ from pathlib import Path
 from types import EllipsisType
 from typing import TYPE_CHECKING, Any, Callable, Generator, Literal, Type, Union
 
-import requests
 from packaging.version import InvalidVersion, Version
 
 from opsicommon.logging import get_logger
@@ -43,6 +44,7 @@ else:
 if TYPE_CHECKING:
 	from opsicommon.objects import BaseObject as TBaseObject
 	from opsicommon.objects import Product, ProductOnClient, ProductOnDepot
+	from requests import Session
 
 OBJECT_CLASSES: dict[str, Type["TBaseObject"]] = {}
 BaseObject: Type["TBaseObject"] | None = None  # pylint: disable=invalid-name
@@ -100,8 +102,8 @@ class Singleton(type):
 
 
 def prepare_proxy_environment(  # pylint: disable=too-many-branches
-	hostname: str, proxy_url: str | None = "system", no_proxy_addresses: list[str] | None = None, session: requests.Session | None = None
-) -> requests.Session:
+	hostname: str, proxy_url: str | None = "system", no_proxy_addresses: list[str] | None = None, session: Session | None = None
+) -> Session:
 	"""
 	proxy_url can be:
 	* an explicid url like http://10.10.10.1:8080
@@ -119,7 +121,10 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 	if no_proxy_addresses is None:
 		no_proxy_addresses = ["::1", "127.0.0.1", "ip6-localhost", "localhost"]
 	if session is None:
-		session = requests.Session()
+		# Import is slow
+		from requests import Session  # pylint: disable=import-outside-toplevel
+
+		session = Session()
 	if proxy_url:
 		# Use a proxy
 		no_proxy = [x.strip() for x in os.environ.get("no_proxy", "").split(",") if x.strip()]
