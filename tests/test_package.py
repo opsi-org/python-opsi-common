@@ -204,7 +204,7 @@ def test_load_package(product_type: str, form: str) -> None:
 	"new_product_id",
 	(None, "newproductid"),
 )
-def test_extract_package(new_product_id: str | None) -> None:
+def test_extract_package_localboot(new_product_id: str | None) -> None:
 	with make_temp_dir() as temp_dir:
 		test_package = OpsiPackage()
 		test_package.extract_package_archive(TEST_DATA / "localboot_legacy_42.0-1337.opsi", temp_dir, new_product_id=new_product_id)
@@ -220,6 +220,13 @@ def test_extract_package(new_product_id: str | None) -> None:
 		result = OpsiPackage()
 		result.find_and_parse_control_file(temp_dir / "OPSI")
 		assert result.product.getId() == (new_product_id or "localboot_legacy")
+
+
+@pytest.mark.linux
+def test_extract_package_memtest() -> None:
+	with make_temp_dir() as temp_dir:
+		test_package = OpsiPackage()
+		test_package.extract_package_archive(TEST_DATA / "memtest86_cpio_6.20-1.opsi", temp_dir)
 
 
 @pytest.mark.parametrize(
