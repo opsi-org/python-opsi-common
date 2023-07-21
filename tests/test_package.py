@@ -228,23 +228,23 @@ def test_extract_package_memtest() -> None:
 		test_package = OpsiPackage()
 		test_package.extract_package_archive(TEST_DATA / "memtest86_cpio_6.20-1.opsi", temp_dir)
 		assert test_package.product.getId() == "memtest86"
-		contents = list(temp_dir.rglob("*"))
+		contents = sorted(temp_dir.rglob("*"))
 		assert contents == [
 			Path(temp_dir) / "CLIENT_DATA",
-			Path(temp_dir) / "SERVER_DATA",
-			Path(temp_dir) / "OPSI",
 			Path(temp_dir) / "CLIENT_DATA/setup.py",
-			Path(temp_dir) / "SERVER_DATA/tmp",
-			Path(temp_dir) / "SERVER_DATA/tmp/memtest",
-			Path(temp_dir) / "SERVER_DATA/tmp/memtest/memtest64.efi",
-			Path(temp_dir) / "SERVER_DATA/tmp/memtest/cfg",
-			Path(temp_dir) / "SERVER_DATA/tmp/memtest/memtest64.bin",
-			Path(temp_dir) / "SERVER_DATA/tmp/memtest/cfg/memtest86.efi",
-			Path(temp_dir) / "SERVER_DATA/tmp/memtest/cfg/memtest86",
-			Path(temp_dir) / "SERVER_DATA/tmp/memtest/cfg/memtest86.v43",
+			Path(temp_dir) / "OPSI",
 			Path(temp_dir) / "OPSI/control",
 			Path(temp_dir) / "OPSI/postinst",
 			Path(temp_dir) / "OPSI/preinst",
+			Path(temp_dir) / "SERVER_DATA",
+			Path(temp_dir) / "SERVER_DATA/tmp",
+			Path(temp_dir) / "SERVER_DATA/tmp/memtest",
+			Path(temp_dir) / "SERVER_DATA/tmp/memtest/cfg",
+			Path(temp_dir) / "SERVER_DATA/tmp/memtest/cfg/memtest86",
+			Path(temp_dir) / "SERVER_DATA/tmp/memtest/cfg/memtest86.efi",
+			Path(temp_dir) / "SERVER_DATA/tmp/memtest/cfg/memtest86.v43",
+			Path(temp_dir) / "SERVER_DATA/tmp/memtest/memtest64.bin",
+			Path(temp_dir) / "SERVER_DATA/tmp/memtest/memtest64.efi",
 		]
 
 
