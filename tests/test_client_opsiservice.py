@@ -22,6 +22,11 @@ from warnings import catch_warnings, simplefilter
 import asyncio
 from socket import AF_INET
 
+from OpenSSL.crypto import (  # type: ignore[import]
+	FILETYPE_PEM,
+	X509,
+	load_certificate,
+)
 import pproxy  # type: ignore[import]
 import psutil
 import lz4.frame  # type: ignore[import,no-redef]
@@ -30,6 +35,7 @@ import pytest
 from opsicommon import __version__
 from opsicommon.system.info import is_macos, is_windows
 from opsicommon.client.opsiservice import (
+	OpsiCaState,
 	MIN_VERSION_GZIP,
 	MIN_VERSION_LZ4,
 	MIN_VERSION_MESSAGEBUS,
@@ -203,6 +209,139 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 	assert ServiceClient("::1", connect_timeout=123)._connect_timeout == 123.0  # pylint: disable=protected-access
 	assert ServiceClient("::1", connect_timeout=1.2)._connect_timeout == 1.2  # pylint: disable=protected-access
 	assert ServiceClient("::1", connect_timeout=-1)._connect_timeout == 0.0  # pylint: disable=protected-access
+
+
+def test_read_write_ca_cert_file(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
+	ca_cert_file = tmpdir / "ca_certs.pem"
+	ca_cert1, _ = create_ca(subject={"CN": "python-opsi-common test CA 1"}, valid_days=30)
+	ca_cert2, _ = create_ca(subject={"CN": "python-opsi-common test CA 2"}, valid_days=30)
+	ca_cert3, _ = create_ca(subject={"CN": "python-opsi-common test CA 3"}, valid_days=30)
+	service_client = ServiceClient("localhost", ca_cert_file=ca_cert_file)
+
+	pem = as_pem(ca_cert1) + as_pem(ca_cert2) + as_pem(ca_cert3)
+	ca_cert_file.write_text(pem, encoding="utf-8")
+	certs = service_client.read_ca_cert_file()
+	assert len(certs) == 3
+	assert certs[0].get_subject() == ca_cert1.get_subject()
+	assert certs[1].get_subject() == ca_cert2.get_subject()
+	assert certs[2].get_subject() == ca_cert3.get_subject()
+
+	pem = pem.replace("-\n-", "--")
+	ca_cert_file.write_text(pem, encoding="utf-8")
+	certs = service_client.read_ca_cert_file()
+	assert len(certs) == 3
+	assert certs[0].get_subject() == ca_cert1.get_subject()
+	assert certs[1].get_subject() == ca_cert2.get_subject()
+	assert certs[2].get_subject() == ca_cert3.get_subject()
+
+	pem = "\r\n\r\n\r\ngarbage" + as_pem(ca_cert1) + "\ngarbage\r\n\n" + as_pem(ca_cert2) + "garbage" + as_pem(ca_cert3) + "garbage\n\n\r\n"
+	ca_cert_file.write_text(pem, encoding="utf-8")
+	certs = service_client.read_ca_cert_file()
+	assert len(certs) == 3
+	assert certs[0].get_subject() == ca_cert1.get_subject()
+	assert certs[1].get_subject() == ca_cert2.get_subject()
+	assert certs[2].get_subject() == ca_cert3.get_subject()
+
+	ca_cert_file = tmpdir / "new" / "dir" / "ca_certs.pem"
+	service_client = ServiceClient("localhost", ca_cert_file=ca_cert_file)
+	service_client.write_ca_cert_file(certs)
+	certs = service_client.read_ca_cert_file()
+	assert len(certs) == 3
+	assert certs[0].get_subject() == ca_cert1.get_subject()
+	assert certs[1].get_subject() == ca_cert2.get_subject()
+	assert certs[2].get_subject() == ca_cert3.get_subject()
+
+	service_client.write_ca_cert_file(certs + certs + certs)
+	certs = service_client.read_ca_cert_file()
+	assert len(certs) == 3
+	assert certs[0].get_subject() == ca_cert1.get_subject()
+	assert certs[1].get_subject() == ca_cert2.get_subject()
+	assert certs[2].get_subject() == ca_cert3.get_subject()
+
+	class CAWriteThread(Thread):
+		def __init__(self, client: ServiceClient, certs: list[X509]) -> None:
+			super().__init__(daemon=True)
+			self.client = client
+			self.certs = certs
+
+		def run(self) -> None:
+			self.client.write_ca_cert_file(self.certs)
+
+	class CAReadThread(Thread):
+		def __init__(self, client: ServiceClient) -> None:
+			super().__init__(daemon=True)
+			self.client = client
+			self.certs: list[X509] = []
+
+		def run(self) -> None:
+			self.certs = self.client.read_ca_cert_file()
+
+	write_threads = [CAWriteThread(service_client, certs) for _ in range(50)]
+	read_threads = [CAReadThread(service_client) for _ in range(50)]
+	for idx in range(len(write_threads)):  # pylint: disable=consider-using-enumerate
+		write_threads[idx].start()
+		read_threads[idx].start()
+
+	for idx in range(len(write_threads)):  # pylint: disable=consider-using-enumerate
+		write_threads[idx].join()
+		read_threads[idx].join()
+		assert len(read_threads[idx].certs) == 3
+
+	certs = service_client.read_ca_cert_file()
+	assert len(certs) == 3
+	assert certs[0].get_subject() == ca_cert1.get_subject()
+	assert certs[1].get_subject() == ca_cert2.get_subject()
+	assert certs[2].get_subject() == ca_cert3.get_subject()
+
+	uib_opsi_ca = load_certificate(FILETYPE_PEM, UIB_OPSI_CA.encode("utf-8"))
+	service_client.add_uib_opsi_ca_to_cert_file()
+	certs = service_client.read_ca_cert_file()
+	assert len(certs) == 4
+	assert certs[0].get_subject() == ca_cert1.get_subject()
+	assert certs[1].get_subject() == ca_cert2.get_subject()
+	assert certs[2].get_subject() == ca_cert3.get_subject()
+	assert certs[3].get_subject() == uib_opsi_ca.get_subject()
+
+	service_client.add_uib_opsi_ca_to_cert_file()
+	service_client.add_uib_opsi_ca_to_cert_file()
+	service_client.add_uib_opsi_ca_to_cert_file()
+	certs = service_client.read_ca_cert_file()
+	assert len(certs) == 4
+	assert certs[0].get_subject() == ca_cert1.get_subject()
+	assert certs[1].get_subject() == ca_cert2.get_subject()
+	assert certs[2].get_subject() == ca_cert3.get_subject()
+	assert certs[3].get_subject() == uib_opsi_ca.get_subject()
+
+	pem = "\r\n\r\n\r\ngarbage" + as_pem(ca_cert2) + "\ngarbage\r\n\n" + as_pem(ca_cert3) + "garbage" + as_pem(ca_cert1) + "garbage\n\n\r\n"
+	ca_cert_file.write_text(pem, encoding="utf-8")
+	service_client.add_uib_opsi_ca_to_cert_file()
+	certs = service_client.read_ca_cert_file()
+	assert len(certs) == 4
+
+
+def test_get_opsi_ca_state(tmpdir: Path) -> None:
+	ca_cert_file = tmpdir / "ca_certs.pem"
+	service_client = ServiceClient("localhost", ca_cert_file=ca_cert_file)
+	assert service_client.get_opsi_ca_state() == OpsiCaState.UNAVAILABLE
+
+	service_client.add_uib_opsi_ca_to_cert_file()
+	certs = service_client.read_ca_cert_file()
+	assert len(certs) == 1
+	assert service_client.get_opsi_ca_state() == OpsiCaState.UNAVAILABLE
+
+	ca_cert, _ = create_ca(subject={"CN": "python-opsi-common test CA 1"}, valid_days=30)
+	certs.append(ca_cert)
+	service_client.write_ca_cert_file(certs)
+	assert service_client.get_opsi_ca_state() == OpsiCaState.AVAILABLE
+
+	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test CA 1"}, valid_days=1)
+	ca_cert.gmtime_adj_notBefore(-200 * 24 * 3600)
+	ca_cert.gmtime_adj_notAfter(-100 * 24 * 3600)
+	ca_cert.sign(ca_key, "sha256")
+	certs = [ca_cert]
+	service_client.write_ca_cert_file(certs)
+	service_client.add_uib_opsi_ca_to_cert_file()
+	assert service_client.get_opsi_ca_state() == OpsiCaState.EXPIRED
 
 
 def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements

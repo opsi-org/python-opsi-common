@@ -76,6 +76,7 @@ from ..messagebus import (
 	timestamp,
 )
 from ..objects import deserialize, serialize
+from ..ssl.common import subject_to_dict
 from ..system import lock_file, set_system_datetime
 from ..types import forceHostId, forceOpsiHostKey
 from ..utils import prepare_proxy_environment
@@ -491,6 +492,45 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			if listener in self._listener:
 				self._listener.remove(listener)
 
+	def certs_from_pem(self, pem_data: str) -> list[X509]:
+		certs = []
+		for match in re.finditer(r"BEGIN CERTIFICATE-+(.*?)-+END CERTIFICATE", pem_data, re.DOTALL):
+			try:
+				pem = f"-----BEGIN CERTIFICATE-----{match.group(1)}-----END CERTIFICATE-----"
+				certs.append(load_certificate(FILETYPE_PEM, pem.encode("utf-8")))
+			except Exception as err:  # pylint: disable=broad-except
+				logger.error("Failed to load cert %r: %s", match.group(1), err, exc_info=True)
+		return certs
+
+	def read_ca_cert_file(self) -> list[X509]:
+		if not self._ca_cert_file:
+			raise RuntimeError("CA cert file not set")
+
+		with open(self._ca_cert_file, "r", encoding="utf-8") as file:
+			with lock_file(file=file, exclusive=False, timeout=5.0):
+				return self.certs_from_pem(file.read())
+
+	def write_ca_cert_file(self, certs: list[X509]) -> None:
+		if not self._ca_cert_file:
+			raise RuntimeError("CA cert file not set")
+
+		self._ca_cert_file.parent.mkdir(parents=True, exist_ok=True)
+		certs_pem = []
+		subjects = []
+		for cert in certs:
+			subj = subject_to_dict(cert.get_subject())
+			if subj in subjects:
+				continue
+			certs_pem.append(dump_certificate(FILETYPE_PEM, cert).decode("utf-8").strip() + "\n")
+			subjects.append(subj)
+		with open(self._ca_cert_file, "a+", encoding="utf-8") as file:
+			with lock_file(file=file, exclusive=True, timeout=5.0):
+				file.seek(0)
+				file.truncate()
+				file.write("".join(certs_pem))
+
+		logger.info("CA cert file '%s' successfully updated (%d certificates total)", self._ca_cert_file, len(certs))
+
 	def fetch_opsi_ca(self, skip_verify: bool = False) -> None:
 		if not self._ca_cert_file:
 			raise RuntimeError("CA cert file not set")
@@ -498,76 +538,46 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		verify = False if skip_verify else self._session.verify
 		logger.info("Fetching opsi CA from service (verify=%s)", verify)
 
-		ca_certs = []
-		self._ca_cert_file.parent.mkdir(exist_ok=True)
-
 		try:  # pylint: disable=broad-except
 			response = self._session.get(f"{self.base_url}/ssl/opsi-ca-cert.pem", timeout=(self._connect_timeout, 5), verify=verify)
 			response.raise_for_status()
 		except Exception as err:
 			raise OpsiServiceError(f"Failed to fetch opsi-ca-cert.pem: {err}") from err
 
-		for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", response.text, re.DOTALL):
-			try:
-				ca_certs.append(load_certificate(FILETYPE_PEM, match.group(1).encode("utf-8")))
-			except Exception as err:  # pylint: disable=broad-except
-				logger.error("Failed to load cert %r: %s", match.group(1), err, exc_info=True)
-
+		ca_certs = self.certs_from_pem(response.text)
 		if not ca_certs:
 			raise OpsiServiceError("Failed to fetch opsi-ca-cert.pem: No certificates in response")
 
-		certs = [dump_certificate(FILETYPE_PEM, cert).decode("utf-8") for cert in ca_certs]
 		if ServiceVerificationFlags.UIB_OPSI_CA in self._verify:
-			certs.append(UIB_OPSI_CA)
+			ca_certs.extend(self.certs_from_pem(UIB_OPSI_CA))
 
-		with open(self._ca_cert_file, "a+", encoding="utf-8") as file:
-			with lock_file(file=file, exclusive=True, timeout=5.0):
-				file.seek(0)
-				file.truncate()
-				file.write("\n".join(certs))
-
-		logger.info("CA cert file '%s' successfully updated (%d certificates total)", self._ca_cert_file, len(certs))
+		self.write_ca_cert_file(ca_certs)
 
 	def add_uib_opsi_ca_to_cert_file(self) -> None:
 		if not self._ca_cert_file:
 			raise RuntimeError("CA cert file not set")
 
-		with open(self._ca_cert_file, "a+", encoding="utf-8") as file:
-			with lock_file(file=file, exclusive=True, timeout=5.0):
-				certs = []
-				file.seek(0)
-				# Read all certs from file except UIB_OPSI_CA
-				for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", file.read(), re.DOTALL):
-					cert = load_certificate(FILETYPE_PEM, match.group(1).encode("ascii"))
-					if cert.get_subject().CN != self._uib_opsi_ca_cert.get_subject().CN:
-						certs.append(dump_certificate(FILETYPE_PEM, cert).decode("ascii"))
-				certs.append(UIB_OPSI_CA)
-				file.seek(0)
-				file.truncate()
-				file.write("\n".join(certs))
-				logger.info("UIB OPSI CA added to cert file '%s' (%d certificates total)", self._ca_cert_file, len(certs))
+		uib_opsi_ca_cn = self._uib_opsi_ca_cert.get_subject().CN
+		ca_certs = [cert for cert in self.get_opsi_ca_certs() if cert.get_subject().CN != uib_opsi_ca_cn]
+		ca_certs.extend(self.certs_from_pem(UIB_OPSI_CA))
+		self.write_ca_cert_file(ca_certs)
+		logger.info("uib opsi CA added to cert file '%s' (%d certificates total)", self._ca_cert_file, len(ca_certs))
 
 	def get_opsi_ca_certs(self) -> list[X509]:
 		ca_certs: list[X509] = []
 		if not self._ca_cert_file or not self._ca_cert_file.exists() or self._ca_cert_file.stat().st_size == 0:
 			return ca_certs
 		try:
-			with open(self._ca_cert_file, "r", encoding="utf-8") as file:
-				with lock_file(file=file, exclusive=False, timeout=5.0):
-					data = file.read()
-			for match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", data, re.DOTALL):
-				try:
-					ca_certs.append(load_certificate(FILETYPE_PEM, match.group(1).encode("utf-8")))
-				except Exception as err:  # pylint: disable=broad-except
-					logger.error(err, exc_info=True)
+			ca_certs = self.read_ca_cert_file()
 		except Exception as err:  # pylint: disable=broad-except
 			logger.warning(err, exc_info=True)
 		return ca_certs
 
 	def get_opsi_ca_state(self) -> OpsiCaState:
 		now = datetime.now()
+		uib_opsi_ca_cn = self._uib_opsi_ca_cert.get_subject().CN
 		for cert in self.get_opsi_ca_certs():
-			if cert.get_subject().CN != self._uib_opsi_ca_cert.get_subject().CN:
+			if cert.get_subject().CN != uib_opsi_ca_cn:
 				enddate = datetime.strptime((cert.get_notAfter() or b"").decode("utf-8"), "%Y%m%d%H%M%SZ")
 				if enddate <= now:
 					logger.notice("Expired certificate found: %r", cert)

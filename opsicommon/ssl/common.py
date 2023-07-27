@@ -29,6 +29,18 @@ SERVER_KEY_BITS = 4096
 logger = get_logger("opsicommon.general")
 
 
+def subject_to_dict(subject: X509Name) -> dict[str, str]:
+	return {
+		"C": subject.C,
+		"ST": subject.ST,
+		"L": subject.L,
+		"O": subject.O,
+		"OU": subject.OU,
+		"CN": subject.CN,
+		"emailAddress": subject.emailAddress,
+	}
+
+
 def as_pem(cert_or_key: Union[X509, PKey], passphrase: Optional[str] = None) -> str:
 	if isinstance(cert_or_key, X509):
 		return dump_certificate(FILETYPE_PEM, cert_or_key).decode("ascii")
