@@ -263,18 +263,26 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:  # pylint: disable=too-m
 			super().__init__(daemon=True)
 			self.client = client
 			self.certs = certs
+			self.err: Exception | None = None
 
 		def run(self) -> None:
-			self.client.write_ca_cert_file(self.certs)
+			try:
+				self.client.write_ca_cert_file(self.certs)
+			except Exception as err:  # pylint: disable=broad-exception-caught
+				self.err = err
 
 	class CAReadThread(Thread):
 		def __init__(self, client: ServiceClient) -> None:
 			super().__init__(daemon=True)
 			self.client = client
 			self.certs: list[X509] = []
+			self.err: Exception | None = None
 
 		def run(self) -> None:
-			self.certs = self.client.read_ca_cert_file()
+			try:
+				self.certs = self.client.read_ca_cert_file()
+			except Exception as err:  # pylint: disable=broad-exception-caught
+				self.err = err
 
 	write_threads = [CAWriteThread(service_client, certs) for _ in range(50)]
 	read_threads = [CAReadThread(service_client) for _ in range(50)]
@@ -285,7 +293,8 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:  # pylint: disable=too-m
 	for idx in range(len(write_threads)):  # pylint: disable=consider-using-enumerate
 		write_threads[idx].join()
 		read_threads[idx].join()
-		assert len(read_threads[idx].certs) == 3
+		assert not write_threads[idx].err
+		assert not read_threads[idx].err
 
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 3
