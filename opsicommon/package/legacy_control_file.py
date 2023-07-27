@@ -154,11 +154,11 @@ class LegacyControlFile:
 				elif key == "type":
 					value = forceProductType(value)
 				elif key == "name":
-					value = forceUnicode(value) if value else None
+					value = forceUnicode(value or "")
 				elif key == "description":
-					value = forceUnicode(value) if value else None
+					value = forceUnicode(value or "")
 				elif key == "advice":
-					value = forceUnicode(value) if value else None
+					value = forceUnicode(value or "")
 				elif key == "version":
 					value = forceProductVersion(value)
 				elif key == "packageversion":
@@ -168,23 +168,23 @@ class LegacyControlFile:
 				elif key == "licenserequired":
 					value = forceBool(value)
 				elif key == "productclasses":
-					value = forceUnicodeLower(value) if value else None
+					value = forceUnicodeLower(value or "")
 				elif key == "pxeconfigtemplate":
-					value = forceFilename(value) if value else None
+					value = forceFilename(value or "")
 				elif key == "setupscript":
-					value = forceFilename(value) if value else None
+					value = forceFilename(value or "")
 				elif key == "uninstallscript":
-					value = forceFilename(value) if value else None
+					value = forceFilename(value or "")
 				elif key == "updatescript":
-					value = forceFilename(value) if value else None
+					value = forceFilename(value or "")
 				elif key == "alwaysscript":
-					value = forceFilename(value) if value else None
+					value = forceFilename(value or "")
 				elif key == "oncescript":
-					value = forceFilename(value) if value else None
+					value = forceFilename(value or "")
 				elif key == "customscript":
-					value = forceFilename(value) if value else None
+					value = forceFilename(value or "")
 				elif key == "userloginscript":
-					value = forceFilename(value) if value else None
+					value = forceFilename(value or "")
 
 			elif sectionType == "windows" and key in ("softwareids",):
 				option = key
