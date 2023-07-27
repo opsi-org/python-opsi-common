@@ -186,7 +186,7 @@ class LegacyControlFile:
 				elif key == "userloginscript":
 					value = forceFilename(value or "")
 
-				if value and value.lower() == "none":
+				if value and isinstance(value, str) and value.lower() == "none":
 					value = ""
 
 			elif sectionType == "windows" and key in ("softwareids",):
