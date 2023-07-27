@@ -154,11 +154,11 @@ class LegacyControlFile:
 				elif key == "type":
 					value = forceProductType(value)
 				elif key == "name":
-					value = forceUnicode(value)
+					value = forceUnicode(value) if value else None
 				elif key == "description":
-					value = forceUnicode(value)
+					value = forceUnicode(value) if value else None
 				elif key == "advice":
-					value = forceUnicode(value)
+					value = forceUnicode(value) if value else None
 				elif key == "version":
 					value = forceProductVersion(value)
 				elif key == "packageversion":
@@ -168,23 +168,23 @@ class LegacyControlFile:
 				elif key == "licenserequired":
 					value = forceBool(value)
 				elif key == "productclasses":
-					value = forceUnicodeLower(value)
+					value = forceUnicodeLower(value) if value else None
 				elif key == "pxeconfigtemplate":
-					value = forceFilename(value)
+					value = forceFilename(value) if value else None
 				elif key == "setupscript":
-					value = forceFilename(value)
+					value = forceFilename(value) if value else None
 				elif key == "uninstallscript":
-					value = forceFilename(value)
+					value = forceFilename(value) if value else None
 				elif key == "updatescript":
-					value = forceFilename(value)
+					value = forceFilename(value) if value else None
 				elif key == "alwaysscript":
-					value = forceFilename(value)
+					value = forceFilename(value) if value else None
 				elif key == "oncescript":
-					value = forceFilename(value)
+					value = forceFilename(value) if value else None
 				elif key == "customscript":
-					value = forceFilename(value)
+					value = forceFilename(value) if value else None
 				elif key == "userloginscript":
-					value = forceFilename(value)
+					value = forceFilename(value) if value else None
 
 			elif sectionType == "windows" and key in ("softwareids",):
 				option = key
@@ -240,12 +240,12 @@ class LegacyControlFile:
 						self._sections[sectionType][-1][option] += "\n"  # type: ignore
 					self._sections[sectionType][-1][option] += value.lstrip()  # type: ignore
 
-		for (sectionType, secs) in self._sections.items():  # pylint: disable=too-many-nested-blocks,invalid-name
+		for sectionType, secs in self._sections.items():  # pylint: disable=too-many-nested-blocks,invalid-name
 			if sectionType == "changelog":
 				continue
 
 			for i, currentSection in enumerate(secs):  # pylint: disable=invalid-name
-				for (option, value) in currentSection.items():  # type: ignore
+				for option, value in currentSection.items():  # type: ignore
 					if (  # pylint: disable=too-many-boolean-expressions
 						(sectionType == "product" and option == "productclasses")
 						or (sectionType == "package" and option == "depends")
@@ -278,7 +278,7 @@ class LegacyControlFile:
 			raise ValueError(f"Error in control file '{control_file}': 'product' section not found")
 
 		# Get package info
-		for (option, value) in self._sections.get("package", [{}])[0].items():  # type: ignore
+		for option, value in self._sections.get("package", [{}])[0].items():  # type: ignore
 			if option == "depends":
 				for dep in value:
 					match = re.search(r"^\s*([^\(]+)\s*\(*\s*([^\)]*)\s*\)*", dep)
@@ -353,21 +353,22 @@ class LegacyControlFile:
 
 		# Create ProductDependency objects
 		for productDependency in self._sections.get("productdependency", []):  # pylint: disable=invalid-name
-			self.productDependencies.append(
-				ProductDependency(
-					productId=self.product.getId(),
-					productVersion=self.product.getProductVersion(),
-					packageVersion=self.product.getPackageVersion(),
-					productAction=productDependency.get("action"),  # type: ignore
-					requiredProductId=productDependency.get("requiredproduct"),  # type: ignore
-					requiredProductVersion=productDependency.get("requiredproductversion"),  # type: ignore
-					requiredPackageVersion=productDependency.get("requiredpackageversion"),  # type: ignore
-					requiredAction=productDependency.get("requiredaction"),  # type: ignore
-					requiredInstallationStatus=productDependency.get("requiredstatus"),  # type: ignore
-					requirementType=productDependency.get("requirementtype"),  # type: ignore
-				)
+			dependency = ProductDependency(
+				productId=self.product.getId(),
+				productVersion=self.product.getProductVersion(),
+				packageVersion=self.product.getPackageVersion(),
+				productAction=productDependency.get("action"),  # type: ignore
+				requiredProductId=productDependency.get("requiredproduct"),  # type: ignore
+				requiredProductVersion=productDependency.get("requiredproductversion"),  # type: ignore
+				requiredPackageVersion=productDependency.get("requiredpackageversion"),  # type: ignore
+				requiredAction=productDependency.get("requiredaction"),  # type: ignore
+				requiredInstallationStatus=productDependency.get("requiredstatus"),  # type: ignore
+				requirementType=productDependency.get("requirementtype"),  # type: ignore
 			)
-			self.productDependencies[-1].setDefaults()
+			dependency.setDefaults()
+			if not dependency.requiredAction and not dependency.requiredInstallationStatus:
+				raise ValueError(f"Dependency {dependency!r} defines neither requiredAction nor requiredInstallationStatus")
+			self.productDependencies.append(dependency)
 
 		# Create ProductProperty objects
 		for productProperty in self._sections.get("productproperty", []):  # pylint: disable=invalid-name
@@ -446,20 +447,20 @@ class LegacyControlFile:
 			if len(descLines) > 1:
 				for line in descLines[1:]:
 					lines.append(f" {line}")
-		lines.append(f"advice: {self.product.getAdvice()}")
+		lines.append(f"advice: {self.product.getAdvice() or ''}")
 		lines.append(f"version: {self.product.getProductVersion()}")
-		lines.append(f"priority: {self.product.getPriority()}")
+		lines.append(f"priority: {self.product.getPriority() or '0'}")
 		lines.append(f"licenseRequired: {self.product.getLicenseRequired()}")
 		if self.product.getProductClassIds() is not None:
 			lines.append(f'productClasses: {", ".join(self.product.getProductClassIds())}')
-		lines.append(f"setupScript: {self.product.getSetupScript()}")
-		lines.append(f"uninstallScript: {self.product.getUninstallScript()}")
-		lines.append(f"updateScript: {self.product.getUpdateScript()}")
-		lines.append(f"alwaysScript: {self.product.getAlwaysScript()}")
-		lines.append(f"onceScript: {self.product.getOnceScript()}")
-		lines.append(f"customScript: {self.product.getCustomScript()}")
+		lines.append(f"setupScript: {self.product.getSetupScript() or ''}")
+		lines.append(f"uninstallScript: {self.product.getUninstallScript() or ''}")
+		lines.append(f"updateScript: {self.product.getUpdateScript() or ''}")
+		lines.append(f"alwaysScript: {self.product.getAlwaysScript() or ''}")
+		lines.append(f"onceScript: {self.product.getOnceScript() or ''}")
+		lines.append(f"customScript: {self.product.getCustomScript() or ''}")
 		if isinstance(self.product, LocalbootProduct):
-			lines.append(f"userLoginScript: {self.product.getUserLoginScript()}")
+			lines.append(f"userLoginScript: {self.product.getUserLoginScript() or ''}")
 		if isinstance(self.product, NetbootProduct):
 			pxeConfigTemplate = self.product.getPxeConfigTemplate() or ""  # pylint: disable=invalid-name
 			lines.append(f"pxeConfigTemplate: {pxeConfigTemplate}")

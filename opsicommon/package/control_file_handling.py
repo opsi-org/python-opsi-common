@@ -58,6 +58,8 @@ def create_product_dependencies(pid: str, prod_v: str, pack_v: str, pdeps: list[
 			requiredInstallationStatus=dep.get("requiredStatus"),
 			requirementType=dep.get("requirementType", "before"),
 		)
+		if not dependency.requiredAction and not dependency.requiredInstallationStatus:
+			raise ValueError(f"Dependency {dependency!r} defines neither requiredAction nor requiredInstallationStatus")
 		result.append(dependency)
 	return result
 
