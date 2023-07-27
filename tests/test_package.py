@@ -462,6 +462,7 @@ def test_load_package_tar_zstd() -> None:
 					{
 						"action": "once",
 						"requiredProduct": "otherid",
+						"requiredAction": "always",
 					}
 				],
 			],
@@ -474,7 +475,7 @@ def test_load_package_tar_zstd() -> None:
 				"requiredProductId": "otherid",
 				"requiredProductVersion": None,
 				"requiredPackageVersion": None,
-				"requiredAction": None,
+				"requiredAction": "always",
 				"requiredInstallationStatus": None,
 				"requirementType": "before",
 			},
