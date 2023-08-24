@@ -1,6 +1,6 @@
 [Package]
 version: 1337
-depends: mshotfix (>= 202301-1)
+depends: mshotfix (>= 202301-1), hwaudit
 
 [Product]
 type: localboot

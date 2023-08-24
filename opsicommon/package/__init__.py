@@ -175,9 +175,17 @@ class OpsiPackage:
 			return
 
 		data_dict = tomlkit.document()
+
+		def _remove_none_values(dictionary: dict) -> dict:
+			result = {}
+			for key, value in dictionary.items():
+				if value:
+					result[key] = value
+			return result
+
 		data_dict["Package"] = {
 			"version": self.product.getPackageVersion(),
-			"depends": [asdict(pdep) for pdep in self.package_dependencies],
+			"depends": [_remove_none_values(asdict(pdep)) for pdep in self.package_dependencies],
 		}
 		data_dict["Product"] = dictify_product(self.product)
 		if self.product_properties:
