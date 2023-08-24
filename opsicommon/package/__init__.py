@@ -6,6 +6,7 @@
 opsi package class and associated methods
 """
 
+import json
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -54,6 +55,15 @@ class OpsiPackage:
 		self.temp_dir: Path | None = temp_dir
 		if package_archive:
 			self.from_package_archive(package_archive)
+
+	def set_package_dependencies_from_json(self, json_string: str) -> None:
+		self.package_dependencies = [
+			PackageDependency(package=str(pdep["package"]), version=pdep.get("version"), condition=pdep.get("condition"))
+			for pdep in create_package_dependencies(json.loads(json_string))
+		]
+
+	def get_package_dependencies_as_json(self) -> str:
+		return json.dumps([asdict(pdep) for pdep in self.package_dependencies])
 
 	def extract_package_archive(
 		self, package_archive: Path, destination: Path, *, new_product_id: str | None = None, custom_separated: bool = False
