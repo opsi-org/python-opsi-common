@@ -12,7 +12,7 @@ from typing import Literal
 import pytest
 
 from opsicommon.objects import NetbootProduct
-from opsicommon.package import OpsiPackage
+from opsicommon.package import OpsiPackage, PackageDependency
 from opsicommon.package.associated_files import (
 	create_package_content_file,
 	create_package_md5_file,
@@ -515,3 +515,65 @@ def test_load_package_tar_zstd() -> None:
 def test_create_product_dependencies(dep_args: list[str | list[dict[str, str]]], result_dict: dict[str, str | None]) -> None:
 	result = create_product_dependencies(*dep_args)  # type: ignore
 	assert result[0].to_hash() == result_dict
+
+
+@pytest.mark.parametrize(
+	"json_string, package_dependencies",
+	(
+		(
+			'[{"package": "mshotfix", "version": "202301-1", "condition": ">="}]',
+			[PackageDependency(package="mshotfix", version="202301-1", condition=">=")],
+		),
+		(
+			'[{"package": "mshotfix", "version": "202301-1"}]',
+			[PackageDependency(package="mshotfix", version="202301-1", condition="=")],
+		),
+		(
+			'[{"package": "mshotfix", "condition": ">="}]',
+			[PackageDependency(package="mshotfix")],
+		),
+		(
+			'[{"package": "mshotfix"}]',
+			[PackageDependency(package="mshotfix")],
+		),
+		(
+			'{"package": "mshotfix"}',  # no list brackets
+			[PackageDependency(package="mshotfix")],
+		),
+		(
+			'[{"package": "mshotfix", "version": null, "condition": null}]',
+			[PackageDependency(package="mshotfix")],
+		),
+		(
+			'[{"package": "mshotfix"}, {"package": "hwaudit"}]',
+			[PackageDependency(package="mshotfix"), PackageDependency(package="hwaudit")],
+		),
+	),
+)
+def test_set_package_dependencies_from_json(json_string: str, package_dependencies: list[PackageDependency]) -> None:
+	package = OpsiPackage()
+	package.set_package_dependencies_from_json(json_string)
+	assert package.package_dependencies == package_dependencies
+
+
+@pytest.mark.parametrize(
+	"package_dependencies, json_string",
+	(
+		(
+			[PackageDependency(package="mshotfix", version="202301-1", condition=">=")],
+			'[{"package": "mshotfix", "version": "202301-1", "condition": ">="}]',
+		),
+		(
+			[PackageDependency(package="mshotfix")],
+			'[{"package": "mshotfix", "version": null, "condition": null}]',
+		),
+		(
+			[PackageDependency(package="mshotfix"), PackageDependency(package="hwaudit")],
+			'[{"package": "mshotfix", "version": null, "condition": null}, {"package": "hwaudit", "version": null, "condition": null}]',
+		),
+	),
+)
+def test_get_package_dependencies_as_json(package_dependencies: list[PackageDependency], json_string: str) -> None:
+	package = OpsiPackage()
+	package.package_dependencies = package_dependencies
+	assert package.get_package_dependencies_as_json() == json_string
