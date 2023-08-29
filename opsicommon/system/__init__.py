@@ -39,6 +39,7 @@ logger = get_logger("opsicommon.general")
 
 
 def ensure_not_already_running(process_name: Optional[str] = None) -> None:
+	container_procs = ("containerd-shim", "lxc-start")
 	our_pid = os.getpid()
 	other_pid = None
 	try:
@@ -52,6 +53,16 @@ def ensure_not_already_running(process_name: Optional[str] = None) -> None:
 			# logger.debug("Found running process: %s", proc)
 			if proc.name() == process_name or proc.name() == exe_name:
 				logger.debug("Found running '%s' process: %s", process_name, proc)
+
+				running_in_container_pid = 0
+				for parent in proc.parents():
+					if parent.name() in container_procs:
+						running_in_container_pid = parent.pid
+						break
+				if running_in_container_pid:
+					logger.debug("Process is running in container %d, skipping", running_in_container_pid)
+					continue
+
 				if proc.pid != our_pid and proc.pid not in ignore_pids:
 					other_pid = proc.pid
 					break
