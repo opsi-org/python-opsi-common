@@ -151,6 +151,19 @@ def test_generate_control(source: str, destination: str) -> None:
 	assert package.product_properties == regenerated_package.product_properties
 
 
+def test_control_multiline_description() -> None:
+	package = OpsiPackage()
+	package.parse_control_file(TEST_DATA / "control.toml")
+	package.product.description = "This is a\nmultiline description."
+	package.product.advice = "A\n\nmultiline advice."
+	with make_temp_dir() as temp_dir:
+		package.generate_control_file(temp_dir / "control.toml")
+		result = (temp_dir / "control.toml").read_text(encoding="utf-8")
+		print(result)
+		for string in ('description = """This is a', 'multiline description."""', 'advice = """A', "", 'multiline advice."""'):
+			assert string in result.splitlines()
+
+
 @pytest.mark.linux
 @pytest.mark.parametrize(
 	"product_type, form",
