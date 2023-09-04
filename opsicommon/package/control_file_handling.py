@@ -144,7 +144,7 @@ def dictify_product_properties(product_properties: list[ProductProperty]) -> lis
 			"name": prop.getPropertyId(),
 			"multivalue": prop.getMultiValue(),
 			"editable": prop.getEditable(),
-			"description": prop.getDescription(),
+			"description": multiline_string(prop.getDescription() or ""),
 			"values": prop.getPossibleValues(),
 			"default": prop.getDefaultValues(),
 		}

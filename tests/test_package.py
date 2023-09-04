@@ -164,6 +164,18 @@ def test_control_multiline_description() -> None:
 			assert string in result.splitlines()
 
 
+def test_control_multiline_description_property() -> None:
+	package = OpsiPackage()
+	package.parse_control_file(TEST_DATA / "control.toml")
+	package.product_properties[0].description = "This is a\nmultiline description."
+	with make_temp_dir() as temp_dir:
+		package.generate_control_file(temp_dir / "control.toml")
+		result = (temp_dir / "control.toml").read_text(encoding="utf-8")
+		print(result)
+		for string in ('description = """This is a', 'multiline description."""'):
+			assert string in result.splitlines()
+
+
 @pytest.mark.linux
 @pytest.mark.parametrize(
 	"product_type, form",
