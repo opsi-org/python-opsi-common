@@ -86,13 +86,11 @@ OPSI_MODULE_IDS = (
 	"local_imaging",
 	"macos_agent",
 	"monitoring",
-	"mysql_backend",
 	"roaming_profiles",
 	"scalability1",
 	"secureboot",
 	"swondemand",
 	"treeview",
-	"uefi",
 	"userroles",
 	"vista",
 	"wim-capture",
@@ -106,7 +104,16 @@ OPSI_OBSOLETE_MODULE_IDS = (
 	"vista",
 )
 
-OPSI_FREE_MODULE_IDS = ("dynamic_depot", "install_by_shutdown", "roaming_profiles", "swondemand", "treeview", "vista")
+OPSI_FREE_MODULE_IDS = (
+	"dynamic_depot",
+	"install_by_shutdown",
+	"mysql_backend",
+	"roaming_profiles",
+	"swondemand",
+	"treeview",
+	"uefi",
+	"vista",
+)
 
 logger = get_logger("opsicommon.license")
 
