@@ -101,7 +101,7 @@ class RepoMetaPackageDependency:
 
 @dataclass
 class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
-	url: str
+	url: str | list[str]
 	size: int
 	md5_hash: str
 	sha256_hash: str
@@ -117,7 +117,7 @@ class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
 	changelog_url: str | None = None
 	release_notes_url: str | None = None
 	icon_url: str | None = None
-	zsync_url: str | None = None
+	zsync_url: str | None | list[str | None] = None
 
 	@property
 	def version(self) -> str:
@@ -156,6 +156,21 @@ class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
 		data["product_dependencies"] = [RepoMetaProductDependency.from_dict(d) for d in data["product_dependencies"]]
 		data["package_dependencies"] = [RepoMetaPackageDependency.from_dict(d) for d in data["package_dependencies"]]
 		return RepoMetaPackage(**data)
+
+	def merge(self, other: RepoMetaPackage) -> None:
+		if self.version != other.version or self.product_id != other.product_id:
+			raise ValueError("Cannot merge RepoMetaPackages for different products or versions")
+		other_urls = other.url if isinstance(other.url, list) else [other.url]
+		other_zsync_urls = other.zsync_url if isinstance(other.zsync_url, list) else [other.zsync_url]
+		self_urls = self.url if isinstance(self.url, list) else [self.url]
+		# No set operations to keep order!
+		self.url = self_urls
+		if not isinstance(self.zsync_url, list):
+			self.zsync_url = [self.zsync_url]
+		for other_url, other_zsync_url in zip(other_urls, other_zsync_urls):
+			if other_url not in self.url:
+				self.url.append(other_url)
+				self.zsync_url.append(other_zsync_url)
 
 
 @dataclass
@@ -205,10 +220,17 @@ class RepoMetaPackageCollection:
 			add_callback(package)
 
 		# Key only consists of only product id (otw11 revision 03.05.)
-		if package.product_id not in self.packages or num_allowed_versions == 1:
-			# if only one version is allowed, always delete previous version, EVEN IF IT HAS HIGHER VERSION
+		if (
+			package.product_id not in self.packages
+			or num_allowed_versions == 1
+			and any((version != package.version for version in self.packages[package.product_id]))
+		):
+			# if only one version is allowed, always delete previous versions, if any is different (allow downgrade)
 			self.packages[package.product_id] = {}
-		self.packages[package.product_id][package.version] = package
+		if self.packages[package.product_id].get(package.version):
+			self.packages[package.product_id][package.version].merge(package)
+		else:
+			self.packages[package.product_id][package.version] = package
 		# num_allowed_versions = 0 means unlimited
 		if num_allowed_versions and len(self.packages[package.product_id]) > num_allowed_versions:
 			self.limit_versions(package.product_id, num_allowed_versions)
