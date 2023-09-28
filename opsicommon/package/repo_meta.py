@@ -124,7 +124,7 @@ class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
 		return f"{self.product_version}-{self.package_version}"
 
 	@classmethod
-	def from_package_file(cls, package_file: Path, url: str) -> RepoMetaPackage:  # pylint: disable=too-many-arguments
+	def from_package_file(cls, package_file: Path, url: str | list[str]) -> RepoMetaPackage:  # pylint: disable=too-many-arguments
 		logger.notice("Reading package file %s", package_file)
 		data: dict[str, Any] = {"url": url, "size": package_file.stat().st_size}
 		with open(package_file, "rb", buffering=0) as file_handle:
@@ -132,7 +132,10 @@ class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
 			data["md5_hash"] = hashlib.file_digest(file_handle, "md5").hexdigest()  # type: ignore
 			data["sha256_hash"] = hashlib.file_digest(file_handle, "sha256").hexdigest()  # type: ignore
 		if package_file.with_name(f"{package_file.name}.zsync").exists():
-			data["zsync_url"] = f"{url}.zsync"
+			if isinstance(url, str):
+				data["zsync_url"] = f"{url}.zsync"
+			elif isinstance(url, list):
+				data["zsync_url"] = [f"{entry}.zsync" for entry in url]
 
 		opsi_package = OpsiPackage(package_file)
 		data["product_id"] = opsi_package.product.id
@@ -203,13 +206,16 @@ class RepoMetaPackageCollection:
 		package_file: Path,
 		*,
 		num_allowed_versions: int = 1,
-		url: str | None = None,
+		url: list[str] | str | None = None,
 		compatibility: list[RepoMetaPackageCompatibility] | None = None,
 		add_callback: Callable | None = None,
 	) -> RepoMetaPackage:
 		if not url:
 			url = str(package_file.relative_to(directory))
-		url = str(url).replace("\\", "/")  # Cannot instantiate PosixPath on windows
+		if isinstance(url, str):
+			url = str(url).replace("\\", "/")  # Cannot instantiate PosixPath on windows
+		elif isinstance(url, list):
+			url = [str(entry).replace("\\", "/") for entry in url]  # Cannot instantiate PosixPath on windows
 
 		if add_callback and not callable(add_callback):
 			raise ValueError("add_callback must be callable")
