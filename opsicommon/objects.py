@@ -19,6 +19,7 @@ from types import GeneratorType
 from typing import Any, Callable, Generator, Type, TypeVar
 
 import msgspec
+
 from opsicommon.exceptions import BackendBadValueError, BackendConfigurationError
 from opsicommon.logging import get_logger
 from opsicommon.types import (
@@ -37,7 +38,6 @@ from opsicommon.types import (
 	forceHardwareAddress,
 	forceHardwareDeviceId,
 	forceHardwareVendorId,
-	forceUserId,
 	forceHostId,
 	forceInstallationStatus,
 	forceInt,
@@ -65,6 +65,7 @@ from opsicommon.types import (
 	forceStringLower,
 	forceUnsignedInt,
 	forceUrl,
+	forceUserId,
 	forceUUIDString,
 )
 from opsicommon.utils import combine_versions, generate_opsi_host_key, timestamp
@@ -656,7 +657,7 @@ class Host(Object):
 		return self.systemUUID
 
 	def setSystemUUID(self, systemUUID: str) -> None:  # pylint: disable=invalid-name
-		self.systemUUID = forceUUIDString(systemUUID) if systemUUID else ""
+		self.systemUUID = forceUUIDString(systemUUID) if systemUUID else None
 
 
 Object.sub_classes["Host"] = Host
