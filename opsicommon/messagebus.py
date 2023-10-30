@@ -45,6 +45,9 @@ class MessageType(str, Enum):
 	TERMINAL_DATA_WRITE = "terminal_data_write"
 	TERMINAL_CLOSE_REQUEST = "terminal_close_request"
 	TERMINAL_CLOSE_EVENT = "terminal_close_event"
+	PROCESS_EXECUTE_REQUEST = "process_execute_request"
+	PROCESS_EXECUTE_RESULT = "process_execute_result"
+	PROCESS_DATA_READ = "process_data_read"
 	FILE_UPLOAD_REQUEST = "file_upload_request"
 	FILE_UPLOAD_RESULT = "file_upload_result"
 	FILE_CHUNK = "file_chunk"
@@ -57,7 +60,8 @@ class Error:
 	details: str | None = None
 
 
-MessageT = TypeVar('MessageT', bound='Message')
+MessageT = TypeVar("MessageT", bound="Message")
+DEFAULT_PROCESS_EXECUTE_TIMEOUT = 60.0  # Seconds until process should be interrupted
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
@@ -233,6 +237,30 @@ class TerminalCloseEventMessage(Message):
 	error: Optional[Error] = None
 
 
+# ProcessExecute
+@dataclass(slots=True, kw_only=True, repr=False)
+class ProcessExecuteRequestMessage(Message):
+	type: str = MessageType.PROCESS_EXECUTE_REQUEST.value
+	process_id: str = field(default_factory=lambda: str(uuid4()))
+	command: tuple[str, ...] = tuple()
+	timeout: float = DEFAULT_PROCESS_EXECUTE_TIMEOUT
+
+
+@dataclass(slots=True, kw_only=True, repr=False)
+class ProcessExecuteResultMessage(Message):
+	type: str = MessageType.PROCESS_EXECUTE_RESULT.value
+	process_id: str
+	exit_code: int
+
+
+@dataclass(slots=True, kw_only=True, repr=False)
+class ProcessDataReadMessage(Message):
+	type: str = MessageType.PROCESS_DATA_READ.value
+	process_id: str
+	stdout: str = ""
+	stderr: str = ""
+
+
 # FileUpload
 @dataclass(slots=True, kw_only=True, repr=False)
 class FileUploadRequestMessage(Message):
@@ -279,6 +307,9 @@ MESSAGE_TYPE_TO_CLASS = {
 	MessageType.TERMINAL_RESIZE_EVENT.value: TerminalResizeEventMessage,
 	MessageType.TERMINAL_CLOSE_REQUEST.value: TerminalCloseRequestMessage,
 	MessageType.TERMINAL_CLOSE_EVENT.value: TerminalCloseEventMessage,
+	MessageType.PROCESS_EXECUTE_REQUEST.value: ProcessExecuteRequestMessage,
+	MessageType.PROCESS_EXECUTE_RESULT.value: ProcessExecuteResultMessage,
+	MessageType.PROCESS_DATA_READ.value: ProcessDataReadMessage,
 	MessageType.FILE_UPLOAD_REQUEST.value: FileUploadRequestMessage,
 	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
 	MessageType.FILE_CHUNK.value: FileChunkMessage,
