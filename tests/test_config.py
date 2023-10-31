@@ -247,7 +247,7 @@ def test_ignore_commented_and_invalid_lines_in_config_file() -> None:
 
 
 def test_config_file_with_run_as_user_line() -> None:
-	# Create a temporary opsiconfd configuration file without a line containing 'run-as-user'
+	# Create a temporary opsiconfd configuration file with a line containing 'run-as-user'
 	config_file = Path(OPSICONFD_CONF)
 	config_file.write_text(
 		"""
