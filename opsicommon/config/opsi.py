@@ -9,6 +9,7 @@ This file is part of opsi - https://www.opsi.org
 import os
 import re
 import socket
+from functools import lru_cache
 from pathlib import Path
 from shutil import chown
 from subprocess import PIPE, Popen
@@ -31,6 +32,7 @@ GLOBAL_CONF = "/etc/opsi/global.conf"
 DISPATCH_CONF = "/etc/opsi/backendManager/dispatch.conf"
 JSONRPC_CONF = "/etc/opsi/backends/jsonrpc.conf"
 MYSQL_CONF = "/etc/opsi/backends/mysql.conf"
+OPSICONFD_CONF = "/etc/opsi/opsiconfd.conf"
 
 DEFAULT_ADMIN_GROUP = "opsiadmin"
 DEFAULT_FILEADMIN_GROUP = "opsifileadmins"
@@ -38,6 +40,19 @@ DEFAULT_READONLY_GROUP = ""
 DEFAULT_DEPOT_USER = "pcpatch"
 DEFAULT_DEPOT_USER_HOME = "/var/lib/opsi"
 DEFAULT_OPSICONFD_USER = "opsiconfd"
+
+
+@lru_cache
+def get_opsiconfd_user() -> str:
+	opsiconfd_conf = Path(OPSICONFD_CONF)
+	if opsiconfd_conf.exists():
+		for line in opsiconfd_conf.read_text(encoding="utf-8").split("\n"):
+			line = line.strip()
+			if not line or line.startswith("#") or "=" not in line:
+				continue
+			if "run-as-user" in line.split("=", 1)[1]:
+				return line.split("=", 1)[1].strip()
+	return DEFAULT_OPSICONFD_USER
 
 
 def read_backend_config_file(file: Path) -> dict[str, Any]:
@@ -222,7 +237,7 @@ class OpsiConfig(metaclass=Singleton):
 			except Exception:  # pylint: disable=broad-except
 				pass
 			try:
-				chown(file, user=DEFAULT_OPSICONFD_USER)
+				chown(file, user=get_opsiconfd_user())
 			except Exception:  # pylint: disable=broad-except
 				pass
 		data = file.read_text(encoding="utf-8")
