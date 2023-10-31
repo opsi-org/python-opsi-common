@@ -24,8 +24,11 @@ from opsicommon.messagebus import (
 	Message,
 	MessageType,
 	ProcessDataReadMessage,
-	ProcessExecuteRequestMessage,
-	ProcessExecuteResultMessage,
+	ProcessDataWriteMessage,
+	ProcessStartEventMessage,
+	ProcessStartRequestMessage,
+	ProcessStopEventMessage,
+	ProcessStopRequestMessage,
 	TerminalCloseEventMessage,
 	TerminalCloseRequestMessage,
 	TerminalDataReadMessage,
@@ -271,7 +274,7 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
-			ProcessExecuteRequestMessage,
+			ProcessStartRequestMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "host:x.y.z",
@@ -282,7 +285,25 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
-			ProcessExecuteResultMessage,
+			ProcessStartEventMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+			},
+			None,
+		),
+		(
+			ProcessStopRequestMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:x.y.z",
+				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+			},
+			None,
+		),
+		(
+			ProcessStopEventMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "291b9f3e-e370-428d-be30-1248a906ae86",
@@ -299,6 +320,16 @@ def test_message_to_from_msgpack() -> None:
 				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"stdout": "bla bla bla",
 				"stderr": "foo bar baz",
+			},
+			None,
+		),
+		(
+			ProcessDataWriteMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:x.y.z",
+				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"stdin": "asdf blubb",
 			},
 			None,
 		),
