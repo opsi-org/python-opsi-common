@@ -253,7 +253,7 @@ class ProcessStartRequestMessage(Message):
 class ProcessStartEventMessage(Message):
 	type: str = MessageType.PROCESS_START_EVENT.value
 	process_id: str = field(default_factory=lambda: str(uuid4()))
-	# local process-id?
+	local_process_id: int
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
