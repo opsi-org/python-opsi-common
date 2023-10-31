@@ -29,8 +29,6 @@ if platform.system().lower() == "linux":
 
 logger = get_logger("opsi.general")
 
-OPSICONFD_USER = get_opsiconfd_user()
-
 
 @dataclass
 class FilePermission:
@@ -151,31 +149,32 @@ class PermissionRegistry(metaclass=Singleton):
 		return self._permissions
 
 	def register_default_permissions(self) -> None:
+		opsiconfd_user = get_opsiconfd_user()
 		opsi_config = OpsiConfig()
 		admin_group = opsi_config.get("groups", "admingroup")
 		fileadmin_group = opsi_config.get("groups", "fileadmingroup")
 		depot_user = opsi_config.get("depot_user", "username")
 
 		self.register_permission(
-			DirPermission("/etc/opsi", OPSICONFD_USER, admin_group, 0o660, 0o770),
-			DirPermission("/var/log/opsi", OPSICONFD_USER, admin_group, 0o660, 0o770),
-			DirPermission("/var/lib/opsi", OPSICONFD_USER, fileadmin_group, 0o660, 0o770),
+			DirPermission("/etc/opsi", opsiconfd_user, admin_group, 0o660, 0o770),
+			DirPermission("/var/log/opsi", opsiconfd_user, admin_group, 0o660, 0o770),
+			DirPermission("/var/lib/opsi", opsiconfd_user, fileadmin_group, 0o660, 0o770),
 		)
 		self.register_permission(
-			DirPermission("/etc/opsi/ssl", OPSICONFD_USER, admin_group, 0o600, 0o750),
-			FilePermission("/etc/opsi/ssl/opsi-ca-cert.pem", OPSICONFD_USER, admin_group, 0o644),
+			DirPermission("/etc/opsi/ssl", opsiconfd_user, admin_group, 0o600, 0o750),
+			FilePermission("/etc/opsi/ssl/opsi-ca-cert.pem", opsiconfd_user, admin_group, 0o644),
 		)
 		self.register_permission(
-			DirPermission("/var/lib/opsi/public", OPSICONFD_USER, fileadmin_group, 0o664, 0o2775, modify_file_exe=False),
-			DirPermission("/var/lib/opsi/depot", OPSICONFD_USER, fileadmin_group, 0o660, 0o2770, modify_file_exe=False),
-			DirPermission("/var/lib/opsi/repository", OPSICONFD_USER, fileadmin_group, 0o660, 0o2770),
-			DirPermission("/var/lib/opsi/workbench", OPSICONFD_USER, fileadmin_group, 0o660, 0o2770, modify_file_exe=False),
+			DirPermission("/var/lib/opsi/public", opsiconfd_user, fileadmin_group, 0o664, 0o2775, modify_file_exe=False),
+			DirPermission("/var/lib/opsi/depot", opsiconfd_user, fileadmin_group, 0o660, 0o2770, modify_file_exe=False),
+			DirPermission("/var/lib/opsi/repository", opsiconfd_user, fileadmin_group, 0o660, 0o2770),
+			DirPermission("/var/lib/opsi/workbench", opsiconfd_user, fileadmin_group, 0o660, 0o2770, modify_file_exe=False),
 		)
 
 		pxe_dir = "/tftpboot/linux"
 		if linux_distro_id_like_contains(("sles", "opensuse")):
 			pxe_dir = "/var/lib/tftpboot/opsi"
-		self.register_permission(DirPermission(pxe_dir, OPSICONFD_USER, fileadmin_group, 0o664, 0o775))
+		self.register_permission(DirPermission(pxe_dir, opsiconfd_user, fileadmin_group, 0o664, 0o775))
 
 		ssh_dir = os.path.join(opsi_config.get("depot_user", "home"), ".ssh")
 		self.register_permission(
