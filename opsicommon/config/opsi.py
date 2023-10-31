@@ -50,7 +50,7 @@ def get_opsiconfd_user() -> str:
 			line = line.strip()
 			if not line or line.startswith("#") or "=" not in line:
 				continue
-			if "run-as-user" in line.split("=", 1)[1]:
+			if "run-as-user" in line.split("=", 1)[0]:
 				return line.split("=", 1)[1].strip()
 	return DEFAULT_OPSICONFD_USER
 
