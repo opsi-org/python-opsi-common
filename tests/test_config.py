@@ -235,8 +235,7 @@ def test_run_as_user_value_from_config_file(tmp_path: Path) -> None:
 		get_opsiconfd_user.cache_clear()
 		config_file = Path(confd_conf)
 		config_file.write_text("run-as-user = test_user", encoding="utf-8")
-		print("???")
-		print(Path(confd_conf).exists())
+
 		# Call the function and assert the return value is the run-as-user value from the config file
 		assert get_opsiconfd_user() == "test_user"
 
@@ -257,7 +256,6 @@ def test_config_file_with_run_as_user_line(tmp_path: Path) -> None:
 	with patch("opsicommon.config.opsi.OPSICONFD_CONF", str(confd_conf)):
 		get_opsiconfd_user.cache_clear()
 		config_file = Path(confd_conf)
-		print("????")
 		config_file.write_text(
 			"""
 # For available options see: opsiconfd --help
