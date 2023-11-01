@@ -11,7 +11,6 @@ from unittest.mock import patch
 
 import pytest
 
-import opsicommon
 from opsicommon.config.opsi import (
 	DEFAULT_OPSICONFD_USER,
 	OPSICONFD_CONF,
