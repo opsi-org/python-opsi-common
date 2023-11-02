@@ -265,7 +265,8 @@ class RepoMetaPackageCollection:
 		else:
 			p_data = msgpack.decode(data)
 
-		self.schema_version = p_data.get("schema_version", self.schema_version)
+		self.schema_version = p_data.get(
+			"schema_version", self.schema_version)
 		self.repository = RepoMetaRepository(**p_data.get("repository", {}))
 		self.metadata_files = [RepoMetaMetadataFile(entry.get("type"), entry.get("urls")) for entry in p_data.get("metadata_files", [])]
 		self.packages = {}
