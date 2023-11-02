@@ -4,7 +4,11 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "python-opsi-common"
+<<<<<<< HEAD
 version = "4.3.0.73"
+=======
+version = "4.3.0.77"
+>>>>>>> a4591e1ac938e7efe52c469471d89f16b0cb6626
 description = "The opsi python common library"
 homepage = "https://www.opsi.org"
 license = "AGPL-3.0"

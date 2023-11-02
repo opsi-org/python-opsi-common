@@ -45,6 +45,12 @@ class MessageType(str, Enum):
 	TERMINAL_DATA_WRITE = "terminal_data_write"
 	TERMINAL_CLOSE_REQUEST = "terminal_close_request"
 	TERMINAL_CLOSE_EVENT = "terminal_close_event"
+	PROCESS_START_REQUEST = "process_start_request"
+	PROCESS_START_EVENT = "process_start_event"
+	PROCESS_STOP_REQUEST = "process_stop_request"
+	PROCESS_STOP_EVENT = "process_stop_event"
+	PROCESS_DATA_READ = "process_data_read"
+	PROCESS_DATA_WRITE = "process_data_write"
 	FILE_UPLOAD_REQUEST = "file_upload_request"
 	FILE_UPLOAD_RESULT = "file_upload_result"
 	FILE_CHUNK = "file_chunk"
@@ -57,7 +63,8 @@ class Error:
 	details: str | None = None
 
 
-MessageT = TypeVar('MessageT', bound='Message')
+MessageT = TypeVar("MessageT", bound="Message")
+DEFAULT_PROCESS_EXECUTE_TIMEOUT = 60.0  # Seconds until process should be interrupted
 
 
 @dataclass(slots=True, kw_only=True, repr=False)
@@ -233,6 +240,50 @@ class TerminalCloseEventMessage(Message):
 	error: Optional[Error] = None
 
 
+# ProcessExecute
+@dataclass(slots=True, kw_only=True, repr=False)
+class ProcessStartRequestMessage(Message):
+	type: str = MessageType.PROCESS_START_REQUEST.value
+	process_id: str = field(default_factory=lambda: str(uuid4()))
+	command: tuple[str, ...] = tuple()
+	timeout: float = DEFAULT_PROCESS_EXECUTE_TIMEOUT
+
+
+@dataclass(slots=True, kw_only=True, repr=False)
+class ProcessStartEventMessage(Message):
+	type: str = MessageType.PROCESS_START_EVENT.value
+	process_id: str = field(default_factory=lambda: str(uuid4()))
+	local_process_id: int
+
+
+@dataclass(slots=True, kw_only=True, repr=False)
+class ProcessStopRequestMessage(Message):
+	type: str = MessageType.PROCESS_STOP_REQUEST.value
+	process_id: str
+
+
+@dataclass(slots=True, kw_only=True, repr=False)
+class ProcessStopEventMessage(Message):
+	type: str = MessageType.PROCESS_STOP_EVENT.value
+	process_id: str
+	exit_code: int
+
+
+@dataclass(slots=True, kw_only=True, repr=False)
+class ProcessDataReadMessage(Message):
+	type: str = MessageType.PROCESS_DATA_READ.value
+	process_id: str
+	stdout: str = ""
+	stderr: str = ""
+
+
+@dataclass(slots=True, kw_only=True, repr=False)
+class ProcessDataWriteMessage(Message):
+	type: str = MessageType.PROCESS_DATA_WRITE.value
+	process_id: str
+	stdin: str = ""
+
+
 # FileUpload
 @dataclass(slots=True, kw_only=True, repr=False)
 class FileUploadRequestMessage(Message):
@@ -279,6 +330,12 @@ MESSAGE_TYPE_TO_CLASS = {
 	MessageType.TERMINAL_RESIZE_EVENT.value: TerminalResizeEventMessage,
 	MessageType.TERMINAL_CLOSE_REQUEST.value: TerminalCloseRequestMessage,
 	MessageType.TERMINAL_CLOSE_EVENT.value: TerminalCloseEventMessage,
+	MessageType.PROCESS_START_REQUEST.value: ProcessStartRequestMessage,
+	MessageType.PROCESS_START_EVENT.value: ProcessStartEventMessage,
+	MessageType.PROCESS_STOP_REQUEST.value: ProcessStopRequestMessage,
+	MessageType.PROCESS_STOP_EVENT.value: ProcessStopEventMessage,
+	MessageType.PROCESS_DATA_READ.value: ProcessDataReadMessage,
+	MessageType.PROCESS_DATA_WRITE.value: ProcessDataWriteMessage,
 	MessageType.FILE_UPLOAD_REQUEST.value: FileUploadRequestMessage,
 	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
 	MessageType.FILE_CHUNK.value: FileChunkMessage,

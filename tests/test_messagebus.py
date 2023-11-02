@@ -10,6 +10,7 @@ import time
 from typing import Type, Union
 
 import pytest
+
 from opsicommon.messagebus import (
 	ChannelSubscriptionEventMessage,
 	ChannelSubscriptionRequestMessage,
@@ -22,6 +23,12 @@ from opsicommon.messagebus import (
 	JSONRPCResponseMessage,
 	Message,
 	MessageType,
+	ProcessDataReadMessage,
+	ProcessDataWriteMessage,
+	ProcessStartEventMessage,
+	ProcessStartRequestMessage,
+	ProcessStopEventMessage,
+	ProcessStopRequestMessage,
 	TerminalCloseEventMessage,
 	TerminalCloseRequestMessage,
 	TerminalDataReadMessage,
@@ -263,6 +270,67 @@ def test_message_to_from_msgpack() -> None:
 					"worker": "node:1",
 					"host": {"type": "OpsiClient", "id": "opsi-client.domain.tld"},
 				},
+			},
+			None,
+		),
+		(
+			ProcessStartRequestMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:x.y.z",
+				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"timeout": 60.0,
+				"command": ("who",),
+			},
+			None,
+		),
+		(
+			ProcessStartEventMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"local_process_id": 1234,
+			},
+			None,
+		),
+		(
+			ProcessStopRequestMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:x.y.z",
+				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+			},
+			None,
+		),
+		(
+			ProcessStopEventMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"exit_code": 0,
+			},
+			None,
+		),
+		(
+			ProcessDataReadMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:x.y.z",
+				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"stdout": "bla bla bla",
+				"stderr": "foo bar baz",
+			},
+			None,
+		),
+		(
+			ProcessDataWriteMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:x.y.z",
+				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"stdin": "asdf blubb",
 			},
 			None,
 		),

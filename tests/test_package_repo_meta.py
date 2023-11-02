@@ -137,6 +137,48 @@ def test_repo_meta_package(tmp_path: Path) -> None:
 	assert RepoMetaPackage.from_dict(data) == repo_meta_package
 
 
+def test_repo_meta_package_merge(tmp_path: Path) -> None:
+	shutil.copy(TEST_REPO / "localboot_new_42.0-1337.opsi", tmp_path)
+	(tmp_path / "localboot_new_42.0-1337.opsi.zsync").touch()
+	url = "path/to/localboot_new_42.0-1337.opsi"
+	repo_meta_package = RepoMetaPackage.from_package_file(tmp_path / "localboot_new_42.0-1337.opsi", url=url)
+
+	other_repo_meta_package = RepoMetaPackage.from_package_file(tmp_path / "localboot_new_42.0-1337.opsi", url=url)
+	other_repo_meta_package.url = "otherpath/to/localboot_new_42.0-1337.opsi"
+	other_repo_meta_package.zsync_url = "otherpath/to/localboot_new_42.0-1337.opsi.zsync"
+	repo_meta_package.merge(other_repo_meta_package)
+
+	yet_another_repo_meta_package = RepoMetaPackage.from_package_file(tmp_path / "localboot_new_42.0-1337.opsi", url=url)
+	yet_another_repo_meta_package.url = "yetanotherpath/to/localboot_new_42.0-1337.opsi"
+	yet_another_repo_meta_package.zsync_url = None
+	repo_meta_package.merge(yet_another_repo_meta_package)
+
+	assert isinstance(repo_meta_package.url, list) and isinstance(repo_meta_package.zsync_url, list)
+	assert repo_meta_package.url[0] == "path/to/localboot_new_42.0-1337.opsi"
+	assert repo_meta_package.url[1] == "otherpath/to/localboot_new_42.0-1337.opsi"
+	assert repo_meta_package.url[2] == "yetanotherpath/to/localboot_new_42.0-1337.opsi"
+	assert repo_meta_package.zsync_url[0] == "path/to/localboot_new_42.0-1337.opsi.zsync"
+	assert repo_meta_package.zsync_url[1] == "otherpath/to/localboot_new_42.0-1337.opsi.zsync"
+	assert repo_meta_package.zsync_url[2] is None  # keep None to not change indices
+
+
+def test_repo_meta_package_url_list_merge(tmp_path: Path) -> None:
+	shutil.copy(TEST_REPO / "localboot_new_42.0-1337.opsi", tmp_path)
+	(tmp_path / "localboot_new_42.0-1337.opsi.zsync").touch()
+	url = ["dir1/localboot_new_42.0-1337.opsi", "dir2/localboot_new_42.0-1337.opsi"]
+	repo_meta_package = RepoMetaPackage.from_package_file(tmp_path / "localboot_new_42.0-1337.opsi", url=url)
+
+	url = ["dir2/localboot_new_42.0-1337.opsi", "dir3/localboot_new_42.0-1337.opsi"]
+	other_repo_meta_package = RepoMetaPackage.from_package_file(tmp_path / "localboot_new_42.0-1337.opsi", url=url)
+	repo_meta_package.merge(other_repo_meta_package)
+
+	assert isinstance(repo_meta_package.url, list) and isinstance(repo_meta_package.zsync_url, list)
+	assert len(repo_meta_package.url) == 3 and len(repo_meta_package.zsync_url) == 3
+	assert repo_meta_package.url[0] == "dir1/localboot_new_42.0-1337.opsi"
+	assert repo_meta_package.url[1] == "dir2/localboot_new_42.0-1337.opsi"
+	assert repo_meta_package.url[2] == "dir3/localboot_new_42.0-1337.opsi"
+
+
 def test_repo_meta_package_collection_scan_packages(tmp_path: Path) -> None:
 	repository_dir = tmp_path / "repository-dir"
 	formats = ["json", "json.zstd", "msgpack", "msgpack.zstd"]
@@ -211,6 +253,7 @@ def test_repo_meta_package_collection_add_package(tmp_path: Path) -> None:
 		repository_dir, repository_dir / "localboot_new_1.0-1.opsi", num_allowed_versions=1, add_callback=add_callback
 	)
 	assert len(package_collection.packages["localboot_new"]) == 1
+	print(package_collection.packages["localboot_new"])
 	assert package_collection.packages["localboot_new"]["1.0-1"].url == "localboot_new_1.0-1.opsi"
 	assert package_collection.packages["localboot_new"]["1.0-1"].compatibility == compatibility
 	assert package_collection.packages["localboot_new"]["1.0-1"].priority == 0
