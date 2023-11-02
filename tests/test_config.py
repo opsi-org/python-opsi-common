@@ -10,7 +10,13 @@ from time import sleep
 from unittest.mock import patch
 
 import pytest
-from opsicommon.config.opsi import OpsiConfig
+
+from opsicommon.config.opsi import (
+	DEFAULT_OPSICONFD_USER,
+	OPSICONFD_CONF,
+	OpsiConfig,
+	get_opsiconfd_user,
+)
 from opsicommon.testing.helpers import environment  # type: ignore[import]
 
 
@@ -211,3 +217,79 @@ def test_set_config_invalid_category_or_config() -> None:
 
 	with pytest.raises(ValueError, match=r"Invalid category 'invalid'"):
 		config.set("invalid", "invalid", True)
+
+
+def test_default_user_when_config_file_not_exist() -> None:
+	# Remove the opsiconfd configuration file if it exists
+	if Path(OPSICONFD_CONF).exists():
+		Path(OPSICONFD_CONF).unlink()
+	get_opsiconfd_user.cache_clear()
+	# Call the function and assert the return value is the default opsiconfd user
+	assert get_opsiconfd_user() == DEFAULT_OPSICONFD_USER
+
+
+def test_run_as_user_value_from_config_file(tmp_path: Path) -> None:
+	confd_conf = tmp_path / "opsiconfd.conf"
+	with patch("opsicommon.config.opsi.OPSICONFD_CONF", str(confd_conf)):
+		get_opsiconfd_user.cache_clear()
+		config_file = Path(confd_conf)
+		config_file.write_text("run-as-user = test_user", encoding="utf-8")
+
+		# Call the function and assert the return value is the run-as-user value from the config file
+		assert get_opsiconfd_user() == "test_user"
+
+
+def test_ignore_commented_and_invalid_lines_in_config_file(tmp_path: Path) -> None:
+	confd_conf = tmp_path / "opsiconfd.conf"
+	with patch("opsicommon.config.opsi.OPSICONFD_CONF", str(confd_conf)):
+		get_opsiconfd_user.cache_clear()
+		config_file = Path(confd_conf)
+		config_file.write_text("# run-as-user = test_user\ninvalid_line\n", encoding="utf-8")
+
+		# Call the function and assert the return value is the default opsiconfd user
+		assert get_opsiconfd_user() == DEFAULT_OPSICONFD_USER
+
+
+def test_config_file_with_run_as_user_line(tmp_path: Path) -> None:
+	confd_conf = tmp_path / "opsiconfd.conf"
+	with patch("opsicommon.config.opsi.OPSICONFD_CONF", str(confd_conf)):
+		get_opsiconfd_user.cache_clear()
+		config_file = Path(confd_conf)
+		config_file.write_text(
+			"""
+# For available options see: opsiconfd --help
+# config examples:
+# log-level-file = 5
+# networks = [192.168.0.0/16, 10.0.0.0/8, ::/0]
+# update-ip = true
+# skip-setup = [ssl, file_permissions]
+run-as-user = opsiconfd-dev
+grafana-internal-url = http://opsiconfd:aqmfgATF@localhost:3000
+port = 443
+		""",
+			encoding="utf-8",
+		)
+		# Call the function and assert the return value is the default opsiconfd user
+		assert get_opsiconfd_user() == "opsiconfd-dev"
+
+
+def test_config_file_without_run_as_user_line(tmp_path: Path) -> None:
+	confd_conf = tmp_path / "opsiconfd.conf"
+	with patch("opsicommon.config.opsi.OPSICONFD_CONF", str(confd_conf)):
+		get_opsiconfd_user.cache_clear()
+	config_file = Path(confd_conf)
+	config_file.write_text(
+		"""
+# For available options see: opsiconfd --help
+# config examples:
+# log-level-file = 5
+# networks = [192.168.0.0/16, 10.0.0.0/8, ::/0]
+# update-ip = true
+# skip-setup = [ssl, file_permissions]
+grafana-internal-url = http://opsiconfd:aqmfgATF@localhost:3000
+port = 443
+	""",
+		encoding="utf-8",
+	)
+	# Call the function and assert the return value is the default opsiconfd user
+	assert get_opsiconfd_user() == DEFAULT_OPSICONFD_USER
