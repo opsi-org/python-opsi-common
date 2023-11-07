@@ -8,6 +8,7 @@ import json
 from typing import Any, Dict, Optional, Type
 
 import pytest
+
 from opsicommon.objects import (
 	Entity,
 	decode_ident,
@@ -72,7 +73,7 @@ object_classes = [_obj for _name, _obj in dict(globals()).items() if _name not i
 def test_object_classes() -> None:
 	objs = (
 		User("testuser", "2023-01-01 07:07:07", "2023-01-01 08:08:08", "totp_active", "Q23E3B6XN5MTTPV67LL7EVNZHPZO6XN7"),
-		Host("test.dom.tld", "desc", "notes", "00:01:02:03:04:05", "172.16.1.1", "inv001"),
+		Host("test.dom.tld", "desc", "notes", "00:01:02:03:04:05", "172.16.1.1", "inv001", "9f3f1c96-1821-413c-b850-0507a17c7e47"),
 		OpsiClient(
 			"client.dom.tld",
 			"12345678901234567890123456789011",
@@ -850,3 +851,36 @@ def test_hardware_config() -> None:
 	for ahoh in data:
 		ahw = AuditHardwareOnHost.fromHash(ahoh)
 		ahw.toAuditHardware()
+
+def test_host_init():
+	host = Host("test.dom.tld", "desc", "notes", "00:01:02:03:04:05", "172.16.1.1", "inv001", "9f3f1c96-1821-413c-b850-0507a17c7e47")
+	assert host.id == "test.dom.tld"
+	assert host.description == "desc"
+	assert host.notes == "notes"
+	assert host.hardwareAddress == "00:01:02:03:04:05"
+	assert host.ipAddress == "172.16.1.1"
+	assert host.systemUUID == "9f3f1c96-1821-413c-b850-0507a17c7e47"
+
+	host = Host("test.dom.tld", "desc", "notes", "00:01:02:03:04:05", "172.16.1.1", "inv001", "")
+	assert host.id == "test.dom.tld"
+	assert host.description == "desc"
+	assert host.notes == "notes"
+	assert host.hardwareAddress == "00:01:02:03:04:05"
+	assert host.ipAddress == "172.16.1.1"
+	assert host.systemUUID == ""
+
+	host = Host("test.dom.tld", "desc", "notes", "00:01:02:03:04:05", "172.16.1.1", "inv001", None)
+	assert host.id == "test.dom.tld"
+	assert host.description == "desc"
+	assert host.notes == "notes"
+	assert host.hardwareAddress == "00:01:02:03:04:05"
+	assert host.ipAddress == "172.16.1.1"
+	assert host.systemUUID == None
+
+	host = Host("test.dom.tld", "desc", "notes", "00:01:02:03:04:05", "172.16.1.1", "inv001")
+	assert host.id == "test.dom.tld"
+	assert host.description == "desc"
+	assert host.notes == "notes"
+	assert host.hardwareAddress == "00:01:02:03:04:05"
+	assert host.ipAddress == "172.16.1.1"
+	assert host.systemUUID == None
