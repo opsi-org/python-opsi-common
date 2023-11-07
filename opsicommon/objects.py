@@ -657,7 +657,7 @@ class Host(Object):
 		return self.systemUUID
 
 	def setSystemUUID(self, systemUUID: str) -> None:  # pylint: disable=invalid-name
-		self.systemUUID = forceUUIDString(systemUUID) if systemUUID else None
+		self.systemUUID = forceUUIDString(systemUUID) if systemUUID else ""
 
 
 Object.sub_classes["Host"] = Host
