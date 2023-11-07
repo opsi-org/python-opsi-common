@@ -852,7 +852,7 @@ def test_hardware_config() -> None:
 		ahw = AuditHardwareOnHost.fromHash(ahoh)
 		ahw.toAuditHardware()
 
-def test_host_init():
+def test_host_init() -> None:
 	host = Host("test.dom.tld", "desc", "notes", "00:01:02:03:04:05", "172.16.1.1", "inv001", "9f3f1c96-1821-413c-b850-0507a17c7e47")
 	assert host.id == "test.dom.tld"
 	assert host.description == "desc"
