@@ -26,6 +26,9 @@ priority = "primary"
 line-length = 140
 ignore = [ "F401", "E402",]
 
+[tool.ruff.format]
+indent-style = "tab"
+
 [tool.black]
 line-length = 140
 target-version = [ "py39", "py310",]
