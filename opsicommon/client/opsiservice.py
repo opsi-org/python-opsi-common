@@ -889,6 +889,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		except Timeout as err:
 			raise OpsiServiceTimeoutError(str(err)) from err
 		except HTTPError as err:
+			if not err.response:
+				raise OpsiServiceError(str(err))
+
 			if err.response.status_code == 503:
 				retry_after = 60
 				try:
