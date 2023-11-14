@@ -43,9 +43,8 @@ from OpenSSL.crypto import (  # type: ignore[import]
 	load_certificate,
 )
 from packaging import version
-from requests import HTTPError
+from requests import HTTPError, Session
 from requests import Response as RequestsResponse
-from requests import Session
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3.exceptions import InsecureRequestWarning
@@ -224,7 +223,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 	def __init__(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		self,
-		address: Iterable[str] | str,
+		address: Iterable[str] | str | None = None,
 		*,
 		username: str | None = None,
 		password: str | None = None,
@@ -241,24 +240,24 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	) -> None:
 		"""
 		proxy_url:
-			system = Use system proxy
-			None = Do not use a proxy
+		    system = Use system proxy
+		    None = Do not use a proxy
 
 		verify:
-			strict_check:
-				Check server certificate against default certs or ca_cert_file if provided.
-			uib_opsi_ca:
-				In combination with verify. Also accept server certificates signed by uib.
-			accept_all:
-				Do not check server certificate.
-			opsi_ca:
-				Needs ca_cert_file to be set.
-				If ca_cert_file missing or empty: Do not verify certificate.
-				If ca_cert_file is present: Verify if accept_all is not set.
-				After every successful connection: Fetch opsi ca from service and update ca_cert_file.
-			replace_expired_ca:
-				To use in combination with fetch_opsi_ca.
-				If opsi_ca from ca_cert_file is expired => accept_all.
+		    strict_check:
+		        Check server certificate against default certs or ca_cert_file if provided.
+		    uib_opsi_ca:
+		        In combination with verify. Also accept server certificates signed by uib.
+		    accept_all:
+		        Do not check server certificate.
+		    opsi_ca:
+		        Needs ca_cert_file to be set.
+		        If ca_cert_file missing or empty: Do not verify certificate.
+		        If ca_cert_file is present: Verify if accept_all is not set.
+		        After every successful connection: Fetch opsi ca from service and update ca_cert_file.
+		    replace_expired_ca:
+		        To use in combination with fetch_opsi_ca.
+		        If opsi_ca from ca_cert_file is expired => accept_all.
 		"""
 		self._messagebus = Messagebus(self)
 
@@ -295,8 +294,6 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		self.username = username
 		self.password = password
-
-		self.set_addresses(address)
 
 		self._ca_cert_file = None
 		if ca_cert_file:
@@ -363,15 +360,6 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			cookie_name, cookie_value = self._session_cookie.split("=", 1)
 			self._session.cookies.set(cookie_name, quote(cookie_value))  # type: ignore[no-untyped-call]
 
-		service_hostname = urlparse(self.base_url).hostname or ""
-
-		self._session = prepare_proxy_environment(
-			service_hostname,
-			self._proxy_url,
-			no_proxy_addresses=self.no_proxy_addresses,
-			session=self._session,
-		)
-
 		if ServiceVerificationFlags.ACCEPT_ALL in self._verify:
 			self._session.verify = False
 		else:
@@ -386,9 +374,13 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			else:
 				self._session.verify = True
 
-	def set_addresses(self, address: Iterable[str] | str) -> None:
+		self.set_addresses(address)
+
+	def set_addresses(self, address: Iterable[str] | str | None) -> None:
 		self._addresses = []
 		self._address_index = 0
+		if not address:
+			return
 
 		for addr in [address] if isinstance(address, str) else address:
 			if "://" not in addr:
@@ -423,8 +415,19 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 			self._addresses.append(f"{url.scheme}://{hostname}:{url.port or _DEFAULT_HTTPS_PORT}")
 
+		service_hostname = urlparse(self.base_url).hostname or ""
+
+		self._session = prepare_proxy_environment(
+			service_hostname,
+			self._proxy_url,
+			no_proxy_addresses=self.no_proxy_addresses,
+			session=self._session,
+		)
+
 	@property
 	def base_url(self) -> str:
+		if not self._addresses:
+			raise ValueError("Service address undefined")
 		return self._addresses[self._address_index]
 
 	def service_is_opsiclientd(self) -> bool:
@@ -655,6 +658,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			self.disconnect()
 
 	def connect(self) -> None:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+		if not self._addresses:
+			raise OpsiServiceConnectionError("Service address undefined")
+
 		if self._connect_lock.locked():
 			return
 		logger.debug("service_is_opsiclientd: %r", self.service_is_opsiclientd())
@@ -1423,6 +1429,8 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def register_messagebus_listener(self, listener: MessagebusListener) -> None:
 		with self._listener_lock:
 			if listener not in self._listener:
+				if not listener.messagebus:
+					listener.messagebus = self
 				self._listener.append(listener)
 
 	def unregister_messagebus_listener(self, listener: MessagebusListener) -> None:
@@ -1467,9 +1475,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		params = params or tuple()
 		if isinstance(params, list):
 			params = tuple(params)
-		msg = JSONRPCRequestMessage(
-			sender="*", channel="service:config:jsonrpc", method=method, params=params
-		)  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+		msg = JSONRPCRequestMessage(sender="*", channel="service:config:jsonrpc", method=method, params=params)  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
 		self.send_message(msg)
 		timeout = float(RPC_TIMEOUTS.get(method, 300))
 		res = self.wait_for_jsonrpc_response_message(rpc_id=msg.rpc_id, timeout=timeout)

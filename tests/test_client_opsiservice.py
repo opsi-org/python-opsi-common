@@ -6,36 +6,35 @@ This file is part of opsi - https://www.opsi.org
 # pylint: disable=too-many-lines
 
 from __future__ import annotations
+
+import asyncio
 import base64
-from contextlib import contextmanager
 import json
 import platform
-import time
 import re
+import time
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from socket import AF_INET
 from threading import Thread
 from typing import Any, Generator, Iterable
 from unittest import mock
 from urllib.parse import unquote
 from warnings import catch_warnings, simplefilter
-import asyncio
-from socket import AF_INET
 
+import lz4.frame  # type: ignore[import,no-redef]
+import pproxy  # type: ignore[import]
+import psutil
+import pytest
 from OpenSSL.crypto import (  # type: ignore[import]
 	FILETYPE_PEM,
 	X509,
 	load_certificate,
 )
-import pproxy  # type: ignore[import]
-import psutil
-import lz4.frame  # type: ignore[import,no-redef]
-import pytest
 
 from opsicommon import __version__
-from opsicommon.system.info import is_macos, is_windows
 from opsicommon.client.opsiservice import (
-	OpsiCaState,
 	MIN_VERSION_GZIP,
 	MIN_VERSION_LZ4,
 	MIN_VERSION_MESSAGEBUS,
@@ -45,6 +44,7 @@ from opsicommon.client.opsiservice import (
 	BackendManager,
 	Messagebus,
 	MessagebusListener,
+	OpsiCaState,
 	OpsiServiceAuthenticationError,
 	OpsiServiceConnectionError,
 	OpsiServiceError,
@@ -76,6 +76,7 @@ from opsicommon.messagebus import (
 )
 from opsicommon.objects import OpsiClient
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
+from opsicommon.system.info import is_macos, is_windows
 from opsicommon.testing.helpers import (  # type: ignore[import]
 	HTTPTestServerRequestHandler,
 	environment,
@@ -120,6 +121,10 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 	)
 	with pytest.raises(ValueError):
 		ServiceClient("http://localhost:4448")
+
+	assert ServiceClient()
+	with pytest.raises(ValueError):
+		assert ServiceClient().base_url
 
 	# username / password
 	client = ServiceClient("localhost")
@@ -209,6 +214,20 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 	assert ServiceClient("::1", connect_timeout=123)._connect_timeout == 123.0  # pylint: disable=protected-access
 	assert ServiceClient("::1", connect_timeout=1.2)._connect_timeout == 1.2  # pylint: disable=protected-access
 	assert ServiceClient("::1", connect_timeout=-1)._connect_timeout == 0.0  # pylint: disable=protected-access
+
+
+def test_set_addresses() -> None:
+	service_client = ServiceClient(["https://opsiserver:4447", "https://opsiserver2:4447"])
+	assert service_client.base_url == "https://opsiserver:4447"
+
+	service_client.set_addresses("localhost")
+	assert service_client.base_url == "https://localhost:4447"
+
+	service_client = ServiceClient()
+	with pytest.raises(ValueError):
+		assert ServiceClient().base_url
+	service_client.set_addresses("localhost")
+	assert service_client.base_url == "https://localhost:4447"
 
 
 def test_read_write_ca_cert_file(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
