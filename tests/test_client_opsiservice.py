@@ -766,6 +766,14 @@ def test_server_name_handling(  # pylint: disable=too-many-arguments
 def test_connect_disconnect() -> None:  # pylint: disable=too-many-statements
 	with log_level_stderr(9), http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
 		listener = MyConnectionListener()
+		with ServiceClient() as client:
+			with pytest.raises(OpsiServiceConnectionError, match="Service address undefined"):
+				client.connect()
+			with pytest.raises(OpsiServiceConnectionError, match="Service address undefined"):
+				client.connect_messagebus()
+			with pytest.raises(OpsiServiceConnectionError, match="Service address undefined"):
+				client.messagebus.connect()
+
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			with listener.register(client):
 				assert not client.messagebus_available

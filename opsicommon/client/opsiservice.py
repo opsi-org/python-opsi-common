@@ -1507,6 +1507,9 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		logger.debug("Messagebus.connect")
 		if self._should_be_connected:
 			return
+		if not self._client._addresses:
+			raise OpsiServiceConnectionError("Service address undefined")
+
 		self._connected_result.clear()
 		self._should_be_connected = True
 		if not self.is_alive():
