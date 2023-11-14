@@ -95,6 +95,10 @@ class Message:  # pylint: disable=too-many-instance-attributes
 			return _dict
 		return {k: v for k, v in _dict.items() if v is not None}
 
+	@property
+	def response_channel(self) -> str:
+		return self.back_channel or self.sender
+
 	@classmethod
 	def from_msgpack(cls: Type[MessageT], data: bytes) -> MessageT:
 		return cls.from_dict(message_decoder.decode(data))
@@ -117,6 +121,7 @@ class GeneralErrorMessage(Message):
 
 	Used to transport Error object via messagebus
 	"""
+
 	type: str = MessageType.GENERAL_ERROR.value
 	error: Error | None
 
@@ -129,6 +134,7 @@ class EventMessage(Message):
 
 	Used to notify messagebus of an event that occured.
 	"""
+
 	type: str = MessageType.EVENT.value
 	event: str
 	data: dict[str, Any] = field(default_factory=dict)
@@ -147,6 +153,7 @@ class ChannelSubscriptionRequestMessage(Message):
 
 	Can be used to set, add or remove subscribed channels.
 	"""
+
 	type: str = MessageType.CHANNEL_SUBSCRIPTION_REQUEST.value
 	channels: list[str]
 	operation: str = ChannelSubscriptionOperation.SET.value
@@ -159,6 +166,7 @@ class ChannelSubscriptionEventMessage(Message):
 
 	Is response to ChannelSubscriptionRequestMessage and contains total subscribed_channels or error.
 	"""
+
 	type: str = MessageType.CHANNEL_SUBSCRIPTION_EVENT.value
 	error: Error | None = None
 	subscribed_channels: list[str] = field(default_factory=list)
@@ -171,6 +179,7 @@ class TraceRequestMessage(Message):
 
 	It contains trace data (timestamp of sending).
 	"""
+
 	type: str = MessageType.TRACE_REQUEST.value
 	trace: dict[str, Any] = field(default_factory=dict)  # type: ignore[assignment]
 	payload: bytes | None = None
@@ -183,6 +192,7 @@ class TraceResponseMessage(Message):
 
 	It contains trace data (timestamp of sending, receiving request and response).
 	"""
+
 	type: str = MessageType.TRACE_RESPONSE.value
 	req_trace: dict[str, Any]
 	trace: dict[str, Any]
@@ -197,6 +207,7 @@ class JSONRPCRequestMessage(Message):
 
 	Requests the execution of an rpc with given parameters on receiving end.
 	"""
+
 	type: str = MessageType.JSONRPC_REQUEST.value
 	api_version: str = "1"
 	rpc_id: str = field(default_factory=lambda: str(uuid4()))
@@ -212,6 +223,7 @@ class JSONRPCResponseMessage(Message):
 	Is response to JSONRPCRequestMessage and contains either result or an error.
 	rpc_id matches the one specified in the corresponding JSONRPCRequestMessage.
 	"""
+
 	type: str = MessageType.JSONRPC_RESPONSE.value
 	rpc_id: str
 	error: Any = None
@@ -228,6 +240,7 @@ class TerminalOpenRequestMessage(Message):
 	terminal_id is used as an identifier. If a terminal with that id already exists,
 	access to this terminal may be granted resulting in shared access to it.
 	"""
+
 	type: str = MessageType.TERMINAL_OPEN_REQUEST.value
 	terminal_id: str
 	rows: int | None = None
@@ -242,6 +255,7 @@ class TerminalOpenEventMessage(Message):
 
 	Contains number of rows and columns. May contain error.
 	"""
+
 	type: str = MessageType.TERMINAL_OPEN_EVENT.value
 	terminal_id: str
 	rows: int
@@ -256,6 +270,7 @@ class TerminalDataReadMessage(Message):
 
 	Terminal output data is contained as bytes.
 	"""
+
 	type: str = MessageType.TERMINAL_DATA_READ.value
 	terminal_id: str
 	data: bytes
@@ -268,6 +283,7 @@ class TerminalDataWriteMessage(Message):
 
 	Terminal input data (stdin) is contained as bytes.
 	"""
+
 	type: str = MessageType.TERMINAL_DATA_WRITE.value
 	terminal_id: str
 	data: bytes
@@ -280,6 +296,7 @@ class TerminalResizeRequestMessage(Message):
 
 	Contains new number of rows and columns for an already open terminal.
 	"""
+
 	type: str = MessageType.TERMINAL_RESIZE_REQUEST.value
 	terminal_id: str
 	rows: int
@@ -293,6 +310,7 @@ class TerminalResizeEventMessage(Message):
 
 	Contains new number of rows and columns. May contain error.
 	"""
+
 	type: str = MessageType.TERMINAL_RESIZE_EVENT.value
 	terminal_id: str
 	rows: int
@@ -307,6 +325,7 @@ class TerminalCloseRequestMessage(Message):
 
 	Contains terminal_id for open termial to be closed.
 	"""
+
 	type: str = MessageType.TERMINAL_CLOSE_REQUEST.value
 	terminal_id: str
 
@@ -318,6 +337,7 @@ class TerminalCloseEventMessage(Message):
 
 	May contain error.
 	"""
+
 	type: str = MessageType.TERMINAL_CLOSE_EVENT.value
 	terminal_id: str
 	error: Error | None = None
@@ -331,6 +351,7 @@ class ProcessStartRequestMessage(Message):
 
 	Contains a unique process_id and the command to execute as tuple. Optional timeout.
 	"""
+
 	type: str = MessageType.PROCESS_START_REQUEST.value
 	process_id: str = field(default_factory=lambda: str(uuid4()))
 	command: tuple[str, ...] = tuple()
@@ -344,6 +365,7 @@ class ProcessStartEventMessage(Message):
 
 	Contains the local process id. May contain error.
 	"""
+
 	type: str = MessageType.PROCESS_START_EVENT.value
 	process_id: str = field(default_factory=lambda: str(uuid4()))
 	local_process_id: int
@@ -357,6 +379,7 @@ class ProcessStopRequestMessage(Message):
 
 	Contains the local process id.
 	"""
+
 	type: str = MessageType.PROCESS_STOP_REQUEST.value
 	process_id: str
 
@@ -368,6 +391,7 @@ class ProcessStopEventMessage(Message):
 
 	Contains the exit code of the process. May contain error.
 	"""
+
 	type: str = MessageType.PROCESS_STOP_EVENT.value
 	process_id: str
 	exit_code: int
@@ -381,6 +405,7 @@ class ProcessDataReadMessage(Message):
 
 	Process stdout and stderr output data is contained as bytes.
 	"""
+
 	type: str = MessageType.PROCESS_DATA_READ.value
 	process_id: str
 	stdout: bytes = b""
@@ -394,6 +419,7 @@ class ProcessDataWriteMessage(Message):
 
 	Process input data (stdin) is contained as bytes.
 	"""
+
 	type: str = MessageType.PROCESS_DATA_WRITE.value
 	process_id: str
 	stdin: bytes = b""
@@ -408,6 +434,7 @@ class FileUploadRequestMessage(Message):
 	Contains a unique file_id and the MIME content type. May contain name, size, destination directory
 	and an associated terminal id.
 	"""
+
 	type: str = MessageType.FILE_UPLOAD_REQUEST.value
 	file_id: str
 	content_type: str
@@ -424,6 +451,7 @@ class FileUploadResultMessage(Message):
 
 	May contain the path of the uploaded file or an error.
 	"""
+
 	type: str = MessageType.FILE_UPLOAD_RESULT.value
 	file_id: str
 	error: Error | None = None
@@ -438,6 +466,7 @@ class FileChunkMessage(Message):
 	Contains the chunk number (for ordering in assembly) and the actual data as bytes.
 	The last chunk of a file should contain last=True to conclude the upload.
 	"""
+
 	type: str = MessageType.FILE_CHUNK.value
 	file_id: str
 	number: int
