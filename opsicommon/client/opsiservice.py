@@ -376,6 +376,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 		self.set_addresses(address)
 
+	@property
+	def addresses(self) -> Iterable[str] | str | None:
+		return self._addresses
+
 	def set_addresses(self, address: Iterable[str] | str | None) -> None:
 		self._addresses = []
 		self._address_index = 0
@@ -890,7 +894,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			raise OpsiServiceTimeoutError(str(err)) from err
 		except HTTPError as err:
 			if err.response is None:
-				raise OpsiServiceError(str(err))
+				raise OpsiServiceError(str(err)) from err
 
 			if err.response.status_code == 503:
 				retry_after = 60
@@ -1510,7 +1514,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		logger.debug("Messagebus.connect")
 		if self._should_be_connected:
 			return
-		if not self._client._addresses:
+		if not self._client.addresses:
 			raise OpsiServiceConnectionError("Service address undefined")
 
 		self._connected_result.clear()
