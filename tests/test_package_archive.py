@@ -53,10 +53,12 @@ def make_source_files(path: Path) -> Path:
 @given(from_regex(FILENAME_REGEX), binary(max_size=4096), sampled_from(("zstd", "bz2", "gz")))
 def test_archive_external_hypothesis(filename: str, data: bytes, compression: Literal["zstd", "bz2", "gz"]) -> None:
 	with tempfile.TemporaryDirectory() as tempdir:
+		filename = filename.replace("\x00", "")
 		tmp_path = Path(tempdir)
 		source = tmp_path / "source"
 		source.mkdir()
-		(source / filename).write_bytes(data)
+		file_path = source / filename
+		file_path.write_bytes(data)
 		archive = tmp_path / f"archive.tar.{compression}"
 		create_archive_external(archive, list(source.glob("*")), source, compression=compression)
 		destination = tmp_path / "destination"
