@@ -42,9 +42,10 @@ else:
 	OPSI_TMP_DIR = Path("/var/lib/opsi/tmp")
 
 if TYPE_CHECKING:
+	from requests import Session
+
 	from opsicommon.objects import BaseObject as TBaseObject
 	from opsicommon.objects import Product, ProductOnClient, ProductOnDepot
-	from requests import Session
 
 OBJECT_CLASSES: dict[str, Type["TBaseObject"]] = {}
 BaseObject: Type["TBaseObject"] | None = None  # pylint: disable=invalid-name
@@ -111,6 +112,8 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 	* emptystring or None to disable proxy usage.
 	If session is given its proxy settings are adapted. Else a new session is created and returned.
 	"""
+	for env_var in ("CURL_CA_BUNDLE", "REQUESTS_CA_BUNDLE"):
+		os.environ.pop(env_var)
 
 	def add_protocol(host: str, protocol: str = "http") -> str:
 		if not host or "://" in host:
