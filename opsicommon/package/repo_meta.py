@@ -163,6 +163,8 @@ class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
 	def merge(self, other: RepoMetaPackage) -> None:
 		if self.version != other.version or self.product_id != other.product_id:
 			raise ValueError("Cannot merge RepoMetaPackages for different products or versions")
+		if self.md5_hash != other.md5_hash or self.sha256_hash != other.sha256_hash:
+			raise ValueError("Cannot merge RepoMetaPackages if hashes differ")
 		other_urls = other.url if isinstance(other.url, list) else [other.url]
 		other_zsync_urls = other.zsync_url if isinstance(other.zsync_url, list) else [other.zsync_url]
 		self_urls = self.url if isinstance(self.url, list) else [self.url]
