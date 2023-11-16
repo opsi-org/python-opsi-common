@@ -443,16 +443,11 @@ def test_env_requests_ca_bundle(tmp_path: Path) -> None:
 
 	ca_bundle = "/error.crt"
 	with log_stream(LOG_WARNING, format="%(levelname)s %(message)s") as stream:
-		with environment({"REQUESTS_CA_BUNDLE": ca_bundle}):
+		with environment({"REQUESTS_CA_BUNDLE": ca_bundle, "CURL_CA_BUNDLE": ca_bundle}):
 			with http_test_server(server_key=server_key, server_cert=server_cert) as server:
-				with pytest.raises(OSError) as err:
-					JSONRPCClient(f"https://localhost:{server.port}")
-
-				assert ca_bundle in str(err)
-				stream.seek(0)
-				log = stream.read()
-				assert f"WARNING Environment variable REQUESTS_CA_BUNDLE is set to '{ca_bundle}'" in log
-
+				JSONRPCClient(f"https://localhost:{server.port}")
+				assert "REQUESTS_CA_BUNDLE" not in os.environ
+				assert "CURL_CA_BUNDLE" not in os.environ
 
 def test_context_manager() -> None:
 	with http_test_server() as server:
