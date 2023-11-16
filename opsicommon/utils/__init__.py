@@ -113,7 +113,8 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 	If session is given its proxy settings are adapted. Else a new session is created and returned.
 	"""
 	for env_var in ("CURL_CA_BUNDLE", "REQUESTS_CA_BUNDLE"):
-		os.environ.pop(env_var)
+		if env_var in os.environ:
+			os.environ.pop(env_var)
 
 	def add_protocol(host: str, protocol: str = "http") -> str:
 		if not host or "://" in host:
