@@ -22,14 +22,11 @@ from opsicommon.client.jsonrpc import (
 	JSONRPCClient,
 	OpsiRpcError,
 )
-from opsicommon.logging import LOG_WARNING
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
 from opsicommon.testing.helpers import (  # type: ignore[import]
 	environment,
 	http_test_server,
 )
-
-from .helpers import log_stream
 
 
 def test_arguments() -> None:
