@@ -8,7 +8,6 @@ This file is part of opsi - https://www.opsi.org
 
 import gzip
 import ipaddress
-import os
 import re
 import socket
 import threading

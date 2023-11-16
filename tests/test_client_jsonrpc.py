@@ -442,12 +442,11 @@ def test_env_requests_ca_bundle(tmp_path: Path) -> None:
 	server_key.write_text(as_pem(key), encoding="utf-8")
 
 	ca_bundle = "/error.crt"
-	with log_stream(LOG_WARNING, format="%(levelname)s %(message)s") as stream:
-		with environment({"REQUESTS_CA_BUNDLE": ca_bundle, "CURL_CA_BUNDLE": ca_bundle}):
-			with http_test_server(server_key=server_key, server_cert=server_cert) as server:
-				JSONRPCClient(f"https://localhost:{server.port}")
-				assert "REQUESTS_CA_BUNDLE" not in os.environ
-				assert "CURL_CA_BUNDLE" not in os.environ
+	with environment({"REQUESTS_CA_BUNDLE": ca_bundle, "CURL_CA_BUNDLE": ca_bundle}):
+		with http_test_server(server_key=server_key, server_cert=server_cert) as server:
+			JSONRPCClient(f"https://localhost:{server.port}")
+			assert "REQUESTS_CA_BUNDLE" not in os.environ
+			assert "CURL_CA_BUNDLE" not in os.environ
 
 def test_context_manager() -> None:
 	with http_test_server() as server:
