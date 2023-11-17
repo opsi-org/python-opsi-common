@@ -27,11 +27,7 @@ import lz4.frame  # type: ignore[import,no-redef]
 import pproxy  # type: ignore[import]
 import psutil
 import pytest
-from OpenSSL.crypto import (  # type: ignore[import]
-	FILETYPE_PEM,
-	X509,
-	load_certificate,
-)
+from OpenSSL.crypto import FILETYPE_PEM, X509, load_certificate  # type: ignore[import]
 
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
@@ -1610,7 +1606,7 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 		now = timestamp()
 		handler.ws_send_message(
 			JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
-				id="11111111-1111-1111-1111-111111111111",
+				id="00000000-0000-4000-8000-000000000001",
 				sender="service:worker:test:1",
 				channel="host:test-client.uib.local",
 				rpc_id="1",
@@ -1619,7 +1615,7 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 		)
 		handler.ws_send_message(
 			JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
-				id="22222222-2222-2222-2222-222222222222",
+				id="00000000-0000-4000-8000-000000000002",
 				sender="service:worker:test:2",
 				channel="host:test-client.uib.local",
 				rpc_id="2",
@@ -1628,13 +1624,13 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 		)
 		handler.ws_send_message(
 			JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
-				id="33333333-3333-3333-3333-333333333333", sender="service:worker:test:3", channel="host:test-client.uib.local", rpc_id="3"
+				id="00000000-0000-4000-8000-000000000003", sender="service:worker:test:3", channel="host:test-client.uib.local", rpc_id="3"
 			).to_msgpack()
 		)
 		handler.ws_send_message(b"DO NOT CRASH ON INVALID DATA")
 		handler.ws_send_message(
 			FileUploadResultMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
-				id="44444444-4444-4444-4444-444444444444",
+				id="00000000-0000-4000-8000-000000000004",
 				sender="service:worker:test:1",
 				channel="host:test-client.uib.local",
 				file_id="bcc2b07d-badc-49b8-9ff6-6ce37884686e",
@@ -1643,7 +1639,7 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 		)
 		handler.ws_send_message(
 			FileUploadResultMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
-				id="55555555-5555-5555-5555-555555555555",
+				id="00000000-0000-4000-8000-000000000005",
 				sender="service:worker:test:1",
 				channel="host:test-client.uib.local",
 				file_id="49730998-2bfa-4ae3-b80c-bd0af20e9441",
@@ -1684,20 +1680,20 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 
 	# listener1 / listener3: JSONRPC_RESPONSE + FILE_UPLOAD_RESULT
 	for listener in (listener1, listener3):
-		assert ["11111111-1111-1111-1111-111111111111", "44444444-4444-4444-4444-444444444444"] == sorted(
+		assert ["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000004"] == sorted(
 			[m.id for m in listener.expired_messages_received]
 		)
 		assert [
-			"22222222-2222-2222-2222-222222222222",
-			"33333333-3333-3333-3333-333333333333",
-			"55555555-5555-5555-5555-555555555555",
+			"00000000-0000-4000-8000-000000000002",
+			"00000000-0000-4000-8000-000000000003",
+			"00000000-0000-4000-8000-000000000005",
 		] == sorted([m.id for m in listener.messages_received])
 
 	# listener2: JSONRPC_RESPONSE
-	assert ["11111111-1111-1111-1111-111111111111"] == sorted([m.id for m in listener2.expired_messages_received])
+	assert ["00000000-0000-4000-8000-000000000001"] == sorted([m.id for m in listener2.expired_messages_received])
 	assert [
-		"22222222-2222-2222-2222-222222222222",
-		"33333333-3333-3333-3333-333333333333",
+		"00000000-0000-4000-8000-000000000002",
+		"00000000-0000-4000-8000-000000000003",
 	] == sorted([m.id for m in listener2.messages_received])
 
 	# listener4: FILE_CHUNK

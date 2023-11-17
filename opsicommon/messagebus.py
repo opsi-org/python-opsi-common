@@ -207,7 +207,7 @@ class JSONRPCRequestMessage(Message):
 
 	type: str = MessageType.JSONRPC_REQUEST.value
 	api_version: str = "1"
-	rpc_id: str = Field(default_factory=lambda: str(uuid4()), pattern=UUID4_REGEX)
+	rpc_id: str = Field(default_factory=lambda: str(uuid4()))  # TODO: should we enforce uuid4 here? , pattern=UUID4_REGEX
 	method: str
 	params: tuple[Any, ...] = tuple()
 
@@ -298,7 +298,7 @@ class TerminalDataWriteMessage(TerminalMessage):
 	data: bytes
 
 
-class TerminalResizeRequestMessage(Message):
+class TerminalResizeRequestMessage(TerminalMessage):
 	"""
 	Message requesting to resize an open terminal
 
@@ -323,7 +323,7 @@ class TerminalResizeEventMessage(TerminalMessage):
 	error: Error | None = None
 
 
-class TerminalCloseRequestMessage(Message):
+class TerminalCloseRequestMessage(TerminalMessage):
 	"""
 	Message to request a terminal to be closed
 

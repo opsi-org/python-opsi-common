@@ -9,6 +9,7 @@ messagebustypes tests
 import time
 from typing import Type, Union
 
+import pydantic_core
 import pytest
 
 from opsicommon.messagebus import (
@@ -22,6 +23,7 @@ from opsicommon.messagebus import (
 	JSONRPCRequestMessage,
 	JSONRPCResponseMessage,
 	Message,
+	MessageErrorEnum,
 	MessageType,
 	ProcessDataReadMessage,
 	ProcessDataWriteMessage,
@@ -41,7 +43,7 @@ from opsicommon.messagebus import (
 
 
 def test_message() -> None:
-	with pytest.raises(TypeError, match="'type', 'sender', and 'channel'"):
+	with pytest.raises(pydantic_core.ValidationError, match="Field required"):
 		Message()  # type: ignore[call-arg] # pylint: disable=missing-kwoa
 	msg = Message(type=MessageType.JSONRPC_REQUEST, sender="291b9f3e-e370-428d-be30-1248a906ae86", channel="service:config:jsonrpc")
 	assert msg.type == "jsonrpc_request"
@@ -93,7 +95,7 @@ def test_message_to_from_msgpack() -> None:
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "service:config:jsonrpc",
 				"ref_id": "3cd293fd-bad8-4ff0-a7c3-610979e1dae6",
-				"error": {"message": "general error", "code": 4001, "details": "error details"},
+				"error": {"message": "general error", "code": MessageErrorEnum.FILE_NOT_FOUND, "details": "error details"},
 			},
 			None,
 		),
@@ -134,7 +136,11 @@ def test_message_to_from_msgpack() -> None:
 				"channel": "host:aa608319-401c-467b-ae3f-0c1057490df7",
 				"rpc_id": "1",
 				"result": None,
-				"error": {"code": 1230, "message": "error", "data": {"class": "ValueError", "details": "details"}},
+				"error": {
+					"code": MessageErrorEnum.FILE_NOT_FOUND,
+					"message": "error",
+					"data": {"class": "ValueError", "details": "details"},
+				},
 			},
 			None,
 		),
