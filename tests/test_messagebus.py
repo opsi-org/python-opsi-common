@@ -11,12 +11,14 @@ from typing import Type, Union
 
 import pydantic_core
 import pytest
+from pydantic import ValidationError
 
 from opsicommon.messagebus import (
 	ChannelSubscriptionEventMessage,
 	ChannelSubscriptionRequestMessage,
 	EventMessage,
 	FileChunkMessage,
+	FileErrorMessage,
 	FileUploadRequestMessage,
 	FileUploadResultMessage,
 	GeneralErrorMessage,
@@ -27,6 +29,7 @@ from opsicommon.messagebus import (
 	MessageType,
 	ProcessDataReadMessage,
 	ProcessDataWriteMessage,
+	ProcessErrorMessage,
 	ProcessStartEventMessage,
 	ProcessStartRequestMessage,
 	ProcessStopEventMessage,
@@ -35,6 +38,7 @@ from opsicommon.messagebus import (
 	TerminalCloseRequestMessage,
 	TerminalDataReadMessage,
 	TerminalDataWriteMessage,
+	TerminalErrorMessage,
 	TerminalOpenEventMessage,
 	TerminalOpenRequestMessage,
 	TerminalResizeEventMessage,
@@ -228,6 +232,20 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
+			TerminalErrorMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:x.y.z",
+				"terminal_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"error": {
+					"code": MessageErrorEnum.FILE_NOT_FOUND,
+					"message": "error",
+					"details": {"class": "ValueError", "details": "details"},
+				},
+			},
+			None,
+		),
+		(
 			FileUploadRequestMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
@@ -247,7 +265,6 @@ def test_message_to_from_msgpack() -> None:
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "user:admin",
 				"file_id": "5eb61665-ee9f-43a5-ae52-73361865ea40",
-				"error": None,
 				"path": "/tmp/test.txt",
 			},
 			None,
@@ -261,6 +278,20 @@ def test_message_to_from_msgpack() -> None:
 				"number": 12,
 				"last": True,
 				"data": b"data",
+			},
+			None,
+		),
+		(
+			FileErrorMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:x.y.z",
+				"file_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"error": {
+					"code": MessageErrorEnum.FILE_NOT_FOUND,
+					"message": "error",
+					"details": {"class": "ValueError", "details": "details"},
+				},
 			},
 			None,
 		),
@@ -297,7 +328,6 @@ def test_message_to_from_msgpack() -> None:
 				"channel": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"local_process_id": 1234,
-				"error": None,
 			},
 			None,
 		),
@@ -317,7 +347,6 @@ def test_message_to_from_msgpack() -> None:
 				"channel": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"exit_code": 0,
-				"error": None,
 			},
 			None,
 		),
@@ -341,6 +370,32 @@ def test_message_to_from_msgpack() -> None:
 				"stdin": b"asdf blubb",
 			},
 			None,
+		),
+		(
+			ProcessErrorMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:x.y.z",
+				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"error": {
+					"code": MessageErrorEnum.FILE_NOT_FOUND,
+					"message": "error",
+					"details": {"class": "ValueError", "details": "details"},
+				},
+			},
+			None,
+		),
+		(
+			JSONRPCRequestMessage,
+			{
+				"id": "not-a-valid-uuid4-string",
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "service:config:jsonrpc",
+				"rpc_id": "1",
+				"method": "noop",
+				"params": ("1", "2"),
+			},
+			ValidationError,
 		),
 	],
 )

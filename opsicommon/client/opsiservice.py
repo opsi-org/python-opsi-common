@@ -43,8 +43,9 @@ from OpenSSL.crypto import (  # type: ignore[import]
 	load_certificate,
 )
 from packaging import version
-from requests import HTTPError, Session
+from requests import HTTPError
 from requests import Response as RequestsResponse
+from requests import Session
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3.exceptions import InsecureRequestWarning
@@ -1455,9 +1456,9 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		except Exception as err:  # pylint: disable=broad-except
 			logger.error("Error running callback %r on listener %r: %s", callback_name, listener, err, exc_info=True)
 
-	def wait_for_jsonrpc_response_message(self, rpc_id: str, timeout: float | None = None) -> JSONRPCResponseMessage:
+	def wait_for_jsonrpc_response_message(self, rpc_id: str | int, timeout: float | None = None) -> JSONRPCResponseMessage:
 		class JSONRPCResponseListener(MessagebusListener):
-			def __init__(self, rpc_id: str, timeout: float | None = None) -> None:
+			def __init__(self, rpc_id: str | int, timeout: float | None = None) -> None:
 				super().__init__(message_types=(MessageType.JSONRPC_RESPONSE,))
 				self.rpc_id = rpc_id
 				self.timeout = timeout

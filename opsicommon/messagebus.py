@@ -7,15 +7,16 @@
 """
 opsicommon.messagebus
 """
+from __future__ import annotations
 
 from abc import ABC
-from enum import Enum
+from enum import StrEnum
 from time import time
-from typing import Any, Type, TypeVar
+from typing import Annotated, Any, Type, TypeVar, cast
 from uuid import uuid4
 
 import msgspec
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field, StringConstraints
 
 message_decoder = msgspec.msgpack.Decoder()
 message_encoder = msgspec.msgpack.Encoder()
@@ -25,7 +26,7 @@ def timestamp() -> int:
 	return int(time() * 1000)
 
 
-class MessageType(str, Enum):
+class MessageType(StrEnum):
 	GENERAL_ERROR = "general_error"
 	EVENT = "event"
 	CHANNEL_SUBSCRIPTION_REQUEST = "channel_subscription_request"
@@ -56,28 +57,32 @@ class MessageType(str, Enum):
 	FILE_CHUNK = "file_chunk"
 
 
-class MessageErrorEnum(str, Enum):
+class MessageErrorEnum(StrEnum):
 	FILE_NOT_FOUND = "file_not_found"
+	TIMEOUT_REACHED = "timeout_reached"
 
 
 class Error(BaseModel):
 	message: str
-	code: MessageErrorEnum | None = None  # TODO: This might be a breaking change!
+	code: MessageErrorEnum | Annotated[int, AfterValidator(lambda x: None)] | None = None  # change int to None for backwards compatibility
 	details: Any = None
 
+
+UUID4Str = Annotated[
+	str, StringConstraints(pattern=r"^[0-9a-f]{8}\-[0-9a-f]{4}\-4[0-9a-f]{3}\-[89ab][0-9a-f]{3}\-[0-9a-f]{12}$", strict=True)
+]
 
 MessageT = TypeVar("MessageT", bound="Message")
 DEFAULT_PROCESS_EXECUTE_TIMEOUT = 60.0  # Seconds until process should be interrupted
 DEFAULT_MESSAGE_VALIDITY_PERIOD = 60000  # Milliseconds
-UUID4_REGEX = r"^[0-9a-f]{8}\-[0-9a-f]{4}\-4[0-9a-f]{3}\-[89ab][0-9a-f]{3}\-[0-9a-f]{12}$"
 
 
 class Message(BaseModel, ABC):  # pylint: disable=too-many-instance-attributes
-	type: str  # Custom message types are allowed  # TODO: do we need the type attribute at all?
+	type: str  # Custom message types are allowed
 	sender: str
 	channel: str
 	back_channel: str | None = None
-	id: str = Field(default_factory=lambda: str(uuid4()), pattern=UUID4_REGEX)  # pylint: disable=invalid-name
+	id: UUID4Str = Field(default_factory=lambda: str(uuid4()))  # pylint: disable=invalid-name
 	created: int = Field(default_factory=timestamp)
 	expires: int = Field(default_factory=lambda: timestamp() + DEFAULT_MESSAGE_VALIDITY_PERIOD)
 	ref_id: str | None = None
@@ -90,7 +95,7 @@ class Message(BaseModel, ABC):  # pylint: disable=too-many-instance-attributes
 			if _type:
 				if isinstance(_type, MessageType):
 					_type = _type.value
-				_cls = MESSAGE_TYPE_TO_CLASS.get(_type, Message)
+				_cls = cast(Type[MessageT], MESSAGE_TYPE_TO_CLASS.get(_type, Message))
 		return _cls(**data)
 
 	def to_dict(self, none_values: bool = False) -> dict[str, Any]:
@@ -142,7 +147,7 @@ class EventMessage(Message):
 	data: dict[str, Any] = Field(default_factory=dict)
 
 
-class ChannelSubscriptionOperation(str, Enum):
+class ChannelSubscriptionOperation(StrEnum):
 	SET = "set"
 	ADD = "add"
 	REMOVE = "remove"
@@ -207,7 +212,7 @@ class JSONRPCRequestMessage(Message):
 
 	type: str = MessageType.JSONRPC_REQUEST.value
 	api_version: str = "1"
-	rpc_id: str = Field(default_factory=lambda: str(uuid4()))  # TODO: should we enforce uuid4 here? , pattern=UUID4_REGEX
+	rpc_id: str | int = Field(default_factory=lambda: str(uuid4()))
 	method: str
 	params: tuple[Any, ...] = tuple()
 
@@ -221,7 +226,7 @@ class JSONRPCResponseMessage(Message):
 	"""
 
 	type: str = MessageType.JSONRPC_RESPONSE.value
-	rpc_id: str
+	rpc_id: str | int
 	error: Any = None
 	result: Any = None
 
@@ -234,7 +239,7 @@ class TerminalMessage(Message, ABC):
 	terminal_id is used as an identifier.
 	"""
 
-	terminal_id: str  # TODO: should we enforce any format here?
+	terminal_id: str = Field(min_length=1)
 
 
 class TerminalErrorMessage(TerminalMessage):
@@ -267,13 +272,12 @@ class TerminalOpenEventMessage(TerminalMessage):
 	"""
 	Message to respond to TerminalOpenRequestMessage
 
-	Contains number of rows and columns. May contain error.
+	Contains number of rows and columns.
 	"""
 
 	type: str = MessageType.TERMINAL_OPEN_EVENT.value
 	rows: int
 	cols: int
-	error: Error | None = None
 
 
 class TerminalDataReadMessage(TerminalMessage):
@@ -314,13 +318,12 @@ class TerminalResizeEventMessage(TerminalMessage):
 	"""
 	Message to respond to TerminalResizeRequestMessage
 
-	Contains new number of rows and columns. May contain error.
+	Contains new number of rows and columns.
 	"""
 
 	type: str = MessageType.TERMINAL_RESIZE_EVENT.value
 	rows: int
 	cols: int
-	error: Error | None = None
 
 
 class TerminalCloseRequestMessage(TerminalMessage):
@@ -336,12 +339,9 @@ class TerminalCloseRequestMessage(TerminalMessage):
 class TerminalCloseEventMessage(TerminalMessage):
 	"""
 	Message to respond to TerminalCloseRequestMessage
-
-	May contain error.
 	"""
 
 	type: str = MessageType.TERMINAL_CLOSE_EVENT.value
-	error: Error | None = None
 
 
 # ProcessExecute
@@ -352,7 +352,7 @@ class ProcessMessage(Message, ABC):
 	Contains a unique process_id.
 	"""
 
-	process_id: str = Field(default_factory=lambda: str(uuid4()), pattern=UUID4_REGEX)
+	process_id: UUID4Str = Field(default_factory=lambda: str(uuid4()))
 
 
 class ProcessErrorMessage(ProcessMessage):
@@ -382,12 +382,11 @@ class ProcessStartEventMessage(ProcessMessage):
 	"""
 	Message to respond to ProcessStartRequestMessage
 
-	Contains the local process id. May contain error.
+	Contains the local process id.
 	"""
 
 	type: str = MessageType.PROCESS_START_EVENT.value
 	local_process_id: int
-	error: Error | None = None
 
 
 class ProcessStopRequestMessage(ProcessMessage):
@@ -409,7 +408,6 @@ class ProcessStopEventMessage(ProcessMessage):
 
 	type: str = MessageType.PROCESS_STOP_EVENT.value
 	exit_code: int
-	error: Error | None = None
 
 
 class ProcessDataReadMessage(ProcessMessage):
@@ -443,7 +441,7 @@ class FileMessage(Message, ABC):
 	Contains a unique file_id.
 	"""
 
-	file_id: str
+	file_id: UUID4Str = Field(default_factory=lambda: str(uuid4()))
 
 
 class FileErrorMessage(FileMessage):
@@ -477,11 +475,10 @@ class FileUploadResultMessage(FileMessage):
 	"""
 	Message to send after file upload concluded
 
-	May contain the path of the uploaded file or an error.
+	Contains the path of the uploaded file.
 	"""
 
 	type: str = MessageType.FILE_UPLOAD_RESULT.value
-	error: Error | None = None
 	path: str | None = None
 
 
