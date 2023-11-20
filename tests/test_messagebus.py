@@ -9,22 +9,27 @@ messagebustypes tests
 import time
 from typing import Type, Union
 
+import pydantic_core
 import pytest
+from pydantic import ValidationError
 
 from opsicommon.messagebus import (
 	ChannelSubscriptionEventMessage,
 	ChannelSubscriptionRequestMessage,
 	EventMessage,
 	FileChunkMessage,
+	FileErrorMessage,
 	FileUploadRequestMessage,
 	FileUploadResultMessage,
 	GeneralErrorMessage,
 	JSONRPCRequestMessage,
 	JSONRPCResponseMessage,
 	Message,
+	MessageErrorEnum,
 	MessageType,
 	ProcessDataReadMessage,
 	ProcessDataWriteMessage,
+	ProcessErrorMessage,
 	ProcessStartEventMessage,
 	ProcessStartRequestMessage,
 	ProcessStopEventMessage,
@@ -33,6 +38,7 @@ from opsicommon.messagebus import (
 	TerminalCloseRequestMessage,
 	TerminalDataReadMessage,
 	TerminalDataWriteMessage,
+	TerminalErrorMessage,
 	TerminalOpenEventMessage,
 	TerminalOpenRequestMessage,
 	TerminalResizeEventMessage,
@@ -41,7 +47,7 @@ from opsicommon.messagebus import (
 
 
 def test_message() -> None:
-	with pytest.raises(TypeError, match="'type', 'sender', and 'channel'"):
+	with pytest.raises(pydantic_core.ValidationError, match="Field required"):
 		Message()  # type: ignore[call-arg] # pylint: disable=missing-kwoa
 	msg = Message(type=MessageType.JSONRPC_REQUEST, sender="291b9f3e-e370-428d-be30-1248a906ae86", channel="service:config:jsonrpc")
 	assert msg.type == "jsonrpc_request"
@@ -93,7 +99,7 @@ def test_message_to_from_msgpack() -> None:
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "service:config:jsonrpc",
 				"ref_id": "3cd293fd-bad8-4ff0-a7c3-610979e1dae6",
-				"error": {"message": "general error", "code": 4001, "details": "error details"},
+				"error": {"message": "general error", "code": MessageErrorEnum.FILE_NOT_FOUND, "details": "error details"},
 			},
 			None,
 		),
@@ -134,7 +140,11 @@ def test_message_to_from_msgpack() -> None:
 				"channel": "host:aa608319-401c-467b-ae3f-0c1057490df7",
 				"rpc_id": "1",
 				"result": None,
-				"error": {"code": 1230, "message": "error", "data": {"class": "ValueError", "details": "details"}},
+				"error": {
+					"code": MessageErrorEnum.FILE_NOT_FOUND,
+					"message": "error",
+					"data": {"class": "ValueError", "details": "details"},
+				},
 			},
 			None,
 		),
@@ -222,6 +232,20 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
+			TerminalErrorMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:x.y.z",
+				"terminal_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"error": {
+					"code": MessageErrorEnum.FILE_NOT_FOUND,
+					"message": "error",
+					"details": {"class": "ValueError", "details": "details"},
+				},
+			},
+			None,
+		),
+		(
 			FileUploadRequestMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
@@ -241,7 +265,6 @@ def test_message_to_from_msgpack() -> None:
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "user:admin",
 				"file_id": "5eb61665-ee9f-43a5-ae52-73361865ea40",
-				"error": None,
 				"path": "/tmp/test.txt",
 			},
 			None,
@@ -255,6 +278,20 @@ def test_message_to_from_msgpack() -> None:
 				"number": 12,
 				"last": True,
 				"data": b"data",
+			},
+			None,
+		),
+		(
+			FileErrorMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:x.y.z",
+				"file_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"error": {
+					"code": MessageErrorEnum.FILE_NOT_FOUND,
+					"message": "error",
+					"details": {"class": "ValueError", "details": "details"},
+				},
 			},
 			None,
 		),
@@ -291,7 +328,6 @@ def test_message_to_from_msgpack() -> None:
 				"channel": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"local_process_id": 1234,
-				"error": None,
 			},
 			None,
 		),
@@ -311,7 +347,6 @@ def test_message_to_from_msgpack() -> None:
 				"channel": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"exit_code": 0,
-				"error": None,
 			},
 			None,
 		),
@@ -335,6 +370,32 @@ def test_message_to_from_msgpack() -> None:
 				"stdin": b"asdf blubb",
 			},
 			None,
+		),
+		(
+			ProcessErrorMessage,
+			{
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "host:x.y.z",
+				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"error": {
+					"code": MessageErrorEnum.FILE_NOT_FOUND,
+					"message": "error",
+					"details": {"class": "ValueError", "details": "details"},
+				},
+			},
+			None,
+		),
+		(
+			JSONRPCRequestMessage,
+			{
+				"id": "not-a-valid-uuid4-string",
+				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+				"channel": "service:config:jsonrpc",
+				"rpc_id": "1",
+				"method": "noop",
+				"params": ("1", "2"),
+			},
+			ValidationError,
 		),
 	],
 )

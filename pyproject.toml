@@ -56,6 +56,7 @@ websocket-client = ">=1.4"
 zstandard = ">=0.21"
 pyzsync = ">=1.2"
 tomlkit = "^0.11.8"
+pydantic = "^2.5.1"
 
 [tool.ruff.format]
 indent-style = "tab"
