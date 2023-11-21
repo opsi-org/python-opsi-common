@@ -59,10 +59,14 @@ class MessageType(StrEnum):
 	FILE_CHUNK = "file_chunk"
 
 
-class MessageErrorEnum(StrEnum):
+class ErrorCode(StrEnum):
 	FILE_NOT_FOUND = "file_not_found"
 	TIMEOUT_REACHED = "timeout_reached"
 	PERMISSION_ERROR = "permission_error"
+
+
+# Legacy name
+MessageErrorEnum = ErrorCode
 
 
 def timestamp() -> int:
@@ -71,7 +75,7 @@ def timestamp() -> int:
 
 class Error(BaseModel):
 	message: str
-	code: MessageErrorEnum | Annotated[int, AfterValidator(lambda x: None)] | None = None  # change int to None for backwards compatibility
+	code: ErrorCode | Annotated[int, AfterValidator(lambda x: None)] | None = None  # change int to None for backwards compatibility
 	details: Any = None
 
 
