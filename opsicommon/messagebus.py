@@ -62,6 +62,7 @@ class MessageType(StrEnum):
 class MessageErrorEnum(StrEnum):
 	FILE_NOT_FOUND = "file_not_found"
 	TIMEOUT_REACHED = "timeout_reached"
+	PERMISSION_ERROR = "permission_error"
 
 
 def timestamp() -> int:
