@@ -22,8 +22,10 @@ message_decoder = msgspec.msgpack.Decoder()
 message_encoder = msgspec.msgpack.Encoder()
 
 
-def timestamp() -> int:
-	return int(time() * 1000)
+CONNECTION_USER_CHANNEL = "@"
+CONNECTION_SESSION_CHANNEL = "$"
+DEFAULT_PROCESS_EXECUTE_TIMEOUT = 60.0  # Seconds until process should be interrupted
+DEFAULT_MESSAGE_VALIDITY_PERIOD = 60000  # Milliseconds
 
 
 class MessageType(StrEnum):
@@ -62,6 +64,10 @@ class MessageErrorEnum(StrEnum):
 	TIMEOUT_REACHED = "timeout_reached"
 
 
+def timestamp() -> int:
+	return int(time() * 1000)
+
+
 class Error(BaseModel):
 	message: str
 	code: MessageErrorEnum | Annotated[int, AfterValidator(lambda x: None)] | None = None  # change int to None for backwards compatibility
@@ -73,8 +79,6 @@ UUID4Str = Annotated[
 ]
 
 MessageT = TypeVar("MessageT", bound="Message")
-DEFAULT_PROCESS_EXECUTE_TIMEOUT = 60.0  # Seconds until process should be interrupted
-DEFAULT_MESSAGE_VALIDITY_PERIOD = 60000  # Milliseconds
 
 
 class Message(BaseModel, ABC):  # pylint: disable=too-many-instance-attributes
