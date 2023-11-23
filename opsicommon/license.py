@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2010-2021 uib GmbH <info@uib.de>
+# Copyright (c) 2010-2023 uib GmbH <info@uib.de>
 # This code is owned by the uib GmbH, Mainz, Germany (uib.de). All rights reserved.
 """
 License handling
 """
+
+from __future__ import annotations
 
 import ast
 import base64
@@ -24,14 +26,8 @@ from pathlib import Path
 from typing import (
 	Any,
 	Callable,
-	Dict,
 	Generator,
-	List,
 	Literal,
-	Optional,
-	Set,
-	Tuple,
-	Union,
 	overload,
 )
 
@@ -46,7 +42,6 @@ try:
 	from Crypto.Signature import pss
 	from Crypto.Util.number import bytes_to_long
 except (ImportError, OSError):
-	# pyright: reportMissingImports=false
 	# python3-pycryptodome installs into Cryptodome
 	from Cryptodome.Hash import MD5, SHA3_512  # type: ignore[import,no-redef]
 	from Cryptodome.PublicKey import RSA  # type: ignore[import,no-redef]
@@ -133,16 +128,16 @@ def _hexstr2bytes(value: str) -> bytes:
 
 
 @overload
-def generate_key_pair(return_pem: Literal[True], bits: int = 2048) -> Tuple[str, str]:
+def generate_key_pair(return_pem: Literal[True], bits: int = 2048) -> tuple[str, str]:
 	...
 
 
 @overload
-def generate_key_pair(return_pem: Literal[False], bits: int = 2048) -> Tuple[RSA.RsaKey, RSA.RsaKey]:
+def generate_key_pair(return_pem: Literal[False], bits: int = 2048) -> tuple[RSA.RsaKey, RSA.RsaKey]:
 	...
 
 
-def generate_key_pair(return_pem: bool = False, bits: int = 2048) -> Union[Tuple[str, str], Tuple[RSA.RsaKey, RSA.RsaKey]]:
+def generate_key_pair(return_pem: bool = False, bits: int = 2048) -> tuple[str, str] | tuple[RSA.RsaKey, RSA.RsaKey]:
 	key = RSA.generate(bits=bits)
 	if not return_pem:
 		return key, key.publickey()
@@ -266,7 +261,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 
 	valid_until: date = attr.ib(converter=_str2date, validator=attr.validators.instance_of(date))
 
-	revoked_ids: List[str] = attr.ib(default=[])
+	revoked_ids: list[str] = attr.ib(default=[])
 
 	@revoked_ids.validator
 	def validate_revoked_ids(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
@@ -285,20 +280,20 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 		converter=_hexstr2bytes,
 	)
 
-	_license_pool: "OpsiLicensePool" = attr.ib(default=None)
+	_license_pool: OpsiLicensePool = attr.ib(default=None)
 
 	_checksum: str = attr.ib(default=None)
 
-	_cached_state: Dict[str, str] = attr.ib(default=OrderedDict())
+	_cached_state: dict[str, str] = attr.ib(default=OrderedDict())
 
-	_cached_signature_valid: Union[bool, None] = None
+	_cached_signature_valid: bool | None = None
 
 	def __attrs_post_init__(self) -> None:
 		for attribute, value in attr.asdict(self).items():
 			if not attribute.startswith("_") and isinstance(value, str) and value.strip() == "":
 				setattr(self, attribute, None)
 
-	def set_license_pool(self, license_pool: "OpsiLicensePool") -> None:
+	def set_license_pool(self, license_pool: OpsiLicensePool) -> None:
 		self._license_pool = license_pool
 
 	def to_dict(self, serializable: bool = False, with_state: bool = False) -> dict:
@@ -347,8 +342,8 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	def get_checksum(self, with_signature: bool = True) -> str:
 		return f"{zlib.crc32(self._hash_base(with_signature)):x}"
 
-	def get_hash(self, digest: bool = False, hex_digest: bool = False) -> Union[MD5.MD5Hash, SHA3_512.SHA3_512_Hash, str, bytes]:
-		_hash: Union[MD5.MD5Hash, SHA3_512.SHA3_512_Hash]
+	def get_hash(self, digest: bool = False, hex_digest: bool = False) -> MD5.MD5Hash | SHA3_512.SHA3_512_Hash | str | bytes:
+		_hash: MD5.MD5Hash | SHA3_512.SHA3_512_Hash
 		if self.schema_version == 1:
 			_hash = MD5.new(self.additional_data.encode("utf-8"))
 		else:
@@ -364,7 +359,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 		self._cached_signature_valid = None
 		self._cached_state = OrderedDict()
 
-	def get_state(self, test_revoked: bool = True, at_date: Optional[date] = None) -> str:
+	def get_state(self, test_revoked: bool = True, at_date: date | None = None) -> str:
 		checksum = self.get_checksum(with_signature=True)
 		if checksum != self._checksum:
 			self.clear_cache()
@@ -396,7 +391,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 
 		return self._cached_signature_valid
 
-	def _get_state(self, test_revoked: bool = True, at_date: Optional[date] = None) -> str:  # pylint: disable=too-many-return-statements
+	def _get_state(self, test_revoked: bool = True, at_date: date | None = None) -> str:  # pylint: disable=too-many-return-statements
 		if not at_date:
 			at_date = date.today()
 
@@ -417,7 +412,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 			return OPSI_LICENSE_STATE_EXPIRED
 		return OPSI_LICENSE_STATE_VALID
 
-	def sign(self, private_key: Union[RSA.RsaKey, str]) -> None:
+	def sign(self, private_key: RSA.RsaKey | str) -> None:
 		if self.schema_version < 2:
 			raise NotImplementedError("Signing for schema_version < 2 not implemented")
 		if isinstance(private_key, str):
@@ -426,12 +421,12 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 
 
 class OpsiLicenseFile:
-	def __init__(self, filename: Optional[str]) -> None:
+	def __init__(self, filename: str | None) -> None:
 		self.filename = filename
-		self._licenses: Dict[str, OpsiLicense] = {}
+		self._licenses: dict[str, OpsiLicense] = {}
 
 	@property
-	def licenses(self) -> List[OpsiLicense]:
+	def licenses(self) -> list[OpsiLicense]:
 		return list(self._licenses.values())
 
 	def add_license(self, opsi_license: OpsiLicense) -> None:
@@ -488,19 +483,23 @@ class OpsiLicenseFile:
 
 
 class OpsiModulesFile:  # pylint: disable=too-few-public-methods
-	def __init__(self, filename: Union[Path, str]) -> None:
+	def __init__(self, filename: Path | str) -> None:
 		self.filename = filename if isinstance(filename, Path) else Path(filename)
-		self._licenses: Dict[str, OpsiLicense] = {}
+		self._licenses: dict[str, OpsiLicense] = {}
 
 	@property
-	def licenses(self) -> List[OpsiLicense]:
+	def licenses(self) -> list[OpsiLicense]:
 		return list(self._licenses.values())
 
 	def add_license(self, opsi_license: OpsiLicense) -> None:
 		self._licenses[opsi_license.id] = opsi_license
 
-	def _read_raw_data(self) -> Dict[str, str]:
-		data = {}
+	def _read_raw_data(self) -> dict[str, str]:
+		data: dict[str, str] = {}
+		if self.filename.is_dir():
+			logger.error("License file %r is a directory", self.filename)
+			return data
+
 		for line in self.filename.read_text(encoding="utf-8").split("\n"):
 			line = line.strip()
 			if "=" not in line:
@@ -559,22 +558,22 @@ class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 class OpsiLicensePool:
 	def __init__(  # pylint: disable=too-many-arguments
 		self,
-		license_file_path: Optional[str] = None,
-		modules_file_path: Optional[str] = None,
-		client_info: Optional[Union[dict, Callable]] = None,
-		client_limit_warning_percent: Optional[int] = 95,
-		client_limit_warning_absolute: Optional[int] = 5,
+		license_file_path: str | Path | None = None,
+		modules_file_path: str | Path | None = None,
+		client_info: dict | Callable | None = None,
+		client_limit_warning_percent: int | None = 95,
+		client_limit_warning_absolute: int | None = 5,
 	) -> None:
-		self.license_file_path: Optional[str] = license_file_path
-		self.modules_file_path: Optional[str] = modules_file_path
-		self.client_limit_warning_percent: Optional[int] = client_limit_warning_percent
-		self.client_limit_warning_absolute: Optional[int] = client_limit_warning_absolute
-		self._client_info: Optional[Union[dict, Callable]] = client_info
-		self._licenses: Dict[str, OpsiLicense] = {}
-		self._file_modification_dates: Dict[str, float] = {}
+		self.license_file_path: str | None = str(license_file_path) if license_file_path else None
+		self.modules_file_path: str | None = str(modules_file_path) if modules_file_path else None
+		self.client_limit_warning_percent: int | None = client_limit_warning_percent
+		self.client_limit_warning_absolute: int | None = client_limit_warning_absolute
+		self._client_info: dict | Callable | None = client_info
+		self._licenses: dict[str, OpsiLicense] = {}
+		self._file_modification_dates: dict[str, float] = {}
 
 	@property
-	def license_files(self) -> List[str]:
+	def license_files(self) -> list[str]:
 		license_files = []
 		if self.license_file_path and os.path.exists(self.license_file_path):
 			license_files = [self.license_file_path]
@@ -583,17 +582,17 @@ class OpsiLicensePool:
 		return license_files
 
 	@property
-	def modules_file(self) -> Optional[str]:
+	def modules_file(self) -> str | None:
 		if self.modules_file_path and os.path.exists(self.modules_file_path):
 			return self.modules_file_path
 		return None
 
 	@property
-	def licenses(self) -> List[OpsiLicense]:
+	def licenses(self) -> list[OpsiLicense]:
 		return list(self.get_licenses())
 
 	@property
-	def client_numbers(self) -> Dict[str, int]:
+	def client_numbers(self) -> dict[str, int]:
 		client_numbers = {}
 		if callable(self._client_info):
 			client_numbers = self._client_info()
@@ -607,7 +606,7 @@ class OpsiLicensePool:
 		return client_numbers
 
 	@property
-	def enabled_module_ids(self) -> List[str]:
+	def enabled_module_ids(self) -> list[str]:
 		module_ids = set(OPSI_FREE_MODULE_IDS)
 		for lic in self._licenses.values():
 			if lic.is_signature_valid():
@@ -616,11 +615,11 @@ class OpsiLicensePool:
 
 	def get_licenses(  # pylint: disable=too-many-arguments
 		self,
-		exclude_ids: Optional[List[str]] = None,
+		exclude_ids: list[str] | None = None,
 		valid_only: bool = False,
 		test_revoked: bool = True,
-		types: Optional[List[str]] = None,
-		at_date: Optional[date] = None,
+		types: list[str] | None = None,
+		at_date: date | None = None,
 	) -> Generator[OpsiLicense, None, None]:
 		if not at_date:
 			at_date = date.today()
@@ -650,7 +649,7 @@ class OpsiLicensePool:
 				del self._licenses[lic.id]
 		self.clear_license_state_cache()
 
-	def get_revoked_license_ids(self, at_date: Optional[date] = None) -> Set[str]:
+	def get_revoked_license_ids(self, at_date: date | None = None) -> set[str]:
 		if not at_date:
 			at_date = date.today()
 		revoked_ids = set()
@@ -666,7 +665,7 @@ class OpsiLicensePool:
 		)
 		return f"{data:x}"
 
-	def get_relevant_dates(self) -> List[date]:
+	def get_relevant_dates(self) -> list[date]:
 		dates = set()
 		for lic in self.get_licenses():
 			if lic.get_state() != OPSI_LICENSE_STATE_INVALID_SIGNATURE:
@@ -676,13 +675,13 @@ class OpsiLicensePool:
 					dates.add(lic.valid_until + timedelta(days=1))
 		return sorted(dates)
 
-	def get_modules(self, at_date: Optional[date] = None) -> Dict[str, Any]:  # pylint: disable=too-many-branches
+	def get_modules(self, at_date: date | None = None) -> dict[str, Any]:  # pylint: disable=too-many-branches
 		if not at_date:
 			at_date = date.today()
 
 		enabled_module_ids = self.enabled_module_ids
 		client_numbers = self.client_numbers
-		modules: Dict[str, Dict[str, Any]] = {}
+		modules: dict[str, dict[str, Any]] = {}
 		for module_id in OPSI_MODULE_IDS:
 			if module_id in OPSI_FREE_MODULE_IDS:
 				modules[module_id] = {
@@ -736,7 +735,7 @@ class OpsiLicensePool:
 
 		return modules
 
-	def get_legacy_modules(self) -> Optional[Dict[str, Any]]:
+	def get_legacy_modules(self) -> dict[str, Any] | None:
 		for lic in self.get_licenses():  # pylint: disable=too-many-nested-blocks
 			if lic.schema_version == 1:
 				modules = {"signature": lic.signature.hex()}
@@ -795,17 +794,17 @@ class OpsiLicensePool:
 _default_opsi_license_pool = None  # pylint: disable=invalid-name
 
 
-def set_default_opsi_license_pool(pool: Optional[OpsiLicensePool]) -> None:
+def set_default_opsi_license_pool(pool: OpsiLicensePool | None) -> None:
 	global _default_opsi_license_pool  # pylint: disable=invalid-name,global-statement
 	_default_opsi_license_pool = pool
 
 
 def get_default_opsi_license_pool(
-	license_file_path: Optional[str] = None,
-	modules_file_path: Optional[str] = None,
-	client_info: Optional[Union[dict, Callable]] = None,
-	client_limit_warning_percent: Optional[int] = 95,
-	client_limit_warning_absolute: Optional[int] = 5,
+	license_file_path: str | Path | None = None,
+	modules_file_path: str | Path | None = None,
+	client_info: dict | Callable | None = None,
+	client_limit_warning_percent: int | None = 95,
+	client_limit_warning_absolute: int | None = 5,
 ) -> OpsiLicensePool:
 	global _default_opsi_license_pool  # pylint: disable=invalid-name,global-statement
 	if not _default_opsi_license_pool:

@@ -279,6 +279,14 @@ def test_default_opsi_license_pool() -> None:
 	assert def_pool3 != def_pool2
 
 
+def test_modules_file_is_dir(tmp_path: Path) -> None:
+	modules_file = tmp_path / "modules"
+	modules_file.mkdir()
+	# Should only log an error
+	olp = OpsiLicensePool(modules_file_path=modules_file)
+	olp.load()
+
+
 def test_load_opsi_license_pool() -> None:
 	modules_file = "tests/data/license/modules"
 	olp = OpsiLicensePool(license_file_path="tests/data/license/test1.opsilic")
