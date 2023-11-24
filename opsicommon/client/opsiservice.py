@@ -43,9 +43,8 @@ from OpenSSL.crypto import (  # type: ignore[import]
 	load_certificate,
 )
 from packaging import version
-from requests import HTTPError
+from requests import HTTPError, Session
 from requests import Response as RequestsResponse
-from requests import Session
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3.exceptions import InsecureRequestWarning
@@ -1172,8 +1171,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		content_type = response.headers.get("Content-Type", "")
 		content_encoding = response.headers.get("Content-Encoding", "")
 		logger.info(
-			"Got response status=%s, Content-Type=%s, Content-Encoding=%s, duration=%0.3fs",
+			"Got response status=%s, id=%r, method=%s, Content-Type=%s, Content-Encoding=%s, duration=%0.3fs",
 			response.status_code,
+			rpc_id,
+			method,
 			content_type,
 			content_encoding,
 			(time.time() - start_time),
