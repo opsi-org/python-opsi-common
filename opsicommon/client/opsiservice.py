@@ -544,6 +544,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				time.sleep(0.5)
 				if iteration < 9:
 					logger.debug("Retrying")
+				else:
+					raise error
 
 		logger.info("CA cert file '%s' successfully updated (%d certificates total)", self._ca_cert_file, len(certs))
 
