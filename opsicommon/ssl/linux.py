@@ -33,6 +33,8 @@ def _get_cert_path_and_cmd() -> Tuple[str, str]:
 		return ("/usr/local/share/ca-certificates", "update-ca-certificates")
 	if "sles" in dist or "suse" in dist:
 		return ("/usr/share/pki/trust/anchors", "update-ca-certificates")
+	if "oracle" in dist:
+		return ("usr/share/pki/ca-trust-source/anchors", "update-ca-trust")
 
 	logger.error("Failed to set system cert path on distro '%s', like: %s", distro.id(), distro.like())
 	raise RuntimeError(f"Failed to set system cert path on distro '{distro.id()}', like: {distro.like()}")

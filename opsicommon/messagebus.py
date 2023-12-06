@@ -140,7 +140,7 @@ class GeneralErrorMessage(Message):
 	"""
 
 	type: str = MessageType.GENERAL_ERROR.value
-	error: Error | None
+	error: Error
 
 
 # Event
@@ -259,7 +259,7 @@ class TerminalErrorMessage(TerminalMessage):
 	"""
 
 	type: str = MessageType.TERMINAL_ERROR.value
-	error: Error | None
+	error: Error
 
 
 class TerminalOpenRequestMessage(TerminalMessage):
@@ -372,7 +372,7 @@ class ProcessErrorMessage(ProcessMessage):
 	"""
 
 	type: str = MessageType.PROCESS_ERROR.value
-	error: Error | None
+	error: Error
 
 
 class ProcessStartRequestMessage(ProcessMessage):
@@ -461,7 +461,7 @@ class FileErrorMessage(FileMessage):
 	"""
 
 	type: str = MessageType.FILE_ERROR.value
-	error: Error | None
+	error: Error
 
 
 class FileUploadRequestMessage(FileMessage):
