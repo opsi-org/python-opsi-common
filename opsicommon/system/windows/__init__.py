@@ -6,10 +6,10 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-from datetime import datetime
-from typing import BinaryIO, Generator, TextIO, IO
 from contextlib import contextmanager
-from time import time, sleep
+from datetime import datetime
+from time import sleep, time
+from typing import IO, BinaryIO, Generator, TextIO
 
 import pywintypes  # type: ignore[import] # pylint: disable=import-error
 import win32api  # type: ignore[import] # pylint: disable=import-error
@@ -56,7 +56,7 @@ def lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: fl
 			hfile = win32file._get_osfhandle(file.fileno())  # pylint: disable=protected-access
 			win32file.LockFileEx(hfile, lock_flags, 0, 0x7FFF0000, pywintypes.OVERLAPPED())
 			break
-		except pywintypes.error:
+		except (pywintypes.error, PermissionError):
 			if time() >= start + timeout:
 				raise TimeoutError(f"Failed to lock file after {timeout:0.2f} seconds") from None
 			sleep(0.1)
