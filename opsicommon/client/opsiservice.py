@@ -43,8 +43,9 @@ from OpenSSL.crypto import (  # type: ignore[import]
 	load_certificate,
 )
 from packaging import version
-from requests import HTTPError, Session
+from requests import HTTPError
 from requests import Response as RequestsResponse
+from requests import Session
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3.exceptions import InsecureRequestWarning
@@ -530,11 +531,19 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				continue
 			certs_pem.append(dump_certificate(FILETYPE_PEM, cert).decode("utf-8").strip() + "\n")
 			subjects.append(subj)
-		with open(self._ca_cert_file, "a+", encoding="utf-8") as file:
-			with lock_file(file=file, exclusive=True, timeout=5.0):
-				file.seek(0)
-				file.truncate()
-				file.write("".join(certs_pem))
+		for iteration in range(10):
+			try:
+				with open(self._ca_cert_file, "a+", encoding="utf-8") as file:
+					with lock_file(file=file, exclusive=True, timeout=5.0):
+						file.seek(0)
+						file.truncate()
+						file.write("".join(certs_pem))
+						break
+			except PermissionError as error:
+				logger.debug("Not allowed to write ca cert file: %s", error, exc_info=False)
+				time.sleep(0.5)
+				if iteration < 9:
+					logger.debug("Retrying")
 
 		logger.info("CA cert file '%s' successfully updated (%d certificates total)", self._ca_cert_file, len(certs))
 
