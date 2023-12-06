@@ -29,13 +29,15 @@ def is_macos() -> bool:
 def is_unix() -> bool:
 	return SYSTEM in ("linux", "darwin")
 
+
 @lru_cache
 def is_ucs() -> bool:
 	lsb_release = Path("/etc/lsb-release")
 	if not lsb_release.is_file():
 		return False
-	with open(lsb_release, "r") as f:
-		return "Univention" in f.read()
+	with open(lsb_release, "r", encoding="utf-8") as handle:
+		return "Univention" in handle.read()
+
 
 @lru_cache
 def linux_distro_id() -> str:
