@@ -645,7 +645,10 @@ class Host(Object):
 			self.ipAddress = forceIPAddress(ipAddress)
 		except ValueError as err:
 			logger.error("Failed to set ip address '%s' for host %s: %s", ipAddress, self.id, err)
-			self.ipAddress = None
+			if ipAddress == "":
+				self.ipAddress = ""
+			else:
+				self.ipAddress = None
 
 	def getInventoryNumber(self) -> str | None:  # pylint: disable=invalid-name
 		return self.inventoryNumber
