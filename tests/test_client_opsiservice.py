@@ -311,11 +311,11 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:  # pylint: disable=too-m
 		read_threads[idx].join()
 		if write_threads[idx].err:
 			print(write_threads[idx].err)
-			traceback.print_tb(write_threads[idx].err.__traceback__)
+			traceback.print_tb(write_threads[idx].err.__traceback__)  # type: ignore[union-attr]
 		assert not write_threads[idx].err
 		if write_threads[idx].err:
 			print(write_threads[idx].err)
-			traceback.print_tb(write_threads[idx].err.__traceback__)
+			traceback.print_tb(write_threads[idx].err.__traceback__)  # type: ignore[union-attr]
 		assert not read_threads[idx].err
 
 	certs = service_client.read_ca_cert_file()
