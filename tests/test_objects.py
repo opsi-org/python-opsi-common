@@ -884,3 +884,19 @@ def test_host_init() -> None:
 	assert host.hardwareAddress == "00:01:02:03:04:05"
 	assert host.ipAddress == "172.16.1.1"
 	assert host.systemUUID is None
+
+	host = Host("test.dom.tld", "desc", "notes", "00:01:02:03:04:05", "not an ip", "inv001")
+	assert host.id == "test.dom.tld"
+	assert host.description == "desc"
+	assert host.notes == "notes"
+	assert host.hardwareAddress == "00:01:02:03:04:05"
+	assert host.ipAddress is None
+	assert host.systemUUID is None
+
+	host = Host("test.dom.tld", "desc", "notes", "00:01:02:03:04:05", "", "inv001")
+	assert host.id == "test.dom.tld"
+	assert host.description == "desc"
+	assert host.notes == "notes"
+	assert host.hardwareAddress == "00:01:02:03:04:05"
+	assert host.ipAddress == ""
+	assert host.systemUUID is None
