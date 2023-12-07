@@ -278,6 +278,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self._connect_lock = Lock()
 		self._messagebus_connect_lock = Lock()
 		self._listener_lock = Lock()
+		self._ca_cert_lock = Lock()
 		self._listener: list[ServiceConnectionListener] = []
 		self._service_unavailable: OpsiServiceUnavailableError | None = None
 		self._username = ""
@@ -510,33 +511,36 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		return certs
 
 	def read_ca_cert_file(self) -> list[X509]:
-		if not self._ca_cert_file:
-			raise RuntimeError("CA cert file not set")
+		with self._ca_cert_lock:
+			if not self._ca_cert_file:
+				raise RuntimeError("CA cert file not set")
 
-		with open(self._ca_cert_file, "r", encoding="utf-8") as file:
-			with lock_file(file=file, exclusive=False, timeout=5.0):
-				return self.certs_from_pem(file.read())
+			with open(self._ca_cert_file, "r", encoding="utf-8") as file:
+				with lock_file(file=file, exclusive=False, timeout=5.0):
+					return self.certs_from_pem(file.read())
 
 	def write_ca_cert_file(self, certs: list[X509]) -> None:
-		if not self._ca_cert_file:
-			raise RuntimeError("CA cert file not set")
+		with self._ca_cert_lock:
+			if not self._ca_cert_file:
+				raise RuntimeError("CA cert file not set")
 
-		self._ca_cert_file.parent.mkdir(parents=True, exist_ok=True)
-		certs_pem = []
-		subjects = []
-		for cert in certs:
-			subj = subject_to_dict(cert.get_subject())
-			if subj in subjects:
-				continue
-			certs_pem.append(dump_certificate(FILETYPE_PEM, cert).decode("utf-8").strip() + "\n")
-			subjects.append(subj)
-		with open(self._ca_cert_file, "a+", encoding="utf-8") as file:
-			with lock_file(file=file, exclusive=True, timeout=5.0):
-				file.seek(0)
-				file.truncate()
-				file.write("".join(certs_pem))
+			self._ca_cert_file.parent.mkdir(parents=True, exist_ok=True)
+			certs_pem = []
+			subjects = []
+			for cert in certs:
+				subj = subject_to_dict(cert.get_subject())
+				if subj in subjects:
+					continue
+				certs_pem.append(dump_certificate(FILETYPE_PEM, cert).decode("utf-8").strip() + "\n")
+				subjects.append(subj)
 
-		logger.info("CA cert file '%s' successfully updated (%d certificates total)", self._ca_cert_file, len(certs))
+			with open(self._ca_cert_file, "a+", encoding="utf-8") as file:
+				with lock_file(file=file, exclusive=True, timeout=5.0):
+					file.seek(0)
+					file.truncate()
+					file.write("".join(certs_pem))
+
+			logger.info("CA cert file '%s' successfully updated (%d certificates total)", self._ca_cert_file, len(certs))
 
 	def fetch_opsi_ca(self, skip_verify: bool = False) -> None:
 		if not self._ca_cert_file:

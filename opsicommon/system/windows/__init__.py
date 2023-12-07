@@ -56,7 +56,7 @@ def lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: fl
 			hfile = win32file._get_osfhandle(file.fileno())  # pylint: disable=protected-access
 			win32file.LockFileEx(hfile, lock_flags, 0, 0x7FFF0000, pywintypes.OVERLAPPED())
 			break
-		except (pywintypes.error, PermissionError):
+		except pywintypes.error:
 			if time() >= start + timeout:
 				raise TimeoutError(f"Failed to lock file after {timeout:0.2f} seconds") from None
 			sleep(0.1)
