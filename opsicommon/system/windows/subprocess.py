@@ -60,7 +60,7 @@ def CreateProcess(  # pylint: disable=invalid-name
 	__creation_flags: int,
 	__env_mapping: dict[str, str],
 	__current_directory: str | None,
-	__startup_info: subprocess.STARTUPINFO,
+	__startup_info: Any,
 ) -> tuple[int, int, int, int]:
 	if not __env_mapping or not __env_mapping.get("_create_process_as_user"):
 		return CreateProcessOrig(
