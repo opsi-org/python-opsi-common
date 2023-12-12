@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Copyright (c) uib GmbH <info@uib.de>
@@ -7,12 +6,11 @@
 system.windows.session
 """
 
-import warnings
 from dataclasses import dataclass
 from enum import Enum
 from typing import Iterable
 
-import win32ts  # type: ignore[import-not-found]
+import win32ts  # type: ignore[import-not-found]  # pylint: disable=import-error
 
 
 # pylint: disable=c-extension-no-member
@@ -20,6 +18,7 @@ class WtsProtocol(Enum):
 	CONSOLE = win32ts.WTS_PROTOCOL_TYPE_CONSOLE
 	CITRIX = win32ts.WTS_PROTOCOL_TYPE_ICA
 	RDP = win32ts.WTS_PROTOCOL_TYPE_RDP
+
 
 # pylint: disable=c-extension-no-member
 class WtsState(Enum):
@@ -34,6 +33,7 @@ class WtsState(Enum):
 	DOWN = win32ts.WTSDown
 	INIT = win32ts.WTSInit
 
+
 @dataclass
 class WindowsSession:
 	session_id: int
@@ -42,10 +42,11 @@ class WindowsSession:
 	wts_protocol: WtsProtocol
 	wts_state: WtsState
 
+
 def get_windows_sessions(
 	session_ids: Iterable[int | str] | int | str | None = None,
 	protocols: Iterable[WtsProtocol | str] | WtsProtocol | str | None = None,
-	states: Iterable[WtsState | str] | WtsState | str | None = None
+	states: Iterable[WtsState | str] | WtsState | str | None = None,
 ) -> list[WindowsSession]:
 	if session_ids:
 		session_ids = [int(s) for s in ([session_ids] if isinstance(session_ids, (int, str)) else session_ids)]
@@ -75,11 +76,11 @@ def get_windows_sessions(
 		username = win32ts.WTSQuerySessionInformation(server, session_id, win32ts.WTSUserName) or None
 		sessions.append(
 			WindowsSession(
-				session_id = session_id,
+				session_id=session_id,
 				username=username,
 				domain=win32ts.WTSQuerySessionInformation(server, session_id, win32ts.WTSDomainName) or None,
 				wts_protocol=wts_protocol,
-				wts_state=wts_state
+				wts_state=wts_state,
 			)
 		)
 	return sessions
