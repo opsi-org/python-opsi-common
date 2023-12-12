@@ -49,6 +49,7 @@ class Popen(PopenOrig):
 		umask: int = -1,
 		pipesize: int = -1,
 		process_group: int | None = None,
+		session: str | int | None = None
 	) -> None:
 		env = dict(env or environ.copy())
 		lp_orig = env.get("LD_LIBRARY_PATH_ORIG")
@@ -60,10 +61,11 @@ class Popen(PopenOrig):
 			# Remove the env var as a last resort
 			env.pop("LD_LIBRARY_PATH", None)
 
-		if SYSTEM == "windows" and user:
-			# Original Popen does not support 'user' parameter
-			env["_create_process_as_user"] = str(user)
-			user = None
+		if session:
+			if SYSTEM == "windows":
+				env["_opsi_popen_session"] = str(session)
+			else:
+				raise NotImplementedError(f"Parameter 'session' not supported on {SYSTEM!r}")
 		PopenOrig.__init__(  # type: ignore  # pylint: disable=non-parent-init-called
 			self,
 			args=args,

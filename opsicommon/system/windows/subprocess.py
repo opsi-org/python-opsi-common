@@ -17,20 +17,23 @@ import win32process  # type: ignore[import]  # pylint: disable=import-error
 import win32profile  # type: ignore[import]  # pylint: disable=import-error
 import win32security  # type: ignore[import]  # pylint: disable=import-error
 
+from opsicommon.system.windows.session import WtsState, get_windows_sessions
 
-def get_process_user_token(user: str) -> int:
+
+def get_process_user_token(process: str, user: str) -> int:
 	user = user.lower()
+	process = process.lower()
 	pid = -1
 	for proc in psutil.process_iter():
 		try:
-			if proc.username().split("\\")[-1].lower() == user and proc.name() == "explorer.exe":
+			if proc.username().split("\\")[-1].lower() == user and proc.name() == process:
 				pid = proc.pid
 				break
 		except psutil.AccessDenied:
 			pass
 
 	if pid == -1:
-		raise RuntimeError(f"explorer.exe of user {user} not found")
+		raise RuntimeError(f"Process {process!r} of user {user!r} not found")
 
 	proc_handle = win32api.OpenProcess(win32con.MAXIMUM_ALLOWED, False, pid)
 	proc_token = win32security.OpenProcessToken(proc_handle, win32con.MAXIMUM_ALLOWED)
@@ -61,7 +64,7 @@ def CreateProcess(  # pylint: disable=invalid-name
 	__current_directory: str | None,
 	__startup_info: Any,
 ) -> tuple[int, int, int, int]:
-	if not __env_mapping or not __env_mapping.get("_create_process_as_user"):
+	if not __env_mapping or not __env_mapping.get("_opsi_popen_session"):
 		return CreateProcessOrig(
 			__application_name,
 			__command_line,
@@ -74,7 +77,22 @@ def CreateProcess(  # pylint: disable=invalid-name
 			__startup_info,
 		)
 
-	user_token = get_process_user_token(__env_mapping.pop("_create_process_as_user"))
+	session_id: int | None = None
+	user: str | None = __env_mapping.pop("_opsi_popen_session")
+	try:
+		session_id = int(user)  # type: ignore[arg-type]
+		user = None
+	except ValueError:
+		pass
+
+	if not user:
+		for session in get_windows_sessions(session_ids=session_id, states=(WtsState.ACTIVE, WtsState.CONNECTED, WtsState.DISCONNECTED)):
+			if session.username:
+				user = session.username
+		if not user:
+			raise RuntimeError(f"Failed to get username for session id {session_id}")
+
+	user_token = get_process_user_token(process="explorer.exe", user=user)
 	startup_info = win32process.STARTUPINFO()
 	for attr, val in __startup_info.__dict__.items():
 		if attr != "lpAttributeList" and val is not None:
