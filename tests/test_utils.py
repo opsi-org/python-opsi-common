@@ -5,14 +5,12 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import datetime
-import os
-import subprocess
 from contextlib import contextmanager
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
 from typing import Generator, Literal
 
-import psutil  # type: ignore[import]
 import pytest
+
 from opsicommon.logging.constants import LEVEL_TO_OPSI_LEVEL
 from opsicommon.logging.logging import StreamHandler, get_all_handlers, logging_config
 from opsicommon.objects import Product
@@ -23,12 +21,9 @@ from opsicommon.utils import (
 	frozen_lru_cache,
 	generate_opsi_host_key,
 	ip_address_in_network,
-	monkeypatch_subprocess_for_frozen,
 	timestamp,
 	utc_timestamp,
 )
-
-from .helpers import environment
 
 
 @pytest.mark.parametrize(
@@ -65,26 +60,6 @@ def test_singleton() -> None:
 		pass
 
 	assert id(TestSingleton()) == id(TestSingleton())
-
-
-@pytest.mark.linux
-def test_monkeypatch_subprocess_for_frozen() -> None:
-	monkeypatch_subprocess_for_frozen()
-	ld_library_path_orig = "/orig_path"
-	ld_library_path = "/path"
-	with environment(LD_LIBRARY_PATH_ORIG=ld_library_path_orig, LD_LIBRARY_PATH=ld_library_path):
-		assert os.environ.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
-		assert os.environ.get("LD_LIBRARY_PATH") == ld_library_path
-		with subprocess.Popen(["sleep", "1"]) as proc:
-			ps_proc = psutil.Process(proc.pid)
-			proc_env = ps_proc.environ()
-			assert proc_env.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
-			assert proc_env.get("LD_LIBRARY_PATH") == ld_library_path_orig
-			assert os.environ.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
-			assert os.environ.get("LD_LIBRARY_PATH") == ld_library_path
-			proc.wait()
-		assert os.environ.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
-		assert os.environ.get("LD_LIBRARY_PATH") == ld_library_path
 
 
 def test_frozen_lru_cache() -> None:

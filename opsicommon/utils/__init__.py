@@ -32,8 +32,10 @@ from types import EllipsisType
 from typing import TYPE_CHECKING, Any, Callable, Generator, Literal, Type, Union
 
 from packaging.version import InvalidVersion, Version
+from typing_extensions import deprecated
 
 from opsicommon.logging import get_logger
+from opsicommon.system.subprocess import patch_popen
 from opsicommon.types import _PACKAGE_VERSION_REGEX, _PRODUCT_VERSION_REGEX
 
 if platform.system().lower() == "windows":
@@ -170,24 +172,9 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 	return session
 
 
-class PopenFrozen(subprocess.Popen):
-	def __init__(self, *args: Any, **kwargs: Any) -> None:
-		if kwargs.get("env") is None:
-			kwargs["env"] = os.environ.copy()
-		lp_orig = kwargs["env"].get("LD_LIBRARY_PATH_ORIG")
-		if lp_orig is not None:
-			# Restore the original, unmodified value
-			kwargs["env"]["LD_LIBRARY_PATH"] = lp_orig
-		else:
-			# This happens when LD_LIBRARY_PATH was not set.
-			# Remove the env var as a last resort
-			kwargs["env"].pop("LD_LIBRARY_PATH", None)
-
-		super().__init__(*args, **kwargs)
-
-
+@deprecated("Use opsicommon.system.subprocess.patch_popen() instead")
 def monkeypatch_subprocess_for_frozen() -> None:
-	subprocess.Popen = PopenFrozen  # type: ignore[misc]
+	patch_popen()
 
 
 def frozen_lru_cache(*decorator_args: Any) -> Callable:
