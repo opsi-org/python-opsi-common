@@ -6,7 +6,6 @@ test_system_network
 
 import os
 import subprocess
-from unittest import mock
 
 import psutil
 import pytest

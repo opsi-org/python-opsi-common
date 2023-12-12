@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+
+# Copyright (c) uib GmbH <info@uib.de>
+# License: AGPL-3.0
+"""
+system.subprocess
+"""
+
 import platform
 import subprocess
 from os import PathLike, environ
@@ -56,7 +64,7 @@ class Popen(PopenOrig):
 			# Original Popen does not support 'user' parameter
 			env["_create_process_as_user"] = str(user)
 			user = None
-		PopenOrig.__init__(  # type: ignore
+		PopenOrig.__init__(  # type: ignore  # pylint: disable=non-parent-init-called
 			self,
 			args=args,
 			bufsize=bufsize,

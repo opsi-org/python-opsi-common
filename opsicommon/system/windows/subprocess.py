@@ -1,14 +1,22 @@
+# -*- coding: utf-8 -*-
+
+# Copyright (c) uib GmbH <info@uib.de>
+# License: AGPL-3.0
+"""
+system.windows.subprocess
+"""
+
 import subprocess
 from typing import Any
 
-import _winapi
-import ntsecuritycon  # type: ignore[import]
+import _winapi  # pylint: disable=import-error
+import ntsecuritycon  # type: ignore[import]  # pylint: disable=import-error
 import psutil
-import win32api  # type: ignore[import]
-import win32con  # type: ignore[import]
-import win32process  # type: ignore[import]
-import win32profile  # type: ignore[import]
-import win32security  # type: ignore[import]
+import win32api  # type: ignore[import]  # pylint: disable=import-error
+import win32con  # type: ignore[import]  # pylint: disable=import-error
+import win32process  # type: ignore[import]  # pylint: disable=import-error
+import win32profile  # type: ignore[import]  # pylint: disable=import-error
+import win32security  # type: ignore[import]  # pylint: disable=import-error
 
 
 def get_process_user_token(user: str) -> int:
@@ -43,7 +51,7 @@ def get_process_user_token(user: str) -> int:
 CreateProcessOrig = _winapi.CreateProcess  # type: ignore[attr-defined]
 
 
-def CreateProcess(
+def CreateProcess(  # pylint: disable=invalid-name
 	__application_name: str | None,
 	__command_line: str | None,
 	__proc_attrs: Any,
