@@ -6,7 +6,6 @@
 system.windows.subprocess
 """
 
-import subprocess
 from typing import Any
 
 import _winapi  # pylint: disable=import-error
