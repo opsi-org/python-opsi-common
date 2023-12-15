@@ -13,6 +13,7 @@ import asyncio
 import gzip
 import locale
 import os
+import random
 import re
 import ssl
 import sys
@@ -891,8 +892,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			except SSLError as err:
 				if "Permission denied" in str(err) and attempt < max_attempts:
 					# Possible permission error in context.load_verify_locations accessing ca_cert_file (file locked?)
-					logger.warning("%s, retrying in a second", err, exc_info=True)
-					time.sleep(1)
+					wait_time = random.randint(500, 3000) / 1000
+					logger.warning("%s, retrying in %0.3f seconds", err, wait_time, exc_info=True)
+					time.sleep(wait_time)
 					continue
 				try:
 					if err.args[0].reason.args[0].errno == 8:
