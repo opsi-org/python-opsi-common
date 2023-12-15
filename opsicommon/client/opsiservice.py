@@ -17,6 +17,7 @@ import re
 import ssl
 import sys
 import time
+import traceback
 import warnings
 from base64 import b64encode
 from contextlib import contextmanager
@@ -889,7 +890,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					response.raise_for_status()
 				return response
 			except SSLError as err:
-				if err.__cause__ and isinstance(err.__cause__, PermissionError) and attempt < max_attempts:
+				if "Permission denied" in str(err) and attempt < max_attempts:
 					# Possible permission error in context.load_verify_locations accessing ca_cert_file (file locked?)
 					logger.warning("%s, retrying in a second", err, exc_info=True)
 					time.sleep(1)
