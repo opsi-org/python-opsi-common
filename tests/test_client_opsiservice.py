@@ -1787,9 +1787,11 @@ def test_permission_error_ca_cert_file() -> None:
 			client.connect()
 			client.get("/")
 
+
 @pytest.mark.windows
 def test_permission_error_ca_cert_file_lock() -> None:
-	from opsicommon.system.windows import _lock_file, _unlock_file
+	from opsicommon.system.windows import _lock_file, _unlock_file  # pylint: disable=import-outside-toplevel
+
 	load_verify_locations_orig = SSLContext.load_verify_locations
 	attempts = 0
 	file_handle = None
@@ -1803,6 +1805,7 @@ def test_permission_error_ca_cert_file_lock() -> None:
 		nonlocal attempts
 		attempts += 1
 		if attempts == 2:
+			assert file_handle
 			_unlock_file(file_handle)
 		return load_verify_locations_orig(self, cafile, capath, cadata)
 
@@ -1817,4 +1820,3 @@ def test_permission_error_ca_cert_file_lock() -> None:
 				_lock_file(file, exclusive=True)
 				client.connect()
 				assert attempts == 3
-
