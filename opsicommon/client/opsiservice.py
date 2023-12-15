@@ -44,9 +44,8 @@ from OpenSSL.crypto import (  # type: ignore[import]
 	load_certificate,
 )
 from packaging import version
-from requests import HTTPError
+from requests import HTTPError, Session
 from requests import Response as RequestsResponse
-from requests import Session
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3.exceptions import InsecureRequestWarning
@@ -1522,6 +1521,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def send_message(self, message: Message) -> None:
 		if not self._app:
 			raise RuntimeError("Messagebus not connected")
+		logger.debug("Sending message: %r", message)
 		data = message.to_msgpack()
 		if self.compression == "lz4":
 			data = lz4.frame.compress(data, compression_level=0, block_linked=True)
