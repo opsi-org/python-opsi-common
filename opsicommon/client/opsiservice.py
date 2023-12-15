@@ -879,47 +879,56 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self._service_unavailable = None
 
 		allow_status_codes = (200, 201, 202, 203, 204, 206, 207, 208) if allow_status_codes is None else allow_status_codes
-		try:
-			response = self._session.request(
-				method=method, url=self._get_url(path), headers=headers, data=data, timeout=timeout, stream=True, verify=verify
-			)
-			if allow_status_codes and allow_status_codes != ... and response.status_code not in allow_status_codes:
-				response.raise_for_status()
-			return response
-		except SSLError as err:
+		max_attempts = 3
+		for attempt in range(1, max_attempts + 1):
 			try:
-				if err.args[0].reason.args[0].errno == 8:
-					# EOF occurred in violation of protocol
-					raise OpsiServiceConnectionError(str(err)) from err
-			except (AttributeError, IndexError):
-				pass
-			raise OpsiServiceVerificationError(str(err)) from err
-		except Timeout as err:
-			raise OpsiServiceTimeoutError(str(err)) from err
-		except HTTPError as err:
-			if err.response is None:
-				raise OpsiServiceError(str(err)) from err
-
-			if err.response.status_code == 503:
-				retry_after = 60
-				try:
-					retry_after = int(err.response.headers.get("Retry-After", ""))
-					retry_after = max(1, min(retry_after, 7200))
-				except ValueError:
-					pass
-				self._service_unavailable = OpsiServiceUnavailableError(
-					str(err), status_code=err.response.status_code, content=err.response.text, until=time.time() + retry_after
+				response = self._session.request(
+					method=method, url=self._get_url(path), headers=headers, data=data, timeout=timeout, stream=True, verify=verify
 				)
-				raise self._service_unavailable from err
+				if allow_status_codes and allow_status_codes != ... and response.status_code not in allow_status_codes:
+					response.raise_for_status()
+				return response
+			except SSLError as err:
+				if err.__cause__ and isinstance(err.__cause__, PermissionError) and attempt < max_attempts:
+					# Possible permission error in context.load_verify_locations accessing ca_cert_file (file locked?)
+					logger.warning("%s, retrying in a second", err, exc_info=True)
+					time.sleep(1)
+					continue
+				try:
+					if err.args[0].reason.args[0].errno == 8:
+						# EOF occurred in violation of protocol
+						raise OpsiServiceConnectionError(str(err)) from err
+				except (AttributeError, IndexError):
+					pass
+				raise OpsiServiceVerificationError(str(err)) from err
+			except Timeout as err:
+				raise OpsiServiceTimeoutError(str(err)) from err
+			except HTTPError as err:
+				if err.response is None:
+					raise OpsiServiceError(str(err)) from err
 
-			cls = OpsiServiceError
-			if err.response.status_code == 401:
-				cls = OpsiServiceAuthenticationError
-			elif err.response.status_code == 403:
-				cls = OpsiServicePermissionError
-			raise cls(str(err), status_code=err.response.status_code, content=err.response.text) from err
-		except Exception as err:  # pylint: disable=broad-except
-			raise OpsiServiceConnectionError(str(err)) from err
+				if err.response.status_code == 503:
+					retry_after = 60
+					try:
+						retry_after = int(err.response.headers.get("Retry-After", ""))
+						retry_after = max(1, min(retry_after, 7200))
+					except ValueError:
+						pass
+					self._service_unavailable = OpsiServiceUnavailableError(
+						str(err), status_code=err.response.status_code, content=err.response.text, until=time.time() + retry_after
+					)
+					raise self._service_unavailable from err
+
+				cls = OpsiServiceError
+				if err.response.status_code == 401:
+					cls = OpsiServiceAuthenticationError
+				elif err.response.status_code == 403:
+					cls = OpsiServicePermissionError
+				raise cls(str(err), status_code=err.response.status_code, content=err.response.text) from err
+			except Exception as err:  # pylint: disable=broad-except
+				raise OpsiServiceConnectionError(str(err)) from err
+		# Should never be reached
+		raise OpsiServiceConnectionError("Failed to connect")
 
 	@overload
 	def request(
