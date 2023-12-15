@@ -42,13 +42,7 @@ def get_system_uuid() -> str:
 	raise RuntimeError("Failed to find UUID in Win32_ComputerSystemProduct")
 
 
-@contextmanager
-def lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: float = 5.0) -> Generator[None, None, None]:
-	"""
-	An exclusive or write lock gives a process exclusive access for writing to the specified part of the file.
-	While a write lock is in place, no other process can lock that part of the file.
-	A shared or read lock prohibits any other process from requesting a write lock on the file.
-	"""
+def _lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: float = 5.0) -> None:
 	lock_flags = win32con.LOCKFILE_FAIL_IMMEDIATELY | (win32con.LOCKFILE_EXCLUSIVE_LOCK if exclusive else 0)
 	start = time()
 	while True:
@@ -60,8 +54,20 @@ def lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: fl
 			if time() >= start + timeout:
 				raise TimeoutError(f"Failed to lock file after {timeout:0.2f} seconds") from None
 			sleep(0.1)
+
+def _unlock_file(file: TextIO | BinaryIO | IO) -> None:
+	hfile = win32file._get_osfhandle(file.fileno())  # pylint: disable=protected-access
+	win32file.UnlockFileEx(hfile, 0, 0x7FFF0000, pywintypes.OVERLAPPED())
+
+@contextmanager
+def lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: float = 5.0) -> Generator[None, None, None]:
+	"""
+	An exclusive or write lock gives a process exclusive access for writing to the specified part of the file.
+	While a write lock is in place, no other process can lock that part of the file.
+	A shared or read lock prohibits any other process from requesting a write lock on the file.
+	"""
+	_lock_file(file=file, exclusive=exclusive, timeout=timeout)
 	try:
 		yield
 	finally:
-		hfile = win32file._get_osfhandle(file.fileno())  # pylint: disable=protected-access
-		win32file.UnlockFileEx(hfile, 0, 0x7FFF0000, pywintypes.OVERLAPPED())
+		_unlock_file(file=file)

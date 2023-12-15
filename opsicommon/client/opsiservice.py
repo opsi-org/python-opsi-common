@@ -44,8 +44,9 @@ from OpenSSL.crypto import (  # type: ignore[import]
 	load_certificate,
 )
 from packaging import version
-from requests import HTTPError, Session
+from requests import HTTPError
 from requests import Response as RequestsResponse
+from requests import Session
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3.exceptions import InsecureRequestWarning
@@ -893,7 +894,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				if "Permission denied" in str(err) and attempt < max_attempts:
 					# Possible permission error in context.load_verify_locations accessing ca_cert_file (file locked?)
 					wait_time = random.randint(500, 3000) / 1000
-					logger.warning("%s, retrying in %0.3f seconds", err, wait_time, exc_info=True)
+					logger.warning("%s, retrying in %0.3f seconds", err, wait_time)
 					time.sleep(wait_time)
 					continue
 				try:

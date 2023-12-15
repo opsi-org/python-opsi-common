@@ -1786,3 +1786,35 @@ def test_permission_error_ca_cert_file() -> None:
 		with ServiceClient(f"https://localhost:{server.port}", verify="opsi_ca", ca_cert_file=server.ca_cert) as client:
 			client.connect()
 			client.get("/")
+
+@pytest.mark.windows
+def test_permission_error_ca_cert_file_lock() -> None:
+	from opsicommon.system.windows import _lock_file, _unlock_file
+	load_verify_locations_orig = SSLContext.load_verify_locations
+	attempts = 0
+	file_handle = None
+
+	def load_verify_locations(
+		self: SSLContext,
+		cafile: str | Path | None = None,
+		capath: str | Path | None = None,
+		cadata: str | None = None,
+	) -> None:
+		nonlocal attempts
+		attempts += 1
+		if attempts == 2:
+			_unlock_file(file_handle)
+		return load_verify_locations_orig(self, cafile, capath, cadata)
+
+	with (
+		mock.patch("ssl.SSLContext.load_verify_locations", load_verify_locations),
+		http_test_server(generate_cert=True) as server,
+	):
+		with ServiceClient(f"https://localhost:{server.port}", verify="strict_check", ca_cert_file=server.ca_cert) as client:
+			assert server.ca_cert
+			with open(server.ca_cert, "a+", encoding="utf-8") as file:
+				file_handle = file
+				_lock_file(file, exclusive=True)
+				client.connect()
+				assert attempts == 3
+
