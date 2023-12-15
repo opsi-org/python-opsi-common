@@ -17,7 +17,6 @@ import re
 import ssl
 import sys
 import time
-import traceback
 import warnings
 from base64 import b64encode
 from contextlib import contextmanager

@@ -18,6 +18,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from socket import AF_INET
+from ssl import SSLContext
 from threading import Thread
 from typing import Any, Generator, Iterable
 from unittest import mock
@@ -1762,10 +1763,7 @@ def test_server_date_update() -> None:
 					assert not dt_set
 
 
-def test_permission_error_ca_cert_file(tmp_path: Path) -> None:
-	import sys
-	from ssl import SSLContext
-
+def test_permission_error_ca_cert_file() -> None:
 	load_verify_locations_orig = SSLContext.load_verify_locations
 	err_count = 0
 
