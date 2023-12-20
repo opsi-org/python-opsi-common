@@ -141,6 +141,8 @@ class OpsiPackage:
 			PackageDependency(package=str(pdep["package"]), version=pdep.get("version"), condition=pdep.get("condition"))
 			for pdep in legacy_control_file.packageDependencies
 		]
+		if self.product.changelog:
+			self.changelog = self.product.changelog
 
 	def package_archive_name(self) -> str:
 		return f"{self.product.id}_{self.product.productVersion}-{self.product.packageVersion}.opsi"
