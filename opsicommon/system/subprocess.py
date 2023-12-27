@@ -8,7 +8,7 @@ system.subprocess
 
 import platform
 import subprocess
-from os import PathLike, environ
+from os import PathLike, environ, pathsep
 from typing import IO, Any, Callable, Collection, Iterable, Mapping, Sequence
 
 SYSTEM = platform.system().lower()
@@ -49,7 +49,7 @@ class Popen(PopenOrig):
 		umask: int = -1,
 		pipesize: int = -1,
 		process_group: int | None = None,
-		session: str | int | None = None
+		session: str | int | None = None,
 	) -> None:
 		env = dict(env or environ.copy())
 		lp_orig = env.get("LD_LIBRARY_PATH_ORIG")
@@ -60,6 +60,13 @@ class Popen(PopenOrig):
 			# This happens when LD_LIBRARY_PATH was not set.
 			# Remove the env var as a last resort
 			env.pop("LD_LIBRARY_PATH", None)
+
+		path = env.get("PATH")
+		if path:
+			# Cleanup PATH variable
+			# Remove empty values and values containing "pywin32_system32" and "opsi"
+			values = list(dict.fromkeys(v for v in path.split(pathsep) if v and not ("pywin32_system32" in v and "opsi" in v)))
+			env["PATH"] = pathsep.join(values)
 
 		if session:
 			if SYSTEM == "windows":
