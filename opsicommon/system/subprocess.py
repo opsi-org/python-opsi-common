@@ -6,9 +6,10 @@
 system.subprocess
 """
 
+import os
 import platform
 import subprocess
-from os import PathLike, environ, pathsep
+from os import PathLike, pathsep
 from typing import IO, Any, Callable, Collection, Iterable, Mapping, Sequence
 
 SYSTEM = platform.system().lower()
@@ -51,10 +52,7 @@ class Popen(PopenOrig):
 		process_group: int | None = None,
 		session: str | int | None = None,
 	) -> None:
-		print("environ", environ)
-		print("env1", env)
-		env = dict(env or environ.copy())
-		print("env2", env)
+		env = dict(env or os.environ.copy())
 		lp_orig = env.get("LD_LIBRARY_PATH_ORIG")
 		if lp_orig is not None:
 			# Restore the original, unmodified value
