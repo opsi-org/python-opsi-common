@@ -74,6 +74,7 @@ def test_path_cleanup() -> None:
 		with subprocess.Popen(cmd, shell=True) as proc:
 			ps_proc = psutil.Process(proc.pid)
 			proc_env = ps_proc.environ()
+			print("Process environment:", proc_env)
 			assert proc_env["PATH"].split(os.pathsep) == clean_path
 			proc.wait()
 		assert os.environ["PATH"].split(os.pathsep) == path
