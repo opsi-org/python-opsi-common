@@ -51,7 +51,10 @@ class Popen(PopenOrig):
 		process_group: int | None = None,
 		session: str | int | None = None,
 	) -> None:
+		print("environ", environ)
+		print("env1", env)
 		env = dict(env or environ.copy())
+		print("env2", env)
 		lp_orig = env.get("LD_LIBRARY_PATH_ORIG")
 		if lp_orig is not None:
 			# Restore the original, unmodified value
