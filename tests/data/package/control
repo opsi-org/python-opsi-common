@@ -26,6 +26,12 @@ requiredProduct: hwaudit
 requirementType: before
 requiredStatus: installed
 
+[ProductDependency]
+action: setup
+requiredProduct: swaudit
+requirementType: after
+requiredAction: setup
+
 [ProductProperty]
 type: unicode
 name: propname

@@ -44,3 +44,9 @@ requiredProduct = "hwaudit"
 action = "setup"
 requirementType = "before"
 requiredStatus = "installed"
+
+[[ProductDependency]]
+requiredProduct = "swaudit"
+action = "setup"
+requirementType = "after"
+requiredAction = "setup"

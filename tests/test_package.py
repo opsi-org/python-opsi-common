@@ -111,11 +111,20 @@ def test_load_control(form: str) -> None:
 			assert set(prop.possibleValues) == {True, False}
 		else:
 			raise ValueError(f"Did not expect propertyId {prop.propertyId}")
-	assert len(package.product_dependencies) == 1
+
+	assert len(package.product_dependencies) == 2
+
 	assert package.product_dependencies[0].productAction == "setup"
 	assert package.product_dependencies[0].requiredProductId == "hwaudit"
 	assert package.product_dependencies[0].requiredInstallationStatus == "installed"
 	assert package.product_dependencies[0].requirementType == "before"
+	assert package.product_dependencies[0].requiredAction is None
+
+	assert package.product_dependencies[1].productAction == "setup"
+	assert package.product_dependencies[1].requiredProductId == "swaudit"
+	assert package.product_dependencies[1].requiredInstallationStatus is None
+	assert package.product_dependencies[1].requirementType == "after"
+	assert package.product_dependencies[1].requiredAction == "setup"
 
 
 @pytest.mark.parametrize(
