@@ -49,7 +49,7 @@ from requests import Response as RequestsResponse
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3.exceptions import InsecureRequestWarning
-from websocket import WebSocketApp  # type: ignore[import]
+from websocket import WebSocket, WebSocketApp  # type: ignore[import]
 from websocket._abnf import ABNF  # type: ignore[import]
 
 from .. import __version__
@@ -1369,7 +1369,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def websocket_connected(self) -> bool:
 		return bool(self._app and self._app.sock and self._app.sock.connected)
 
-	def _on_open(self, app: WebSocketApp) -> None:  # pylint: disable=unused-argument
+	def _on_open(self, websocket: WebSocket) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket opened")
 		if not self._connected:
 			logger.notice("Connected to opsi messagebus")
@@ -1388,7 +1388,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			self._run_listener_callback(listener, "messagebus_connection_established", messagebus=self)
 		self._connect_attempt = 0
 
-	def _on_error(self, app: WebSocketApp, error: Exception) -> None:  # pylint: disable=unused-argument
+	def _on_error(self, websocket: WebSocket, error: Exception) -> None:  # pylint: disable=unused-argument
 		status_code = getattr(error, "status_code", 0)
 		logger.warning("Websocket error: %d - %s", status_code, error)
 		self._connect_exception = error
@@ -1396,7 +1396,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		for listener in self._listener:
 			self._run_listener_callback(listener, "messagebus_connection_failed", messagebus=self, exception=error)
 
-	def _on_close(self, app: WebSocketApp, close_status_code: int, close_message: str) -> None:  # pylint: disable=unused-argument
+	def _on_close(self, websocket: WebSocket, close_status_code: int, close_message: str) -> None:  # pylint: disable=unused-argument
 		logger.info("Websocket closed with status_code=%r and message=%r", close_status_code, close_message)
 		self._connected = False
 		if close_status_code == 1013:
@@ -1417,7 +1417,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		for listener in self._listener:
 			self._run_listener_callback(listener, "messagebus_connection_closed", messagebus=self)
 
-	def _on_message(self, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
+	def _on_message(self, websocket: WebSocket, message: bytes) -> None:  # pylint: disable=unused-argument
 		logger.debug("Websocket message received")
 		try:
 			if self.compression == "lz4":
@@ -1442,12 +1442,12 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		except Exception as err:  # pylint: disable=broad-except
 			logger.error("Failed to process websocket message: %s", err, exc_info=True)
 
-	def _on_ping(self, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
+	def _on_ping(self, websocket: WebSocket, message: bytes) -> None:  # pylint: disable=unused-argument
 		logger.debug("Ping message received")
 		if self._app:
 			self._app.send(b"", ABNF.OPCODE_PONG)
 
-	def _on_pong(self, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
+	def _on_pong(self, websocket: WebSocket, message: bytes) -> None:  # pylint: disable=unused-argument
 		logger.debug("Pong message received")
 
 	def register_messagebus_listener(self, listener: MessagebusListener) -> None:
@@ -1645,11 +1645,11 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self._app.run_forever(  # type: ignore[attr-defined]
 			sslopt=sslopt,
 			skip_utf8_validation=True,
-			proxy_type=proxy_type,
-			http_proxy_host=http_proxy_host,
-			http_proxy_port=http_proxy_port,
-			http_proxy_auth=http_proxy_auth,
-			http_no_proxy=http_no_proxy,
+			proxy_type=proxy_type,  # type: ignore[arg-type]
+			http_proxy_host=http_proxy_host,  # type: ignore[arg-type]
+			http_proxy_port=http_proxy_port,  # type: ignore[arg-type]
+			http_proxy_auth=http_proxy_auth,  # type: ignore[arg-type]
+			http_no_proxy=http_no_proxy,  # type: ignore[arg-type]
 			http_proxy_timeout=self._connect_timeout,
 			ping_interval=self.ping_interval,
 			ping_timeout=self.ping_timeout,
