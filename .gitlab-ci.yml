@@ -11,6 +11,7 @@ pytest-darwin:
   tags:
     - catalina-py311-x64
   script:
+    - poetry cache clear --all uibpypi
     - poetry lock --no-update
     - poetry install
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_darwin1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
@@ -35,6 +36,7 @@ pytest-windows:
     - Invoke-WebRequest -UseBasicParsing -Uri "$OPSIDEVTOOLS_URL_WINDOWS_X86" -OutFile opsi-dev-tools.zip
     - Expand-Archive opsi-dev-tools.zip -DestinationPath .
     - .\opsi-dev-tool.exe --self-install
+    - poetry cache clear --all uibpypi
     - poetry lock --no-update
     - poetry install
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_windows1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests\\test_logging.py tests
@@ -56,6 +58,7 @@ pytest-linux:
   script:
     - apt update
     - apt --yes install zstd  # need zstd for packaging tests
+    - poetry cache clear --all uibpypi
     - poetry lock --no-update
     - poetry install
     - poetry run pytest --tb=short -o junit_family=xunit2 --junitxml=testreport_linux1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
