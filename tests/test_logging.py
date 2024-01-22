@@ -5,7 +5,6 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import asyncio
-import codecs
 import logging
 import os
 import random
@@ -14,7 +13,6 @@ import tempfile
 import threading
 import time
 import warnings
-from pathlib import Path
 from typing import Any
 
 import pytest

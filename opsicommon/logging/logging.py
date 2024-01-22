@@ -953,13 +953,13 @@ def print_logger_info() -> None:
 
 
 def init_warnings_capture(traceback_log_level: int = logging.INFO) -> None:
-	def _log_warning(  # pylint: disable=too-many-arguments
+	def _log_warning(  # pylint: disable=too-many-arguments,unused-argument
 		message: str,
 		category: Any,
 		filename: str,
 		lineno: int,
 		line: Any = None,
-		file: Any = None,  # pylint: disable=unused-argument
+		file: Any = None,
 	) -> None:
 		log = logger.log
 		logger.warning("Warning '%s' in file '%s', line %s", message, filename, lineno)
