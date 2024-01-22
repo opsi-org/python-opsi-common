@@ -35,6 +35,8 @@ from urllib.parse import quote
 from colorlog import ColoredFormatter
 from rich.console import Console
 
+from opsicommon.system.info import is_posix
+
 from .constants import (
 	DATETIME_FORMAT,
 	DEFAULT_COLORED_FORMAT,
@@ -215,7 +217,7 @@ def handle_log_exception(
 	try:
 		text = "Logging error:\n"
 
-		if isinstance(exc, PermissionError):
+		if isinstance(exc, PermissionError) and is_posix():
 			try:
 				stat_info = os.stat(exc.filename)
 				text += f"File permissions: {stat_info.st_mode:o}, owner: {stat_info.st_uid}, group: {stat_info.st_gid}\n"

@@ -117,6 +117,7 @@ def test_log_exception_handler() -> None:
 			assert "'levelname': 'ERROR'" in data
 
 
+@pytest.mark.linux
 def test_permission_error_log_exception_handler(capsys: CaptureFixture[str]) -> None:
 	pid = os.getpid()
 	uid = os.getegid()
