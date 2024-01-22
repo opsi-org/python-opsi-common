@@ -30,6 +30,10 @@ def is_unix() -> bool:
 	return SYSTEM in ("linux", "darwin")
 
 
+def is_posix() -> bool:
+	return SYSTEM in ("linux", "darwin")
+
+
 @lru_cache
 def is_ucs() -> bool:
 	lsb_release = Path("/etc/lsb-release")
