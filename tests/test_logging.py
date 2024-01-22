@@ -14,10 +14,13 @@ import tempfile
 import threading
 import time
 import warnings
+from pathlib import Path
 from typing import Any
 
 import pytest
 import requests
+from _pytest.capture import CaptureFixture
+
 from opsicommon.logging import (
 	ContextSecretFormatter,
 	ObservableHandler,
@@ -110,10 +113,29 @@ def test_log_exception_handler() -> None:
 		raise Exception("TESTäöüß")  # pylint: disable=broad-exception-raised
 	except Exception as err:  # pylint: disable=broad-except
 		handle_log_exception(exc=err, record=log_record, log=True, temp_file=True, stderr=True)
-		with codecs.open(filename, "r", "utf-8") as file:
+		with open(filename, "r", encoding="utf-8") as file:
 			data = file.read()
 			assert "TESTäöüß" in data
 			assert "'levelname': 'ERROR'" in data
+
+
+def test_permission_error_log_exception_handler(capsys: CaptureFixture[str]) -> None:
+	pid = os.getpid()
+	uid = os.getegid()
+	gid = os.getegid()
+	log_record = logging.LogRecord(name="", level=logging.ERROR, pathname="", lineno=1, msg="t", args=None, exc_info=None)
+	test_file = f"/proc/{pid}/stat"
+	try:
+		os.remove(test_file)
+	except PermissionError as err:  # pylint: disable=broad-except
+		handle_log_exception(exc=err, record=log_record, log=False, temp_file=False, stderr=True)
+		captured = capsys.readouterr()
+		assert captured.err.startswith(
+			"Logging error:\n"
+			f"File permissions: 100444, owner: 0, group: 0\n"
+			f"Process uid: {uid}, gid: {gid}\n"
+			"Traceback (most recent call last):\n"
+		)
 
 
 def test_secret_formatter_attr() -> None:
