@@ -12,6 +12,7 @@ import codecs
 import contextvars
 import logging
 import os
+import platform
 import re
 import sys
 import tempfile
@@ -34,8 +35,6 @@ from urllib.parse import quote
 
 from colorlog import ColoredFormatter
 from rich.console import Console
-
-from opsicommon.system.info import is_posix
 
 from .constants import (
 	DATETIME_FORMAT,
@@ -217,7 +216,7 @@ def handle_log_exception(
 	try:
 		text = "Logging error:\n"
 
-		if isinstance(exc, PermissionError) and is_posix():
+		if isinstance(exc, PermissionError) and platform.system().lower() in ("linux", "darwin"):
 			try:
 				stat_info = os.stat(exc.filename)
 				text += f"File permissions: {stat_info.st_mode:o}, owner: {stat_info.st_uid}, group: {stat_info.st_gid}\n"
