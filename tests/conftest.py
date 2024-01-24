@@ -98,7 +98,7 @@ def pytest_pyfunc_call(pyfuncitem: Callable | Coroutine) -> Generator[None, Resu
 
 	try:
 		_result = outcome.get_result()  # Will raise if outcome was exception
-	except BaseException as exc:
+	except BaseException as exc:  # pylint: disable=broad-exception-caught
 		outcome.force_exception(exc)
 		return
 
