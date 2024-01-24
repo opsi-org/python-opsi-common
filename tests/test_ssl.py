@@ -12,18 +12,53 @@ from typing import Any, Optional, Type
 from unittest import mock
 
 import pytest
-from OpenSSL.crypto import X509, X509Store, X509StoreContext, PKey  # type: ignore[import]
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509 import verification
 
-from opsicommon.ssl import (
-	as_pem,
-	create_ca,
-	create_server_cert,
-	create_x590_name,
-	install_ca,
-	load_ca,
-	remove_ca,
-)
+from opsicommon.ssl import as_pem, create_ca, create_server_cert, create_x509_name, install_ca, load_ca, remove_ca
+from opsicommon.ssl.common import subject_to_dict, x509_name_to_dict
 from opsicommon.testing.helpers import http_test_server  # type: ignore[import]
+
+
+def test_x509_name_to_dict() -> None:
+	x509_name = x509.Name(
+		[
+			x509.NameAttribute(x509.NameOID.COUNTRY_NAME, "DE"),
+			x509.NameAttribute(x509.NameOID.STATE_OR_PROVINCE_NAME, "RLP"),
+			x509.NameAttribute(x509.NameOID.LOCALITY_NAME, "Mainz"),
+			x509.NameAttribute(x509.NameOID.ORGANIZATION_NAME, "uib GmbH"),
+			x509.NameAttribute(x509.NameOID.ORGANIZATIONAL_UNIT_NAME, "opsi"),
+			x509.NameAttribute(x509.NameOID.COMMON_NAME, "opsicn"),
+			x509.NameAttribute(x509.NameOID.EMAIL_ADDRESS, "info@opsi.org"),
+		]
+	)
+	subject: dict[str, str | None] = {
+		"C": "DE",
+		"ST": "RLP",
+		"L": "Mainz",
+		"O": "uib GmbH",
+		"OU": "opsi",
+		"CN": "opsicn",
+		"emailAddress": "info@opsi.org",
+	}
+	assert x509_name_to_dict(x509_name) == subject
+	with pytest.deprecated_call():
+		assert subject_to_dict(x509_name) == subject
+	assert create_x509_name(subject) == x509_name
+
+
+def test_create_x509_name() -> None:
+	subject: dict[str, str | None] = {"emailAddress": "test@test.de"}
+	x509_name = create_x509_name(subject)
+	assert x509_name.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS)[0].value == subject["emailAddress"]
+	assert x509_name.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == "opsi"
+
+	subject = {"emailAddress": None, "CN": "opsi"}
+	x509_name = create_x509_name(subject)
+	assert x509_name.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS)[0].value == ""
+	assert x509_name.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == "opsi"
 
 
 @pytest.mark.linux
@@ -56,34 +91,34 @@ def test_get_cert_path_and_cmd(
 			assert _get_cert_path_and_cmd() == (expected_path, expected_cmd)
 
 
-def test_create_x590_name() -> None:
-	subject: dict[str, str | None] = {"emailAddress": "test@test.de"}
-	x590_name = create_x590_name(subject)
-	assert x590_name.emailAddress == subject["emailAddress"]
-	assert x590_name.CN == "opsi"
-
-
 def test_create_ca() -> None:
 	subject = {"CN": "opsi CA", "OU": "opsi", "emailAddress": "opsi@opsi.org"}
 	ca_cert, ca_key = create_ca(subject, 100)
-	assert isinstance(ca_cert, X509)
-	assert isinstance(ca_key, PKey)
-	assert ca_cert.get_subject().CN == subject["CN"]
-	assert ca_cert.get_subject().OU == subject["OU"]
-	assert ca_cert.get_subject().emailAddress == subject["emailAddress"]
+	assert isinstance(ca_cert, x509.Certificate)
+	assert isinstance(ca_key, rsa.RSAPrivateKey)
+	assert ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == subject["CN"]
+	assert ca_cert.subject.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME)[0].value == subject["OU"]
+	assert ca_cert.subject.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS)[0].value == subject["emailAddress"]
 
 	permitted_domains = [".mycompany.com", "mycompany.org", "localhost"]
 	ca_cert, ca_key = create_ca(subject, 100, permitted_domains=permitted_domains)
 
-	name_constraints = [
-		ca_cert.get_extension(idx)
-		for idx in range(ca_cert.get_extension_count())
-		if ca_cert.get_extension(idx).get_short_name() == b"nameConstraints"
-	][0]
-	assert name_constraints.get_critical() == 1
-	assert name_constraints.get_data() == b"02\xa000\x10\x82\x0e.mycompany.com0\x0f\x82\rmycompany.org0\x0b\x82\tlocalhost"
+	name_constraints = [extension for extension in ca_cert.extensions if extension.oid == x509.OID_NAME_CONSTRAINTS][0]
+	assert name_constraints.critical
+	assert name_constraints.value.permitted_subtrees[0].value == "mycompany.com"
+	assert name_constraints.value.permitted_subtrees[1].value == "mycompany.org"
+	assert name_constraints.value.permitted_subtrees[2].value == "localhost"
 
-	for domain in permitted_domains[:-1] + ["other.tld"]:
+	try:
+		from OpenSSL.crypto import FILETYPE_ASN1, X509, dump_certificate
+
+		openssl_x509 = X509.from_cryptography(ca_cert)
+		assert ca_cert.fingerprint(hashes.SHA1()).hex().upper() == openssl_x509.digest("sha1").decode("ascii").replace(":", "")
+		assert dump_certificate(FILETYPE_ASN1, openssl_x509) == ca_cert.public_bytes(encoding=serialization.Encoding.DER)
+	except ImportError:
+		pass
+
+	for domain in ["mycompany.com", "sub.mycompany.com", "mycompany.org", "localhost", "other.tld"]:
 		kwargs: dict[str, Any] = {
 			"subject": {"emailAddress": f"opsi@{domain}", "CN": f"server.{domain}"},
 			"valid_days": 100,
@@ -93,14 +128,15 @@ def test_create_ca() -> None:
 			"ca_cert": ca_cert,
 		}
 		srv_cert, _srv_key = create_server_cert(**kwargs)
-		store = X509Store()
-		store.add_cert(ca_cert)
-		store_ctx = X509StoreContext(store, srv_cert)
-		if domain in permitted_domains:
-			store_ctx.verify_certificate()
+		store = verification.Store([ca_cert])
+		builder = verification.PolicyBuilder().store(store)
+
+		verifier = builder.build_server_verifier(x509.DNSName(list(kwargs["hostnames"])[0]))
+		if domain in "other.tld":
+			with pytest.raises(Exception, match="no permitted name constraints matched SAN"):
+				verifier.verify(srv_cert, [])
 		else:
-			with pytest.raises(Exception, match="permitted subtree violation"):
-				store_ctx.verify_certificate()
+			verifier.verify(srv_cert, [])
 
 	del subject["CN"]
 	with pytest.raises(ValueError):
@@ -113,7 +149,7 @@ def test_create_server_cert() -> None:
 	kwargs: dict[str, Any] = {
 		"subject": {"emailAddress": "opsi@opsi.org"},
 		"valid_days": 100,
-		"ip_addresses": {"172.0.0.1", "::1", "192.168.1.1"},
+		"ip_addresses": {"172.0.0.1", "::1", ipaddress.ip_address("192.168.1.1")},
 		"hostnames": {"localhost", "opsi", "opsi.dom.tld"},
 		"ca_key": ca_key,
 		"ca_cert": ca_cert,
@@ -124,27 +160,14 @@ def test_create_server_cert() -> None:
 
 	kwargs["subject"]["CN"] = "server.dom.tld"
 	cert, key = create_server_cert(**kwargs)
-	assert isinstance(cert, X509)
-	assert isinstance(key, PKey)
-	assert cert.get_subject().CN == kwargs["subject"]["CN"]
+	assert isinstance(cert, x509.Certificate)
+	assert isinstance(key, rsa.RSAPrivateKey)
+	assert cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == kwargs["subject"]["CN"]
 
-	cert_hns = set()
-	cert_ips = set()
-	for idx in range(cert.get_extension_count()):
-		ext = cert.get_extension(idx)
-		if ext.get_short_name() == b"subjectAltName":
-			for alt_name in str(ext).split(","):
-				alt_name = alt_name.strip()
-				if alt_name.startswith("DNS:"):
-					cert_hns.add(alt_name.split(":", 1)[-1].strip())
-				elif alt_name.startswith(("IP:", "IP Address:")):
-					addr = alt_name.split(":", 1)[-1].strip()
-					ip_addr = ipaddress.ip_address(addr)
-					cert_ips.add(ip_addr.compressed)
-			break
-
-	assert cert_hns == kwargs["hostnames"]
-	assert cert_ips == kwargs["ip_addresses"]
+	alt_names = [extension for extension in cert.extensions if extension.oid == x509.OID_SUBJECT_ALTERNATIVE_NAME][0]
+	assert not alt_names.critical
+	assert alt_names.value.get_values_for_type(x509.DNSName) == list(kwargs["hostnames"])
+	assert alt_names.value.get_values_for_type(x509.IPAddress) == list(ipaddress.ip_address(ip) for ip in kwargs["ip_addresses"])
 
 
 def test_as_pem() -> None:
@@ -157,7 +180,7 @@ def test_as_pem() -> None:
 	pem = as_pem(key, "password")
 	assert pem.startswith("-----BEGIN ENCRYPTED PRIVATE KEY-----")
 	with pytest.raises(TypeError):
-		as_pem(create_x590_name({}))  # type: ignore[arg-type]
+		as_pem(create_x509_name({}))  # type: ignore[arg-type]
 
 
 @pytest.mark.admin_permissions
@@ -166,13 +189,13 @@ def test_install_load_remove_ca() -> None:
 	ca_cert, _ca_key = create_ca({"CN": subject_name}, 3)
 	install_ca(ca_cert)
 	try:
-		ca_cert = load_ca(subject_name)
-		assert ca_cert
-		assert ca_cert.get_subject().CN == subject_name
+		loaded_ca_cert = load_ca(subject_name)
+		assert loaded_ca_cert
+		assert loaded_ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == subject_name
 	finally:
 		remove_ca(subject_name)
-	ca_cert = load_ca(subject_name)
-	assert ca_cert is None
+	loaded_ca_cert = load_ca(subject_name)
+	assert loaded_ca_cert is None
 	# Remove not existing ca
 	remove_ca(subject_name)
 
@@ -217,7 +240,10 @@ def test_wget(tmp_path: Path) -> None:  # pylint: disable=redefined-outer-name, 
 			else:
 				assert subprocess.call(["wget", f"https://localhost:{server.port}", "-O-"]) == 0
 		finally:
-			remove_ca(ca_cert.get_subject().CN)
+			common_name = ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
+			if not isinstance(common_name, str):
+				common_name = common_name.decode("utf-8")
+			remove_ca(common_name)
 			if platform.system().lower() == "windows":
 				assert (
 					subprocess.call(

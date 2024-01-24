@@ -6,19 +6,15 @@
 ssl
 """
 
-import random
-from typing import Dict, Optional, Tuple, Union
+from datetime import datetime, timedelta
+from ipaddress import ip_address
+from typing import cast
 
-from OpenSSL.crypto import (  # type: ignore[import]
-	FILETYPE_PEM,
-	TYPE_RSA,
-	X509,
-	PKey,
-	X509Extension,
-	X509Name,
-	dump_certificate,
-	dump_privatekey,
-)
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509 import CertificateBuilder
+from typing_extensions import deprecated
 
 from opsicommon.logging import get_logger
 
@@ -29,33 +25,28 @@ SERVER_KEY_BITS = 4096
 logger = get_logger("opsicommon.general")
 
 
-def subject_to_dict(subject: X509Name) -> dict[str, str]:
+def x509_name_to_dict(x509_name: x509.Name) -> dict[str, str]:
 	return {
-		"C": subject.C,
-		"ST": subject.ST,
-		"L": subject.L,
-		"O": subject.O,
-		"OU": subject.OU,
-		"CN": subject.CN,
-		"emailAddress": subject.emailAddress,
+		k: v if isinstance(v, str) else v.decode("utf-8")
+		for k, v in {
+			"C": x509_name.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME)[0].value,
+			"ST": x509_name.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME)[0].value,
+			"L": x509_name.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME)[0].value,
+			"O": x509_name.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME)[0].value,
+			"OU": x509_name.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME)[0].value,
+			"CN": x509_name.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value,
+			"emailAddress": x509_name.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS)[0].value,
+		}.items()
 	}
 
 
-def as_pem(cert_or_key: Union[X509, PKey], passphrase: Optional[str] = None) -> str:
-	if isinstance(cert_or_key, X509):
-		return dump_certificate(FILETYPE_PEM, cert_or_key).decode("ascii")
-	if isinstance(cert_or_key, PKey):
-		return dump_privatekey(
-			FILETYPE_PEM,
-			cert_or_key,
-			cipher=None if passphrase is None else PRIVATE_KEY_CIPHER,
-			passphrase=None if passphrase is None else passphrase.encode("utf-8"),
-		).decode("ascii")
-	raise TypeError(f"Invalid type: {cert_or_key}")
+@deprecated("Use x509_name_to_dict instead")
+def subject_to_dict(subject: x509.Name) -> dict[str, str]:
+	return x509_name_to_dict(subject)
 
 
-def create_x590_name(subject: Optional[Dict[str, Optional[str]]] = None) -> X509Name:
-	subj: Dict[str, Optional[str]] = {
+def create_x509_name(subject: dict[str, str | None] | None = None) -> x509.Name:
+	subj: dict[str, str | None] = {
 		"C": "DE",
 		"ST": "RP",
 		"L": "MAINZ",
@@ -66,55 +57,75 @@ def create_x590_name(subject: Optional[Dict[str, Optional[str]]] = None) -> X509
 	}
 	subj.update(subject or {})
 
-	x509_name = X509Name(X509().get_subject())
-	x509_name.countryName = subj.get("countryName", subj.get("C"))  # type: ignore[assignment]
-	x509_name.stateOrProvinceName = subj.get("stateOrProvinceName", subj.get("ST"))  # type: ignore[assignment]
-	x509_name.localityName = subj.get("localityName", subj.get("L"))  # type: ignore[assignment]
-	x509_name.organizationName = subj.get("organizationName", subj.get("O"))  # type: ignore[assignment]
-	x509_name.organizationalUnitName = subj.get("organizationalUnitName", subj.get("OU"))  # type: ignore[assignment]
-	x509_name.commonName = subj.get("commonName", subj.get("CN"))  # type: ignore[assignment]
-	x509_name.emailAddress = subj.get("emailAddress")  # type: ignore[assignment]
+	return x509.Name(
+		(
+			x509.NameAttribute(x509.NameOID.COUNTRY_NAME, subj.get("countryName") or subj.get("C") or ""),
+			x509.NameAttribute(x509.NameOID.STATE_OR_PROVINCE_NAME, subj.get("stateOrProvinceName") or subj.get("ST") or ""),
+			x509.NameAttribute(x509.NameOID.LOCALITY_NAME, subj.get("localityName") or subj.get("L") or ""),
+			x509.NameAttribute(x509.NameOID.ORGANIZATION_NAME, subj.get("organizationName") or subj.get("O") or ""),
+			x509.NameAttribute(x509.NameOID.ORGANIZATIONAL_UNIT_NAME, subj.get("organizationalUnitName") or subj.get("OU") or ""),
+			x509.NameAttribute(x509.NameOID.COMMON_NAME, subj.get("commonName") or subj.get("CN") or ""),
+			x509.NameAttribute(x509.NameOID.EMAIL_ADDRESS, subj.get("emailAddress") or ""),
+		)
+	)
 
-	return x509_name
+
+def as_pem(cert_or_key: x509.Certificate | rsa.RSAPrivateKey, passphrase: str | None = None) -> str:
+	if isinstance(cert_or_key, x509.Certificate):
+		return cert_or_key.public_bytes(encoding=serialization.Encoding.PEM).decode("ascii")
+	if isinstance(cert_or_key, rsa.RSAPrivateKey):
+		return cert_or_key.private_bytes(
+			encoding=serialization.Encoding.PEM,
+			format=serialization.PrivateFormat.PKCS8,
+			encryption_algorithm=serialization.BestAvailableEncryption(passphrase.encode("utf-8"))
+			if passphrase
+			else serialization.NoEncryption(),
+		).decode("ascii")
+	raise TypeError(f"Invalid type: {cert_or_key}")
 
 
 def create_ca(
-	subject: dict,
+	subject: dict[str, str],
 	valid_days: int,
-	key: Optional[PKey] = None,
+	key: rsa.RSAPrivateKey | None = None,
 	bits: int = CA_KEY_BITS,
 	permitted_domains: list[str] | set[str] | tuple[str] | None = None,
-) -> Tuple[X509, PKey]:
+) -> tuple[x509.Certificate, rsa.RSAPrivateKey]:
 	common_name = subject.get("commonName", subject.get("CN"))
 	if not common_name:
 		raise ValueError("commonName missing in subject")
 
 	if not key:
 		logger.notice("Creating CA keypair")
-		key = PKey()
-		key.generate_key(TYPE_RSA, bits)
+		key = rsa.generate_private_key(public_exponent=65537, key_size=bits)
 
-	ca_cert = X509()
-	ca_cert.set_version(2)
-	random_number = random.getrandbits(32)
-	serial_number = int.from_bytes(f"{common_name}-{random_number}".encode(), byteorder="big")
-	ca_cert.set_serial_number(serial_number)
-	ca_cert.gmtime_adj_notBefore(0)
-	ca_cert.gmtime_adj_notAfter(valid_days * 60 * 60 * 24)
-
-	ca_cert.set_version(2)
-	ca_cert.set_pubkey(key)
-
-	ca_subject = create_x590_name(subject)
-
-	ca_cert.set_issuer(ca_subject)
-	ca_cert.set_subject(ca_subject)
-	extensions = [
-		X509Extension(b"subjectKeyIdentifier", False, b"hash", subject=ca_cert),
-		# The CA must not issue intermediate CA certificates (pathlen=0)
-		X509Extension(b"basicConstraints", True, b"CA:true, pathlen:0"),
-		X509Extension(b"keyUsage", True, b"digitalSignature, cRLSign, keyCertSign"),
-	]
+	ca_subject = create_x509_name(cast(dict[str, str | None], subject))
+	builder = CertificateBuilder(
+		issuer_name=ca_subject,
+		subject_name=ca_subject,
+		public_key=key.public_key(),
+		serial_number=x509.random_serial_number(),
+		not_valid_before=datetime.now(),
+		not_valid_after=datetime.now() + timedelta(days=valid_days),
+	)
+	builder = builder.add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
+	builder = builder.add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(key.public_key()), critical=False)
+	# The CA must not issue intermediate CA certificates (pathlen=0)
+	builder = builder.add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
+	builder = builder.add_extension(
+		x509.KeyUsage(
+			digital_signature=True,
+			content_commitment=False,
+			key_encipherment=False,
+			data_encipherment=False,
+			key_agreement=False,
+			key_cert_sign=True,
+			crl_sign=True,
+			encipher_only=False,
+			decipher_only=False,
+		),
+		critical=True,
+	)
 	if permitted_domains:
 		# https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.10
 		# When the constraint begins with a period, it MAY be
@@ -129,71 +140,69 @@ def create_ca(
 		# except email:copy is not supported and the IP form should consist of
 		# an IP addresses and subnet mask separated by a /.
 
-		permitted = ", ".join([f"permitted;DNS:{dom}" for dom in permitted_domains])
-		extensions.append(X509Extension(b"nameConstraints", True, permitted.encode("utf-8")))
-
-	ca_cert.add_extensions(extensions)
-	ca_cert.sign(key, "sha256")
-
-	return (ca_cert, key)
+		# python cryprography does not support name constraints
+		# starting with "." on validation (malformed DNS name constraint: .mycompany.com)
+		# stripping the leading "." for now
+		builder = builder.add_extension(
+			x509.NameConstraints(permitted_subtrees=[x509.DNSName(dom.lstrip(".")) for dom in permitted_domains], excluded_subtrees=None),
+			critical=True,
+		)
+	return (builder.sign(key, hashes.SHA256()), key)
 
 
 def create_server_cert(  # pylint: disable=too-many-arguments,too-many-locals
-	subject: dict,
+	subject: dict[str, str],
 	valid_days: int,
 	ip_addresses: set,
 	hostnames: set,
-	ca_key: PKey,
-	ca_cert: X509,
-	key: Optional[PKey] = None,
+	ca_key: rsa.RSAPrivateKey,
+	ca_cert: x509.Certificate,
+	key: rsa.RSAPrivateKey | None = None,
 	bits: int = SERVER_KEY_BITS,
-) -> Tuple[X509, PKey]:
+) -> tuple[x509.Certificate, rsa.RSAPrivateKey]:
 	common_name = subject.get("commonName", subject.get("CN"))
 	if not common_name:
 		raise ValueError("commonName missing in subject")
 
 	if not key:
 		logger.info("Creating server key pair")
-		key = PKey()
-		key.generate_key(TYPE_RSA, bits)
+		key = rsa.generate_private_key(public_exponent=65537, key_size=bits)
 
 	# Chrome requires CN from Subject also as Subject Alt
 	hostnames.add(common_name)
-	hns = ", ".join([f"DNS:{str(hn).strip()}" for hn in hostnames])
-	ips = ", ".join([f"IP:{str(ip).strip()}" for ip in ip_addresses])
-	alt_names = ""
-	if hns:
-		alt_names += hns
-	if ips:
-		if alt_names:
-			alt_names += ", "
-		alt_names += ips
+	alt_names = [x509.DNSName(hn) for hn in hostnames] + [x509.IPAddress(ip_address(ip)) for ip in ip_addresses]
 
-	cert = X509()
-	cert.set_version(2)
-
-	srv_subject = create_x590_name(subject)
-	cert.set_subject(srv_subject)
-
-	random_number = random.getrandbits(32)
-	serial_number = int.from_bytes(f"{common_name}-{random_number}".encode(), byteorder="big")
-	cert.set_serial_number(serial_number)
-	cert.gmtime_adj_notBefore(0)
-	cert.gmtime_adj_notAfter(valid_days * 60 * 60 * 24)
-	cert.set_issuer(ca_cert.get_subject())
-	cert.set_subject(srv_subject)
-
-	cert.add_extensions(
-		[
-			X509Extension(b"subjectKeyIdentifier", False, b"hash", subject=ca_cert),
-			X509Extension(b"basicConstraints", True, b"CA:false"),
-			X509Extension(b"keyUsage", True, b"nonRepudiation, digitalSignature, keyEncipherment"),
-			X509Extension(b"extendedKeyUsage", False, b"serverAuth, clientAuth, codeSigning, emailProtection"),
-		]
+	srv_subject = create_x509_name(cast(dict[str, str | None], subject))
+	builder = CertificateBuilder(
+		issuer_name=ca_cert.subject,
+		subject_name=srv_subject,
+		public_key=key.public_key(),
+		serial_number=x509.random_serial_number(),
+		not_valid_before=datetime.now(),
+		not_valid_after=datetime.now() + timedelta(days=valid_days),
 	)
-	if alt_names:
-		cert.add_extensions([X509Extension(b"subjectAltName", False, alt_names.encode("utf-8"))])
-	cert.set_pubkey(key)
-	cert.sign(ca_key, "sha256")
+	builder = builder.add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
+	builder = builder.add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()), critical=False)
+	builder = builder.add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+	builder = builder.add_extension(
+		x509.KeyUsage(
+			digital_signature=True,
+			content_commitment=True,
+			key_encipherment=True,
+			data_encipherment=False,
+			key_agreement=False,
+			key_cert_sign=False,
+			crl_sign=False,
+			encipher_only=False,
+			decipher_only=False,
+		),
+		critical=True,
+	)
+	builder = builder.add_extension(
+		x509.ExtendedKeyUsage([x509.OID_SERVER_AUTH, x509.OID_CLIENT_AUTH, x509.OID_CODE_SIGNING, x509.OID_EMAIL_PROTECTION]),
+		critical=False,
+	)
 
-	return (cert, key)
+	if alt_names:
+		builder = builder.add_extension(x509.SubjectAlternativeName(alt_names), critical=False)
+	return (builder.sign(ca_key, hashes.SHA256()), key)

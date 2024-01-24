@@ -13,7 +13,8 @@ from typing import Any, Generator
 
 import pywintypes  # type: ignore[import] # pylint: disable=import-error
 import win32crypt  # type: ignore[import] # pylint: disable=import-error
-from OpenSSL import crypto  # type: ignore[import]
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
 
 from opsicommon.logging import get_logger
 
@@ -70,7 +71,9 @@ logger = get_logger("opsicommon.general")
 
 @contextmanager
 def _open_cert_store(
-	store_name: str, ctype: bool = False, force_close: bool = False  # pylint: disable=unused-argument
+	store_name: str,
+	ctype: bool = False,
+	force_close: bool = False,  # pylint: disable=unused-argument
 ) -> Generator[Any, None, None]:  # should be _win32typing.PyCERTSTORE if present
 	_open = win32crypt.CertOpenStore
 	if ctype:
@@ -91,26 +94,32 @@ def _open_cert_store(
 				raise
 
 
-def install_ca(ca_cert: crypto.X509) -> None:
+def install_ca(ca_cert: x509.Certificate) -> None:
 	store_name = "Root"
+	common_name = ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
+	if not isinstance(common_name, str):
+		common_name = common_name.decode("utf-8")
 
-	logger.info("Installing CA '%s' into '%s' store", ca_cert.get_subject().CN, store_name)
+	logger.info("Installing CA '%s' into '%s' store", common_name, store_name)
 
 	with _open_cert_store(store_name) as store:
 		store.CertAddEncodedCertificateToStore(
-			X509_ASN_ENCODING, crypto.dump_certificate(crypto.FILETYPE_ASN1, ca_cert), CERT_STORE_ADD_REPLACE_EXISTING
+			X509_ASN_ENCODING, ca_cert.public_bytes(encoding=serialization.Encoding.DER), CERT_STORE_ADD_REPLACE_EXISTING
 		)
 
 
-def load_ca(subject_name: str) -> crypto.X509 | None:
+def load_ca(subject_name: str) -> x509.Certificate | None:
 	store_name = "Root"
 	logger.debug("Trying to find %s in certificate store", subject_name)
 	with _open_cert_store(store_name, force_close=False) as store:
 		for certificate in store.CertEnumCertificatesInStore():
 			# logger.trace("checking certificate %s", certificate.SerialNumber)	# ASN1 encoded integer
-			ca_cert = crypto.load_certificate(crypto.FILETYPE_ASN1, certificate.CertEncoded)
-			logger.trace("checking certificate %s", ca_cert.get_subject().CN)
-			if ca_cert.get_subject().CN == subject_name:
+			ca_cert = x509.load_der_x509_certificate(data=certificate.CertEncoded)
+			common_name = ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
+			if not isinstance(common_name, str):
+				common_name = common_name.decode("utf-8")
+			logger.trace("checking certificate %s", common_name)
+			if common_name == subject_name:
 				logger.debug("Found matching ca %s", subject_name)
 				return ca_cert
 	logger.debug("Did not find ca")
