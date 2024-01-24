@@ -1142,13 +1142,12 @@ files = [
 
 [[package]]
 name = "pproxy"
-version = "2.7.8"
+version = "2.7.9"
 description = "Proxy server that can tunnel among remote servers by regex rules."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "pproxy-2.7.8-py3-none-any.whl", hash = "sha256:9f300bae5288c7c7f56be70d6275571efd2b4862f306d25bdace3c3537fb53a7"},
-    {file = "pproxy-2.7.8.tar.gz", hash = "sha256:fab73cc13b2bb10c9fc4d9c1a8ec8011a354c9bcbffa446d91229e13c5d996c8"},
+    {file = "pproxy-2.7.9-py3-none-any.whl", hash = "sha256:a073d02616a47c43e1d20a547918c307dbda598c6d53869b165025f3cfe58e80"},
 ]
 
 [package.extras]
