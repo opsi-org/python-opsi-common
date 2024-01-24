@@ -91,7 +91,7 @@ def pytest_runtest_setup(item: Item) -> None:
 
 
 @pytest.hookimpl(hookwrapper=True)
-def pytest_pyfunc_call(pyfuncitem: Callable | Coroutine) -> Generator[None, Result, None]:
+def pytest_pyfunc_call(pyfuncitem: Callable | Coroutine) -> Generator[None, Result, None]:  # pylint: disable=unused-argument
 	start_threads = set(threading.enumerate())
 
 	outcome: Result = yield

@@ -377,7 +377,7 @@ def test_get_opsi_ca_state(tmpdir: Path) -> None:
 			super().__init__(**kwargs)
 
 	with mock.patch("opsicommon.ssl.common.CertificateBuilder", MockCertificateBuilder):
-		ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test CA 1"}, valid_days=100)
+		ca_cert, _ca_key = create_ca(subject={"CN": "python-opsi-common test CA 1"}, valid_days=100)
 		assert ca_cert.not_valid_before_utc < datetime.now(tz=timezone.utc)
 		assert ca_cert.not_valid_after_utc < datetime.now(tz=timezone.utc)
 		certs = [ca_cert]

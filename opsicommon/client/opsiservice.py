@@ -38,7 +38,7 @@ from uuid import uuid4
 import lz4.frame  # type: ignore[import,no-redef]
 import msgspec
 from cryptography import x509
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import serialization
 from packaging import version
 from requests import HTTPError, Session
 from requests import Response as RequestsResponse
@@ -1139,8 +1139,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		if logger.isEnabledFor(TRACE):
 			logger.trace("RPC: %s", data_dict)
 
-		serialization = "msgpack" if self.server_version >= MIN_VERSION_MSGPACK else "json"
-		if serialization == "msgpack":
+		serial = "msgpack" if self.server_version >= MIN_VERSION_MSGPACK else "json"
+		if serial == "msgpack":
 			headers["Content-Type"] = headers["Accept"] = "application/msgpack"
 			data = self._msgpack_encoder.encode(data_dict)
 		else:
