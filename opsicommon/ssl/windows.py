@@ -115,7 +115,10 @@ def load_ca(subject_name: str) -> x509.Certificate | None:
 		for certificate in store.CertEnumCertificatesInStore():
 			# logger.trace("checking certificate %s", certificate.SerialNumber)	# ASN1 encoded integer
 			ca_cert = x509.load_der_x509_certificate(data=certificate.CertEncoded)
-			common_name = ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
+			try:
+				common_name = ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
+			except IndexError:
+				continue
 			if not isinstance(common_name, str):
 				common_name = common_name.decode("utf-8")
 			logger.trace("checking certificate %s", common_name)

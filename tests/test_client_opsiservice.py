@@ -26,7 +26,10 @@ from urllib.parse import unquote
 from warnings import catch_warnings, simplefilter
 
 import lz4.frame  # type: ignore[import,no-redef]
-import pproxy  # type: ignore[import]
+
+with catch_warnings():
+	simplefilter("ignore")
+	import pproxy  # type: ignore[import]
 import psutil
 import pytest
 from cryptography import x509
