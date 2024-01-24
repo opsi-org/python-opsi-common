@@ -370,6 +370,7 @@ def test_get_opsi_ca_state(tmpdir: Path) -> None:
 		def __init__(self, **kwargs: Any) -> None:
 			kwargs["not_valid_before"] = kwargs["not_valid_before"] - timedelta(days=200)
 			kwargs["not_valid_after"] = kwargs["not_valid_after"] - timedelta(days=100)
+			print("MockCertificateBuilder", kwargs)
 			super().__init__(**kwargs)
 
 	with mock.patch("opsicommon.ssl.common.CertificateBuilder", MockCertificateBuilder):
@@ -405,6 +406,10 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 	server_cert_file.write_text(as_pem(server_cert), encoding="utf-8")
 
 	opsi_ca_file_on_client = tmpdir / "opsi_ca_file_on_client.pem"
+
+	print(f"UTC: {datetime.now(tz=timezone.utc)}")
+	print(f"CA cert: {ca_cert.not_valid_before_utc} - {ca_cert.not_valid_after_utc}")
+	print(f"server cert: {server_cert.not_valid_before_utc} - {server_cert.not_valid_after_utc}")
 
 	with (
 		opsi_config({"host.server-role": ""}),
