@@ -8,14 +8,18 @@ This file is part of opsi - https://www.opsi.org
 
 import os
 import platform
+import sys
+import threading
+import time
 import warnings
-from typing import Any
+from typing import Any, Callable, Coroutine, Generator
 
 import pytest
 import urllib3
 from _pytest.config import Config
 from _pytest.logging import LogCaptureHandler
 from _pytest.nodes import Item
+from pluggy import Result
 
 
 def emit(*args: Any, **kwargs: Any) -> None:  # pylint: disable=unused-argument
@@ -84,3 +88,31 @@ def pytest_runtest_setup(item: Item) -> None:
 
 	if supported_platforms and PLATFORM not in supported_platforms:
 		pytest.skip(f"Cannot run on {PLATFORM}")
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_pyfunc_call(pyfuncitem: Callable | Coroutine) -> Generator[None, Result, None]:
+	start_threads = set(threading.enumerate())
+
+	outcome: Result = yield
+
+	_result = outcome.get_result()  # Will raise if outcome was exception
+
+	for wait in range(5):
+		running_threads = (
+			set(
+				t
+				for t in threading.enumerate()
+				if t.is_alive() and "ThreadPoolExecutor" not in str((getattr(t, "_args", None) or [None])[0])
+			)
+			- start_threads
+		)
+		if not running_threads:
+			break
+		if wait >= 10:
+			print("Running threads after test:", file=sys.stderr)
+			for thread in running_threads:
+				print(thread.__dict__, file=sys.stderr)
+			outcome.force_exception(RuntimeError(f"Running threads after test: {running_threads}"))
+			break
+		time.sleep(1)
