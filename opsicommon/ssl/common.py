@@ -6,7 +6,7 @@
 ssl
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from ipaddress import ip_address
 from typing import cast
 
@@ -105,8 +105,8 @@ def create_ca(
 		subject_name=ca_subject,
 		public_key=key.public_key(),
 		serial_number=x509.random_serial_number(),
-		not_valid_before=datetime.now(),
-		not_valid_after=datetime.now() + timedelta(days=valid_days),
+		not_valid_before=datetime.now(tz=timezone.utc),
+		not_valid_after=datetime.now(tz=timezone.utc) + timedelta(days=valid_days),
 	)
 	builder = builder.add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
 	builder = builder.add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(key.public_key()), critical=False)
@@ -178,8 +178,8 @@ def create_server_cert(  # pylint: disable=too-many-arguments,too-many-locals
 		subject_name=srv_subject,
 		public_key=key.public_key(),
 		serial_number=x509.random_serial_number(),
-		not_valid_before=datetime.now(),
-		not_valid_after=datetime.now() + timedelta(days=valid_days),
+		not_valid_before=datetime.now(tz=timezone.utc),
+		not_valid_after=datetime.now(tz=timezone.utc) + timedelta(days=valid_days),
 	)
 	builder = builder.add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
 	builder = builder.add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()), critical=False)

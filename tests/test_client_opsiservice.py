@@ -368,8 +368,8 @@ def test_get_opsi_ca_state(tmpdir: Path) -> None:
 
 	class MockCertificateBuilder(x509.CertificateBuilder):
 		def __init__(self, **kwargs: Any) -> None:
-			kwargs["not_valid_before"] = kwargs["not_valid_before"] - timedelta(days=200)
-			kwargs["not_valid_after"] = kwargs["not_valid_after"] - timedelta(days=100)
+			kwargs["not_valid_before"] = datetime.now(tz=timezone.utc) - timedelta(days=200)
+			kwargs["not_valid_after"] = datetime.now(tz=timezone.utc) - timedelta(days=100)
 			print("MockCertificateBuilder", kwargs)
 			super().__init__(**kwargs)
 
