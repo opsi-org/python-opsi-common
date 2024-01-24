@@ -999,13 +999,13 @@ files = [
 
 [[package]]
 name = "opsi-dev-tools"
-version = "1.17.0"
+version = "1.17.1"
 description = "opsi development tools"
 optional = false
 python-versions = ">=3.11,<3.13"
 files = [
-    {file = "opsi_dev_tools-1.17.0-py3-none-any.whl", hash = "sha256:b35d3709a6b2d1ba7f79d7cc7f26a3ed185d3eff9c090206caad2e26e7d24fb0"},
-    {file = "opsi_dev_tools-1.17.0.tar.gz", hash = "sha256:cc16c5c174b58ac47de425b30ddb9dc0291c6a67afecbc06291321b4650c2da2"},
+    {file = "opsi_dev_tools-1.17.1-py3-none-any.whl", hash = "sha256:fe25918a1e3b746985e2e81955487b038d134a9140251de028db0131a2dbb4d2"},
+    {file = "opsi_dev_tools-1.17.1.tar.gz", hash = "sha256:3cdbec97e96c5ab405d1fb6e37fe24a3710a31c5384fc89be45f90eab71d893a"},
 ]
 
 [package.dependencies]
@@ -1013,6 +1013,7 @@ bs4 = ">=0.0,<0.1"
 click = ">=8.1,<9.0"
 colorlog = ">=6.6,<7.0"
 configargparse = ">=1.2,<2.0"
+cryptography = ">=42.0.0,<43.0.0"
 jsonpath-ng = ">=1.6.0,<2.0.0"
 macholib = ">=1.14,<2.0"
 pefile = ">=2023.2,<2024.0"
@@ -1062,17 +1063,6 @@ files = [
 
 [package.dependencies]
 regex = ">=2022.3.15"
-
-[[package]]
-name = "pathspec"
-version = "0.12.1"
-description = "Utility library for gitignore style pattern matching of file paths."
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "pathspec-0.12.1-py3-none-any.whl", hash = "sha256:a0d503e138a4c123b27490a4f7beda6a01c6f288df0e4a8b79c7eb0dc7b4cc08"},
-    {file = "pathspec-0.12.1.tar.gz", hash = "sha256:a482d51503a1ab33b1c67a6c3813a26953dbdc71c31dacaef9a838c4e29f5712"},
-]
 
 [[package]]
 name = "pefile"
@@ -2059,30 +2049,6 @@ standalone = ["Sphinx (>=5)"]
 test = ["pytest"]
 
 [[package]]
-name = "tan"
-version = "23.7.0"
-description = "The compromising code formatter."
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "tan-23.7.0-py3-none-any.whl", hash = "sha256:2a610a7b77d3d2e62c67bf11fff421a07464681613abf3f7d43e282011188567"},
-    {file = "tan-23.7.0.tar.gz", hash = "sha256:a825cf4afadf8bdb832f46b5dac134705fdc89cc8477079fd2ad8d2de8f9590a"},
-]
-
-[package.dependencies]
-click = ">=8.0.0"
-mypy-extensions = ">=0.4.3"
-packaging = ">=22.0"
-pathspec = ">=0.9.0"
-platformdirs = ">=2"
-
-[package.extras]
-colorama = ["colorama (>=0.4.3)"]
-d = ["aiohttp (>=3.7.4)"]
-jupyter = ["ipython (>=7.8.0)", "tokenize-rt (>=3.2.0)"]
-uvloop = ["uvloop (>=0.15.2)"]
-
-[[package]]
 name = "tokenize-rt"
 version = "5.2.0"
 description = "A wrapper around the stdlib `tokenize` which roundtrips."
@@ -2334,4 +2300,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "fac4e1809d6836eb94672ba655d312ca24e63d9a408519c9a4b203342461f718"
+content-hash = "bb4ad193253e5d34f87e7c9c6c8408411bb0d7e4f7f53e72ec00602c7191c525"
