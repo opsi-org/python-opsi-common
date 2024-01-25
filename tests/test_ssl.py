@@ -92,7 +92,7 @@ def test_get_cert_path_and_cmd(
 
 
 # pyright: reportMissingModuleSource=false
-def test_create_ca() -> None:
+def test_create_ca() -> None:  # pylint: disable=too-many-locals
 	subject = {"CN": "opsi CA", "OU": "opsi", "emailAddress": "opsi@opsi.org"}
 	ca_cert, ca_key = create_ca(subject, 100)
 	assert isinstance(ca_cert, x509.Certificate)
@@ -111,7 +111,11 @@ def test_create_ca() -> None:
 	assert name_constraints.value.permitted_subtrees[2].value == "localhost"
 
 	try:
-		from OpenSSL.crypto import FILETYPE_ASN1, X509, dump_certificate  # pylint: disable=import-outside-toplevel
+		from OpenSSL.crypto import (  # type: ignore[import-untyped] # pylint: disable=import-outside-toplevel
+			FILETYPE_ASN1,
+			X509,
+			dump_certificate,
+		)
 
 		openssl_x509 = X509.from_cryptography(ca_cert)
 		assert ca_cert.fingerprint(hashes.SHA1()).hex().upper() == openssl_x509.digest("sha1").decode("ascii").replace(":", "")
