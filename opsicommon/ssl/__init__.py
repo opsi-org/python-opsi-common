@@ -8,7 +8,7 @@ ssl
 
 import platform
 
-from .common import as_pem, create_ca, create_server_cert, create_x590_name
+from .common import as_pem, create_ca, create_server_cert, create_x509_name, x509_name_to_dict
 
 if platform.system().lower() == "linux":
 	from .linux import *  # noqa: F403

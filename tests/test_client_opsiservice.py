@@ -26,10 +26,13 @@ from urllib.parse import unquote
 from warnings import catch_warnings, simplefilter
 
 import lz4.frame  # type: ignore[import,no-redef]
-import pproxy  # type: ignore[import]
+
+with catch_warnings():
+	simplefilter("ignore")
+	import pproxy  # type: ignore[import]
 import psutil
 import pytest
-from OpenSSL.crypto import FILETYPE_PEM, X509, load_certificate  # type: ignore[import]
+from cryptography import x509
 
 from opsicommon import __version__
 from opsicommon.client.opsiservice import (
@@ -239,44 +242,44 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:  # pylint: disable=too-m
 	ca_cert_file.write_text(pem, encoding="utf-8")
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 3
-	assert certs[0].get_subject() == ca_cert1.get_subject()
-	assert certs[1].get_subject() == ca_cert2.get_subject()
-	assert certs[2].get_subject() == ca_cert3.get_subject()
+	assert certs[0].subject == ca_cert1.subject
+	assert certs[1].subject == ca_cert2.subject
+	assert certs[2].subject == ca_cert3.subject
 
 	pem = pem.replace("-\n-", "--")
 	ca_cert_file.write_text(pem, encoding="utf-8")
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 3
-	assert certs[0].get_subject() == ca_cert1.get_subject()
-	assert certs[1].get_subject() == ca_cert2.get_subject()
-	assert certs[2].get_subject() == ca_cert3.get_subject()
+	assert certs[0].subject == ca_cert1.subject
+	assert certs[1].subject == ca_cert2.subject
+	assert certs[2].subject == ca_cert3.subject
 
 	pem = "\r\n\r\n\r\ngarbage" + as_pem(ca_cert1) + "\ngarbage\r\n\n" + as_pem(ca_cert2) + "garbage" + as_pem(ca_cert3) + "garbage\n\n\r\n"
 	ca_cert_file.write_text(pem, encoding="utf-8")
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 3
-	assert certs[0].get_subject() == ca_cert1.get_subject()
-	assert certs[1].get_subject() == ca_cert2.get_subject()
-	assert certs[2].get_subject() == ca_cert3.get_subject()
+	assert certs[0].subject == ca_cert1.subject
+	assert certs[1].subject == ca_cert2.subject
+	assert certs[2].subject == ca_cert3.subject
 
 	ca_cert_file = tmpdir / "new" / "dir" / "ca_certs.pem"
 	service_client = ServiceClient("localhost", ca_cert_file=ca_cert_file)
 	service_client.write_ca_cert_file(certs)
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 3
-	assert certs[0].get_subject() == ca_cert1.get_subject()
-	assert certs[1].get_subject() == ca_cert2.get_subject()
-	assert certs[2].get_subject() == ca_cert3.get_subject()
+	assert certs[0].subject == ca_cert1.subject
+	assert certs[1].subject == ca_cert2.subject
+	assert certs[2].subject == ca_cert3.subject
 
 	service_client.write_ca_cert_file(certs + certs + certs)
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 3
-	assert certs[0].get_subject() == ca_cert1.get_subject()
-	assert certs[1].get_subject() == ca_cert2.get_subject()
-	assert certs[2].get_subject() == ca_cert3.get_subject()
+	assert certs[0].subject == ca_cert1.subject
+	assert certs[1].subject == ca_cert2.subject
+	assert certs[2].subject == ca_cert3.subject
 
 	class CAWriteThread(Thread):
-		def __init__(self, client: ServiceClient, certs: list[X509]) -> None:
+		def __init__(self, client: ServiceClient, certs: list[x509.Certificate]) -> None:
 			super().__init__(daemon=True)
 			self.client = client
 			self.certs = certs
@@ -292,7 +295,7 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:  # pylint: disable=too-m
 		def __init__(self, client: ServiceClient) -> None:
 			super().__init__(daemon=True)
 			self.client = client
-			self.certs: list[X509] = []
+			self.certs: list[x509.Certificate] = []
 			self.err: Exception | None = None
 
 		def run(self) -> None:
@@ -321,28 +324,28 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:  # pylint: disable=too-m
 
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 3
-	assert certs[0].get_subject() == ca_cert1.get_subject()
-	assert certs[1].get_subject() == ca_cert2.get_subject()
-	assert certs[2].get_subject() == ca_cert3.get_subject()
+	assert certs[0].subject == ca_cert1.subject
+	assert certs[1].subject == ca_cert2.subject
+	assert certs[2].subject == ca_cert3.subject
 
-	uib_opsi_ca = load_certificate(FILETYPE_PEM, UIB_OPSI_CA.encode("utf-8"))
+	uib_opsi_ca = x509.load_pem_x509_certificate(UIB_OPSI_CA.encode("utf-8"))
 	service_client.add_uib_opsi_ca_to_cert_file()
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 4
-	assert certs[0].get_subject() == ca_cert1.get_subject()
-	assert certs[1].get_subject() == ca_cert2.get_subject()
-	assert certs[2].get_subject() == ca_cert3.get_subject()
-	assert certs[3].get_subject() == uib_opsi_ca.get_subject()
+	assert certs[0].subject == ca_cert1.subject
+	assert certs[1].subject == ca_cert2.subject
+	assert certs[2].subject == ca_cert3.subject
+	assert certs[3].subject == uib_opsi_ca.subject
 
 	service_client.add_uib_opsi_ca_to_cert_file()
 	service_client.add_uib_opsi_ca_to_cert_file()
 	service_client.add_uib_opsi_ca_to_cert_file()
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 4
-	assert certs[0].get_subject() == ca_cert1.get_subject()
-	assert certs[1].get_subject() == ca_cert2.get_subject()
-	assert certs[2].get_subject() == ca_cert3.get_subject()
-	assert certs[3].get_subject() == uib_opsi_ca.get_subject()
+	assert certs[0].subject == ca_cert1.subject
+	assert certs[1].subject == ca_cert2.subject
+	assert certs[2].subject == ca_cert3.subject
+	assert certs[3].subject == uib_opsi_ca.subject
 
 	pem = "\r\n\r\n\r\ngarbage" + as_pem(ca_cert2) + "\ngarbage\r\n\n" + as_pem(ca_cert3) + "garbage" + as_pem(ca_cert1) + "garbage\n\n\r\n"
 	ca_cert_file.write_text(pem, encoding="utf-8")
@@ -366,11 +369,18 @@ def test_get_opsi_ca_state(tmpdir: Path) -> None:
 	service_client.write_ca_cert_file(certs)
 	assert service_client.get_opsi_ca_state() == OpsiCaState.AVAILABLE
 
-	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test CA 1"}, valid_days=1)
-	ca_cert.gmtime_adj_notBefore(-200 * 24 * 3600)
-	ca_cert.gmtime_adj_notAfter(-100 * 24 * 3600)
-	ca_cert.sign(ca_key, "sha256")
-	certs = [ca_cert]
+	class MockCertificateBuilder(x509.CertificateBuilder):
+		def __init__(self, **kwargs: Any) -> None:
+			kwargs["not_valid_before"] = datetime.now(tz=timezone.utc) - timedelta(days=200)
+			kwargs["not_valid_after"] = datetime.now(tz=timezone.utc) - timedelta(days=100)
+			print("MockCertificateBuilder", kwargs)
+			super().__init__(**kwargs)
+
+	with mock.patch("opsicommon.ssl.common.CertificateBuilder", MockCertificateBuilder):
+		ca_cert, _ca_key = create_ca(subject={"CN": "python-opsi-common test CA 1"}, valid_days=100)
+		assert ca_cert.not_valid_before_utc < datetime.now(tz=timezone.utc)
+		assert ca_cert.not_valid_after_utc < datetime.now(tz=timezone.utc)
+		certs = [ca_cert]
 	service_client.write_ca_cert_file(certs)
 	service_client.add_uib_opsi_ca_to_cert_file()
 	assert service_client.get_opsi_ca_state() == OpsiCaState.EXPIRED
@@ -399,6 +409,10 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 	server_cert_file.write_text(as_pem(server_cert), encoding="utf-8")
 
 	opsi_ca_file_on_client = tmpdir / "opsi_ca_file_on_client.pem"
+
+	print(f"UTC: {datetime.now(tz=timezone.utc)}")
+	print(f"CA cert: {ca_cert.not_valid_before_utc} - {ca_cert.not_valid_after_utc}")
+	print(f"server cert: {server_cert.not_valid_before_utc} - {server_cert.not_valid_after_utc}")
 
 	with (
 		opsi_config({"host.server-role": ""}),
@@ -485,10 +499,18 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 
 		# expired
 		orig_ca_cert_as_pem = as_pem(ca_cert)
-		now = datetime.now()
-		ca_cert.set_notBefore((now - timedelta(days=100)).strftime("%Y%m%d%H%M%SZ").encode("utf-8"))
-		ca_cert.set_notAfter((now - timedelta(days=1)).strftime("%Y%m%d%H%M%SZ").encode("utf-8"))
-		opsi_ca_file_on_client.write_text(as_pem(ca_cert), encoding="utf-8")
+
+		class MockCertificateBuilder(x509.CertificateBuilder):
+			def __init__(self, **kwargs: Any) -> None:
+				kwargs["not_valid_before"] = datetime.now(tz=timezone.utc) - timedelta(days=200)
+				kwargs["not_valid_after"] = datetime.now(tz=timezone.utc) - timedelta(days=1)
+				super().__init__(**kwargs)
+
+		with mock.patch("opsicommon.ssl.common.CertificateBuilder", MockCertificateBuilder):
+			ca_cert_expired, _ = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3, key=ca_key)
+			assert ca_cert_expired.not_valid_before_utc < datetime.now(tz=timezone.utc)
+			assert ca_cert_expired.not_valid_after_utc < datetime.now(tz=timezone.utc)
+			opsi_ca_file_on_client.write_text(as_pem(ca_cert_expired), encoding="utf-8")
 
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="opsi_ca") as client:
 			with pytest.raises(OpsiServiceVerificationError, match="certificate has expired"):

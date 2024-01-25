@@ -12,7 +12,8 @@ import tempfile
 from contextlib import contextmanager
 from typing import Generator
 
-from OpenSSL import crypto  # type: ignore[import]
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
 
 from opsicommon.logging import get_logger
 from opsicommon.utils import execute
@@ -32,11 +33,11 @@ def security_authorization() -> Generator[None, None, None]:
 		execute(["security", "authorizationdb", "remove", "com.apple.trust-settings.admin"])
 
 
-def install_ca(ca_cert: crypto.X509) -> None:
-	logger.info("Installing CA '%s' into system store", ca_cert.get_subject().CN)
+def install_ca(ca_cert: x509.Certificate) -> None:
+	logger.info("Installing CA '%s' into system store", ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value)
 
-	pem_file = tempfile.NamedTemporaryFile(mode="wb", delete=False)  # pylint: disable=consider-using-with
-	pem_file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, ca_cert))
+	pem_file = tempfile.NamedTemporaryFile(mode="wb", encoding="utf-8", delete=False)  # pylint: disable=consider-using-with
+	pem_file.write(ca_cert.public_bytes(encoding=serialization.Encoding.PEM))
 	pem_file.close()
 	try:
 		with security_authorization():
@@ -45,7 +46,7 @@ def install_ca(ca_cert: crypto.X509) -> None:
 		os.remove(pem_file.name)
 
 
-def load_ca(subject_name: str) -> crypto.X509:
+def load_ca(subject_name: str) -> x509.Certificate | None:
 	try:
 		pem = subprocess.check_output(
 			["security", "find-certificate", "-p", "-c", subject_name, "/Library/Keychains/System.keychain"],
@@ -60,7 +61,7 @@ def load_ca(subject_name: str) -> crypto.X509:
 	if not pem or not pem.strip():
 		logger.notice("did not find certificate %s", subject_name)
 		return None
-	return crypto.load_certificate(crypto.FILETYPE_PEM, pem.strip().decode("utf-8"))
+	return x509.load_pem_x509_certificate(data=pem.strip())
 
 
 def remove_ca(subject_name: str) -> bool:
@@ -72,7 +73,7 @@ def remove_ca(subject_name: str) -> bool:
 	removed_sha1_hash = None
 	while ca_cert:
 		logger.info("Removing CA '%s'", subject_name)
-		sha1_hash = ca_cert.digest("sha1").decode("ascii").replace(":", "")
+		sha1_hash = ca_cert.fingerprint(hashes.SHA1()).hex().upper()
 		if removed_sha1_hash and sha1_hash == removed_sha1_hash:
 			raise RuntimeError(f"Failed to remove certficate {removed_sha1_hash}")
 		with security_authorization():

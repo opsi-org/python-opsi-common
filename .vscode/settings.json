@@ -1,13 +1,18 @@
 {
 	"editor.insertSpaces": false,
 	"editor.renderWhitespace": "all",
-	"editor.formatOnSave": true,
-	"editor.codeActionsOnSave": {
-		"source.organizeImports": true,
-	},
+	"files.trimTrailingWhitespace": true,
+	"files.autoSave": "off",
 	"editor.formatOnType": true,
-	"python.formatting.provider": "black",
-	"python.formatting.blackPath": ".venv/bin/tan",
+	"editor.formatOnPaste": true,
+	"editor.formatOnSave": true,
+	"[python]": {
+		"editor.codeActionsOnSave": {
+			"source.fixAll": true,
+			"source.organizeImports": true
+		},
+		"editor.defaultFormatter": "charliermarsh.ruff"
+	},
 	"python.linting.enabled": true,
 	"python.linting.pylintEnabled": true,
 	"python.linting.pylintCategorySeverity.refactor": "Information",
@@ -17,6 +22,5 @@
 		"--show-error-codes"
 	],
 	"python.testing.pytestEnabled": true,
-	"files.trimTrailingWhitespace": true,
 	"python.languageServer": "Pylance"
 }

@@ -26,15 +26,6 @@ priority = "primary"
 line-length = 140
 ignore = [ "F401", "E402",]
 
-[tool.black]
-line-length = 140
-target-version = [ "py39", "py310",]
-use-tabs = true
-
-[tool.isort]
-profile = "black"
-indent = "\t"
-
 [tool.mypy]
 disallow_untyped_calls = true
 disallow_untyped_defs = true
@@ -49,7 +40,6 @@ msgpack = ">=1.0"
 msgspec = ">=0.15"
 psutil = ">=5.8"
 pycryptodome = ">=3.10"
-pyopenssl = ">=23.0"
 requests = ">=2.26"
 rich = ">=13.0"
 websocket-client = ">=1.4"
@@ -57,6 +47,7 @@ zstandard = ">=0.21"
 pyzsync = ">=1.2"
 tomlkit = "^0.11.8"
 pydantic = "^2.5.1"
+cryptography = "^42.0.0"
 
 [tool.ruff.format]
 indent-style = "tab"
@@ -71,17 +62,15 @@ version = ">=1.5"
 
 [tool.poetry.group.dev.dependencies]
 hypothesis = ">=6.32"
-isort = ">=5.10"
 mypy = ">=1.0"
 perflint = ">=0.7"
 pylint = ">=2.7"
 pytest = ">=7.0"
 pytest-cov = ">=4.0"
 pyupgrade = ">=3.0"
-ruff = ">=0.0"
-tan = ">=22.2"
+ruff = "^0.1"
 types-orjson = ">=3.6"
 types-requests = ">=2.27"
-opsi-dev-tools = "^1.17.0"
-pproxy = "^2.7.8"
-types-psutil = "^5.9.5.15"
+opsi-dev-tools = "^1.17"
+pproxy = "^2.7"
+types-psutil = "^5.9"

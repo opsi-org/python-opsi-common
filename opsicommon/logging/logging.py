@@ -969,10 +969,6 @@ def init_warnings_capture(traceback_log_level: int = logging.INFO) -> None:
 				log(traceback_log_level, _line)
 
 	warnings.showwarning = _log_warning  # type: ignore[assignment]
-	# warn filter: https://docs.python.org/3/library/warnings.html#the-warnings-filter
-	# Warning 'The distutils package is deprecated and slated for removal in Python 3.12.
-	# Use setuptools or check PEP 632 for potential alternatives' in file 'PyInstaller/loader/pyimod03_importers.py'
-	warnings.filterwarnings("ignore", message="The distutils package is deprecated")
 
 
 init_warnings_capture()

@@ -48,7 +48,7 @@ def test_arguments() -> None:
 		"http_max_retries": 14,
 		"session_lifetime": 15,
 		"create_objects": True,
-		"raw_responses": True
+		"raw_responses": True,
 	}
 	client = JSONRPCClient("http://localhost", **kwargs)
 	for attr, val in kwargs.items():
@@ -115,26 +115,20 @@ def test_proxy(tmp_path: Path) -> None:
 		with pytest.raises(RConnectionError):
 			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url=f"http://localhost:{server.port}", connect_timeout=2)
 
-		proxy_env = {
-			"http_proxy": f"http://localhost:{server.port}",
-			"https_proxy": f"http://localhost:{server.port}"
-		}
+		proxy_env = {"http_proxy": f"http://localhost:{server.port}", "https_proxy": f"http://localhost:{server.port}"}
 		with environment(proxy_env), pytest.raises(RConnectionError):
 			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url="system", connect_timeout=2)
 
 		JSONRPCClient.no_proxy_addresses = []
 		# Now proxy will be used for localhost
 
-		proxy_env = {
-			"http_proxy": "http://should-not-be-used",
-			"https_proxy": "http://should-not-be-used"
-		}
+		proxy_env = {"http_proxy": "http://should-not-be-used", "https_proxy": "http://should-not-be-used"}
 		with environment(proxy_env):
 			for host, proxy_host in (
 				("localhost", "localhost"),
 				("localhost", "127.0.0.1"),
 				("127.0.0.1", "localhost"),
-				("127.0.0.1", "127.0.0.1")
+				("127.0.0.1", "127.0.0.1"),
 			):
 				JSONRPCClient(f"http://{host}:{server.port+1}", proxy_url=f"http://{proxy_host}:{server.port}", connect_timeout=2)
 
@@ -143,11 +137,7 @@ def test_proxy(tmp_path: Path) -> None:
 				assert request.get("path") == f"http://{host}:{server.port+1}/rpc"
 				os.remove(log_file)
 
-		proxy_env = {
-			"http_proxy": f"http://localhost:{server.port}",
-			"https_proxy": f"http://localhost:{server.port+2}",
-			"no_proxy": ""
-		}
+		proxy_env = {"http_proxy": f"http://localhost:{server.port}", "https_proxy": f"http://localhost:{server.port+2}", "no_proxy": ""}
 		with environment(proxy_env):
 			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url="system", connect_timeout=2)
 			request = json.loads(log_file.read_text(encoding="utf-8"))
@@ -155,10 +145,7 @@ def test_proxy(tmp_path: Path) -> None:
 			assert request.get("path") == f"http://localhost:{server.port+1}/rpc"
 			os.remove(log_file)
 
-		proxy_env = {
-			"http_proxy": "http://should-not-be-used",
-			"https_proxy": "http://should-not-be-used"
-		}
+		proxy_env = {"http_proxy": "http://should-not-be-used", "https_proxy": "http://should-not-be-used"}
 		with environment(proxy_env):
 			# Do not use any proxy
 			JSONRPCClient(f"http://{host}:{server.port}", proxy_url=None, connect_timeout=2)
@@ -172,21 +159,14 @@ def test_proxy_legacy(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	with http_test_server(log_file=log_file) as server:
 		JSONRPCClient.no_proxy_addresses = []
-		proxy_env = {
-			"http_proxy": "should-not-be-used",
-			"https_proxy": "should-not-be-used"
-		}
+		proxy_env = {"http_proxy": "should-not-be-used", "https_proxy": "should-not-be-used"}
 
 		JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url=f"localhost:{server.port}", connect_timeout=2)
 		request = json.loads(log_file.read_text(encoding="utf-8"))
 		assert request.get("path") == f"http://localhost:{server.port+1}/rpc"
 		os.remove(log_file)
 
-		proxy_env = {
-			"http_proxy": f"localhost:{server.port}",
-			"https_proxy": f"localhost:{server.port+2}",
-			"no_proxy": ""
-		}
+		proxy_env = {"http_proxy": f"localhost:{server.port}", "https_proxy": f"localhost:{server.port+2}", "no_proxy": ""}
 		with environment(proxy_env):
 			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url="system", connect_timeout=2)
 			request = json.loads(log_file.read_text(encoding="utf-8"))
@@ -197,10 +177,7 @@ def test_proxy_legacy(tmp_path: Path) -> None:
 def test_cookie_handling(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	cookie = "COOKIE-NAME=abc"
-	with http_test_server(
-		log_file=log_file,
-		response_headers={"Set-Cookie": cookie}
-	) as server:
+	with http_test_server(log_file=log_file, response_headers={"Set-Cookie": cookie}) as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}")
 		client.get("/")
 		assert client.session_id == cookie
@@ -231,18 +208,18 @@ def test_force_ip_version_6(tmp_path: Path) -> None:
 		assert "::1" in request["client_address"][0]
 
 
-@pytest.mark.parametrize("server_name, expected_version", (
-	("opsiconfd 4.1.0.1", [4, 1, 0, 1]),
-	("opsiconfd service 4.2.00.99", [4, 2, 0, 99]),
-	("opsiconfd service 4.2.0.x", None),
-	("apache 2.0.1", None),
-))
+@pytest.mark.parametrize(
+	"server_name, expected_version",
+	(
+		("opsiconfd 4.1.0.1", [4, 1, 0, 1]),
+		("opsiconfd service 4.2.00.99", [4, 2, 0, 99]),
+		("opsiconfd service 4.2.0.x", None),
+		("apache 2.0.1", None),
+	),
+)
 def test_server_name_handling(tmp_path: Path, server_name: str, expected_version: list) -> None:
 	log_file = tmp_path / f"{server_name}.log"
-	with http_test_server(
-		log_file=log_file,
-		response_headers={"Server": server_name}
-	) as server:
+	with http_test_server(log_file=log_file, response_headers={"Server": server_name}) as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}", compression=True)
 		assert client.server_name == server_name
 		assert client.server_name == client.serverName
@@ -253,11 +230,11 @@ def test_server_name_handling(tmp_path: Path, server_name: str, expected_version
 		request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
 		# print(request)
 		if expected_version[0] > 4 or (expected_version[0] == 4 and expected_version[1] >= 2):
-			assert request["headers"].get('Content-Type') == 'application/msgpack'
-			assert request["headers"].get('Content-Encoding') == 'lz4'
+			assert request["headers"].get("Content-Type") == "application/msgpack"
+			assert request["headers"].get("Content-Encoding") == "lz4"
 		else:
-			assert request["headers"].get('Content-Type') == 'application/json'
-			assert request["headers"].get('Content-Encoding') is None
+			assert request["headers"].get("Content-Type") == "application/json"
+			assert request["headers"].get("Content-Encoding") is None
 
 
 def test_new_host_id_and_key_handling(tmp_path: Path) -> None:
@@ -269,7 +246,7 @@ def test_new_host_id_and_key_handling(tmp_path: Path) -> None:
 		response_headers={
 			"x-opsi-new-host-id": new_host_id,
 			"x-opsi-new-host-key": new_host_key,
-		}
+		},
 	) as server:
 		client = JSONRPCClient(f"http://localhost:{server.port}", compression=True)
 		assert client.new_host_id == new_host_id
@@ -283,17 +260,12 @@ def test_compression_and_serialization(tmp_path: Path) -> None:
 		("gzip", "json"),
 		("lz4", "msgpack"),
 		("gzip", "msgpack"),
-		("none", "msgpack")
+		("none", "msgpack"),
 	):
 		server_name = "opsiconfd 4.2.0.0"
 		log_file = tmp_path / f"{compression}_{serialization}.log"
-		with http_test_server(
-			log_file=log_file,
-			response_headers={"Server": server_name}
-		) as server:
-			client = JSONRPCClient(
-				f"http://localhost:{server.port}", compression=compression, serialization=serialization
-			)
+		with http_test_server(log_file=log_file, response_headers={"Server": server_name}) as server:
+			client = JSONRPCClient(f"http://localhost:{server.port}", compression=compression, serialization=serialization)
 			assert client.server_name == server_name
 			client.execute_rpc("method", ["param" * 100])
 
@@ -303,8 +275,8 @@ def test_compression_and_serialization(tmp_path: Path) -> None:
 			compression = "lz4"
 		elif compression == "none":
 			compression = None
-		assert request["headers"].get('Content-Type') == f'application/{serialization}'
-		assert request["headers"].get('Content-Encoding') == compression
+		assert request["headers"].get("Content-Type") == f"application/{serialization}"
+		assert request["headers"].get("Content-Encoding") == compression
 
 
 def test_pass_session_id(tmp_path: Path) -> None:
@@ -314,10 +286,7 @@ def test_pass_session_id(tmp_path: Path) -> None:
 		log_file=log_file,
 		# response_headers={"Set-Cookie": "COOKIE-NAME=abc; SameSite=Lax"}
 	) as server:
-		client = JSONRPCClient(
-			f"http://localhost:{server.port}",
-			session_id=session_id
-		)
+		client = JSONRPCClient(f"http://localhost:{server.port}", session_id=session_id)
 		client.get("/")
 		assert client.session_id == session_id
 
@@ -329,11 +298,7 @@ def test_pass_session_id(tmp_path: Path) -> None:
 
 def test_pass_invalid_session_id() -> None:
 	session_id = "1234556789"
-	client = JSONRPCClient(
-		"http://localhost",
-		session_id=session_id,
-		connect_on_init=False
-	)
+	client = JSONRPCClient("http://localhost", session_id=session_id, connect_on_init=False)
 	assert not client._session.cookies  # pylint: disable=protected-access
 	assert not client.session_id
 
@@ -430,7 +395,7 @@ def test_env_requests_ca_bundle(tmp_path: Path) -> None:
 		"ip_addresses": {"172.0.0.1", "::1"},
 		"hostnames": {"localhost", "ip6-localhost"},
 		"ca_key": ca_key,
-		"ca_cert": ca_cert
+		"ca_cert": ca_cert,
 	}
 	cert, key = create_server_cert(**kwargs)
 	server_cert = tmp_path / "server_cert.pem"
@@ -444,6 +409,7 @@ def test_env_requests_ca_bundle(tmp_path: Path) -> None:
 			JSONRPCClient(f"https://localhost:{server.port}")
 			assert "REQUESTS_CA_BUNDLE" not in os.environ
 			assert "CURL_CA_BUNDLE" not in os.environ
+
 
 def test_context_manager() -> None:
 	with http_test_server() as server:

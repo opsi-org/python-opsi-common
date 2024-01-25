@@ -37,12 +37,8 @@ from uuid import uuid4
 
 import lz4.frame  # type: ignore[import,no-redef]
 import msgspec
-from OpenSSL.crypto import (  # type: ignore[import]
-	FILETYPE_PEM,
-	X509,
-	dump_certificate,
-	load_certificate,
-)
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
 from packaging import version
 from requests import HTTPError, Session
 from requests import Response as RequestsResponse
@@ -76,7 +72,7 @@ from ..messagebus import (
 	timestamp,
 )
 from ..objects import deserialize, serialize
-from ..ssl.common import subject_to_dict
+from ..ssl.common import x509_name_to_dict
 from ..system import lock_file, set_system_datetime
 from ..types import forceHostId, forceOpsiHostKey
 from ..utils import prepare_proxy_environment
@@ -285,7 +281,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		self._username = ""
 		self._password = ""
 
-		self._uib_opsi_ca_cert = load_certificate(FILETYPE_PEM, UIB_OPSI_CA.encode("ascii"))
+		self._uib_opsi_ca_cert = x509.load_pem_x509_certificate(UIB_OPSI_CA.encode("ascii"))
 
 		self._msgpack_decoder = msgspec.msgpack.Decoder()
 		self._msgpack_encoder = msgspec.msgpack.Encoder()
@@ -501,17 +497,17 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			if listener in self._listener:
 				self._listener.remove(listener)
 
-	def certs_from_pem(self, pem_data: str) -> list[X509]:
+	def certs_from_pem(self, pem_data: str) -> list[x509.Certificate]:
 		certs = []
 		for match in re.finditer(r"BEGIN CERTIFICATE-+(.*?)-+END CERTIFICATE", pem_data, re.DOTALL):
 			try:
 				pem = f"-----BEGIN CERTIFICATE-----{match.group(1)}-----END CERTIFICATE-----"
-				certs.append(load_certificate(FILETYPE_PEM, pem.encode("utf-8")))
+				certs.append(x509.load_pem_x509_certificate(pem.encode("utf-8")))
 			except Exception as err:  # pylint: disable=broad-except
 				logger.error("Failed to load cert %r: %s", match.group(1), err, exc_info=True)
 		return certs
 
-	def read_ca_cert_file(self) -> list[X509]:
+	def read_ca_cert_file(self) -> list[x509.Certificate]:
 		with self._ca_cert_lock:
 			if not self._ca_cert_file:
 				raise RuntimeError("CA cert file not set")
@@ -520,7 +516,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				with lock_file(file=file, exclusive=False, timeout=5.0):
 					return self.certs_from_pem(file.read())
 
-	def write_ca_cert_file(self, certs: list[X509]) -> None:
+	def write_ca_cert_file(self, certs: list[x509.Certificate]) -> None:
 		with self._ca_cert_lock:
 			if not self._ca_cert_file:
 				raise RuntimeError("CA cert file not set")
@@ -529,10 +525,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			certs_pem = []
 			subjects = []
 			for cert in certs:
-				subj = subject_to_dict(cert.get_subject())
+				subj = x509_name_to_dict(cert.subject)
 				if subj in subjects:
 					continue
-				certs_pem.append(dump_certificate(FILETYPE_PEM, cert).decode("utf-8").strip() + "\n")
+				certs_pem.append(cert.public_bytes(encoding=serialization.Encoding.PEM).decode("utf-8").strip() + "\n")
 				subjects.append(subj)
 
 			with open(self._ca_cert_file, "a+", encoding="utf-8") as file:
@@ -569,14 +565,18 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		if not self._ca_cert_file:
 			raise RuntimeError("CA cert file not set")
 
-		uib_opsi_ca_cn = self._uib_opsi_ca_cert.get_subject().CN
-		ca_certs = [cert for cert in self.get_opsi_ca_certs() if cert.get_subject().CN != uib_opsi_ca_cn]
+		uib_opsi_ca_cn = self._uib_opsi_ca_cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value
+		ca_certs = [
+			cert
+			for cert in self.get_opsi_ca_certs()
+			if cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value != uib_opsi_ca_cn
+		]
 		ca_certs.extend(self.certs_from_pem(UIB_OPSI_CA))
 		self.write_ca_cert_file(ca_certs)
 		logger.info("uib opsi CA added to cert file '%s' (%d certificates total)", self._ca_cert_file, len(ca_certs))
 
-	def get_opsi_ca_certs(self) -> list[X509]:
-		ca_certs: list[X509] = []
+	def get_opsi_ca_certs(self) -> list[x509.Certificate]:
+		ca_certs: list[x509.Certificate] = []
 		if not self._ca_cert_file or not self._ca_cert_file.exists() or self._ca_cert_file.stat().st_size == 0:
 			return ca_certs
 		try:
@@ -586,12 +586,11 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		return ca_certs
 
 	def get_opsi_ca_state(self) -> OpsiCaState:
-		now = datetime.now()
-		uib_opsi_ca_cn = self._uib_opsi_ca_cert.get_subject().CN
+		now = datetime.now(tz=timezone.utc)
+		uib_opsi_ca_cn = self._uib_opsi_ca_cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value
 		for cert in self.get_opsi_ca_certs():
-			if cert.get_subject().CN != uib_opsi_ca_cn:
-				enddate = datetime.strptime((cert.get_notAfter() or b"").decode("utf-8"), "%Y%m%d%H%M%SZ")
-				if enddate <= now:
+			if cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value != uib_opsi_ca_cn:
+				if cert.not_valid_after_utc <= now:
 					logger.notice("Expired certificate found: %r", cert)
 					return OpsiCaState.EXPIRED
 				return OpsiCaState.AVAILABLE
@@ -1140,8 +1139,8 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		if logger.isEnabledFor(TRACE):
 			logger.trace("RPC: %s", data_dict)
 
-		serialization = "msgpack" if self.server_version >= MIN_VERSION_MSGPACK else "json"
-		if serialization == "msgpack":
+		serial = "msgpack" if self.server_version >= MIN_VERSION_MSGPACK else "json"
+		if serial == "msgpack":
 			headers["Content-Type"] = headers["Accept"] = "application/msgpack"
 			data = self._msgpack_encoder.encode(data_dict)
 		else:

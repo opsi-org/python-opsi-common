@@ -10,7 +10,8 @@ import os
 from typing import Tuple
 
 import distro
-from OpenSSL import crypto  # type: ignore[import]
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
 
 from opsicommon.logging import get_logger
 from opsicommon.utils import execute
@@ -40,29 +41,34 @@ def _get_cert_path_and_cmd() -> Tuple[str, str]:
 	raise RuntimeError(f"Failed to set system cert path on distro '{distro.id()}', like: {distro.like()}")
 
 
-def install_ca(ca_cert: crypto.X509) -> None:
+def install_ca(ca_cert: x509.Certificate) -> None:
 	system_cert_path, cmd = _get_cert_path_and_cmd()
+	common_name = ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
+	if not isinstance(common_name, str):
+		common_name = common_name.decode("utf-8")
+	logger.info("Installing CA '%s' into system store", common_name)
 
-	logger.info("Installing CA '%s' into system store", ca_cert.get_subject().CN)
-
-	cert_file = os.path.join(system_cert_path, f"{ca_cert.get_subject().CN.replace(' ', '_')}.crt")
+	cert_file = os.path.join(system_cert_path, f"{common_name.replace(' ', '_')}.crt")
 	with open(cert_file, "wb") as file:
-		file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, ca_cert))
+		file.write(ca_cert.public_bytes(encoding=serialization.Encoding.PEM))
 
 	execute([cmd])
 
 
-def load_ca(subject_name: str) -> crypto.X509:
+def load_ca(subject_name: str) -> x509.Certificate | None:
 	system_cert_path, _cmd = _get_cert_path_and_cmd()
 	if os.path.exists(system_cert_path):
 		for root, _dirs, files in os.walk(system_cert_path):
 			for entry in files:
 				with open(os.path.join(root, entry), "rb") as file:
 					try:
-						ca_cert = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())
-						if ca_cert.get_subject().CN == subject_name:
+						ca_cert = x509.load_pem_x509_certificate(data=file.read())
+						common_name = ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
+						if not isinstance(common_name, str):
+							common_name = common_name.decode("utf-8")
+						if common_name == subject_name:
 							return ca_cert
-					except crypto.Error:
+					except ValueError:
 						continue
 	return None
 
@@ -76,12 +82,12 @@ def remove_ca(subject_name: str) -> bool:
 				filename = os.path.join(root, entry)
 				with open(filename, "rb") as file:
 					try:
-						ca_cert = crypto.load_certificate(crypto.FILETYPE_PEM, file.read())
-						if ca_cert.get_subject().CN == subject_name:
+						ca_cert = x509.load_pem_x509_certificate(data=file.read())
+						if ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == subject_name:
 							logger.info("Removing CA '%s' (%s)", subject_name, filename)
 							os.remove(filename)
 							removed += 1
-					except crypto.Error:
+					except ValueError:
 						continue
 
 	if not removed:
