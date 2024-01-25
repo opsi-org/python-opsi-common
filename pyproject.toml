@@ -45,7 +45,7 @@ rich = ">=13.0"
 websocket-client = ">=1.4"
 zstandard = ">=0.21"
 pyzsync = ">=1.2"
-tomlkit = "^0.11.8"
+tomlkit = "^0.12"
 pydantic = "^2.5.1"
 cryptography = "^42.0.0"
 
