@@ -197,9 +197,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 							(
 								f"\r\n--{boundary}\r\nContent-Type: {ctype}\r\n"
 								f"Content-Range: bytes {range_[0]}-{range_[1]}/{fst.st_size}\r\n\r\n"
-							).encode(
-								"ascii"
-							)
+							).encode("ascii")
 						)
 						length += range_[1] - range_[0] + 1
 					length += len(f"\r\n--{boundary}--".encode("ascii"))
@@ -664,7 +662,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 			return
 
 		# Use 2048 bits for speedup
-		ca_cert, ca_key = create_ca({"CN": "http_test_server ca"}, 3, bits=2048)
+		ca_cert, ca_key = create_ca(subject={"CN": "http_test_server ca"}, valid_days=3, bits=2048)
 
 		tmp = NamedTemporaryFile(delete=False)  # pylint: disable=consider-using-with
 		tmp.write(as_pem(ca_key).encode("utf-8"))
@@ -741,9 +739,7 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		while time.time() - start < timeout:  # pylint: disable=dotted-import-in-loop
 			with closing(socket.socket(sock_type, socket.SOCK_STREAM)) as sock:  # pylint: disable=dotted-import-in-loop
 				sock.settimeout(1)
-				res = sock.connect_ex(
-					("::1" if self.ip_version == 6 else "127.0.0.1", self.port)
-				)  # pylint: disable=loop-invariant-statement
+				res = sock.connect_ex(("::1" if self.ip_version == 6 else "127.0.0.1", self.port))  # pylint: disable=loop-invariant-statement
 				if res == 0:
 					return True
 		return False

@@ -388,7 +388,7 @@ def test_interface_and_exit(tmp_path: Path) -> None:
 
 
 def test_env_requests_ca_bundle(tmp_path: Path) -> None:
-	ca_cert, ca_key = create_ca({"CN": "python-opsi-common test ca"}, 3)
+	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3)
 	kwargs: dict[str, Any] = {
 		"subject": {"CN": "python-opsi-common test server cert"},
 		"valid_days": 3,
