@@ -26,18 +26,21 @@ logger = get_logger("opsicommon.general")
 
 
 def x509_name_to_dict(x509_name: x509.Name) -> dict[str, str]:
-	return {
-		k: v if isinstance(v, str) else v.decode("utf-8")
-		for k, v in {
-			"C": x509_name.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME)[0].value,
-			"ST": x509_name.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME)[0].value,
-			"L": x509_name.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME)[0].value,
-			"O": x509_name.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME)[0].value,
-			"OU": x509_name.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME)[0].value,
-			"CN": x509_name.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value,
-			"emailAddress": x509_name.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS)[0].value,
-		}.items()
-	}
+	subject = {}
+	for attr, oid in {
+		"C": x509.NameOID.COUNTRY_NAME,
+		"ST": x509.NameOID.STATE_OR_PROVINCE_NAME,
+		"L": x509.NameOID.LOCALITY_NAME,
+		"O": x509.NameOID.ORGANIZATION_NAME,
+		"OU": x509.NameOID.ORGANIZATIONAL_UNIT_NAME,
+		"CN": x509.NameOID.COMMON_NAME,
+		"emailAddress": x509.NameOID.EMAIL_ADDRESS,
+	}.items():
+		attrs = x509_name.get_attributes_for_oid(oid)
+		if not attrs or not attrs[0].value:
+			continue
+		subject[attr] = attrs[0].value if isinstance(attrs[0].value, str) else attrs[0].value.decode("utf-8")
+	return subject
 
 
 @deprecated("Use x509_name_to_dict instead")
