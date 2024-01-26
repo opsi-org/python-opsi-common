@@ -17,8 +17,19 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509 import verification
 
-from opsicommon.ssl import as_pem, create_ca, create_server_cert, create_x509_name, install_ca, load_ca, remove_ca
-from opsicommon.ssl.common import subject_to_dict, x509_name_to_dict
+from opsicommon.ssl import (
+	as_pem,
+	create_ca,
+	create_server_cert,
+	create_x509_name,
+	install_ca,
+	is_self_signed,
+	load_ca,
+	remove_ca,
+	x509_name_from_dict,
+	x509_name_to_dict,
+)
+from opsicommon.ssl.common import subject_to_dict
 from opsicommon.testing.helpers import http_test_server  # type: ignore[import]
 
 
@@ -57,7 +68,7 @@ def test_create_x509_name() -> None:
 
 	subject = {"emailAddress": None, "CN": "opsi"}
 	x509_name = create_x509_name(subject)
-	assert x509_name.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS)[0].value == ""
+	assert not x509_name.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS)
 	assert x509_name.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == "opsi"
 
 
@@ -93,16 +104,17 @@ def test_get_cert_path_and_cmd(
 
 # pyright: reportMissingModuleSource=false
 def test_create_ca() -> None:  # pylint: disable=too-many-locals
-	subject = {"CN": "opsi CA", "OU": "opsi", "emailAddress": "opsi@opsi.org"}
-	ca_cert, ca_key = create_ca(subject, 100)
+	subject_dict: dict[str, str | None] = {"commonName": "opsi CA", "OU": "opsi", "emailAddress": "opsi@opsi.org"}
+	subject = x509_name_from_dict(subject_dict)
+	ca_cert, ca_key = create_ca(subject=subject, valid_days=100)
 	assert isinstance(ca_cert, x509.Certificate)
 	assert isinstance(ca_key, rsa.RSAPrivateKey)
-	assert ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == subject["CN"]
-	assert ca_cert.subject.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME)[0].value == subject["OU"]
-	assert ca_cert.subject.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS)[0].value == subject["emailAddress"]
+	assert ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == subject_dict["commonName"]
+	assert ca_cert.subject.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME)[0].value == subject_dict["OU"]
+	assert ca_cert.subject.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS)[0].value == subject_dict["emailAddress"]
 
 	permitted_domains = [".mycompany.com", "mycompany.org", "localhost"]
-	ca_cert, ca_key = create_ca(subject, 100, permitted_domains=permitted_domains)
+	ca_cert, ca_key = create_ca(subject=subject, valid_days=100, permitted_domains=permitted_domains)
 
 	name_constraints = [extension for extension in ca_cert.extensions if extension.oid == x509.OID_NAME_CONSTRAINTS][0]
 	assert name_constraints.critical
@@ -143,14 +155,30 @@ def test_create_ca() -> None:  # pylint: disable=too-many-locals
 		else:
 			verifier.verify(srv_cert, [])
 
-	del subject["CN"]
+	subject_dict["commonName"] = None
+	subject = x509_name_from_dict(subject_dict)
 	with pytest.raises(ValueError):
-		create_ca(subject, 100)
+		create_ca(subject=subject, valid_days=100)
+
+
+def test_create_intermediate_ca() -> None:
+	ca_subject = {"CN": "ACME Root CA", "emailAddress": "ca@acme.org"}
+	(ca_crt, ca_key) = create_ca(subject=ca_subject, valid_days=1000)
+
+	intermediate_ca_subject = {"CN": "ACME Intermediate CA", "emailAddress": "ca@opsi.org"}
+	(intermediate_ca_crt, _intermediate_ca_key) = create_ca(subject=intermediate_ca_subject, valid_days=500, ca_key=ca_key, ca_cert=ca_crt)
+
+	assert is_self_signed(ca_crt)
+	assert not is_self_signed(intermediate_ca_crt)
+
+	assert ca_crt.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == ca_subject["CN"]
+	assert intermediate_ca_crt.issuer.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == ca_subject["CN"]
+	assert intermediate_ca_crt.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == intermediate_ca_subject["CN"]
 
 
 def test_create_server_cert() -> None:
 	subject = {"CN": "opsi CA", "OU": "opsi", "emailAddress": "opsi@opsi.org"}
-	ca_cert, ca_key = create_ca(subject, 1000)
+	ca_cert, ca_key = create_ca(subject=subject, valid_days=1000)
 	kwargs: dict[str, Any] = {
 		"subject": {"emailAddress": "opsi@opsi.org"},
 		"valid_days": 100,
@@ -177,7 +205,7 @@ def test_create_server_cert() -> None:
 
 def test_as_pem() -> None:
 	subject = {"CN": "opsi CA", "OU": "opsi", "emailAddress": "opsi@opsi.org"}
-	cert, key = create_ca(subject, 100)
+	cert, key = create_ca(subject=subject, valid_days=100)
 	pem = as_pem(cert, "")
 	assert pem.startswith("-----BEGIN CERTIFICATE-----")
 	pem = as_pem(key, None)
@@ -191,7 +219,7 @@ def test_as_pem() -> None:
 @pytest.mark.admin_permissions
 def test_install_load_remove_ca() -> None:
 	subject_name = "python-opsi-common test ca"
-	ca_cert, _ca_key = create_ca({"CN": subject_name}, 3)
+	ca_cert, _ca_key = create_ca(subject={"CN": subject_name}, valid_days=3)
 	install_ca(ca_cert)
 	try:
 		loaded_ca_cert = load_ca(subject_name)
@@ -210,7 +238,7 @@ def test_install_load_remove_ca() -> None:
 @pytest.mark.windows
 @pytest.mark.admin_permissions
 def test_wget(tmp_path: Path) -> None:  # pylint: disable=redefined-outer-name, unused-argument
-	ca_cert, ca_key = create_ca({"CN": "python-opsi-common test ca"}, 3)
+	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3)
 	kwargs: dict[str, Any] = {
 		"subject": {"CN": "python-opsi-common test server cert"},
 		"valid_days": 3,

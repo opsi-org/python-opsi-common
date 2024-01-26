@@ -45,6 +45,25 @@ def subject_to_dict(subject: x509.Name) -> dict[str, str]:
 	return x509_name_to_dict(subject)
 
 
+def x509_name_from_dict(subject: dict[str, str | None]) -> x509.Name:
+	name_attributes = []
+	if val := subject.get("countryName") or subject.get("C"):
+		name_attributes.append(x509.NameAttribute(x509.NameOID.COUNTRY_NAME, val))
+	if val := subject.get("stateOrProvinceName") or subject.get("ST"):
+		name_attributes.append(x509.NameAttribute(x509.NameOID.STATE_OR_PROVINCE_NAME, val))
+	if val := subject.get("localityName") or subject.get("L"):
+		name_attributes.append(x509.NameAttribute(x509.NameOID.LOCALITY_NAME, val))
+	if val := subject.get("organizationName") or subject.get("O"):
+		name_attributes.append(x509.NameAttribute(x509.NameOID.ORGANIZATION_NAME, val))
+	if val := subject.get("organizationalUnitName") or subject.get("OU"):
+		name_attributes.append(x509.NameAttribute(x509.NameOID.ORGANIZATIONAL_UNIT_NAME, val))
+	if val := subject.get("commonName") or subject.get("CN"):
+		name_attributes.append(x509.NameAttribute(x509.NameOID.COMMON_NAME, val))
+	if val := subject.get("emailAddress"):
+		name_attributes.append(x509.NameAttribute(x509.NameOID.EMAIL_ADDRESS, val))
+	return x509.Name(name_attributes)
+
+
 def create_x509_name(subject: dict[str, str | None] | None = None) -> x509.Name:
 	subj: dict[str, str | None] = {
 		"C": "DE",
@@ -56,18 +75,7 @@ def create_x509_name(subject: dict[str, str | None] | None = None) -> x509.Name:
 		"emailAddress": "info@opsi.org",
 	}
 	subj.update(subject or {})
-
-	return x509.Name(
-		(
-			x509.NameAttribute(x509.NameOID.COUNTRY_NAME, subj.get("countryName") or subj.get("C") or ""),
-			x509.NameAttribute(x509.NameOID.STATE_OR_PROVINCE_NAME, subj.get("stateOrProvinceName") or subj.get("ST") or ""),
-			x509.NameAttribute(x509.NameOID.LOCALITY_NAME, subj.get("localityName") or subj.get("L") or ""),
-			x509.NameAttribute(x509.NameOID.ORGANIZATION_NAME, subj.get("organizationName") or subj.get("O") or ""),
-			x509.NameAttribute(x509.NameOID.ORGANIZATIONAL_UNIT_NAME, subj.get("organizationalUnitName") or subj.get("OU") or ""),
-			x509.NameAttribute(x509.NameOID.COMMON_NAME, subj.get("commonName") or subj.get("CN") or ""),
-			x509.NameAttribute(x509.NameOID.EMAIL_ADDRESS, subj.get("emailAddress") or ""),
-		)
-	)
+	return x509_name_from_dict(subj)
 
 
 def as_pem(cert_or_key: x509.Certificate | rsa.RSAPrivateKey, passphrase: str | None = None) -> str:
@@ -84,25 +92,37 @@ def as_pem(cert_or_key: x509.Certificate | rsa.RSAPrivateKey, passphrase: str | 
 	raise TypeError(f"Invalid type: {cert_or_key}")
 
 
+def is_self_signed(ca_cert: x509.Certificate) -> bool:
+	return ca_cert.issuer == ca_cert.subject
+
+
 def create_ca(
-	subject: dict[str, str],
+	*,
+	subject: x509.Name | dict[str, str],
 	valid_days: int,
 	key: rsa.RSAPrivateKey | None = None,
 	bits: int = CA_KEY_BITS,
 	permitted_domains: list[str] | set[str] | tuple[str] | None = None,
+	ca_key: rsa.RSAPrivateKey | None = None,
+	ca_cert: x509.Certificate | None = None,
 ) -> tuple[x509.Certificate, rsa.RSAPrivateKey]:
-	common_name = subject.get("commonName", subject.get("CN"))
-	if not common_name:
+	if not isinstance(subject, x509.Name):
+		subject = x509_name_from_dict(cast(dict[str, str | None], subject))
+
+	cn_attr = subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
+	if not cn_attr or not cn_attr[0].value:
 		raise ValueError("commonName missing in subject")
 
 	if not key:
 		logger.notice("Creating CA keypair")
 		key = rsa.generate_private_key(public_exponent=65537, key_size=bits)
+	if not ca_key:
+		# Self signed
+		ca_key = key
 
-	ca_subject = create_x509_name(cast(dict[str, str | None], subject))
 	builder = CertificateBuilder(
-		issuer_name=ca_subject,
-		subject_name=ca_subject,
+		issuer_name=ca_cert.subject if ca_cert else subject,
+		subject_name=subject,
 		public_key=key.public_key(),
 		serial_number=x509.random_serial_number(),
 		not_valid_before=datetime.now(tz=timezone.utc),
@@ -147,11 +167,12 @@ def create_ca(
 			x509.NameConstraints(permitted_subtrees=[x509.DNSName(dom.lstrip(".")) for dom in permitted_domains], excluded_subtrees=None),
 			critical=True,
 		)
-	return (builder.sign(key, hashes.SHA256()), key)
+	return (builder.sign(ca_key, hashes.SHA256()), key)
 
 
 def create_server_cert(  # pylint: disable=too-many-arguments,too-many-locals
-	subject: dict[str, str],
+	*,
+	subject: x509.Name | dict[str, str],
 	valid_days: int,
 	ip_addresses: set,
 	hostnames: set,
@@ -160,8 +181,11 @@ def create_server_cert(  # pylint: disable=too-many-arguments,too-many-locals
 	key: rsa.RSAPrivateKey | None = None,
 	bits: int = SERVER_KEY_BITS,
 ) -> tuple[x509.Certificate, rsa.RSAPrivateKey]:
-	common_name = subject.get("commonName", subject.get("CN"))
-	if not common_name:
+	if not isinstance(subject, x509.Name):
+		subject = x509_name_from_dict(cast(dict[str, str | None], subject))
+
+	cn_attr = subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
+	if not cn_attr or not cn_attr[0].value:
 		raise ValueError("commonName missing in subject")
 
 	if not key:
@@ -169,13 +193,12 @@ def create_server_cert(  # pylint: disable=too-many-arguments,too-many-locals
 		key = rsa.generate_private_key(public_exponent=65537, key_size=bits)
 
 	# Chrome requires CN from Subject also as Subject Alt
-	hostnames.add(common_name)
+	hostnames.add(cn_attr[0].value)
 	alt_names = [x509.DNSName(hn) for hn in hostnames] + [x509.IPAddress(ip_address(ip)) for ip in ip_addresses]
 
-	srv_subject = create_x509_name(cast(dict[str, str | None], subject))
 	builder = CertificateBuilder(
 		issuer_name=ca_cert.subject,
-		subject_name=srv_subject,
+		subject_name=subject,
 		public_key=key.public_key(),
 		serial_number=x509.random_serial_number(),
 		not_valid_before=datetime.now(tz=timezone.utc),
