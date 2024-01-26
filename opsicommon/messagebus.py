@@ -385,6 +385,7 @@ class ProcessStartRequestMessage(ProcessMessage):
 	type: str = MessageType.PROCESS_START_REQUEST.value
 	command: tuple[str, ...] = tuple()
 	timeout: float = DEFAULT_PROCESS_EXECUTE_TIMEOUT
+	shell: bool = False
 
 
 class ProcessStartEventMessage(ProcessMessage):

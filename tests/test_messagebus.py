@@ -318,6 +318,7 @@ def test_message_to_from_msgpack() -> None:
 				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"timeout": 60.0,
 				"command": ("who",),
+				"shell": True,
 			},
 			None,
 		),
