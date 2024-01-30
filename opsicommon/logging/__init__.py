@@ -57,5 +57,5 @@ from .logging import (
 	set_filter,
 	set_filter_from_string,
 	set_format,
-	use_stderr_level,
+	use_logging_config,
 )

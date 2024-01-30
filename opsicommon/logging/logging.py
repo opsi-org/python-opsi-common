@@ -644,6 +644,7 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 
 	if stderr_file is None:
 		stderr_file = _logging_state.stderr_file or sys.stderr
+	stderr_file_changed = stderr_file != _logging_state.stderr_file
 	_logging_state.stderr_file = stderr_file
 
 	if stderr_level is not None:
@@ -676,18 +677,19 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 			hdlr.setLevel(file_level)
 
 	if stderr_level is not None:
-		if remove_handlers:
-			remove_all_handlers(handler_type=StreamHandler)
-		else:
-			remove_all_handlers(handler_name="opsi_stderr_handler")
-		if stderr_level != LOG_NONE:
-			shandler: Handler
-			if isinstance(stderr_file, Console):
-				shandler = RichConsoleHandler(console=stderr_file)
+		if stderr_file_changed:
+			if remove_handlers:
+				remove_all_handlers(handler_type=StreamHandler)
 			else:
-				shandler = StreamHandler(stream=stderr_file)
-			shandler.name = "opsi_stderr_handler"
-			logging.root.addHandler(shandler)
+				remove_all_handlers(handler_name="opsi_stderr_handler")
+			if stderr_level != LOG_NONE:
+				shandler: Handler
+				if isinstance(stderr_file, Console):
+					shandler = RichConsoleHandler(console=stderr_file)
+				else:
+					shandler = StreamHandler(stream=stderr_file)
+				shandler.name = "opsi_stderr_handler"
+				logging.root.addHandler(shandler)
 		for hdlr in get_all_handlers((StreamHandler, RichConsoleHandler)):
 			hdlr.setLevel(stderr_level)
 
@@ -745,19 +747,27 @@ def init_logging(
 
 
 @contextmanager
-def use_stderr_level(stderr_level: int) -> Generator[int, None, None]:
+def use_logging_config(
+	*,
+	stderr_level: int | None = None,
+	stderr_format: str | None = None,
+	stderr_file: IO | Console | None = None,
+	file_level: int | None = None,
+	file_format: str | None = None,
+) -> Generator[None, None, None]:
 	"""
-	Contextmanager to set a stderr level.
-
-	This contextmanager sets stderr level to the given one on entering
-	and resets to the previous value when leaving.
+	Contextmanager to set a logging config and reset it afterwards.
 	"""
-	orig_stderr_level = _logging_state.stderr_level
+	orig_logging_state = dict(_logging_state.__dict__)
 	try:
-		logging_config(stderr_level=stderr_level)
-		yield orig_stderr_level or NOTSET
+		logging_config(
+			stderr_level=stderr_level, stderr_format=stderr_format, stderr_file=stderr_file, file_level=file_level, file_format=file_format
+		)
+		yield
 	finally:
-		logging_config(stderr_level=orig_stderr_level)
+		kwargs = {k: v for k, v in orig_logging_state.items() if getattr(_logging_state, k) != v}
+		if kwargs:
+			logging_config(**kwargs)
 
 
 def set_format(
