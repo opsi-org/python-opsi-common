@@ -32,7 +32,7 @@ from logging.handlers import RotatingFileHandler
 from traceback import format_stack, format_tb
 from typing import IO, Any, Generator
 from urllib.parse import quote
-
+from dataclasses import dataclass
 from colorlog import ColoredFormatter
 from rich.console import Console
 
@@ -42,6 +42,7 @@ from .constants import (
 	DEFAULT_FORMAT,
 	ESSENTIAL,
 	LOG_COLORS,
+	LOG_NONE,
 	NONE,
 	NOTICE,
 	OPSI_LEVEL_TO_LEVEL,
@@ -581,8 +582,16 @@ class ObservableHandler(Handler, metaclass=Singleton):
 					handle_log_exception(err)
 
 
-last_stderr_format = None  # pylint: disable=invalid-name
-last_file_format = None  # pylint: disable=invalid-name
+@dataclass
+class _LoggingState:
+	stderr_level: int | None = None
+	stderr_format: str | None = None
+	stderr_file: IO | Console | None = None
+	file_level: int | None = None
+	file_format: str | None = None
+
+
+_logging_state = _LoggingState()
 
 
 def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-statements
@@ -595,7 +604,7 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 	file_rotate_max_bytes: int = 0,
 	file_rotate_backup_count: int = 0,
 	remove_handlers: bool = False,
-	stderr_file: IO | Console = sys.stderr,
+	stderr_file: IO | Console | None = None,
 	logger_levels: dict | None = None,
 ) -> None:
 	"""
@@ -624,22 +633,27 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 	"""
 	add_context_filter_to_loggers()
 
-	global last_stderr_format  # pylint: disable=global-statement,invalid-name
 	if stderr_format is None:
-		stderr_format = last_stderr_format or DEFAULT_FORMAT
-	else:
-		last_stderr_format = stderr_format
+		stderr_format = _logging_state.stderr_format or DEFAULT_COLORED_FORMAT
+	_logging_state.stderr_format = stderr_format
 
-	global last_file_format  # pylint: disable=global-statement,invalid-name
 	if file_format is None:
-		file_format = last_file_format or DEFAULT_FORMAT
-	else:
-		last_file_format = file_format
+		file_format = _logging_state.file_format or DEFAULT_FORMAT
+	_logging_state.file_format = file_format
 
-	if stderr_level is not None and stderr_level < 10:
-		stderr_level = OPSI_LEVEL_TO_LEVEL[stderr_level]
-	if file_level is not None and file_level < 10:
-		file_level = OPSI_LEVEL_TO_LEVEL[file_level]
+	if stderr_file is None:
+		stderr_file = _logging_state.stderr_file or sys.stderr
+	_logging_state.stderr_file = stderr_file
+
+	if stderr_level is not None:
+		if stderr_level < 10:
+			stderr_level = OPSI_LEVEL_TO_LEVEL[stderr_level]
+		_logging_state.stderr_level = stderr_level
+
+	if file_level is not None:
+		if file_level < 10:
+			file_level = OPSI_LEVEL_TO_LEVEL[file_level]
+		_logging_state.file_level = file_level
 
 	if log_file:
 		if remove_handlers:
@@ -665,7 +679,7 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 			remove_all_handlers(handler_type=StreamHandler)
 		else:
 			remove_all_handlers(handler_name="opsi_stderr_handler")
-		if stderr_level != 0:
+		if stderr_level != LOG_NONE:
 			shandler: Handler
 			if isinstance(stderr_file, Console):
 				shandler = RichConsoleHandler(console=stderr_file)
@@ -707,6 +721,7 @@ def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-
 		and not stderr_file.isatty()
 	):
 		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")
+
 	set_format(file_format=file_format, stderr_format=stderr_format)
 
 
@@ -726,6 +741,22 @@ def init_logging(
 		file_format=file_format,
 		remove_handlers=True,
 	)
+
+
+@contextmanager
+def use_stderr_level(stderr_level: int) -> Generator[int, None, None]:
+	"""
+	Contextmanager to set a stderr level.
+
+	This contextmanager sets stderr level to the given one on entering
+	and resets to the previous value when leaving.
+	"""
+	orig_stderr_level = _logging_state.stderr_level
+	try:
+		logging_config(stderr_level=stderr_level)
+		yield orig_stderr_level or NOTSET
+	finally:
+		logging_config(stderr_level=orig_stderr_level)
 
 
 def set_format(

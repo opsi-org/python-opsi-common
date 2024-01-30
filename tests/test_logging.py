@@ -37,6 +37,7 @@ from opsicommon.logging import (
 	set_filter,
 	set_filter_from_string,
 	set_format,
+	use_stderr_level,
 )
 from opsicommon.logging.constants import (
 	LOG_DEBUG,
@@ -525,3 +526,23 @@ def test_sub_logger() -> None:  # pylint: disable=redefined-outer-name
 		assert "sub_logger_4" in log
 		assert "sub_logger_5" not in log
 		assert "sub_logger_6" in log
+
+
+def test_use_stderr_level() -> None:
+	with log_stream(LOG_WARNING, format="%(message)s") as stream:
+		logger.warning("warning1")
+		logger.info("info1")
+		with use_stderr_level(LOG_INFO):
+			logger.warning("warning2")
+			logger.info("info2")
+		logger.warning("warning3")
+		logger.info("info3")
+
+		stream.seek(0)
+		log = stream.read()
+		assert "warning1" in log
+		assert "info1" not in log
+		assert "warning2" in log
+		assert "info2" in log
+		assert "warning3" in log
+		assert "info3" not in log
