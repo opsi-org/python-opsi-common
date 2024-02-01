@@ -397,6 +397,7 @@ class ProcessStartEventMessage(ProcessMessage):
 
 	type: str = MessageType.PROCESS_START_EVENT.value
 	local_process_id: int
+	locale_encoding: str | None = None
 
 
 class ProcessStopRequestMessage(ProcessMessage):

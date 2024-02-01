@@ -329,6 +329,7 @@ def test_message_to_from_msgpack() -> None:
 				"channel": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"local_process_id": 1234,
+				"locale_encoding": "utf-8",
 			},
 			None,
 		),
