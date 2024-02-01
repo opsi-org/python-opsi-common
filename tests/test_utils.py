@@ -225,7 +225,7 @@ def test_prepare_proxy_environment_file(tmp_path: Path) -> None:
 			f.write("https_proxy=https://my.proxy.server:3129\n")
 			f.write("export http_proxy=http://my.proxy.server:3128\n")
 		update_environment_from_config_files([tmp_path / "somefile.env"])
-		if platform.platform().lower() == "linux":  # only consult environment files on linux
+		if platform.system().lower() == "linux":  # only consult environment files on linux
 			assert os.environ.get("http_proxy") == "http://my.proxy.server:3128"
 			assert os.environ.get("https_proxy") == "https://my.proxy.server:3129"
 		else:
