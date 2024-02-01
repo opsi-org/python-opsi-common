@@ -6,6 +6,7 @@ This file is part of opsi - https://www.opsi.org
 
 import datetime
 import os
+import platform
 from contextlib import contextmanager
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
 from pathlib import Path
@@ -212,7 +213,7 @@ def test_prepare_proxy_environment() -> None:
 		session = prepare_proxy_environment("my.test.server")
 		assert not session.proxies  # rely on environment, proxy not set explicitly
 	finally:
-		os.environ = env
+		os.environ = env  # type: ignore[assignment]
 
 
 def test_prepare_proxy_environment_file(tmp_path: Path) -> None:
@@ -224,7 +225,11 @@ def test_prepare_proxy_environment_file(tmp_path: Path) -> None:
 			f.write("https_proxy=https://my.proxy.server:3129\n")
 			f.write("export http_proxy=http://my.proxy.server:3128\n")
 		update_environment_from_config_files([tmp_path / "somefile.env"])
-		assert os.environ.get("http_proxy") == "http://my.proxy.server:3128"
-		assert os.environ.get("https_proxy") == "https://my.proxy.server:3129"
+		if platform.platform().lower() == "linux":  # only consult environment files on linux
+			assert os.environ.get("http_proxy") == "http://my.proxy.server:3128"
+			assert os.environ.get("https_proxy") == "https://my.proxy.server:3129"
+		else:
+			assert os.environ.get("http_proxy") == ""
+			assert os.environ.get("https_proxy") == ""
 	finally:
-		os.environ = env
+		os.environ = env  # type: ignore[assignment]
