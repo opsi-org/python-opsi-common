@@ -19,14 +19,7 @@ import tempfile
 import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from ipaddress import (
-	IPv4Address,
-	IPv4Network,
-	IPv6Address,
-	IPv6Network,
-	ip_address,
-	ip_network,
-)
+from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network, ip_address, ip_network
 from pathlib import Path
 from types import EllipsisType
 from typing import TYPE_CHECKING, Any, Callable, Generator, Literal, Type, Union
@@ -104,6 +97,35 @@ class Singleton(type):
 		return cls._instances[cls]
 
 
+def update_environment_from_config_files(files: list[Path] | None = None) -> None:
+	"""
+	Updates the environment variables from the config files.
+	"""
+	if platform.system().lower() == "linux":
+		if files is None:  # allow empty list
+			files = [Path("/etc/environment"), Path("/etc/sysconfig/proxy"), Path("/etc/default")]
+		# debian/ubuntu, suse, redhat/centos
+		for path in files:
+			if not path.exists() or not path.is_file():
+				continue
+			logger.debug("Updating environment from %s", path)
+			with path.open("r", encoding="utf-8") as handle:
+				for line in handle:
+					line = line.strip()
+					if not line or line.startswith("#"):
+						continue
+					key, value = line.split("=", 1)
+					key = key.lstrip("export").strip().lower()
+					if key in ("http_proxy", "https_proxy", "no_proxy") and not os.environ.get(key):
+						os.environ[key] = value.strip()
+
+	# on windows, services that use WinHTTP API will use the global (netsh) proxy settings
+	# https://learn.microsoft.com/en-us/windows/win32/api/winhttp/nf-winhttp-winhttpgetdefaultproxyconfiguration
+
+	# on macos, services use the system proxy settings (networksetup -setwebproxy)
+	# https://apple.stackexchange.com/questions/226544/how-to-set-proxy-on-os-x-terminal-permanently
+
+
 def prepare_proxy_environment(  # pylint: disable=too-many-branches
 	hostname: str, proxy_url: str | None = "system", no_proxy_addresses: list[str] | None = None, session: Session | None = None
 ) -> Session:
@@ -132,6 +154,10 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 
 		session = Session()
 	if proxy_url:
+		try:
+			update_environment_from_config_files()
+		except Exception as error:
+			logger.error("Failed to update environment from config files: %s", error)
 		# Use a proxy
 		no_proxy = [x.strip() for x in os.environ.get("no_proxy", "").split(",") if x.strip()]
 		if proxy_url.lower() == "system":

@@ -5,8 +5,10 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import datetime
+import os
 from contextlib import contextmanager
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
+from pathlib import Path
 from typing import Generator, Literal
 
 import pytest
@@ -21,7 +23,9 @@ from opsicommon.utils import (
 	frozen_lru_cache,
 	generate_opsi_host_key,
 	ip_address_in_network,
+	prepare_proxy_environment,
 	timestamp,
+	update_environment_from_config_files,
 	utc_timestamp,
 )
 
@@ -194,3 +198,33 @@ def test_package_versions_are_compared_aswell(ver1: str, operator: Literal["<"],
 )
 def test_ip_address_in_network(address: str | IPv4Address | IPv6Address, network: str | IPv4Network | IPv6Network, expected: bool) -> None:
 	assert ip_address_in_network(address, network) == expected
+
+
+def test_prepare_proxy_environment() -> None:
+	try:
+		env = os.environ.copy()
+		os.environ["http_proxy"] = "http://my.proxy.server:3128"
+		os.environ["https_proxy"] = "https://my.proxy.server:3129"
+		os.environ["no_proxy"] = ""
+		session = prepare_proxy_environment("my.test.server", proxy_url="http://my.proxy.server:3130")
+		assert session.proxies.get("http") == "http://my.proxy.server:3130"
+
+		session = prepare_proxy_environment("my.test.server")
+		assert not session.proxies  # rely on environment, proxy not set explicitly
+	finally:
+		os.environ = env
+
+
+def test_prepare_proxy_environment_file(tmp_path: Path) -> None:
+	try:
+		env = os.environ.copy()
+		os.environ["https_proxy"] = ""
+		os.environ["http_proxy"] = ""
+		with open(tmp_path / "somefile.env", "w") as f:
+			f.write("https_proxy=https://my.proxy.server:3129\n")
+			f.write("export http_proxy=http://my.proxy.server:3128\n")
+		update_environment_from_config_files([tmp_path / "somefile.env"])
+		assert os.environ.get("http_proxy") == "http://my.proxy.server:3128"
+		assert os.environ.get("https_proxy") == "https://my.proxy.server:3129"
+	finally:
+		os.environ = env
