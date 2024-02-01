@@ -202,6 +202,7 @@ def test_ip_address_in_network(address: str | IPv4Address | IPv6Address, network
 
 
 def test_prepare_proxy_environment() -> None:
+	env = {}
 	try:
 		env = os.environ.copy()
 		os.environ["http_proxy"] = "http://my.proxy.server:3128"
@@ -213,15 +214,17 @@ def test_prepare_proxy_environment() -> None:
 		session = prepare_proxy_environment("my.test.server")
 		assert not session.proxies  # rely on environment, proxy not set explicitly
 	finally:
-		os.environ = env  # type: ignore[assignment]
+		if env:
+			os.environ = env  # type: ignore[assignment]
 
 
 def test_prepare_proxy_environment_file(tmp_path: Path) -> None:
+	env = {}
 	try:
 		env = os.environ.copy()
 		os.environ["https_proxy"] = ""
 		os.environ["http_proxy"] = ""
-		with open(tmp_path / "somefile.env", "w") as f:
+		with open(tmp_path / "somefile.env", "w", encoding="utf-8") as f:
 			f.write("https_proxy=https://my.proxy.server:3129\n")
 			f.write("export http_proxy=http://my.proxy.server:3128\n")
 		update_environment_from_config_files([tmp_path / "somefile.env"])
@@ -232,4 +235,5 @@ def test_prepare_proxy_environment_file(tmp_path: Path) -> None:
 			assert os.environ.get("http_proxy") == ""
 			assert os.environ.get("https_proxy") == ""
 	finally:
-		os.environ = env  # type: ignore[assignment]
+		if env:
+			os.environ = env  # type: ignore[assignment]

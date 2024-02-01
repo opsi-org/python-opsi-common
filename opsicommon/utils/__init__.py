@@ -156,7 +156,7 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 	if proxy_url:
 		try:
 			update_environment_from_config_files()
-		except Exception as error:
+		except Exception as error:  # pylint: disable=broad-except
 			logger.error("Failed to update environment from config files: %s", error)
 		# Use a proxy
 		no_proxy = [x.strip() for x in os.environ.get("no_proxy", "").split(",") if x.strip()]
