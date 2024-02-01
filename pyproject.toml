@@ -16,11 +16,11 @@ include = "opsicommon"
 [[tool.poetry.source]]
 name = "uibpypi"
 url = "http://pypi.uib.gmbh:8080/simple"
-priority = "supplemental"
+priority = "primary"
 
 [[tool.poetry.source]]
 name = "PyPI"
-priority = "primary"
+priority = "supplemental"
 
 [tool.ruff]
 line-length = 140
