@@ -13,15 +13,16 @@ import pytest
 
 from opsicommon.objects import NetbootProduct
 from opsicommon.package import OpsiPackage, PackageDependency
-from opsicommon.package.associated_files import (
-	create_package_content_file,
-	create_package_md5_file,
-	create_package_zsync_file,
-)
+from opsicommon.package.associated_files import create_package_content_file, create_package_md5_file, create_package_zsync_file
 from opsicommon.package.control_file_handling import create_product_dependencies
 from opsicommon.utils import make_temp_dir
 
 TEST_DATA = Path("tests") / "data" / "package"
+LEGACY_CHANGELOG = """localboot_new (42.0-1337) testing; urgency=low
+
+  * Initial package
+
+ -- test <test@uib.de>  Wed, 18 Jan 2023 12:48:39 +0000"""
 
 
 def print_info(package: OpsiPackage) -> None:
@@ -125,6 +126,9 @@ def test_load_control(form: str) -> None:
 	assert package.product_dependencies[1].requiredInstallationStatus is None
 	assert package.product_dependencies[1].requirementType == "after"
 	assert package.product_dependencies[1].requiredAction == "setup"
+	if form == "legacy":
+		print(package.changelog)
+		assert package.changelog == LEGACY_CHANGELOG
 
 
 @pytest.mark.parametrize(

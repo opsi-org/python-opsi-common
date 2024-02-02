@@ -53,5 +53,3 @@ localboot_new (42.0-1337) testing; urgency=low
   * Initial package
 
  -- test <test@uib.de>  Wed, 18 Jan 2023 12:48:39 +0000
-
-
