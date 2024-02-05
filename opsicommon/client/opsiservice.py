@@ -658,8 +658,10 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				logger.error("Failed to create instance method '%s': %s", method, err)
 
 	@contextmanager
-	def connection(self) -> Generator[None, None, None]:
+	def connection(self, connect_messagebus: bool = False) -> Generator[None, None, None]:
 		self.connect()
+		if connect_messagebus:
+			self.connect_messagebus()
 		try:
 			yield
 		finally:
