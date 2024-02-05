@@ -665,7 +665,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		try:
 			yield
 		finally:
-			self.disconnect()
+			self.stop()
 
 	def connect(self) -> None:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
 		if not self._addresses:
