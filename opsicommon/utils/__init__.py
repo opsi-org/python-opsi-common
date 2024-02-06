@@ -116,7 +116,7 @@ def update_environment_from_config_files(files: list[Path] | None = None) -> Non
 						continue
 					key, value = line.split("=", 1)
 					key = key.lstrip("export").strip().lower()
-					if key in ("http_proxy", "https_proxy", "no_proxy") and not os.environ.get(key):
+					if value.strip() and key in ("http_proxy", "https_proxy", "no_proxy") and not os.environ.get(key):
 						os.environ[key] = value.strip()
 
 	# on windows, services that use WinHTTP API will use the global (netsh) proxy settings
