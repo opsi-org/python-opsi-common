@@ -224,16 +224,20 @@ def test_prepare_proxy_environment_file(tmp_path: Path) -> None:
 		env = os.environ.copy()
 		os.environ["https_proxy"] = ""
 		os.environ["http_proxy"] = ""
+		os.environ["no_proxy"] = ""
 		with open(tmp_path / "somefile.env", "w", encoding="utf-8") as f:
 			f.write("https_proxy=https://my.proxy.server:3129\n")
 			f.write("export http_proxy=http://my.proxy.server:3128\n")
+			f.write('export no_proy=""\n')
 		update_environment_from_config_files([tmp_path / "somefile.env"])
 		if platform.system().lower() == "linux":  # only consult environment files on linux
 			assert os.environ.get("http_proxy") == "http://my.proxy.server:3128"
 			assert os.environ.get("https_proxy") == "https://my.proxy.server:3129"
+			assert os.environ.get("no_proxy") == ""  # not '""'!
 		else:
 			assert os.environ.get("http_proxy") == ""
 			assert os.environ.get("https_proxy") == ""
+			assert os.environ.get("no_proxy") == ""
 	finally:
 		if env:
 			os.environ = env  # type: ignore[assignment]
