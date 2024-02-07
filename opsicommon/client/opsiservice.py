@@ -1445,8 +1445,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 
 	def _on_ping(self, websocket: WebSocket, message: bytes) -> None:  # pylint: disable=unused-argument
 		logger.debug("Ping message received")
-		if self._app:
-			self._app.send(b"", ABNF.OPCODE_PONG)
+		# We do not need to send a pong, the websocket library will do that for us
 
 	def _on_pong(self, websocket: WebSocket, message: bytes) -> None:  # pylint: disable=unused-argument
 		logger.debug("Pong message received")
