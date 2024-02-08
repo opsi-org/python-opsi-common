@@ -18,7 +18,7 @@ class FixtureRequest:
 
 exception_classes = []
 pre_globals = list(globals())
-from opsicommon.exceptions import (  # noqa: E402
+from opsicommon.exceptions import (  # noqa: E402,F401
 	BackendAuthenticationError,
 	BackendBadValueError,
 	BackendConfigurationError,
@@ -47,34 +47,6 @@ from opsicommon.exceptions import (  # noqa: E402
 	RepositoryError,
 )
 
-__all__ = [
-	"BackendAuthenticationError",
-	"BackendBadValueError",
-	"BackendConfigurationError",
-	"BackendError",
-	"BackendIOError",
-	"BackendMissingDataError",
-	"BackendModuleDisabledError",
-	"BackendPermissionDeniedError",
-	"BackendReferentialIntegrityError",
-	"BackendTemporaryError",
-	"BackendUnableToConnectError",
-	"BackendUnaccomplishableError",
-	"LicenseConfigurationError",
-	"LicenseMissingError",
-	"OpsiBackupBackendNotFound",
-	"OpsiBackupFileError",
-	"OpsiBackupFileNotFound",
-	"OpsiBadRpcError",
-	"OpsiError",
-	"OpsiProductOrderingError",
-	"OpsiRpcError",
-	"OpsiServiceAuthenticationError",
-	"OpsiServiceConnectionError",
-	"OpsiServiceTimeoutError",
-	"OpsiServiceVerificationError",
-	"RepositoryError",
-]
 exception_classes = [obj for name, obj in dict(globals()).items() if name not in pre_globals and name != "pre_globals"]
 
 
