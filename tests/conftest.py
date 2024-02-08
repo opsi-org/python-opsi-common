@@ -20,6 +20,9 @@ from _pytest.config import Config
 from _pytest.logging import LogCaptureHandler
 from _pytest.nodes import Item
 from pluggy import Result
+from pytest import hookimpl
+
+from opsicommon.logging import logging_config
 
 
 def emit(*args: Any, **kwargs: Any) -> None:
@@ -90,33 +93,32 @@ def pytest_runtest_setup(item: Item) -> None:
 		pytest.skip(f"Cannot run on {PLATFORM}")
 
 
-@pytest.hookimpl(hookwrapper=True)
-def pytest_pyfunc_call(pyfuncitem: Callable | Coroutine) -> Generator[None, Result, None]:
+@hookimpl(wrapper=True)
+def pytest_pyfunc_call(pyfuncitem: Callable | Coroutine) -> Generator[None, Result, Result]:
 	start_threads = set(threading.enumerate())
 
 	outcome: Result = yield
 
-	try:
-		_result = outcome.get_result()  # Will raise if outcome was exception
-	except BaseException as exc:
-		outcome.force_exception(exc)
-		return
+	# Reset log level
+	logging_config(stderr_level=0)
 
-	for wait in range(5):
-		running_threads = (
+	for wait in range(6):
+		left_over_threads = (
 			set(
 				t
 				for t in threading.enumerate()
-				if t.is_alive() and "ThreadPoolExecutor" not in str((getattr(t, "_args", None) or [None])[0])
+				if t.is_alive()
+				# and t.name != "AnyIO worker thread"
+				and "ThreadPoolExecutor" not in str((getattr(t, "_args", None) or [None])[0])
 			)
 			- start_threads
 		)
-		if not running_threads:
+		if not left_over_threads:
 			break
-		if wait >= 10:
-			print("Running threads after test:", file=sys.stderr)
-			for thread in running_threads:
+		if wait >= 5:
+			print("Left over threads after test:", file=sys.stderr)
+			for thread in left_over_threads:
 				print(thread.__dict__, file=sys.stderr)
-			outcome.force_exception(RuntimeError(f"Running threads after test: {running_threads}"))
-			break
+			raise RuntimeError(f"Left over threads after test: {left_over_threads}")
 		time.sleep(1)
+	return outcome
