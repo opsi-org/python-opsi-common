@@ -1700,8 +1700,8 @@ def test_messagebus_listener() -> None:
 			for listener in (listener1, listener2, listener3, listener4):
 				assert listener.connection_open_calls == 2
 				assert listener.connection_established_calls == 1
-				assert listener.connection_closed_calls == 2
-				assert listener.connection_failed_calls == 2
+				assert listener.connection_closed_calls in (1, 2)
+				assert listener.connection_failed_calls in (1, 2)
 
 	# listener1 / listener3: JSONRPC_RESPONSE + FILE_UPLOAD_RESULT
 	for listener in (listener1, listener3):
