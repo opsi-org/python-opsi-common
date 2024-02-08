@@ -85,8 +85,6 @@ from opsicommon.testing.helpers import (  # type: ignore[import]
 	opsi_config,
 )
 
-from .test_utils import log_level_stderr
-
 
 class MyConnectionListener(ServiceConnectionListener):
 	def __init__(self) -> None:
@@ -786,7 +784,7 @@ def test_server_name_handling(
 
 
 def test_connect_disconnect() -> None:
-	with log_level_stderr(9), http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
 		listener = MyConnectionListener()
 		with ServiceClient() as client:
 			with pytest.raises(OpsiServiceConnectionError, match="Service address undefined"):
@@ -865,6 +863,8 @@ def test_connect_disconnect() -> None:
 		client.disconnect()
 		assert client.messagebus_connected is False
 		assert client.connected is False
+
+		client.stop()
 
 
 def test_requests() -> None:
