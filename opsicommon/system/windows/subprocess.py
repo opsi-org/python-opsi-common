@@ -31,9 +31,11 @@ def get_process(process_name: str, session_id: int) -> psutil.Process | None:
 	return None
 
 
-def get_process_user_token(process_id: int) -> int:
+def get_process_user_token(process_id: int, duplicate: bool=False) -> int:
 	proc_handle = win32api.OpenProcess(win32con.MAXIMUM_ALLOWED, False, process_id)
 	proc_token = win32security.OpenProcessToken(proc_handle, win32con.MAXIMUM_ALLOWED)
+	if not duplicate:
+		return proc_token
 	proc_token_dup = win32security.DuplicateTokenEx(
 		ExistingToken=proc_token,
 		# To request the same access rights as the existing token, specify zero.
@@ -81,7 +83,7 @@ def CreateProcess(  # pylint: disable=invalid-name
 	if not proc:
 		raise RuntimeError(f"Failed to find '{process_name}' in session {session_id}")
 
-	user_token = get_process_user_token(proc.pid)
+	user_token = get_process_user_token(proc.pid, duplicate=True)
 	startup_info = win32process.STARTUPINFO()
 	for attr, val in __startup_info.__dict__.items():
 		if attr != "lpAttributeList" and val is not None:

@@ -9,7 +9,6 @@ import subprocess
 
 import psutil
 import pytest
-
 from opsicommon.system.subprocess import patch_popen
 from opsicommon.utils import monkeypatch_subprocess_for_frozen
 
@@ -77,8 +76,3 @@ def test_path_cleanup() -> None:
 			assert proc_env["PATH"].split(os.pathsep) == clean_path
 			proc.wait()
 		assert os.environ["PATH"].split(os.pathsep) == path
-
-
-@pytest.mark.windows
-def test_run_as_user() -> None:
-	patch_popen()

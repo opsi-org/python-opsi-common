@@ -11,9 +11,8 @@ import pytest
 
 @pytest.mark.windows
 def test_get_sessions() -> None:
-	from opsicommon.system.windows.session import (  # pylint: disable=import-outside-toplevel
-		get_windows_sessions,
-	)
+	from opsicommon.system.windows.session import \
+	    get_windows_sessions  # pylint: disable=import-outside-toplevel
 
 	sessions = get_windows_sessions()
 	assert sessions
@@ -23,12 +22,10 @@ def test_get_sessions() -> None:
 
 @pytest.mark.windows
 def test_popen_session() -> None:
-	from opsicommon.system.subprocess import (  # pylint: disable=import-outside-toplevel
-		patch_popen,
-	)
-	from opsicommon.system.windows.session import (  # pylint: disable=import-outside-toplevel
-		get_windows_sessions,
-	)
+	from opsicommon.system.subprocess import \
+	    patch_popen  # pylint: disable=import-outside-toplevel
+	from opsicommon.system.windows.session import \
+	    get_windows_sessions  # pylint: disable=import-outside-toplevel
 
 	patch_popen()
 	user_sessions = [s for s in get_windows_sessions() if s.username]
@@ -41,6 +38,7 @@ def test_popen_session() -> None:
 		capture_output=True,
 		text=True,
 		session_id=user_sessions[0].session_id,
+		session_env=True,
 		session_elevated=False,
 	)
 	assert proc.stdout.strip() == user_sessions[0].username

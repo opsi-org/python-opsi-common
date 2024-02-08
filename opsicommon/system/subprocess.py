@@ -15,7 +15,11 @@ from typing import IO, Any, Callable, Collection, Iterable, Mapping, Sequence
 SYSTEM = platform.system().lower()
 
 if SYSTEM == "windows":
-	from opsicommon.system.windows.subprocess import get_process, patch_create_process
+	import win32profile  # type: ignore[import] # pylint: disable=import-error
+	from opsicommon.system.windows.subprocess import (get_process,
+	                                                  get_process_user_token,
+	                                                  patch_create_process)
+
 
 PopenOrig = subprocess.Popen
 
@@ -61,11 +65,12 @@ class Popen(PopenOrig):
 		if session_elevated is not None and session_id is None:
 			raise ValueError("Parameter 'session_elevated' requires 'session_id' to be set")
 
-		if SYSTEM == "windows" and session_id and session_env:
+		if SYSTEM == "windows" and session_id and (session_env or session_env is None):
 			proc = get_process("explorer.exe", session_id=int(session_id))
 			if not proc:
 				raise RuntimeError(f"Failed to find 'explorer.exe' in session {session_id}")
-			senv = proc.environ()
+			# senv = proc.environ()
+			senv = win32profile.CreateEnvironmentBlock(get_process_user_token(proc.pid), False)  # pylint: disable=no-member
 			if env:
 				senv.update(env)
 			env = senv
