@@ -134,7 +134,7 @@ class OpsiProductOrderingError(OpsiError):
 
 	def __init__(self, message: str = "", problematicRequirements: list[int] | list[str] | None = None) -> None:
 		super().__init__(message)
-		self.problematicRequirements: list[int] | list[str] | list = problematicRequirements or []  # pylint: disable=invalid-name
+		self.problematicRequirements: list[int] | list[str] | list = problematicRequirements or []
 
 	def __str__(self) -> str:
 		if self.message:

@@ -128,11 +128,11 @@ logger = get_logger("opsicommon.general")
 BaseObjectT = TypeVar("BaseObjectT", bound="BaseObject")
 
 
-class classproperty:  # pylint: disable=invalid-name,too-few-public-methods
+class classproperty:
 	def __init__(self, fget: Callable) -> None:
 		self.fget = fget
 
-	def __get__(self, owner_self: Any, owner_cls: Any) -> Any:  # pylint: disable=unused-argument
+	def __get__(self, owner_self: Any, owner_cls: Any) -> Any:
 		return self.fget(owner_cls)
 
 
@@ -145,31 +145,31 @@ class BaseObject:
 	_is_generated_default = False
 
 	@classproperty
-	def subClasses(cls) -> dict[str, type]:  # pylint: disable=invalid-name,no-self-argument
+	def subClasses(cls) -> dict[str, type]:
 		return cls.sub_classes
 
 	@classproperty
-	def identSeparator(cls) -> str:  # pylint: disable=invalid-name,no-self-argument
+	def identSeparator(cls) -> str:
 		return cls.ident_separator
 
 	@classproperty
-	def foreignIdAttributes(cls) -> list[str]:  # pylint: disable=invalid-name,no-self-argument
+	def foreignIdAttributes(cls) -> list[str]:
 		return cls.foreign_id_attributes
 
 	@classproperty
-	def backendMethodPrefix(cls) -> str:  # pylint: disable=invalid-name,no-self-argument
+	def backendMethodPrefix(cls) -> str:
 		return cls.backend_method_prefix
 
-	def getBackendMethodPrefix(self) -> str:  # pylint: disable=invalid-name
+	def getBackendMethodPrefix(self) -> str:
 		return self.backend_method_prefix
 
-	def getForeignIdAttributes(self) -> list[str]:  # pylint: disable=invalid-name
+	def getForeignIdAttributes(self) -> list[str]:
 		return self.foreign_id_attributes
 
-	def getIdentAttributes(self) -> tuple[str, ...]:  # pylint: disable=invalid-name
+	def getIdentAttributes(self) -> tuple[str, ...]:
 		return get_ident_attributes(self.__class__)  # type: ignore[arg-type]
 
-	def getIdent(self, returnType: str = "unicode") -> list[str] | tuple[str, ...] | dict[str, str] | str:  # pylint: disable=invalid-name
+	def getIdent(self, returnType: str = "unicode") -> list[str] | tuple[str, ...] | dict[str, str] | str:
 		returnType = forceStringLower(returnType)
 		ident_attributes = self.getIdentAttributes()
 
@@ -193,10 +193,10 @@ class BaseObject:
 			return dict(zip(ident_attributes, ident_values))
 		return self.ident_separator.join(ident_values)
 
-	def setDefaults(self) -> None:  # pylint: disable=invalid-name
+	def setDefaults(self) -> None:
 		pass
 
-	def emptyValues(self, keepAttributes: list[str] | None = None) -> None:  # pylint: disable=invalid-name
+	def emptyValues(self, keepAttributes: list[str] | None = None) -> None:
 		keep_attributes = set(forceStringList(keepAttributes or []))
 		for attribute in self.getIdentAttributes():
 			keep_attributes.add(attribute)
@@ -206,7 +206,7 @@ class BaseObject:
 			if attribute not in keep_attributes:
 				self.__dict__[attribute] = None
 
-	def update(self, updateObject: "BaseObject", updateWithNoneValues: bool = True) -> None:  # pylint: disable=invalid-name
+	def update(self, updateObject: "BaseObject", updateWithNoneValues: bool = True) -> None:
 		if not issubclass(updateObject.__class__, self.__class__):
 			raise TypeError(f"Cannot update instance of {self.__class__.__name__} with instance of {updateObject.__class__.__name__}")
 		object_hash = updateObject.toHash()
@@ -225,17 +225,17 @@ class BaseObject:
 
 		self.__dict__.update(object_hash)
 
-	def getType(self) -> str:  # pylint: disable=invalid-name
+	def getType(self) -> str:
 		return self.__class__.__name__
 
-	def setGeneratedDefault(self, flag: bool = True) -> None:  # pylint: disable=invalid-name
+	def setGeneratedDefault(self, flag: bool = True) -> None:
 		self._is_generated_default = forceBool(flag)
 
-	def isGeneratedDefault(self) -> bool:  # pylint: disable=invalid-name
+	def isGeneratedDefault(self) -> bool:
 		return self._is_generated_default
 
 	@classmethod
-	def fromHash(cls: Type[BaseObjectT], _hash: dict[str, Any]) -> BaseObjectT:  # pylint: disable=invalid-name
+	def fromHash(cls: Type[BaseObjectT], _hash: dict[str, Any]) -> BaseObjectT:
 		if cls.copy_from_hash:
 			_hash = _hash.copy()
 		_cls = cls
@@ -250,10 +250,10 @@ class BaseObject:
 		return _cls(**kwargs)
 
 	@classmethod
-	def from_json(cls, jsonString: str) -> Any:  # pylint: disable=invalid-name
+	def from_json(cls, jsonString: str) -> Any:
 		return from_json(jsonString, cls.__name__)
 
-	def to_hash(self) -> dict[str, Any]:  # pylint: disable=invalid-name
+	def to_hash(self) -> dict[str, Any]:
 		object_hash = dict(self.__dict__)
 		object_hash["type"] = self.getType()
 		return object_hash
@@ -332,7 +332,7 @@ def mandatory_constructor_args(_class: Type[BaseObject]) -> list[str]:
 def get_ident_attributes(_class: Type[BaseObject]) -> tuple[str, ...]:
 	ident_attributes = tuple(mandatory_constructor_args(_class))  # type: ignore[arg-type]
 	if "hardwareClass" in ident_attributes:
-		ident_attributes = tuple([a for a in ident_attributes if a != "hardwareClass"])  # pylint: disable=consider-using-generator
+		ident_attributes = tuple([a for a in ident_attributes if a != "hardwareClass"])
 	return ident_attributes
 
 
@@ -387,9 +387,7 @@ def decode_ident(_class: Type[BaseObject], _hash: dict[str, Any]) -> dict[str, A
 	return _hash
 
 
-def objects_differ(  # pylint: disable=too-many-return-statements,too-many-branches
-	obj1: Any, obj2: Any, exclude_attributes: list[str] | None = None
-) -> bool:
+def objects_differ(obj1: Any, obj2: Any, exclude_attributes: list[str] | None = None) -> bool:
 	if exclude_attributes is None:
 		exclude_attributes = []
 	else:
@@ -399,7 +397,7 @@ def objects_differ(  # pylint: disable=too-many-return-statements,too-many-branc
 		return True
 
 	obj2 = obj2.toHash()
-	for (attribute, value1) in obj1.toHash().items():
+	for attribute, value1 in obj1.toHash().items():
 		if attribute in exclude_attributes:
 			continue
 
@@ -412,7 +410,7 @@ def objects_differ(  # pylint: disable=too-many-return-statements,too-many-branc
 			if len(value1) != len(value2):
 				return True
 
-			for (key, value) in value1.items():
+			for key, value in value1.items():
 				if value2.get(key) != value:
 					return True
 		elif isinstance(value1, list):
@@ -434,12 +432,12 @@ class Entity(BaseObject):
 	def setDefaults(self) -> None:
 		BaseObject.setDefaults(self)
 
-	def clone(self, identOnly: bool = False) -> Any:  # pylint: disable=invalid-name
+	def clone(self, identOnly: bool = False) -> Any:
 		_hash = {}
 
 		if identOnly:
 			ident_attributes = self.getIdentAttributes()
-			for (attribute, value) in self.toHash().items():
+			for attribute, value in self.toHash().items():
 				if attribute != "type" and attribute not in ident_attributes:
 					continue
 				_hash[attribute] = value
@@ -458,11 +456,11 @@ class Relationship(BaseObject):
 	def setDefaults(self) -> None:
 		BaseObject.setDefaults(self)
 
-	def clone(self, identOnly: bool = False) -> Any:  # pylint: disable=invalid-name
+	def clone(self, identOnly: bool = False) -> Any:
 		_hash = {}
 		if identOnly:
 			ident_attributes = self.getIdentAttributes()
-			for (attribute, value) in self.toHash().items():
+			for attribute, value in self.toHash().items():
 				if attribute != "type" and attribute not in ident_attributes:
 					continue
 				_hash[attribute] = value
@@ -483,9 +481,7 @@ class Object(Entity):
 	sub_classes: dict[str, type] = {}
 	foreign_id_attributes = Entity.foreign_id_attributes + ["objectId"]
 
-	def __init__(
-		self, id: str, description: str | None = None, notes: str | None = None  # pylint: disable=redefined-builtin,invalid-name
-	) -> None:
+	def __init__(self, id: str, description: str | None = None, notes: str | None = None) -> None:
 		self.description: str | None = None
 		self.notes: str | None = None
 		self.setId(id)
@@ -501,22 +497,22 @@ class Object(Entity):
 		if self.notes is None:
 			self.setNotes("")
 
-	def getId(self) -> str:  # pylint: disable=invalid-name
+	def getId(self) -> str:
 		return self.id
 
-	def setId(self, id: str) -> None:  # pylint: disable=redefined-builtin,invalid-name
-		self.id = forceObjectId(id)  # pylint: disable=invalid-name
+	def setId(self, id: str) -> None:
+		self.id = forceObjectId(id)
 
-	def getDescription(self) -> str | None:  # pylint: disable=invalid-name
+	def getDescription(self) -> str | None:
 		return self.description
 
-	def setDescription(self, description: str) -> None:  # pylint: disable=invalid-name
+	def setDescription(self, description: str) -> None:
 		self.description = forceString(description)
 
-	def getNotes(self) -> str | None:  # pylint: disable=invalid-name
+	def getNotes(self) -> str | None:
 		return self.notes
 
-	def setNotes(self, notes: str) -> None:  # pylint: disable=invalid-name
+	def setNotes(self, notes: str) -> None:
 		self.notes = forceString(notes)
 
 
@@ -528,18 +524,18 @@ class User(Entity):
 	foreign_id_attributes = Entity.foreign_id_attributes + ["userId"]
 	backend_method_prefix = "user"
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin,disable=invalid-name
+		id: str,
 		created: str | None = None,
-		lastLogin: str | None = None,  # pylint: disable=invalid-name
-		mfaState: str | None = None,  # pylint: disable=invalid-name
-		otpSecret: str | None = None,  # pylint: disable=invalid-name
+		lastLogin: str | None = None,
+		mfaState: str | None = None,
+		otpSecret: str | None = None,
 	) -> None:
-		self.created: str | None = None  # pylint: disable=invalid-name
-		self.lastLogin: str | None = None  # pylint: disable=invalid-name
-		self.mfaState: str | None = None  # pylint: disable=invalid-name
-		self.otpSecret: str | None = None  # pylint: disable=invalid-name
+		self.created: str | None = None
+		self.lastLogin: str | None = None
+		self.mfaState: str | None = None
+		self.otpSecret: str | None = None
 
 		self.setId(id)
 		if created is not None:
@@ -558,34 +554,34 @@ class User(Entity):
 		if self.mfaState is None:
 			self.mfaState = "inactive"
 
-	def getId(self) -> str:  # pylint: disable=invalid-name
+	def getId(self) -> str:
 		return self.id
 
-	def setId(self, id: str) -> None:  # pylint: disable=redefined-builtin,invalid-name
-		self.id = forceUserId(id)  # pylint: disable=invalid-name
+	def setId(self, id: str) -> None:
+		self.id = forceUserId(id)
 
-	def getLastLogin(self) -> str | None:  # pylint: disable=invalid-name
+	def getLastLogin(self) -> str | None:
 		return self.lastLogin
 
-	def setLastLogin(self, lastLogin: str) -> None:  # pylint: disable=invalid-name
+	def setLastLogin(self, lastLogin: str) -> None:
 		self.lastLogin = forceOpsiTimestamp(lastLogin)
 
-	def getCreated(self) -> str | None:  # pylint: disable=invalid-name
+	def getCreated(self) -> str | None:
 		return self.created
 
-	def setCreated(self, created: str) -> None:  # pylint: disable=invalid-name
+	def setCreated(self, created: str) -> None:
 		self.created = forceOpsiTimestamp(created)
 
-	def getMfaState(self) -> str | None:  # pylint: disable=invalid-name
+	def getMfaState(self) -> str | None:
 		return self.mfaState
 
-	def setMfaState(self, mfaState: str) -> None:  # pylint: disable=invalid-name
+	def setMfaState(self, mfaState: str) -> None:
 		self.mfaState = mfaState
 
-	def getOtpSecret(self) -> str | None:  # pylint: disable=invalid-name
+	def getOtpSecret(self) -> str | None:
 		return self.otpSecret
 
-	def setOtpSecret(self, otpSecret: str) -> None:  # pylint: disable=invalid-name
+	def setOtpSecret(self, otpSecret: str) -> None:
 		self.otpSecret = otpSecret
 
 
@@ -597,9 +593,9 @@ class Host(Object):
 	foreign_id_attributes = Object.foreign_id_attributes + ["hostId"]
 	backend_method_prefix = "host"
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		description: str | None = None,
 		notes: str | None = None,
 		hardwareAddress: str | None = None,
@@ -608,10 +604,10 @@ class Host(Object):
 		systemUUID: str | None = None,
 	) -> None:
 		Object.__init__(self, id, description, notes)
-		self.hardwareAddress: str | None = None  # pylint: disable=invalid-name
-		self.ipAddress: str | None = None  # pylint: disable=invalid-name
-		self.inventoryNumber: str | None = None  # pylint: disable=invalid-name
-		self.systemUUID: str | None = None  # pylint: disable=invalid-name
+		self.hardwareAddress: str | None = None
+		self.ipAddress: str | None = None
+		self.inventoryNumber: str | None = None
+		self.systemUUID: str | None = None
 		self.setId(id)
 
 		if hardwareAddress is not None:
@@ -628,19 +624,19 @@ class Host(Object):
 		if self.inventoryNumber is None:
 			self.setInventoryNumber("")
 
-	def setId(self, id: str) -> None:  # pylint: disable=redefined-builtin
+	def setId(self, id: str) -> None:
 		self.id = forceHostId(id)
 
-	def getHardwareAddress(self) -> str | None:  # pylint: disable=invalid-name
+	def getHardwareAddress(self) -> str | None:
 		return self.hardwareAddress
 
-	def setHardwareAddress(self, hardwareAddress: str) -> None:  # pylint: disable=invalid-name
+	def setHardwareAddress(self, hardwareAddress: str) -> None:
 		self.hardwareAddress = forceHardwareAddress(forceList(hardwareAddress)[0])
 
-	def getIpAddress(self) -> str | None:  # pylint: disable=invalid-name
+	def getIpAddress(self) -> str | None:
 		return self.ipAddress
 
-	def setIpAddress(self, ipAddress: str) -> None:  # pylint: disable=invalid-name
+	def setIpAddress(self, ipAddress: str) -> None:
 		try:
 			self.ipAddress = forceIPAddress(ipAddress)
 		except ValueError as err:
@@ -650,16 +646,16 @@ class Host(Object):
 			else:
 				self.ipAddress = None
 
-	def getInventoryNumber(self) -> str | None:  # pylint: disable=invalid-name
+	def getInventoryNumber(self) -> str | None:
 		return self.inventoryNumber
 
-	def setInventoryNumber(self, inventoryNumber: str) -> None:  # pylint: disable=invalid-name
+	def setInventoryNumber(self, inventoryNumber: str) -> None:
 		self.inventoryNumber = forceString(inventoryNumber)
 
-	def getSystemUUID(self) -> str | None:  # pylint: disable=invalid-name
+	def getSystemUUID(self) -> str | None:
 		return self.systemUUID
 
-	def setSystemUUID(self, systemUUID: str) -> None:  # pylint: disable=invalid-name
+	def setSystemUUID(self, systemUUID: str) -> None:
 		self.systemUUID = forceUUIDString(systemUUID) if systemUUID else ""
 
 
@@ -670,9 +666,9 @@ class OpsiClient(Host):
 	sub_classes: dict[str, type] = {}
 	foreign_id_attributes = Host.foreign_id_attributes + ["clientId"]
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		opsiHostKey: str | None = None,
 		description: str | None = None,
 		notes: str | None = None,
@@ -684,12 +680,11 @@ class OpsiClient(Host):
 		lastSeen: str | None = None,
 		systemUUID: str | None = None,
 	) -> None:
-
 		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber, systemUUID)
-		self.opsiHostKey: str | None = None  # pylint: disable=invalid-name
-		self.created: str | None = None  # pylint: disable=invalid-name
-		self.lastSeen: str | None = None  # pylint: disable=invalid-name
-		self.oneTimePassword: str | None = None  # pylint: disable=invalid-name
+		self.opsiHostKey: str | None = None
+		self.created: str | None = None
+		self.lastSeen: str | None = None
+		self.oneTimePassword: str | None = None
 
 		if opsiHostKey is not None:
 			self.setOpsiHostKey(opsiHostKey)
@@ -709,41 +704,41 @@ class OpsiClient(Host):
 		if self.lastSeen is None:
 			self.setLastSeen(timestamp())
 
-	def getLastSeen(self) -> str | None:  # pylint: disable=invalid-name
+	def getLastSeen(self) -> str | None:
 		return self.lastSeen
 
-	def setLastSeen(self, lastSeen: str) -> None:  # pylint: disable=invalid-name
+	def setLastSeen(self, lastSeen: str) -> None:
 		self.lastSeen = forceOpsiTimestamp(lastSeen)
 
-	def getCreated(self) -> str | None:  # pylint: disable=invalid-name
+	def getCreated(self) -> str | None:
 		return self.created
 
-	def setCreated(self, created: str) -> None:  # pylint: disable=invalid-name
+	def setCreated(self, created: str) -> None:
 		self.created = forceOpsiTimestamp(created)
 
-	def getOpsiHostKey(self) -> str | None:  # pylint: disable=invalid-name
+	def getOpsiHostKey(self) -> str | None:
 		return self.opsiHostKey
 
-	def setOpsiHostKey(self, opsiHostKey: str) -> None:  # pylint: disable=invalid-name
+	def setOpsiHostKey(self, opsiHostKey: str) -> None:
 		self.opsiHostKey = forceOpsiHostKey(opsiHostKey)
 
-	def getOneTimePassword(self) -> str | None:  # pylint: disable=invalid-name
+	def getOneTimePassword(self) -> str | None:
 		return self.oneTimePassword
 
-	def setOneTimePassword(self, oneTimePassword: str) -> None:  # pylint: disable=invalid-name
+	def setOneTimePassword(self, oneTimePassword: str) -> None:
 		self.oneTimePassword = forceString(oneTimePassword)
 
 
 Host.sub_classes["OpsiClient"] = OpsiClient
 
 
-class OpsiDepotserver(Host):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class OpsiDepotserver(Host):
 	sub_classes: dict[str, type] = {}
 	foreign_id_attributes = Host.foreign_id_attributes + ["depotId"]
 
-	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		opsiHostKey: str | None = None,
 		depotLocalUrl: str | None = None,
 		depotRemoteUrl: str | None = None,
@@ -763,21 +758,20 @@ class OpsiDepotserver(Host):  # pylint: disable=too-many-instance-attributes,too
 		workbenchRemoteUrl: str | None = None,
 		systemUUID: str | None = None,
 	) -> None:
-
 		Host.__init__(self, id, description, notes, hardwareAddress, ipAddress, inventoryNumber, systemUUID)
 
-		self.opsiHostKey: str | None = None  # pylint: disable=invalid-name
-		self.depotLocalUrl: str | None = None  # pylint: disable=invalid-name
-		self.depotRemoteUrl: str | None = None  # pylint: disable=invalid-name
-		self.depotWebdavUrl: str | None = None  # pylint: disable=invalid-name
-		self.repositoryLocalUrl: str | None = None  # pylint: disable=invalid-name
-		self.repositoryRemoteUrl: str | None = None  # pylint: disable=invalid-name
-		self.networkAddress: str | None = None  # pylint: disable=invalid-name
-		self.maxBandwidth: int | None = None  # pylint: disable=invalid-name
-		self.isMasterDepot: bool | None = None  # pylint: disable=invalid-name
-		self.masterDepotId: str | None = None  # pylint: disable=invalid-name
-		self.workbenchLocalUrl: str | None = None  # pylint: disable=invalid-name
-		self.workbenchRemoteUrl: str | None = None  # pylint: disable=invalid-name
+		self.opsiHostKey: str | None = None
+		self.depotLocalUrl: str | None = None
+		self.depotRemoteUrl: str | None = None
+		self.depotWebdavUrl: str | None = None
+		self.repositoryLocalUrl: str | None = None
+		self.repositoryRemoteUrl: str | None = None
+		self.networkAddress: str | None = None
+		self.maxBandwidth: int | None = None
+		self.isMasterDepot: bool | None = None
+		self.masterDepotId: str | None = None
+		self.workbenchLocalUrl: str | None = None
+		self.workbenchRemoteUrl: str | None = None
 
 		if opsiHostKey is not None:
 			self.setOpsiHostKey(opsiHostKey)
@@ -811,80 +805,80 @@ class OpsiDepotserver(Host):  # pylint: disable=too-many-instance-attributes,too
 		if self.isMasterDepot is None:
 			self.setIsMasterDepot(True)
 
-	def getOpsiHostKey(self) -> str | None:  # pylint: disable=invalid-name
+	def getOpsiHostKey(self) -> str | None:
 		return self.opsiHostKey
 
-	def setOpsiHostKey(self, opsiHostKey: str) -> None:  # pylint: disable=invalid-name
+	def setOpsiHostKey(self, opsiHostKey: str) -> None:
 		self.opsiHostKey = forceOpsiHostKey(opsiHostKey)
 
-	def getDepotLocalUrl(self) -> str | None:  # pylint: disable=invalid-name
+	def getDepotLocalUrl(self) -> str | None:
 		return self.depotLocalUrl
 
-	def setDepotLocalUrl(self, depotLocalUrl: str) -> None:  # pylint: disable=invalid-name
+	def setDepotLocalUrl(self, depotLocalUrl: str) -> None:
 		self.depotLocalUrl = forceUrl(depotLocalUrl)
 
-	def getDepotRemoteUrl(self) -> str | None:  # pylint: disable=invalid-name
+	def getDepotRemoteUrl(self) -> str | None:
 		return self.depotRemoteUrl
 
-	def setDepotWebdavUrl(self, depotWebdavUrl: str) -> None:  # pylint: disable=invalid-name
+	def setDepotWebdavUrl(self, depotWebdavUrl: str) -> None:
 		self.depotWebdavUrl = forceUrl(depotWebdavUrl)
 
-	def getDepotWebdavUrl(self) -> str | None:  # pylint: disable=invalid-name
+	def getDepotWebdavUrl(self) -> str | None:
 		return self.depotWebdavUrl
 
-	def setDepotRemoteUrl(self, depotRemoteUrl: str) -> None:  # pylint: disable=invalid-name
+	def setDepotRemoteUrl(self, depotRemoteUrl: str) -> None:
 		self.depotRemoteUrl = forceUrl(depotRemoteUrl)
 
-	def getRepositoryLocalUrl(self) -> str | None:  # pylint: disable=invalid-name
+	def getRepositoryLocalUrl(self) -> str | None:
 		return self.repositoryLocalUrl
 
-	def setRepositoryLocalUrl(self, repositoryLocalUrl: str) -> None:  # pylint: disable=invalid-name
+	def setRepositoryLocalUrl(self, repositoryLocalUrl: str) -> None:
 		self.repositoryLocalUrl = forceUrl(repositoryLocalUrl)
 
-	def getRepositoryRemoteUrl(self) -> str | None:  # pylint: disable=invalid-name
+	def getRepositoryRemoteUrl(self) -> str | None:
 		return self.repositoryRemoteUrl
 
-	def setRepositoryRemoteUrl(self, repositoryRemoteUrl: str) -> None:  # pylint: disable=invalid-name
+	def setRepositoryRemoteUrl(self, repositoryRemoteUrl: str) -> None:
 		self.repositoryRemoteUrl = forceUrl(repositoryRemoteUrl)
 
-	def getNetworkAddress(self) -> str | None:  # pylint: disable=invalid-name
+	def getNetworkAddress(self) -> str | None:
 		return self.networkAddress
 
-	def setNetworkAddress(self, networkAddress: str) -> None:  # pylint: disable=invalid-name
+	def setNetworkAddress(self, networkAddress: str) -> None:
 		try:
 			self.networkAddress = forceNetworkAddress(networkAddress)
 		except ValueError as err:
 			logger.error("Failed to set network address '%s' for depot %s: %s", networkAddress, self.id, err)
 			self.networkAddress = None
 
-	def getMaxBandwidth(self) -> int | None:  # pylint: disable=invalid-name
+	def getMaxBandwidth(self) -> int | None:
 		return self.maxBandwidth
 
-	def setMaxBandwidth(self, maxBandwidth: int) -> None:  # pylint: disable=invalid-name
+	def setMaxBandwidth(self, maxBandwidth: int) -> None:
 		self.maxBandwidth = forceInt(maxBandwidth)
 
-	def setIsMasterDepot(self, isMasterDepot: bool) -> None:  # pylint: disable=invalid-name
+	def setIsMasterDepot(self, isMasterDepot: bool) -> None:
 		self.isMasterDepot = forceBool(isMasterDepot)
 
-	def getIsMasterDepot(self) -> bool | None:  # pylint: disable=invalid-name
+	def getIsMasterDepot(self) -> bool | None:
 		return self.isMasterDepot
 
-	def setMasterDepotId(self, masterDepotId: str) -> None:  # pylint: disable=invalid-name
+	def setMasterDepotId(self, masterDepotId: str) -> None:
 		self.masterDepotId = forceHostId(masterDepotId)
 
-	def getMasterDepotId(self) -> str | None:  # pylint: disable=invalid-name
+	def getMasterDepotId(self) -> str | None:
 		return self.masterDepotId
 
-	def setWorkbenchLocalUrl(self, value: str) -> None:  # pylint: disable=invalid-name
+	def setWorkbenchLocalUrl(self, value: str) -> None:
 		self.workbenchLocalUrl = forceUrl(value)
 
-	def getWorkbenchLocalUrl(self) -> str | None:  # pylint: disable=invalid-name
+	def getWorkbenchLocalUrl(self) -> str | None:
 		return self.workbenchLocalUrl
 
-	def setWorkbenchRemoteUrl(self, value: str) -> None:  # pylint: disable=invalid-name
+	def setWorkbenchRemoteUrl(self, value: str) -> None:
 		self.workbenchRemoteUrl = forceUrl(value)
 
-	def getWorkbenchRemoteUrl(self) -> str | None:  # pylint: disable=invalid-name
+	def getWorkbenchRemoteUrl(self) -> str | None:
 		return self.workbenchRemoteUrl
 
 	def __str__(self) -> str:
@@ -904,9 +898,9 @@ class OpsiConfigserver(OpsiDepotserver):
 	sub_classes: dict[str, type] = {}
 	foreign_id_attributes = OpsiDepotserver.foreign_id_attributes + ["serverId"]
 
-	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		opsiHostKey: str | None = None,
 		depotLocalUrl: str | None = None,
 		depotRemoteUrl: str | None = None,
@@ -964,20 +958,20 @@ class Config(Entity):
 	foreign_id_attributes = Entity.foreign_id_attributes + ["configId"]
 	backend_method_prefix = "config"
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin,invalid-name
+		id: str,
 		description: str | None = None,
-		possibleValues: list[Any] | None = None,  # pylint: disable=invalid-name
-		defaultValues: list[Any] | None = None,  # pylint: disable=invalid-name
+		possibleValues: list[Any] | None = None,
+		defaultValues: list[Any] | None = None,
 		editable: bool | None = None,
-		multiValue: bool | None = None,  # pylint: disable=invalid-name
+		multiValue: bool | None = None,
 	) -> None:
 		self.description: str | None = None
-		self.possibleValues: list[Any] | None = None  # pylint: disable=invalid-name
-		self.defaultValues: list[Any] | None = None  # pylint: disable=invalid-name
+		self.possibleValues: list[Any] | None = None
+		self.defaultValues: list[Any] | None = None
 		self.editable: bool | None = None
-		self.multiValue: bool | None = None  # pylint: disable=invalid-name
+		self.multiValue: bool | None = None
 
 		self.setId(id)
 		if description is not None:
@@ -1002,19 +996,19 @@ class Config(Entity):
 		if self.defaultValues is None:
 			self.defaultValues = []
 
-	def getId(self) -> str:  # pylint: disable=invalid-name
+	def getId(self) -> str:
 		return self.id
 
-	def setId(self, id: str) -> None:  # pylint: disable=redefined-builtin,invalid-name
-		self.id = forceConfigId(id)  # pylint: disable=invalid-name
+	def setId(self, id: str) -> None:
+		self.id = forceConfigId(id)
 
-	def getDescription(self) -> str | None:  # pylint: disable=invalid-name
+	def getDescription(self) -> str | None:
 		return self.description
 
-	def setDescription(self, description: str) -> None:  # pylint: disable=invalid-name
+	def setDescription(self, description: str) -> None:
 		self.description = forceString(description)
 
-	def _updateValues(self) -> None:  # pylint: disable=invalid-name
+	def _updateValues(self) -> None:
 		if self.possibleValues is None:
 			self.possibleValues = []
 
@@ -1034,30 +1028,30 @@ class Config(Entity):
 		if self.defaultValues is not None:
 			self.defaultValues.sort()
 
-	def getPossibleValues(self) -> list[Any] | None:  # pylint: disable=invalid-name
+	def getPossibleValues(self) -> list[Any] | None:
 		return self.possibleValues
 
-	def setPossibleValues(self, possibleValues: list[Any]) -> None:  # pylint: disable=invalid-name
+	def setPossibleValues(self, possibleValues: list[Any]) -> None:
 		self.possibleValues = list(set(forceList(possibleValues)))
 		self._updateValues()
 
-	def getDefaultValues(self) -> list[Any] | None:  # pylint: disable=invalid-name
+	def getDefaultValues(self) -> list[Any] | None:
 		return self.defaultValues
 
-	def setDefaultValues(self, defaultValues: list[Any]) -> None:  # pylint: disable=invalid-name
+	def setDefaultValues(self, defaultValues: list[Any]) -> None:
 		self.defaultValues = list(set(forceList(defaultValues)))
 		self._updateValues()
 
-	def getEditable(self) -> bool | None:  # pylint: disable=invalid-name
+	def getEditable(self) -> bool | None:
 		return self.editable
 
-	def setEditable(self, editable: bool) -> None:  # pylint: disable=invalid-name
+	def setEditable(self, editable: bool) -> None:
 		self.editable = forceBool(editable)
 
-	def getMultiValue(self) -> bool | None:  # pylint: disable=invalid-name
+	def getMultiValue(self) -> bool | None:
 		return self.multiValue
 
-	def setMultiValue(self, multiValue: bool) -> None:  # pylint: disable=invalid-name
+	def setMultiValue(self, multiValue: bool) -> None:
 		self.multiValue = forceBool(multiValue)
 		if self.defaultValues is not None and len(self.defaultValues) > 1:
 			self.multiValue = True
@@ -1076,16 +1070,15 @@ Entity.sub_classes["Config"] = Config
 class UnicodeConfig(Config):
 	sub_classes: dict[str, type] = {}
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		description: str = "",
 		possibleValues: list[Any] | None = None,
 		defaultValues: list[Any] | None = None,
 		editable: bool | None = None,
 		multiValue: bool | None = None,
 	) -> None:
-
 		Config.__init__(self, id, description, possibleValues, defaultValues, editable, multiValue)
 		if possibleValues is not None:
 			self.setPossibleValues(possibleValues)
@@ -1105,9 +1098,7 @@ Config.sub_classes["UnicodeConfig"] = UnicodeConfig
 class BoolConfig(Config):
 	sub_classes: dict[str, type] = {}
 
-	def __init__(
-		self, id: str, description: str | None = None, defaultValues: list[bool] | None = None  # pylint: disable=redefined-builtin
-	) -> None:
+	def __init__(self, id: str, description: str | None = None, defaultValues: list[bool] | None = None) -> None:
 		Config.__init__(self, id, description, [True, False], defaultValues, False, False)
 
 	def setDefaults(self) -> None:
@@ -1115,7 +1106,7 @@ class BoolConfig(Config):
 			self.defaultValues = [False]
 		Config.setDefaults(self)
 
-	def setPossibleValues(self, possibleValues: list[bool]) -> None:  # pylint: disable=unused-argument
+	def setPossibleValues(self, possibleValues: list[bool]) -> None:
 		Config.setPossibleValues(self, [True, False])
 
 	def setDefaultValues(self, defaultValues: list[bool]) -> None:
@@ -1135,7 +1126,7 @@ class ConfigState(Relationship):
 	sub_classes: dict[str, type] = {}
 	backend_method_prefix = "configState"
 
-	def __init__(self, configId: str, objectId: str, values: list[Any] | None = None) -> None:  # pylint: disable=invalid-name
+	def __init__(self, configId: str, objectId: str, values: list[Any] | None = None) -> None:
 		self.values: list[Any] | None = None
 		self.setConfigId(configId)
 		self.setObjectId(objectId)
@@ -1148,22 +1139,22 @@ class ConfigState(Relationship):
 		if self.values is None:
 			self.setValues([])
 
-	def getObjectId(self) -> str:  # pylint: disable=invalid-name
+	def getObjectId(self) -> str:
 		return self.objectId
 
-	def setObjectId(self, objectId: str) -> None:  # pylint: disable=invalid-name
-		self.objectId = forceObjectId(objectId)  # pylint: disable=invalid-name
+	def setObjectId(self, objectId: str) -> None:
+		self.objectId = forceObjectId(objectId)
 
-	def getConfigId(self) -> str:  # pylint: disable=invalid-name
+	def getConfigId(self) -> str:
 		return self.configId
 
-	def setConfigId(self, configId: str) -> None:  # pylint: disable=invalid-name
-		self.configId = forceConfigId(configId)  # pylint: disable=invalid-name
+	def setConfigId(self, configId: str) -> None:
+		self.configId = forceConfigId(configId)
 
-	def getValues(self) -> list[Any] | None:  # pylint: disable=invalid-name
+	def getValues(self) -> list[Any] | None:
 		return self.values
 
-	def setValues(self, values: list[Any]) -> None:  # pylint: disable=invalid-name
+	def setValues(self, values: list[Any]) -> None:
 		self.values = sorted(forceList(values), key=lambda x: (x is None, x))
 
 	def __str__(self) -> str:
@@ -1173,48 +1164,47 @@ class ConfigState(Relationship):
 Relationship.sub_classes["ConfigState"] = ConfigState
 
 
-class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class Product(Entity):
 	sub_classes: dict[str, type] = {}
 	foreign_id_attributes = Entity.foreign_id_attributes + ["productId"]
 	backend_method_prefix = "product"
 
-	# pylint: disable=too-many-arguments,too-many-instance-attributes,too-many-public-methods,too-many-locals,too-many-branches
 	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin,invalid-name
-		productVersion: str,  # pylint: disable=invalid-name
-		packageVersion: str,  # pylint: disable=invalid-name
+		id: str,
+		productVersion: str,
+		packageVersion: str,
 		name: str | None = None,
-		licenseRequired: bool | None = None,  # pylint: disable=invalid-name
-		setupScript: str | None = None,  # pylint: disable=invalid-name
-		uninstallScript: str | None = None,  # pylint: disable=invalid-name
-		updateScript: str | None = None,  # pylint: disable=invalid-name
-		alwaysScript: str | None = None,  # pylint: disable=invalid-name
-		onceScript: str | None = None,  # pylint: disable=invalid-name
-		customScript: str | None = None,  # pylint: disable=invalid-name
-		userLoginScript: str | None = None,  # pylint: disable=invalid-name
-		priority: int | None = None,  # pylint: disable=invalid-name
+		licenseRequired: bool | None = None,
+		setupScript: str | None = None,
+		uninstallScript: str | None = None,
+		updateScript: str | None = None,
+		alwaysScript: str | None = None,
+		onceScript: str | None = None,
+		customScript: str | None = None,
+		userLoginScript: str | None = None,
+		priority: int | None = None,
 		description: str | None = None,
 		advice: str | None = None,
-		changelog: str | None = None,  # pylint: disable=invalid-name
-		productClassIds: list[str] | None = None,  # pylint: disable=invalid-name
-		windowsSoftwareIds: list[str] | None = None,  # pylint: disable=invalid-name
+		changelog: str | None = None,
+		productClassIds: list[str] | None = None,
+		windowsSoftwareIds: list[str] | None = None,
 	):
 		self.name: str | None = None
-		self.licenseRequired: bool | None = None  # pylint: disable=invalid-name
-		self.setupScript: str | None = None  # pylint: disable=invalid-name
-		self.uninstallScript: str | None = None  # pylint: disable=invalid-name
-		self.updateScript: str | None = None  # pylint: disable=invalid-name
-		self.alwaysScript: str | None = None  # pylint: disable=invalid-name
-		self.onceScript: str | None = None  # pylint: disable=invalid-name
-		self.customScript: str | None = None  # pylint: disable=invalid-name
-		self.userLoginScript: str | None = None  # pylint: disable=invalid-name
+		self.licenseRequired: bool | None = None
+		self.setupScript: str | None = None
+		self.uninstallScript: str | None = None
+		self.updateScript: str | None = None
+		self.alwaysScript: str | None = None
+		self.onceScript: str | None = None
+		self.customScript: str | None = None
+		self.userLoginScript: str | None = None
 		self.priority: int | None = None
 		self.description: str | None = None
 		self.advice: str | None = None
 		self.changelog: str | None = None
-		self.productClassIds: list[str] | None = None  # pylint: disable=invalid-name
-		self.windowsSoftwareIds: list[str] | None = None  # pylint: disable=invalid-name
+		self.productClassIds: list[str] | None = None
+		self.windowsSoftwareIds: list[str] | None = None
 		self.setId(id)
 		self.setProductVersion(productVersion)
 		self.setPackageVersion(packageVersion)
@@ -1250,7 +1240,7 @@ class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-
 		if windowsSoftwareIds is not None:
 			self.setWindowsSoftwareIds(windowsSoftwareIds)
 
-	def setDefaults(self) -> None:  # pylint: disable=too-many-branches
+	def setDefaults(self) -> None:
 		Entity.setDefaults(self)
 		if self.name is None:
 			self.setName("")
@@ -1283,117 +1273,117 @@ class Product(Entity):  # pylint: disable=too-many-instance-attributes,too-many-
 		if self.windowsSoftwareIds is None:
 			self.setWindowsSoftwareIds([])
 
-	def getId(self) -> str:  # pylint: disable=invalid-name
+	def getId(self) -> str:
 		return self.id
 
-	def setId(self, id: str) -> None:  # pylint: disable=redefined-builtin,invalid-name
-		self.id = forceProductId(id)  # pylint: disable=invalid-name
+	def setId(self, id: str) -> None:
+		self.id = forceProductId(id)
 
-	def getProductVersion(self) -> str:  # pylint: disable=invalid-name
+	def getProductVersion(self) -> str:
 		return self.productVersion
 
-	def setProductVersion(self, productVersion: str) -> None:  # pylint: disable=invalid-name
-		self.productVersion = forceProductVersion(productVersion)  # pylint: disable=invalid-name
+	def setProductVersion(self, productVersion: str) -> None:
+		self.productVersion = forceProductVersion(productVersion)
 
-	def getPackageVersion(self) -> str:  # pylint: disable=invalid-name
+	def getPackageVersion(self) -> str:
 		return self.packageVersion
 
-	def setPackageVersion(self, packageVersion: str) -> None:  # pylint: disable=invalid-name
-		self.packageVersion = forcePackageVersion(packageVersion)  # pylint: disable=invalid-name
+	def setPackageVersion(self, packageVersion: str) -> None:
+		self.packageVersion = forcePackageVersion(packageVersion)
 
 	@property
 	def version(self) -> str | None:
 		return combine_versions(self)
 
-	def getName(self) -> str | None:  # pylint: disable=invalid-name
+	def getName(self) -> str | None:
 		return self.name
 
-	def setName(self, name: str) -> None:  # pylint: disable=invalid-name
+	def setName(self, name: str) -> None:
 		self.name = forceString(name)
 
-	def getLicenseRequired(self) -> bool | None:  # pylint: disable=invalid-name
+	def getLicenseRequired(self) -> bool | None:
 		return self.licenseRequired
 
-	def setLicenseRequired(self, licenseRequired: bool) -> None:  # pylint: disable=invalid-name
+	def setLicenseRequired(self, licenseRequired: bool) -> None:
 		self.licenseRequired = forceBool(licenseRequired)
 
-	def getSetupScript(self) -> str | None:  # pylint: disable=invalid-name
+	def getSetupScript(self) -> str | None:
 		return self.setupScript
 
-	def setSetupScript(self, setupScript: str) -> None:  # pylint: disable=invalid-name
+	def setSetupScript(self, setupScript: str) -> None:
 		self.setupScript = forceFilename(setupScript)
 
-	def getUninstallScript(self) -> str | None:  # pylint: disable=invalid-name
+	def getUninstallScript(self) -> str | None:
 		return self.uninstallScript
 
-	def setUninstallScript(self, uninstallScript: str) -> None:  # pylint: disable=invalid-name
+	def setUninstallScript(self, uninstallScript: str) -> None:
 		self.uninstallScript = forceFilename(uninstallScript)
 
-	def getUpdateScript(self) -> str | None:  # pylint: disable=invalid-name
+	def getUpdateScript(self) -> str | None:
 		return self.updateScript
 
-	def setUpdateScript(self, updateScript: str) -> None:  # pylint: disable=invalid-name
+	def setUpdateScript(self, updateScript: str) -> None:
 		self.updateScript = forceFilename(updateScript)
 
-	def getAlwaysScript(self) -> str | None:  # pylint: disable=invalid-name
+	def getAlwaysScript(self) -> str | None:
 		return self.alwaysScript
 
-	def setAlwaysScript(self, alwaysScript: str) -> None:  # pylint: disable=invalid-name
+	def setAlwaysScript(self, alwaysScript: str) -> None:
 		self.alwaysScript = forceFilename(alwaysScript)
 
-	def getOnceScript(self) -> str | None:  # pylint: disable=invalid-name
+	def getOnceScript(self) -> str | None:
 		return self.onceScript
 
-	def setOnceScript(self, onceScript: str) -> None:  # pylint: disable=invalid-name
+	def setOnceScript(self, onceScript: str) -> None:
 		self.onceScript = forceFilename(onceScript)
 
-	def getCustomScript(self) -> str | None:  # pylint: disable=invalid-name
+	def getCustomScript(self) -> str | None:
 		return self.customScript
 
-	def setCustomScript(self, customScript: str) -> None:  # pylint: disable=invalid-name
+	def setCustomScript(self, customScript: str) -> None:
 		self.customScript = forceFilename(customScript)
 
-	def getUserLoginScript(self) -> str | None:  # pylint: disable=invalid-name
+	def getUserLoginScript(self) -> str | None:
 		return self.userLoginScript
 
-	def setUserLoginScript(self, userLoginScript: str) -> None:  # pylint: disable=invalid-name
+	def setUserLoginScript(self, userLoginScript: str) -> None:
 		self.userLoginScript = forceFilename(userLoginScript)
 
-	def getPriority(self) -> int | None:  # pylint: disable=invalid-name
+	def getPriority(self) -> int | None:
 		return self.priority
 
-	def setPriority(self, priority: int) -> None:  # pylint: disable=invalid-name
+	def setPriority(self, priority: int) -> None:
 		self.priority = forceProductPriority(priority)
 
-	def getDescription(self) -> str | None:  # pylint: disable=invalid-name
+	def getDescription(self) -> str | None:
 		return self.description
 
-	def setDescription(self, description: str) -> None:  # pylint: disable=invalid-name
+	def setDescription(self, description: str) -> None:
 		self.description = forceString(description)
 
-	def getAdvice(self) -> str | None:  # pylint: disable=invalid-name
+	def getAdvice(self) -> str | None:
 		return self.advice
 
-	def setAdvice(self, advice: str) -> None:  # pylint: disable=invalid-name
+	def setAdvice(self, advice: str) -> None:
 		self.advice = forceString(advice)
 
-	def getChangelog(self) -> str | None:  # pylint: disable=invalid-name
+	def getChangelog(self) -> str | None:
 		return self.changelog
 
-	def setChangelog(self, changelog: str) -> None:  # pylint: disable=invalid-name
+	def setChangelog(self, changelog: str) -> None:
 		self.changelog = forceString(changelog)
 
-	def getProductClassIds(self) -> list[str] | None:  # pylint: disable=invalid-name
+	def getProductClassIds(self) -> list[str] | None:
 		return self.productClassIds
 
-	def setProductClassIds(self, productClassIds: list[str]) -> None:  # pylint: disable=invalid-name
+	def setProductClassIds(self, productClassIds: list[str]) -> None:
 		self.productClassIds = forceStringList(productClassIds)
 		self.productClassIds.sort()
 
-	def getWindowsSoftwareIds(self) -> list[str] | None:  # pylint: disable=invalid-name
+	def getWindowsSoftwareIds(self) -> list[str] | None:
 		return self.windowsSoftwareIds
 
-	def setWindowsSoftwareIds(self, windowsSoftwareIds: list[str]) -> None:  # pylint: disable=invalid-name
+	def setWindowsSoftwareIds(self, windowsSoftwareIds: list[str]) -> None:
 		self.windowsSoftwareIds = forceStringList(windowsSoftwareIds)
 		self.windowsSoftwareIds.sort()
 
@@ -1410,9 +1400,9 @@ Entity.sub_classes["Product"] = Product
 class LocalbootProduct(Product):
 	sub_classes: dict[str, type] = {}
 
-	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		productVersion: str,
 		packageVersion: str,
 		name: str | None = None,
@@ -1431,7 +1421,6 @@ class LocalbootProduct(Product):
 		productClassIds: list[str] | None = None,
 		windowsSoftwareIds: list[str] | None = None,
 	):
-
 		Product.__init__(
 			self,
 			id,
@@ -1464,9 +1453,9 @@ Product.sub_classes["LocalbootProduct"] = LocalbootProduct
 class NetbootProduct(Product):
 	sub_classes: dict[str, type] = {}
 
-	def __init__(  # pylint: disable=too-many-arguments,too-many-locals
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		productVersion: str,
 		packageVersion: str,
 		name: str | None = None,
@@ -1485,7 +1474,6 @@ class NetbootProduct(Product):
 		windowsSoftwareIds: list[str] | None = None,
 		pxeConfigTemplate: str = "",
 	) -> None:
-
 		Product.__init__(
 			self,
 			id,
@@ -1507,16 +1495,16 @@ class NetbootProduct(Product):
 			productClassIds,
 			windowsSoftwareIds,
 		)
-		self.pxeConfigTemplate: str | None = None  # pylint: disable=invalid-name
+		self.pxeConfigTemplate: str | None = None
 		self.setPxeConfigTemplate(pxeConfigTemplate)
 
 	def setDefaults(self) -> None:
 		Product.setDefaults(self)
 
-	def getPxeConfigTemplate(self) -> str | None:  # pylint: disable=invalid-name
+	def getPxeConfigTemplate(self) -> str | None:
 		return self.pxeConfigTemplate
 
-	def setPxeConfigTemplate(self, pxeConfigTemplate: str) -> None:  # pylint: disable=invalid-name
+	def setPxeConfigTemplate(self, pxeConfigTemplate: str) -> None:
 		self.pxeConfigTemplate = None
 		if pxeConfigTemplate:
 			self.pxeConfigTemplate = forceFilename(pxeConfigTemplate)
@@ -1527,27 +1515,27 @@ class NetbootProduct(Product):
 Product.sub_classes["NetbootProduct"] = NetbootProduct
 
 
-class ProductProperty(Entity):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class ProductProperty(Entity):
 	sub_classes: dict[str, type] = {}
 	backend_method_prefix = "productProperty"
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		productId: str,  # pylint: disable=invalid-name
-		productVersion: str,  # pylint: disable=invalid-name
-		packageVersion: str,  # pylint: disable=invalid-name
-		propertyId: str,  # pylint: disable=invalid-name
+		productId: str,
+		productVersion: str,
+		packageVersion: str,
+		propertyId: str,
 		description: str | None = None,
-		possibleValues: list[Any] | None = None,  # pylint: disable=invalid-name
-		defaultValues: list[Any] | None = None,  # pylint: disable=invalid-name
+		possibleValues: list[Any] | None = None,
+		defaultValues: list[Any] | None = None,
 		editable: bool | None = None,
-		multiValue: bool | None = None,  # pylint: disable=invalid-name
+		multiValue: bool | None = None,
 	):
 		self.description: str | None = None
-		self.possibleValues: list[Any] | None = None  # pylint: disable=invalid-name
-		self.defaultValues: list[Any] | None = None  # pylint: disable=invalid-name
+		self.possibleValues: list[Any] | None = None
+		self.defaultValues: list[Any] | None = None
 		self.editable: bool | None = None
-		self.multiValue: bool | None = None  # pylint: disable=invalid-name
+		self.multiValue: bool | None = None
 		self.setProductId(productId)
 		self.setProductVersion(productVersion)
 		self.setPackageVersion(packageVersion)
@@ -1577,37 +1565,37 @@ class ProductProperty(Entity):  # pylint: disable=too-many-instance-attributes,t
 		if self.multiValue is None:
 			self.setMultiValue(False)
 
-	def getProductId(self) -> str:  # pylint: disable=invalid-name
+	def getProductId(self) -> str:
 		return self.productId
 
-	def setProductId(self, productId: str) -> None:  # pylint: disable=invalid-name
-		self.productId = forceProductId(productId)  # pylint: disable=invalid-name
+	def setProductId(self, productId: str) -> None:
+		self.productId = forceProductId(productId)
 
-	def getProductVersion(self) -> str:  # pylint: disable=invalid-name
+	def getProductVersion(self) -> str:
 		return self.productVersion
 
-	def setProductVersion(self, productVersion: str) -> None:  # pylint: disable=invalid-name
-		self.productVersion = forceProductVersion(productVersion)  # pylint: disable=invalid-name
+	def setProductVersion(self, productVersion: str) -> None:
+		self.productVersion = forceProductVersion(productVersion)
 
-	def getPackageVersion(self) -> str:  # pylint: disable=invalid-name
+	def getPackageVersion(self) -> str:
 		return self.packageVersion
 
-	def setPackageVersion(self, packageVersion: str) -> None:  # pylint: disable=invalid-name
-		self.packageVersion = forcePackageVersion(packageVersion)  # pylint: disable=invalid-name
+	def setPackageVersion(self, packageVersion: str) -> None:
+		self.packageVersion = forcePackageVersion(packageVersion)
 
-	def getPropertyId(self) -> str:  # pylint: disable=invalid-name
+	def getPropertyId(self) -> str:
 		return self.propertyId
 
-	def setPropertyId(self, propertyId: str) -> None:  # pylint: disable=invalid-name
-		self.propertyId = forceProductPropertyId(propertyId)  # pylint: disable=invalid-name
+	def setPropertyId(self, propertyId: str) -> None:
+		self.propertyId = forceProductPropertyId(propertyId)
 
-	def getDescription(self) -> str | None:  # pylint: disable=invalid-name
+	def getDescription(self) -> str | None:
 		return self.description
 
-	def setDescription(self, description: str) -> None:  # pylint: disable=invalid-name
+	def setDescription(self, description: str) -> None:
 		self.description = forceString(description)
 
-	def _updateValues(self) -> None:  # pylint: disable=invalid-name
+	def _updateValues(self) -> None:
 		if self.possibleValues is None:
 			self.possibleValues = []
 
@@ -1625,36 +1613,36 @@ class ProductProperty(Entity):  # pylint: disable=too-many-instance-attributes,t
 		if self.defaultValues is not None:
 			self.defaultValues.sort()
 
-	def getPossibleValues(self) -> list[Any] | None:  # pylint: disable=invalid-name
+	def getPossibleValues(self) -> list[Any] | None:
 		return self.possibleValues
 
-	def setPossibleValues(self, possibleValues: list[Any]) -> None:  # pylint: disable=invalid-name
+	def setPossibleValues(self, possibleValues: list[Any]) -> None:
 		self.possibleValues = list(set(forceList(possibleValues)))
 		self._updateValues()
 
-	def getDefaultValues(self) -> list[Any] | None:  # pylint: disable=invalid-name
+	def getDefaultValues(self) -> list[Any] | None:
 		return self.defaultValues
 
-	def setDefaultValues(self, defaultValues: list[Any]) -> None:  # pylint: disable=invalid-name
+	def setDefaultValues(self, defaultValues: list[Any]) -> None:
 		self.defaultValues = list(set(forceList(defaultValues)))
 		self._updateValues()
 
-	def getEditable(self) -> bool | None:  # pylint: disable=invalid-name
+	def getEditable(self) -> bool | None:
 		return self.editable
 
-	def setEditable(self, editable: bool) -> None:  # pylint: disable=invalid-name
+	def setEditable(self, editable: bool) -> None:
 		self.editable = forceBool(editable)
 
-	def getMultiValue(self) -> bool | None:  # pylint: disable=invalid-name
+	def getMultiValue(self) -> bool | None:
 		return self.multiValue
 
-	def setMultiValue(self, multiValue: bool) -> None:  # pylint: disable=invalid-name
+	def setMultiValue(self, multiValue: bool) -> None:
 		self.multiValue = forceBool(multiValue)
 		if self.defaultValues is not None and len(self.defaultValues) > 1:
 			self.multiValue = True
 
 	def __str__(self) -> str:
-		def getAttributes() -> Generator[str, None, None]:  # pylint: disable=invalid-name
+		def getAttributes() -> Generator[str, None, None]:
 			yield f"productId='{self.productId}'"
 			yield f"productVersion='{self.productVersion}'"
 			yield f"packageVersion='{self.packageVersion}'"
@@ -1679,7 +1667,7 @@ Entity.sub_classes["ProductProperty"] = ProductProperty
 class UnicodeProductProperty(ProductProperty):
 	sub_classes: dict[str, type] = {}
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
 		productId: str,
 		productVersion: str,
@@ -1691,7 +1679,6 @@ class UnicodeProductProperty(ProductProperty):
 		editable: bool | None = None,
 		multiValue: bool | None = None,
 	):
-
 		ProductProperty.__init__(
 			self, productId, productVersion, packageVersion, propertyId, description, possibleValues, defaultValues, editable, multiValue
 		)
@@ -1716,7 +1703,7 @@ ProductProperty.sub_classes["UnicodeProductProperty"] = UnicodeProductProperty
 class BoolProductProperty(ProductProperty):
 	sub_classes: dict[str, type] = {}
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
 		productId: str,
 		productVersion: str,
@@ -1725,7 +1712,6 @@ class BoolProductProperty(ProductProperty):
 		description: str | None = None,
 		defaultValues: list[Any] | None = None,
 	) -> None:
-
 		ProductProperty.__init__(
 			self, productId, productVersion, packageVersion, propertyId, description, [True, False], defaultValues, False, False
 		)
@@ -1738,7 +1724,7 @@ class BoolProductProperty(ProductProperty):
 			self.defaultValues = [False]
 		ProductProperty.setDefaults(self)
 
-	def setPossibleValues(self, possibleValues: list[Any]) -> None:  # pylint: disable=unused-argument
+	def setPossibleValues(self, possibleValues: list[Any]) -> None:
 		ProductProperty.setPossibleValues(self, [True, False])
 
 	def setDefaultValues(self, defaultValues: list[Any]) -> None:
@@ -1751,7 +1737,7 @@ class BoolProductProperty(ProductProperty):
 		self.editable = False
 
 	def __str__(self) -> str:
-		def getAttributes() -> Generator[str, None, None]:  # pylint: disable=invalid-name
+		def getAttributes() -> Generator[str, None, None]:
 			yield f"productId='{self.productId}'"
 			yield f"productVersion='{self.productVersion}'"
 			yield f"packageVersion='{self.packageVersion}'"
@@ -1768,28 +1754,28 @@ class BoolProductProperty(ProductProperty):
 ProductProperty.sub_classes["BoolProductProperty"] = BoolProductProperty
 
 
-class ProductDependency(Relationship):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class ProductDependency(Relationship):
 	sub_classes: dict[str, type] = {}
 	backend_method_prefix = "productDependency"
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		productId: str,  # pylint: disable=invalid-name
-		productVersion: str,  # pylint: disable=invalid-name
-		packageVersion: str,  # pylint: disable=invalid-name
-		productAction: str,  # pylint: disable=invalid-name
-		requiredProductId: str,  # pylint: disable=invalid-name
-		requiredProductVersion: str | None = None,  # pylint: disable=invalid-name
-		requiredPackageVersion: str | None = None,  # pylint: disable=invalid-name
-		requiredAction: str | None = None,  # pylint: disable=invalid-name
-		requiredInstallationStatus: str | None = None,  # pylint: disable=invalid-name
-		requirementType: str | None = None,  # pylint: disable=invalid-name
+		productId: str,
+		productVersion: str,
+		packageVersion: str,
+		productAction: str,
+		requiredProductId: str,
+		requiredProductVersion: str | None = None,
+		requiredPackageVersion: str | None = None,
+		requiredAction: str | None = None,
+		requiredInstallationStatus: str | None = None,
+		requirementType: str | None = None,
 	):
-		self.requiredProductVersion: str | None = None  # pylint: disable=invalid-name
-		self.requiredPackageVersion: str | None = None  # pylint: disable=invalid-name
-		self.requiredAction: str | None = None  # pylint: disable=invalid-name
-		self.requiredInstallationStatus: str | None = None  # pylint: disable=invalid-name
-		self.requirementType: str | None = None  # pylint: disable=invalid-name
+		self.requiredProductVersion: str | None = None
+		self.requiredPackageVersion: str | None = None
+		self.requiredAction: str | None = None
+		self.requiredInstallationStatus: str | None = None
+		self.requirementType: str | None = None
 
 		self.setProductId(productId)
 		self.setProductVersion(productVersion)
@@ -1811,64 +1797,64 @@ class ProductDependency(Relationship):  # pylint: disable=too-many-instance-attr
 	def setDefaults(self) -> None:
 		Relationship.setDefaults(self)
 
-	def getProductId(self) -> str:  # pylint: disable=invalid-name
+	def getProductId(self) -> str:
 		return self.productId
 
-	def setProductId(self, productId: str) -> None:  # pylint: disable=invalid-name
-		self.productId = forceProductId(productId)  # pylint: disable=invalid-name
+	def setProductId(self, productId: str) -> None:
+		self.productId = forceProductId(productId)
 
-	def getProductVersion(self) -> str:  # pylint: disable=invalid-name
+	def getProductVersion(self) -> str:
 		return self.productVersion
 
-	def setProductVersion(self, productVersion: str) -> None:  # pylint: disable=invalid-name
-		self.productVersion = forceProductVersion(productVersion)  # pylint: disable=invalid-name
+	def setProductVersion(self, productVersion: str) -> None:
+		self.productVersion = forceProductVersion(productVersion)
 
-	def getPackageVersion(self) -> str:  # pylint: disable=invalid-name
+	def getPackageVersion(self) -> str:
 		return self.packageVersion
 
-	def setPackageVersion(self, packageVersion: str) -> None:  # pylint: disable=invalid-name
-		self.packageVersion = forcePackageVersion(packageVersion)  # pylint: disable=invalid-name
+	def setPackageVersion(self, packageVersion: str) -> None:
+		self.packageVersion = forcePackageVersion(packageVersion)
 
-	def getProductAction(self) -> str:  # pylint: disable=invalid-name
+	def getProductAction(self) -> str:
 		return self.productAction
 
-	def setProductAction(self, productAction: str) -> None:  # pylint: disable=invalid-name
-		self.productAction = forceActionRequest(productAction)  # pylint: disable=invalid-name
+	def setProductAction(self, productAction: str) -> None:
+		self.productAction = forceActionRequest(productAction)
 
-	def getRequiredProductId(self) -> str | None:  # pylint: disable=invalid-name
+	def getRequiredProductId(self) -> str | None:
 		return self.requiredProductId
 
-	def setRequiredProductId(self, requiredProductId: str) -> None:  # pylint: disable=invalid-name
-		self.requiredProductId = forceProductId(requiredProductId)  # pylint: disable=invalid-name
+	def setRequiredProductId(self, requiredProductId: str) -> None:
+		self.requiredProductId = forceProductId(requiredProductId)
 
-	def getRequiredProductVersion(self) -> str | None:  # pylint: disable=invalid-name
+	def getRequiredProductVersion(self) -> str | None:
 		return self.requiredProductVersion
 
-	def setRequiredProductVersion(self, requiredProductVersion: str) -> None:  # pylint: disable=invalid-name
+	def setRequiredProductVersion(self, requiredProductVersion: str) -> None:
 		self.requiredProductVersion = forceProductVersion(requiredProductVersion)
 
-	def getRequiredPackageVersion(self) -> str | None:  # pylint: disable=invalid-name
+	def getRequiredPackageVersion(self) -> str | None:
 		return self.requiredPackageVersion
 
-	def setRequiredPackageVersion(self, requiredPackageVersion: str) -> None:  # pylint: disable=invalid-name
+	def setRequiredPackageVersion(self, requiredPackageVersion: str) -> None:
 		self.requiredPackageVersion = forcePackageVersion(requiredPackageVersion)
 
-	def getRequiredAction(self) -> str | None:  # pylint: disable=invalid-name
+	def getRequiredAction(self) -> str | None:
 		return self.requiredAction
 
-	def setRequiredAction(self, requiredAction: str) -> None:  # pylint: disable=invalid-name
+	def setRequiredAction(self, requiredAction: str) -> None:
 		self.requiredAction = forceActionRequest(requiredAction)
 
-	def getRequiredInstallationStatus(self) -> str | None:  # pylint: disable=invalid-name
+	def getRequiredInstallationStatus(self) -> str | None:
 		return self.requiredInstallationStatus
 
-	def setRequiredInstallationStatus(self, requiredInstallationStatus: str) -> None:  # pylint: disable=invalid-name
+	def setRequiredInstallationStatus(self, requiredInstallationStatus: str) -> None:
 		self.requiredInstallationStatus = forceInstallationStatus(requiredInstallationStatus)
 
-	def getRequirementType(self) -> str | None:  # pylint: disable=invalid-name
+	def getRequirementType(self) -> str | None:
 		return self.requirementType
 
-	def setRequirementType(self, requirementType: str) -> None:  # pylint: disable=invalid-name
+	def setRequirementType(self, requirementType: str) -> None:
 		self.requirementType = forceRequirementType(requirementType)
 
 	def __str__(self) -> str:
@@ -1886,14 +1872,14 @@ class ProductOnDepot(Relationship):
 	sub_classes: dict[str, type] = {}
 	backend_method_prefix = "productOnDepot"
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		productId: str,  # pylint: disable=invalid-name
-		productType: str,  # pylint: disable=invalid-name
-		productVersion: str,  # pylint: disable=invalid-name
-		packageVersion: str,  # pylint: disable=invalid-name
-		depotId: str,  # pylint: disable=invalid-name
-		locked: bool | None = None,  # pylint: disable=invalid-name
+		productId: str,
+		productType: str,
+		productVersion: str,
+		packageVersion: str,
+		depotId: str,
+		locked: bool | None = None,
 	):
 		self.locked: bool | None = None
 
@@ -1911,80 +1897,80 @@ class ProductOnDepot(Relationship):
 		if self.locked is None:
 			self.setLocked(False)
 
-	def getProductId(self) -> str:  # pylint: disable=invalid-name
+	def getProductId(self) -> str:
 		return self.productId
 
-	def setProductId(self, productId: str) -> None:  # pylint: disable=invalid-name
-		self.productId = forceProductId(productId)  # pylint: disable=invalid-name
+	def setProductId(self, productId: str) -> None:
+		self.productId = forceProductId(productId)
 
-	def getProductType(self) -> str | None:  # pylint: disable=invalid-name
+	def getProductType(self) -> str | None:
 		return self.productType
 
-	def setProductType(self, productType: str) -> None:  # pylint: disable=invalid-name
-		self.productType = forceProductType(productType)  # pylint: disable=invalid-name
+	def setProductType(self, productType: str) -> None:
+		self.productType = forceProductType(productType)
 
-	def getProductVersion(self) -> str | None:  # pylint: disable=invalid-name
+	def getProductVersion(self) -> str | None:
 		return self.productVersion
 
-	def setProductVersion(self, productVersion: str) -> None:  # pylint: disable=invalid-name
-		self.productVersion = forceProductVersion(productVersion)  # pylint: disable=invalid-name
+	def setProductVersion(self, productVersion: str) -> None:
+		self.productVersion = forceProductVersion(productVersion)
 
-	def getPackageVersion(self) -> str | None:  # pylint: disable=invalid-name
+	def getPackageVersion(self) -> str | None:
 		return self.packageVersion
 
-	def setPackageVersion(self, packageVersion: str) -> None:  # pylint: disable=invalid-name
-		self.packageVersion = forcePackageVersion(packageVersion)  # pylint: disable=invalid-name
+	def setPackageVersion(self, packageVersion: str) -> None:
+		self.packageVersion = forcePackageVersion(packageVersion)
 
 	@property
 	def version(self) -> str:
 		return combine_versions(self)
 
-	def getDepotId(self) -> str:  # pylint: disable=invalid-name
+	def getDepotId(self) -> str:
 		return self.depotId
 
-	def setDepotId(self, depotId: str) -> None:  # pylint: disable=invalid-name
-		self.depotId = forceHostId(depotId)  # pylint: disable=invalid-name
+	def setDepotId(self, depotId: str) -> None:
+		self.depotId = forceHostId(depotId)
 
-	def getLocked(self) -> bool | None:  # pylint: disable=invalid-name
+	def getLocked(self) -> bool | None:
 		return self.locked
 
-	def setLocked(self, locked: bool) -> None:  # pylint: disable=invalid-name
+	def setLocked(self, locked: bool) -> None:
 		self.locked = forceBool(locked)
 
 
 Relationship.sub_classes["ProductOnDepot"] = ProductOnDepot
 
 
-class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class ProductOnClient(Relationship):
 	sub_classes: dict[str, type] = {}
 	backend_method_prefix = "productOnClient"
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		productId: str,  # pylint: disable=invalid-name
-		productType: str,  # pylint: disable=invalid-name
-		clientId: str,  # pylint: disable=invalid-name
-		targetConfiguration: str | None = None,  # pylint: disable=invalid-name
-		installationStatus: str | None = None,  # pylint: disable=invalid-name
-		actionRequest: str | None = None,  # pylint: disable=invalid-name
-		lastAction: str | None = None,  # pylint: disable=invalid-name
-		actionProgress: str | None = None,  # pylint: disable=invalid-name
-		actionResult: str | None = None,  # pylint: disable=invalid-name
-		productVersion: str | None = None,  # pylint: disable=invalid-name
-		packageVersion: str | None = None,  # pylint: disable=invalid-name
-		modificationTime: str | None = None,  # pylint: disable=invalid-name
-		actionSequence: int | None = None,  # pylint: disable=invalid-name
+		productId: str,
+		productType: str,
+		clientId: str,
+		targetConfiguration: str | None = None,
+		installationStatus: str | None = None,
+		actionRequest: str | None = None,
+		lastAction: str | None = None,
+		actionProgress: str | None = None,
+		actionResult: str | None = None,
+		productVersion: str | None = None,
+		packageVersion: str | None = None,
+		modificationTime: str | None = None,
+		actionSequence: int | None = None,
 	):
-		self.targetConfiguration: str | None = None  # pylint: disable=invalid-name
-		self.installationStatus: str | None = None  # pylint: disable=invalid-name
-		self.actionRequest: str | None = None  # pylint: disable=invalid-name
-		self.lastAction: str | None = None  # pylint: disable=invalid-name
-		self.actionProgress: str | None = None  # pylint: disable=invalid-name
-		self.actionResult: str | None = None  # pylint: disable=invalid-name
-		self.productVersion: str | None = None  # pylint: disable=invalid-name
-		self.packageVersion: str | None = None  # pylint: disable=invalid-name
-		self.modificationTime: str | None = None  # pylint: disable=invalid-name
-		self.actionSequence: int | None = -1  # pylint: disable=invalid-name
+		self.targetConfiguration: str | None = None
+		self.installationStatus: str | None = None
+		self.actionRequest: str | None = None
+		self.lastAction: str | None = None
+		self.actionProgress: str | None = None
+		self.actionResult: str | None = None
+		self.productVersion: str | None = None
+		self.packageVersion: str | None = None
+		self.modificationTime: str | None = None
+		self.actionSequence: int | None = -1
 
 		self.setProductId(productId)
 		self.setProductType(productType)
@@ -2020,90 +2006,90 @@ class ProductOnClient(Relationship):  # pylint: disable=too-many-instance-attrib
 		if self.modificationTime is None:
 			self.setModificationTime(timestamp())
 
-	def getProductId(self) -> str:  # pylint: disable=invalid-name
+	def getProductId(self) -> str:
 		return self.productId
 
-	def setProductId(self, productId: str) -> None:  # pylint: disable=invalid-name
-		self.productId = forceProductId(productId)  # pylint: disable=invalid-name
+	def setProductId(self, productId: str) -> None:
+		self.productId = forceProductId(productId)
 
-	def getProductType(self) -> str | None:  # pylint: disable=invalid-name
+	def getProductType(self) -> str | None:
 		return self.productType
 
-	def setProductType(self, productType: str) -> None:  # pylint: disable=invalid-name
-		self.productType = forceProductType(productType)  # pylint: disable=invalid-name
+	def setProductType(self, productType: str) -> None:
+		self.productType = forceProductType(productType)
 
-	def getClientId(self) -> str:  # pylint: disable=invalid-name
+	def getClientId(self) -> str:
 		return self.clientId
 
-	def setClientId(self, clientId: str) -> None:  # pylint: disable=invalid-name
-		self.clientId = forceHostId(clientId)  # pylint: disable=invalid-name
+	def setClientId(self, clientId: str) -> None:
+		self.clientId = forceHostId(clientId)
 
-	def getTargetConfiguration(self) -> str | None:  # pylint: disable=invalid-name
+	def getTargetConfiguration(self) -> str | None:
 		return self.targetConfiguration
 
-	def setTargetConfiguration(self, targetConfiguration: str) -> None:  # pylint: disable=invalid-name
+	def setTargetConfiguration(self, targetConfiguration: str) -> None:
 		self.targetConfiguration = forceProductTargetConfiguration(targetConfiguration)
 
-	def getInstallationStatus(self) -> str | None:  # pylint: disable=invalid-name
+	def getInstallationStatus(self) -> str | None:
 		return self.installationStatus
 
-	def setInstallationStatus(self, installationStatus: str) -> None:  # pylint: disable=invalid-name
+	def setInstallationStatus(self, installationStatus: str) -> None:
 		self.installationStatus = forceInstallationStatus(installationStatus)
 
-	def getActionRequest(self) -> str | None:  # pylint: disable=invalid-name
+	def getActionRequest(self) -> str | None:
 		return self.actionRequest
 
-	def setActionRequest(self, actionRequest: str) -> None:  # pylint: disable=invalid-name
+	def setActionRequest(self, actionRequest: str) -> None:
 		self.actionRequest = forceActionRequest(actionRequest)
 
-	def getActionProgress(self) -> str | None:  # pylint: disable=invalid-name
+	def getActionProgress(self) -> str | None:
 		return self.actionProgress
 
-	def setActionProgress(self, actionProgress: str) -> None:  # pylint: disable=invalid-name
+	def setActionProgress(self, actionProgress: str) -> None:
 		actionProgress = forceActionProgress(actionProgress)
 		if actionProgress and len(actionProgress) > 250:
 			logger.warning("Data truncated for actionProgess")
 			actionProgress = actionProgress[:250]
 		self.actionProgress = forceActionProgress(actionProgress)
 
-	def getLastAction(self) -> str | None:  # pylint: disable=invalid-name
+	def getLastAction(self) -> str | None:
 		return self.lastAction
 
-	def setLastAction(self, lastAction: str) -> None:  # pylint: disable=invalid-name
+	def setLastAction(self, lastAction: str) -> None:
 		self.lastAction = forceActionRequest(lastAction)
 
-	def getActionResult(self) -> str | None:  # pylint: disable=invalid-name
+	def getActionResult(self) -> str | None:
 		return self.actionResult
 
-	def setActionResult(self, actionResult: str) -> None:  # pylint: disable=invalid-name
+	def setActionResult(self, actionResult: str) -> None:
 		self.actionResult = forceActionResult(actionResult)
 
-	def getProductVersion(self) -> str | None:  # pylint: disable=invalid-name
+	def getProductVersion(self) -> str | None:
 		return self.productVersion
 
-	def setProductVersion(self, productVersion: str) -> None:  # pylint: disable=invalid-name
+	def setProductVersion(self, productVersion: str) -> None:
 		self.productVersion = forceProductVersion(productVersion)
 
-	def getPackageVersion(self) -> str | None:  # pylint: disable=invalid-name
+	def getPackageVersion(self) -> str | None:
 		return self.packageVersion
 
-	def setPackageVersion(self, packageVersion: str) -> None:  # pylint: disable=invalid-name
+	def setPackageVersion(self, packageVersion: str) -> None:
 		self.packageVersion = forcePackageVersion(packageVersion)
 
 	@property
 	def version(self) -> str:
 		return combine_versions(self)
 
-	def getModificationTime(self) -> str | None:  # pylint: disable=invalid-name
+	def getModificationTime(self) -> str | None:
 		return self.modificationTime
 
-	def setModificationTime(self, modificationTime: str) -> None:  # pylint: disable=invalid-name
+	def setModificationTime(self, modificationTime: str) -> None:
 		self.modificationTime = forceOpsiTimestamp(modificationTime)
 
-	def getActionSequence(self) -> int | None:  # pylint: disable=invalid-name
+	def getActionSequence(self) -> int | None:
 		return self.actionSequence
 
-	def setActionSequence(self, actionSequence: int) -> None:  # pylint: disable=invalid-name
+	def setActionSequence(self, actionSequence: int) -> None:
 		self.actionSequence = forceInt(actionSequence)
 
 	def __str__(self) -> str:
@@ -2122,9 +2108,9 @@ class ProductPropertyState(Relationship):
 
 	def __init__(
 		self,
-		productId: str,  # pylint: disable=invalid-name
-		propertyId: str,  # pylint: disable=invalid-name
-		objectId: str,  # pylint: disable=invalid-name
+		productId: str,
+		propertyId: str,
+		objectId: str,
 		values: list[Any] | None = None,
 	) -> None:
 		self.values: list[Any] | None = None
@@ -2141,28 +2127,28 @@ class ProductPropertyState(Relationship):
 		if self.values is None:
 			self.setValues([])
 
-	def getProductId(self) -> str:  # pylint: disable=invalid-name
+	def getProductId(self) -> str:
 		return self.productId
 
-	def setProductId(self, productId: str) -> None:  # pylint: disable=invalid-name
-		self.productId = forceProductId(productId)  # pylint: disable=invalid-name
+	def setProductId(self, productId: str) -> None:
+		self.productId = forceProductId(productId)
 
-	def getObjectId(self) -> str:  # pylint: disable=invalid-name
+	def getObjectId(self) -> str:
 		return self.objectId
 
-	def setObjectId(self, objectId: str) -> None:  # pylint: disable=invalid-name
-		self.objectId = forceObjectId(objectId)  # pylint: disable=invalid-name
+	def setObjectId(self, objectId: str) -> None:
+		self.objectId = forceObjectId(objectId)
 
-	def getPropertyId(self) -> str:  # pylint: disable=invalid-name
+	def getPropertyId(self) -> str:
 		return self.propertyId
 
-	def setPropertyId(self, propertyId: str) -> None:  # pylint: disable=invalid-name
-		self.propertyId = forceProductPropertyId(propertyId)  # pylint: disable=invalid-name
+	def setPropertyId(self, propertyId: str) -> None:
+		self.propertyId = forceProductPropertyId(propertyId)
 
-	def getValues(self) -> list[Any] | None:  # pylint: disable=invalid-name
+	def getValues(self) -> list[Any] | None:
 		return self.values
 
-	def setValues(self, values: list[Any]) -> None:  # pylint: disable=invalid-name
+	def setValues(self, values: list[Any]) -> None:
 		self.values = forceList(values)
 		self.values.sort()
 
@@ -2188,13 +2174,13 @@ class Group(Object):
 
 	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		description: str | None = None,
 		notes: str | None = None,
 		parentGroupId: str | None = None,
 	) -> None:
 		Object.__init__(self, id, description, notes)
-		self.parentGroupId: str | None = None  # pylint: disable=invalid-name
+		self.parentGroupId: str | None = None
 
 		self.setId(id)
 
@@ -2207,13 +2193,13 @@ class Group(Object):
 	def getId(self) -> str:
 		return self.id
 
-	def setId(self, id: str) -> None:  # pylint: disable=redefined-builtin
+	def setId(self, id: str) -> None:
 		self.id = forceGroupId(id)
 
-	def getParentGroupId(self) -> str | None:  # pylint: disable=invalid-name
+	def getParentGroupId(self) -> str | None:
 		return self.parentGroupId
 
-	def setParentGroupId(self, parentGroupId: str) -> None:  # pylint: disable=invalid-name
+	def setParentGroupId(self, parentGroupId: str) -> None:
 		self.parentGroupId = forceGroupId(parentGroupId)
 
 	def __str__(self) -> str:
@@ -2228,7 +2214,7 @@ class HostGroup(Group):
 
 	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		description: str | None = None,
 		notes: str | None = None,
 		parentGroupId: str | None = None,
@@ -2247,7 +2233,7 @@ class ProductGroup(Group):
 
 	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		description: str | None = None,
 		notes: str | None = None,
 		parentGroupId: str | None = None,
@@ -2265,7 +2251,7 @@ class ObjectToGroup(Relationship):
 	sub_classes: dict[str, type] = {}
 	backend_method_prefix = "objectToGroup"
 
-	def __init__(self, groupType: str, groupId: str, objectId: str) -> None:  # pylint: disable=invalid-name
+	def __init__(self, groupType: str, groupId: str, objectId: str) -> None:
 		self.setGroupType(groupType)
 		self.setGroupId(groupId)
 		self.setObjectId(objectId)
@@ -2273,23 +2259,23 @@ class ObjectToGroup(Relationship):
 	def setDefaults(self) -> None:
 		Relationship.setDefaults(self)
 
-	def getGroupType(self) -> str:  # pylint: disable=invalid-name
+	def getGroupType(self) -> str:
 		return self.groupType
 
-	def setGroupType(self, groupType: str) -> None:  # pylint: disable=invalid-name
-		self.groupType = forceGroupType(groupType)  # pylint: disable=invalid-name
+	def setGroupType(self, groupType: str) -> None:
+		self.groupType = forceGroupType(groupType)
 
-	def getGroupId(self) -> str:  # pylint: disable=invalid-name
+	def getGroupId(self) -> str:
 		return self.groupId
 
-	def setGroupId(self, groupId: str) -> None:  # pylint: disable=invalid-name
-		self.groupId = forceGroupId(groupId)  # pylint: disable=invalid-name
+	def setGroupId(self, groupId: str) -> None:
+		self.groupId = forceGroupId(groupId)
 
-	def getObjectId(self) -> str:  # pylint: disable=invalid-name
+	def getObjectId(self) -> str:
 		return self.objectId
 
-	def setObjectId(self, objectId: str) -> None:  # pylint: disable=invalid-name
-		self.objectId = forceObjectId(objectId)  # pylint: disable=invalid-name
+	def setObjectId(self, objectId: str) -> None:
+		self.objectId = forceObjectId(objectId)
 
 
 Relationship.sub_classes["ObjectToGroup"] = ObjectToGroup
@@ -2300,22 +2286,22 @@ class LicenseContract(Entity):
 	foreign_id_attributes = Entity.foreign_id_attributes + ["licenseContractId"]
 	backend_method_prefix = "licenseContract"
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin,invalid-name
+		id: str,
 		description: str | None = None,
 		notes: str | None = None,
 		partner: str | None = None,
-		conclusionDate: str | None = None,  # pylint: disable=invalid-name
-		notificationDate: str | None = None,  # pylint: disable=invalid-name
-		expirationDate: str | None = None,  # pylint: disable=invalid-name
+		conclusionDate: str | None = None,
+		notificationDate: str | None = None,
+		expirationDate: str | None = None,
 	):
 		self.description: str | None = None
 		self.notes: str | None = None
 		self.partner: str | None = None
-		self.conclusionDate: str | None = None  # pylint: disable=invalid-name
-		self.notificationDate: str | None = None  # pylint: disable=invalid-name
-		self.expirationDate: str | None = None  # pylint: disable=invalid-name
+		self.conclusionDate: str | None = None
+		self.notificationDate: str | None = None
+		self.expirationDate: str | None = None
 		self.setId(id)
 
 		if description is not None:
@@ -2346,46 +2332,46 @@ class LicenseContract(Entity):
 		if self.expirationDate is None:
 			self.setExpirationDate("0000-00-00 00:00:00")
 
-	def getId(self) -> str:  # pylint: disable=invalid-name
+	def getId(self) -> str:
 		return self.id
 
-	def setId(self, id: str) -> None:  # pylint: disable=redefined-builtin,invalid-name
-		self.id = forceLicenseContractId(id)  # pylint: disable=invalid-name
+	def setId(self, id: str) -> None:
+		self.id = forceLicenseContractId(id)
 
-	def getDescription(self) -> str | None:  # pylint: disable=invalid-name
+	def getDescription(self) -> str | None:
 		return self.description
 
-	def setDescription(self, description: str) -> None:  # pylint: disable=invalid-name
+	def setDescription(self, description: str) -> None:
 		self.description = forceString(description)
 
-	def getNotes(self) -> str | None:  # pylint: disable=invalid-name
+	def getNotes(self) -> str | None:
 		return self.notes
 
-	def setNotes(self, notes: str) -> None:  # pylint: disable=invalid-name
+	def setNotes(self, notes: str) -> None:
 		self.notes = forceString(notes)
 
-	def getPartner(self) -> str | None:  # pylint: disable=invalid-name
+	def getPartner(self) -> str | None:
 		return self.partner
 
-	def setPartner(self, partner: str) -> None:  # pylint: disable=invalid-name
+	def setPartner(self, partner: str) -> None:
 		self.partner = forceString(partner)
 
-	def getConclusionDate(self) -> str | None:  # pylint: disable=invalid-name
+	def getConclusionDate(self) -> str | None:
 		return self.conclusionDate
 
-	def setConclusionDate(self, conclusionDate: str) -> None:  # pylint: disable=invalid-name
+	def setConclusionDate(self, conclusionDate: str) -> None:
 		self.conclusionDate = forceOpsiTimestamp(conclusionDate)
 
-	def getNotificationDate(self) -> str | None:  # pylint: disable=invalid-name
+	def getNotificationDate(self) -> str | None:
 		return self.notificationDate
 
-	def setNotificationDate(self, notificationDate: str) -> None:  # pylint: disable=invalid-name
+	def setNotificationDate(self, notificationDate: str) -> None:
 		self.notificationDate = forceOpsiTimestamp(notificationDate)
 
-	def getExpirationDate(self) -> str | None:  # pylint: disable=invalid-name
+	def getExpirationDate(self) -> str | None:
 		return self.expirationDate
 
-	def setExpirationDate(self, expirationDate: str) -> None:  # pylint: disable=invalid-name
+	def setExpirationDate(self, expirationDate: str) -> None:
 		self.expirationDate = forceOpsiTimestamp(expirationDate)
 
 	def __str__(self) -> str:
@@ -2413,17 +2399,17 @@ class SoftwareLicense(Entity):
 	foreign_id_attributes = Entity.foreign_id_attributes + ["softwareLicenseId"]
 	backend_method_prefix = "softwareLicense"
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin,invalid-name
-		licenseContractId: str,  # pylint: disable=invalid-name
-		maxInstallations: int | None = None,  # pylint: disable=invalid-name
-		boundToHost: str | None = None,  # pylint: disable=invalid-name
-		expirationDate: str | None = None,  # pylint: disable=invalid-name
+		id: str,
+		licenseContractId: str,
+		maxInstallations: int | None = None,
+		boundToHost: str | None = None,
+		expirationDate: str | None = None,
 	):
-		self.maxInstallations: int | None = None  # pylint: disable=invalid-name
-		self.boundToHost: str | None = None  # pylint: disable=invalid-name
-		self.expirationDate: str | None = None  # pylint: disable=invalid-name
+		self.maxInstallations: int | None = None
+		self.boundToHost: str | None = None
+		self.expirationDate: str | None = None
 		self.setId(id)
 		self.setLicenseContractId(licenseContractId)
 
@@ -2441,34 +2427,34 @@ class SoftwareLicense(Entity):
 		if self.expirationDate is None:
 			self.setExpirationDate("0000-00-00 00:00:00")
 
-	def getId(self) -> str:  # pylint: disable=invalid-name
+	def getId(self) -> str:
 		return self.id
 
-	def setId(self, id: str) -> None:  # pylint: disable=redefined-builtin,invalid-name
-		self.id = forceSoftwareLicenseId(id)  # pylint: disable=invalid-name
+	def setId(self, id: str) -> None:
+		self.id = forceSoftwareLicenseId(id)
 
-	def getLicenseContractId(self) -> str:  # pylint: disable=invalid-name
+	def getLicenseContractId(self) -> str:
 		return self.licenseContractId
 
-	def setLicenseContractId(self, licenseContractId: str) -> None:  # pylint: disable=invalid-name
-		self.licenseContractId = forceLicenseContractId(licenseContractId)  # pylint: disable=invalid-name
+	def setLicenseContractId(self, licenseContractId: str) -> None:
+		self.licenseContractId = forceLicenseContractId(licenseContractId)
 
-	def getMaxInstallations(self) -> int | None:  # pylint: disable=invalid-name
+	def getMaxInstallations(self) -> int | None:
 		return self.maxInstallations
 
-	def setMaxInstallations(self, maxInstallations: int) -> None:  # pylint: disable=invalid-name
+	def setMaxInstallations(self, maxInstallations: int) -> None:
 		self.maxInstallations = forceUnsignedInt(maxInstallations)
 
-	def getBoundToHost(self) -> str | None:  # pylint: disable=invalid-name
+	def getBoundToHost(self) -> str | None:
 		return self.boundToHost
 
-	def setBoundToHost(self, boundToHost: str) -> None:  # pylint: disable=invalid-name
+	def setBoundToHost(self, boundToHost: str) -> None:
 		self.boundToHost = forceHostId(boundToHost)
 
-	def getExpirationDate(self) -> str | None:  # pylint: disable=invalid-name
+	def getExpirationDate(self) -> str | None:
 		return self.expirationDate
 
-	def setExpirationDate(self, expirationDate: str) -> None:  # pylint: disable=invalid-name
+	def setExpirationDate(self, expirationDate: str) -> None:
 		self.expirationDate = forceOpsiTimestamp(expirationDate)
 
 	def __str__(self) -> str:
@@ -2489,15 +2475,14 @@ Entity.sub_classes["LicenseContract"] = LicenseContract
 class RetailSoftwareLicense(SoftwareLicense):
 	sub_classes: dict[str, type] = {}
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		licenseContractId: str,
 		maxInstallations: int | None = None,
 		boundToHost: str | None = None,
 		expirationDate: str | None = None,
 	) -> None:
-
 		SoftwareLicense.__init__(self, id, licenseContractId, maxInstallations, boundToHost, expirationDate)
 
 	def setDefaults(self) -> None:
@@ -2510,11 +2495,11 @@ SoftwareLicense.sub_classes["RetailSoftwareLicense"] = RetailSoftwareLicense
 class OEMSoftwareLicense(SoftwareLicense):
 	sub_classes: dict[str, type] = {}
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		licenseContractId: str,
-		maxInstallations: int | None = None,  # pylint: disable=unused-argument
+		maxInstallations: int | None = None,
 		boundToHost: str | None = None,
 		expirationDate: str | None = None,
 	) -> None:
@@ -2541,9 +2526,9 @@ SoftwareLicense.sub_classes["OEMSoftwareLicense"] = OEMSoftwareLicense
 class VolumeSoftwareLicense(SoftwareLicense):
 	sub_classes: dict[str, type] = {}
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		licenseContractId: str,
 		maxInstallations: int | None = None,
 		boundToHost: str | None = None,
@@ -2563,9 +2548,9 @@ SoftwareLicense.sub_classes["VolumeSoftwareLicense"] = VolumeSoftwareLicense
 class ConcurrentSoftwareLicense(SoftwareLicense):
 	sub_classes: dict[str, type] = {}
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		id: str,  # pylint: disable=redefined-builtin
+		id: str,
 		licenseContractId: str,
 		maxInstallations: int | None = None,
 		boundToHost: str | None = None,
@@ -2585,11 +2570,9 @@ class LicensePool(Entity):
 	foreign_id_attributes = Entity.foreign_id_attributes + ["licensePoolId"]
 	backend_method_prefix = "licensePool"
 
-	def __init__(
-		self, id: str, description: str | None = None, productIds: list[str] | None = None  # pylint: disable=redefined-builtin,invalid-name
-	):
+	def __init__(self, id: str, description: str | None = None, productIds: list[str] | None = None):
 		self.description: str | None = None
-		self.productIds: list[str] | None = None  # pylint: disable=invalid-name
+		self.productIds: list[str] | None = None
 		self.setId(id)
 
 		if description is not None:
@@ -2604,22 +2587,22 @@ class LicensePool(Entity):
 		if self.productIds is None:
 			self.setProductIds([])
 
-	def getId(self) -> str:  # pylint: disable=invalid-name
+	def getId(self) -> str:
 		return self.id
 
-	def setId(self, id: str) -> None:  # pylint: disable=redefined-builtin,invalid-name
-		self.id = forceLicensePoolId(id)  # pylint: disable=invalid-name
+	def setId(self, id: str) -> None:
+		self.id = forceLicensePoolId(id)
 
-	def getDescription(self) -> str | None:  # pylint: disable=invalid-name
+	def getDescription(self) -> str | None:
 		return self.description
 
-	def setDescription(self, description: str) -> None:  # pylint: disable=invalid-name
+	def setDescription(self, description: str) -> None:
 		self.description = forceString(description)
 
-	def getProductIds(self) -> list[str] | None:  # pylint: disable=invalid-name
+	def getProductIds(self) -> list[str] | None:
 		return self.productIds
 
-	def setProductIds(self, productIds: list[str]) -> None:  # pylint: disable=invalid-name
+	def setProductIds(self, productIds: list[str]) -> None:
 		self.productIds = forceProductIdList(productIds)
 		self.productIds.sort()
 
@@ -2641,9 +2624,7 @@ class AuditSoftwareToLicensePool(Relationship):
 	sub_classes: dict[str, type] = {}
 	backend_method_prefix = "auditSoftwareToLicensePool"
 
-	def __init__(  # pylint: disable=too-many-arguments
-		self, name: str, version: str, subVersion: str, language: str, architecture: str, licensePoolId: str  # pylint: disable=invalid-name
-	) -> None:
+	def __init__(self, name: str, version: str, subVersion: str, language: str, architecture: str, licensePoolId: str) -> None:
 		self.setName(name)
 		self.setVersion(version)
 		self.setSubVersion(subVersion)
@@ -2651,52 +2632,52 @@ class AuditSoftwareToLicensePool(Relationship):
 		self.setArchitecture(architecture)
 		self.setLicensePoolId(licensePoolId)
 
-	def getLicensePoolId(self) -> str:  # pylint: disable=invalid-name
+	def getLicensePoolId(self) -> str:
 		return self.licensePoolId
 
-	def setLicensePoolId(self, licensePoolId: str) -> None:  # pylint: disable=invalid-name
-		self.licensePoolId = forceLicensePoolId(licensePoolId)  # pylint: disable=invalid-name
+	def setLicensePoolId(self, licensePoolId: str) -> None:
+		self.licensePoolId = forceLicensePoolId(licensePoolId)
 
-	def setName(self, name: str) -> None:  # pylint: disable=invalid-name
+	def setName(self, name: str) -> None:
 		self.name = forceString(name)
 
-	def getName(self) -> str:  # pylint: disable=invalid-name
+	def getName(self) -> str:
 		return self.name
 
-	def setVersion(self, version: str) -> None:  # pylint: disable=invalid-name
+	def setVersion(self, version: str) -> None:
 		if not version:
 			self.version = ""
 		else:
 			self.version = forceStringLower(version)
 
-	def getVersion(self) -> str:  # pylint: disable=invalid-name
+	def getVersion(self) -> str:
 		return self.version
 
-	def setSubVersion(self, subVersion: str) -> None:  # pylint: disable=invalid-name
+	def setSubVersion(self, subVersion: str) -> None:
 		if not subVersion:
-			self.subVersion = ""  # pylint: disable=invalid-name
+			self.subVersion = ""
 		else:
 			self.subVersion = forceStringLower(subVersion)
 
-	def getSubVersion(self) -> str:  # pylint: disable=invalid-name
+	def getSubVersion(self) -> str:
 		return self.subVersion
 
-	def setLanguage(self, language: str) -> None:  # pylint: disable=invalid-name
+	def setLanguage(self, language: str) -> None:
 		if not language:
 			self.language = ""
 		else:
 			self.language = forceLanguageCode(language)
 
-	def getLanguage(self) -> str:  # pylint: disable=invalid-name
+	def getLanguage(self) -> str:
 		return self.language
 
-	def setArchitecture(self, architecture: str) -> None:  # pylint: disable=invalid-name
+	def setArchitecture(self, architecture: str) -> None:
 		if not architecture:
 			self.architecture = ""
 		else:
 			self.architecture = forceArchitecture(architecture)
 
-	def getArchitecture(self) -> str:  # pylint: disable=invalid-name
+	def getArchitecture(self) -> str:
 		return self.architecture
 
 	def __str__(self) -> str:
@@ -2723,8 +2704,8 @@ class SoftwareLicenseToLicensePool(Relationship):
 	sub_classes: dict[str, type] = {}
 	backend_method_prefix = "softwareLicenseToLicensePool"
 
-	def __init__(self, softwareLicenseId: str, licensePoolId: str, licenseKey: str | None = None) -> None:  # pylint: disable=invalid-name
-		self.licenseKey: str | None = None  # pylint: disable=invalid-name
+	def __init__(self, softwareLicenseId: str, licensePoolId: str, licenseKey: str | None = None) -> None:
+		self.licenseKey: str | None = None
 		self.setSoftwareLicenseId(softwareLicenseId)
 		self.setLicensePoolId(licensePoolId)
 
@@ -2737,22 +2718,22 @@ class SoftwareLicenseToLicensePool(Relationship):
 		if self.licenseKey is None:
 			self.setLicenseKey("")
 
-	def getSoftwareLicenseId(self) -> str:  # pylint: disable=invalid-name
+	def getSoftwareLicenseId(self) -> str:
 		return self.softwareLicenseId
 
-	def setSoftwareLicenseId(self, softwareLicenseId: str) -> None:  # pylint: disable=invalid-name
-		self.softwareLicenseId = forceSoftwareLicenseId(softwareLicenseId)  # pylint: disable=invalid-name
+	def setSoftwareLicenseId(self, softwareLicenseId: str) -> None:
+		self.softwareLicenseId = forceSoftwareLicenseId(softwareLicenseId)
 
-	def getLicensePoolId(self) -> str:  # pylint: disable=invalid-name
+	def getLicensePoolId(self) -> str:
 		return self.licensePoolId
 
-	def setLicensePoolId(self, licensePoolId: str) -> None:  # pylint: disable=invalid-name
-		self.licensePoolId = forceLicensePoolId(licensePoolId)  # pylint: disable=invalid-name
+	def setLicensePoolId(self, licensePoolId: str) -> None:
+		self.licensePoolId = forceLicensePoolId(licensePoolId)
 
-	def getLicenseKey(self) -> str | None:  # pylint: disable=invalid-name
+	def getLicenseKey(self) -> str | None:
 		return self.licenseKey
 
-	def setLicenseKey(self, licenseKey: str) -> None:  # pylint: disable=invalid-name
+	def setLicenseKey(self, licenseKey: str) -> None:
 		self.licenseKey = forceString(licenseKey)
 
 
@@ -2763,15 +2744,15 @@ class LicenseOnClient(Relationship):
 	sub_classes: dict[str, type] = {}
 	backend_method_prefix = "licenseOnClient"
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
-		softwareLicenseId: str,  # pylint: disable=invalid-name
-		licensePoolId: str,  # pylint: disable=invalid-name
-		clientId: str,  # pylint: disable=invalid-name
-		licenseKey: str | None = None,  # pylint: disable=invalid-name
-		notes: str | None = None,  # pylint: disable=invalid-name
+		softwareLicenseId: str,
+		licensePoolId: str,
+		clientId: str,
+		licenseKey: str | None = None,
+		notes: str | None = None,
 	):
-		self.licenseKey: str | None = None  # pylint: disable=invalid-name
+		self.licenseKey: str | None = None
 		self.notes: str | None = None
 		self.setSoftwareLicenseId(softwareLicenseId)
 		self.setLicensePoolId(licensePoolId)
@@ -2790,61 +2771,61 @@ class LicenseOnClient(Relationship):
 		if self.notes is None:
 			self.setNotes("")
 
-	def getSoftwareLicenseId(self) -> str:  # pylint: disable=invalid-name
+	def getSoftwareLicenseId(self) -> str:
 		return self.softwareLicenseId
 
-	def setSoftwareLicenseId(self, softwareLicenseId: str) -> None:  # pylint: disable=invalid-name
-		self.softwareLicenseId = forceSoftwareLicenseId(softwareLicenseId)  # pylint: disable=invalid-name
+	def setSoftwareLicenseId(self, softwareLicenseId: str) -> None:
+		self.softwareLicenseId = forceSoftwareLicenseId(softwareLicenseId)
 
-	def getLicensePoolId(self) -> str:  # pylint: disable=invalid-name
+	def getLicensePoolId(self) -> str:
 		return self.licensePoolId
 
-	def setLicensePoolId(self, licensePoolId: str) -> None:  # pylint: disable=invalid-name
-		self.licensePoolId = forceLicensePoolId(licensePoolId)  # pylint: disable=invalid-name
+	def setLicensePoolId(self, licensePoolId: str) -> None:
+		self.licensePoolId = forceLicensePoolId(licensePoolId)
 
-	def getClientId(self) -> str:  # pylint: disable=invalid-name
+	def getClientId(self) -> str:
 		return self.clientId
 
-	def setClientId(self, clientId: str) -> None:  # pylint: disable=invalid-name
-		self.clientId = forceHostId(clientId)  # pylint: disable=invalid-name
+	def setClientId(self, clientId: str) -> None:
+		self.clientId = forceHostId(clientId)
 
-	def getLicenseKey(self) -> str | None:  # pylint: disable=invalid-name
+	def getLicenseKey(self) -> str | None:
 		return self.licenseKey
 
-	def setLicenseKey(self, licenseKey: str) -> None:  # pylint: disable=invalid-name
+	def setLicenseKey(self, licenseKey: str) -> None:
 		self.licenseKey = forceString(licenseKey)
 
-	def getNotes(self) -> str | None:  # pylint: disable=invalid-name
+	def getNotes(self) -> str | None:
 		return self.notes
 
-	def setNotes(self, notes: str) -> None:  # pylint: disable=invalid-name
+	def setNotes(self, notes: str) -> None:
 		self.notes = forceString(notes)
 
 
 Relationship.sub_classes["LicenseOnClient"] = LicenseOnClient
 
 
-class AuditSoftware(Entity):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class AuditSoftware(Entity):
 	sub_classes: dict[str, type] = {}
 	foreign_id_attributes = Entity.foreign_id_attributes
 	backend_method_prefix = "auditSoftware"
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
 		name: str,
 		version: str,
-		subVersion: str,  # pylint: disable=invalid-name
+		subVersion: str,
 		language: str,
-		architecture: str,  # pylint: disable=invalid-name
-		windowsSoftwareId: str | None = None,  # pylint: disable=invalid-name
-		windowsDisplayName: str | None = None,  # pylint: disable=invalid-name
-		windowsDisplayVersion: str | None = None,  # pylint: disable=invalid-name
-		installSize: int | None = None,  # pylint: disable=invalid-name
+		architecture: str,
+		windowsSoftwareId: str | None = None,
+		windowsDisplayName: str | None = None,
+		windowsDisplayVersion: str | None = None,
+		installSize: int | None = None,
 	):
-		self.windowsSoftwareId: str | None = None  # pylint: disable=invalid-name
-		self.windowsDisplayName: str | None = None  # pylint: disable=invalid-name
-		self.windowsDisplayVersion: str | None = None  # pylint: disable=invalid-name
-		self.installSize: int | None = None  # pylint: disable=invalid-name
+		self.windowsSoftwareId: str | None = None
+		self.windowsDisplayName: str | None = None
+		self.windowsDisplayVersion: str | None = None
+		self.installSize: int | None = None
 		self.setName(name)
 		self.setVersion(version)
 		self.setSubVersion(subVersion)
@@ -2865,99 +2846,99 @@ class AuditSoftware(Entity):  # pylint: disable=too-many-instance-attributes,too
 		if self.installSize is None:
 			self.setInstallSize(0)
 
-	def setName(self, name: str) -> None:  # pylint: disable=invalid-name
+	def setName(self, name: str) -> None:
 		self.name = forceString(name)
 
-	def getName(self) -> str:  # pylint: disable=invalid-name
+	def getName(self) -> str:
 		return self.name
 
-	def setVersion(self, version: str) -> None:  # pylint: disable=invalid-name
+	def setVersion(self, version: str) -> None:
 		self.version = forceStringLower(version)
 
-	def getVersion(self) -> str:  # pylint: disable=invalid-name
+	def getVersion(self) -> str:
 		return self.version
 
-	def setSubVersion(self, subVersion: str) -> None:  # pylint: disable=invalid-name
-		self.subVersion = forceStringLower(subVersion)  # pylint: disable=invalid-name
+	def setSubVersion(self, subVersion: str) -> None:
+		self.subVersion = forceStringLower(subVersion)
 
-	def getSubVersion(self) -> str:  # pylint: disable=invalid-name
+	def getSubVersion(self) -> str:
 		return self.subVersion
 
-	def setLanguage(self, language: str) -> None:  # pylint: disable=invalid-name
+	def setLanguage(self, language: str) -> None:
 		if not language:
 			self.language = ""
 		else:
 			self.language = forceLanguageCode(language)
 
-	def getLanguage(self) -> str:  # pylint: disable=invalid-name
+	def getLanguage(self) -> str:
 		return self.language
 
-	def setArchitecture(self, architecture: str) -> None:  # pylint: disable=invalid-name
+	def setArchitecture(self, architecture: str) -> None:
 		if not architecture:
 			self.architecture = ""
 		else:
 			self.architecture = forceArchitecture(architecture)
 
-	def getArchitecture(self) -> str:  # pylint: disable=invalid-name
+	def getArchitecture(self) -> str:
 		return self.architecture
 
-	def getWindowsSoftwareId(self) -> str | None:  # pylint: disable=invalid-name
+	def getWindowsSoftwareId(self) -> str | None:
 		return self.windowsSoftwareId
 
-	def setWindowsSoftwareId(self, windowsSoftwareId: str) -> None:  # pylint: disable=invalid-name
+	def setWindowsSoftwareId(self, windowsSoftwareId: str) -> None:
 		self.windowsSoftwareId = forceStringLower(windowsSoftwareId)
 
-	def getWindowsDisplayName(self) -> str | None:  # pylint: disable=invalid-name
+	def getWindowsDisplayName(self) -> str | None:
 		return self.windowsDisplayName
 
-	def setWindowsDisplayName(self, windowsDisplayName: str) -> None:  # pylint: disable=invalid-name
+	def setWindowsDisplayName(self, windowsDisplayName: str) -> None:
 		self.windowsDisplayName = forceString(windowsDisplayName)
 
-	def getWindowsDisplayVersion(self) -> str | None:  # pylint: disable=invalid-name
+	def getWindowsDisplayVersion(self) -> str | None:
 		return self.windowsDisplayVersion
 
-	def setWindowsDisplayVersion(self, windowsDisplayVersion: str) -> None:  # pylint: disable=invalid-name
+	def setWindowsDisplayVersion(self, windowsDisplayVersion: str) -> None:
 		self.windowsDisplayVersion = forceString(windowsDisplayVersion)
 
-	def getInstallSize(self) -> int | None:  # pylint: disable=invalid-name
+	def getInstallSize(self) -> int | None:
 		return self.installSize
 
-	def setInstallSize(self, installSize: int) -> None:  # pylint: disable=invalid-name
+	def setInstallSize(self, installSize: int) -> None:
 		self.installSize = forceInt(installSize)
 
 
 Entity.sub_classes["AuditSoftware"] = AuditSoftware
 
 
-class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class AuditSoftwareOnClient(Relationship):
 	sub_classes: dict[str, type] = {}
 	backend_method_prefix = "auditSoftwareOnClient"
 
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
 		name: str,
 		version: str,
-		subVersion: str,  # pylint: disable=invalid-name
+		subVersion: str,
 		language: str,
-		architecture: str,  # pylint: disable=invalid-name
-		clientId: str,  # pylint: disable=invalid-name
-		uninstallString: str | None = None,  # pylint: disable=invalid-name
-		binaryName: str | None = None,  # pylint: disable=invalid-name
+		architecture: str,
+		clientId: str,
+		uninstallString: str | None = None,
+		binaryName: str | None = None,
 		firstseen: str | None = None,
 		lastseen: str | None = None,
-		state: int | None = None,  # pylint: disable=invalid-name
-		usageFrequency: int | None = None,  # pylint: disable=invalid-name
-		lastUsed: str | None = None,  # pylint: disable=invalid-name
-		licenseKey: str | None = None,  # pylint: disable=invalid-name
+		state: int | None = None,
+		usageFrequency: int | None = None,
+		lastUsed: str | None = None,
+		licenseKey: str | None = None,
 	):
-		self.uninstallString: str | None = None  # pylint: disable=invalid-name
-		self.binaryName: str | None = None  # pylint: disable=invalid-name
+		self.uninstallString: str | None = None
+		self.binaryName: str | None = None
 		self.firstseen: str | None = None
 		self.lastseen: str | None = None
 		self.state: int | None = None
-		self.usageFrequency: int | None = None  # pylint: disable=invalid-name
-		self.lastUsed: str | None = None  # pylint: disable=invalid-name
-		self.licenseKey: str | None = None  # pylint: disable=invalid-name
+		self.usageFrequency: int | None = None
+		self.lastUsed: str | None = None
+		self.licenseKey: str | None = None
 		self.setName(name)
 		self.setVersion(version)
 		self.setSubVersion(subVersion)
@@ -3000,94 +2981,94 @@ class AuditSoftwareOnClient(Relationship):  # pylint: disable=too-many-instance-
 		if self.lastUsed is None:
 			self.setLastUsed("0000-00-00 00:00:00")
 
-	def setName(self, name: str) -> None:  # pylint: disable=invalid-name
+	def setName(self, name: str) -> None:
 		self.name = forceString(name)
 
-	def getName(self) -> str:  # pylint: disable=invalid-name
+	def getName(self) -> str:
 		return self.name
 
-	def setVersion(self, version: str) -> None:  # pylint: disable=invalid-name
+	def setVersion(self, version: str) -> None:
 		self.version = forceStringLower(version)
 
-	def getVersion(self) -> str:  # pylint: disable=invalid-name
+	def getVersion(self) -> str:
 		return self.version
 
-	def setSubVersion(self, subVersion: str) -> None:  # pylint: disable=invalid-name
-		self.subVersion = forceStringLower(subVersion)  # pylint: disable=invalid-name
+	def setSubVersion(self, subVersion: str) -> None:
+		self.subVersion = forceStringLower(subVersion)
 
-	def getSubVersion(self) -> str:  # pylint: disable=invalid-name
+	def getSubVersion(self) -> str:
 		return self.subVersion
 
-	def setLanguage(self, language: str) -> None:  # pylint: disable=invalid-name
+	def setLanguage(self, language: str) -> None:
 		if not language:
 			self.language = ""
 		else:
 			self.language = forceLanguageCode(language)
 
-	def getLanguage(self) -> str:  # pylint: disable=invalid-name
+	def getLanguage(self) -> str:
 		return self.language
 
-	def setArchitecture(self, architecture: str) -> None:  # pylint: disable=invalid-name
+	def setArchitecture(self, architecture: str) -> None:
 		if not architecture:
 			self.architecture = ""
 		else:
 			self.architecture = forceArchitecture(architecture)
 
-	def getArchitecture(self) -> str:  # pylint: disable=invalid-name
+	def getArchitecture(self) -> str:
 		return self.architecture
 
-	def getClientId(self) -> str:  # pylint: disable=invalid-name
+	def getClientId(self) -> str:
 		return self.clientId
 
-	def setClientId(self, clientId: str) -> None:  # pylint: disable=invalid-name
-		self.clientId = forceHostId(clientId)  # pylint: disable=invalid-name
+	def setClientId(self, clientId: str) -> None:
+		self.clientId = forceHostId(clientId)
 
-	def getUninstallString(self) -> str | None:  # pylint: disable=invalid-name
+	def getUninstallString(self) -> str | None:
 		return self.uninstallString
 
-	def setUninstallString(self, uninstallString: str) -> None:  # pylint: disable=invalid-name
+	def setUninstallString(self, uninstallString: str) -> None:
 		self.uninstallString = forceString(uninstallString)
 
-	def getBinaryName(self) -> str | None:  # pylint: disable=invalid-name
+	def getBinaryName(self) -> str | None:
 		return self.binaryName
 
-	def setBinaryName(self, binaryName: str) -> None:  # pylint: disable=invalid-name
+	def setBinaryName(self, binaryName: str) -> None:
 		self.binaryName = forceString(binaryName)
 
-	def getFirstseen(self) -> str | None:  # pylint: disable=invalid-name
+	def getFirstseen(self) -> str | None:
 		return self.firstseen
 
-	def setFirstseen(self, firstseen: str) -> None:  # pylint: disable=invalid-name
+	def setFirstseen(self, firstseen: str) -> None:
 		self.firstseen = forceOpsiTimestamp(firstseen)
 
-	def getLastseen(self) -> str | None:  # pylint: disable=invalid-name
+	def getLastseen(self) -> str | None:
 		return self.lastseen
 
-	def setLastseen(self, lastseen: str) -> None:  # pylint: disable=invalid-name
+	def setLastseen(self, lastseen: str) -> None:
 		self.lastseen = forceOpsiTimestamp(lastseen)
 
-	def getState(self) -> int | None:  # pylint: disable=invalid-name
+	def getState(self) -> int | None:
 		return self.state
 
-	def setState(self, state: int) -> None:  # pylint: disable=invalid-name
+	def setState(self, state: int) -> None:
 		self.state = forceAuditState(state)
 
-	def getUsageFrequency(self) -> int | None:  # pylint: disable=invalid-name
+	def getUsageFrequency(self) -> int | None:
 		return self.usageFrequency
 
-	def setUsageFrequency(self, usageFrequency: int) -> None:  # pylint: disable=invalid-name
+	def setUsageFrequency(self, usageFrequency: int) -> None:
 		self.usageFrequency = forceInt(usageFrequency)
 
-	def getLastUsed(self) -> str | None:  # pylint: disable=invalid-name
+	def getLastUsed(self) -> str | None:
 		return self.lastUsed
 
-	def setLastUsed(self, lastUsed: str) -> None:  # pylint: disable=invalid-name
+	def setLastUsed(self, lastUsed: str) -> None:
 		self.lastUsed = forceOpsiTimestamp(lastUsed)
 
-	def getLicenseKey(self) -> str | None:  # pylint: disable=invalid-name
+	def getLicenseKey(self) -> str | None:
 		return self.licenseKey
 
-	def setLicenseKey(self, licenseKey: str) -> None:  # pylint: disable=invalid-name
+	def setLicenseKey(self, licenseKey: str) -> None:
 		self.licenseKey = forceString(licenseKey)
 
 
@@ -3100,7 +3081,7 @@ class AuditHardware(Entity):
 	backend_method_prefix = "auditHardware"
 	hardware_attributes: dict[str, dict[str, Any]] = {}
 
-	def __init__(self, hardwareClass: str, **kwargs: Any) -> None:  # pylint: disable=too-many-branches,too-many-statements,invalid-name
+	def __init__(self, hardwareClass: str, **kwargs: Any) -> None:
 		self.setHardwareClass(hardwareClass)
 		attributes = self.hardware_attributes.get(hardwareClass, {})
 		for attribute in attributes:
@@ -3114,7 +3095,7 @@ class AuditHardware(Entity):
 
 		if attributes:
 			attribute_to_delete = set()
-			for (attribute, value) in kwargs.items():
+			for attribute, value in kwargs.items():
 				attr_type = attributes.get(attribute)
 				if not attr_type:
 					attribute_to_delete.add(attribute)
@@ -3137,13 +3118,13 @@ class AuditHardware(Entity):
 				elif "int" in attr_type:
 					try:
 						kwargs[attribute] = forceInt(value)
-					except Exception as err:  # pylint: disable=broad-except
+					except Exception as err:
 						logger.trace(err)
 						kwargs[attribute] = None
 				elif attr_type == "double":
 					try:
 						kwargs[attribute] = forceFloat(value)
-					except Exception as err:  # pylint: disable=broad-except
+					except Exception as err:
 						logger.trace(err)
 						kwargs[attribute] = None
 				else:
@@ -3155,7 +3136,7 @@ class AuditHardware(Entity):
 				del kwargs[attribute]
 		else:
 			new_kwargs = {}
-			for (attribute, value) in kwargs.items():
+			for attribute, value in kwargs.items():
 				if isinstance(value, str):
 					new_kwargs[attribute] = forceString(value).strip()
 				else:
@@ -3168,32 +3149,30 @@ class AuditHardware(Entity):
 
 		try:
 			if getattr(self, "vendorId", None):
-				self.vendorId = forceHardwareVendorId(self.vendorId)  # type: ignore[has-type] # pylint: disable=invalid-name
+				self.vendorId = forceHardwareVendorId(self.vendorId)  # type: ignore[has-type]
 		except AttributeError:
 			pass
 
 		try:
 			if getattr(self, "subsystemVendorId", None):
-				# pylint: disable=invalid-name
 				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)  # type: ignore[has-type]
 		except AttributeError:
 			pass
 
 		try:
 			if getattr(self, "deviceId", None):
-				self.deviceId = forceHardwareDeviceId(self.deviceId)  # type: ignore[has-type] # pylint: disable=invalid-name
+				self.deviceId = forceHardwareDeviceId(self.deviceId)  # type: ignore[has-type]
 		except AttributeError:
 			pass
 
 		try:
 			if getattr(self, "subsystemDeviceId", None):
-				# pylint: disable=invalid-name
 				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)  # type: ignore[has-type]
 		except AttributeError:
 			pass
 
 	@staticmethod
-	def setHardwareConfig(hardwareConfig: list[dict[str, Any]]) -> None:  # pylint: disable=invalid-name
+	def setHardwareConfig(hardwareConfig: list[dict[str, Any]]) -> None:
 		hardware_attributes: dict[str, dict[str, Any]] = {}
 		for config in hardwareConfig:
 			hw_class = config["Class"]["Opsi"]
@@ -3206,10 +3185,10 @@ class AuditHardware(Entity):
 	def setDefaults(self) -> None:
 		Entity.setDefaults(self)
 
-	def setHardwareClass(self, hardwareClass: str) -> None:  # pylint: disable=invalid-name
-		self.hardwareClass = forceString(hardwareClass)  # pylint: disable=invalid-name
+	def setHardwareClass(self, hardwareClass: str) -> None:
+		self.hardwareClass = forceString(hardwareClass)
 
-	def getHardwareClass(self) -> str:  # pylint: disable=invalid-name
+	def getHardwareClass(self) -> str:
 		return self.hardwareClass
 
 	def getIdentAttributes(self) -> tuple[str, ...]:
@@ -3263,15 +3242,15 @@ class AuditHardware(Entity):
 Entity.sub_classes["AuditHardware"] = AuditHardware
 
 
-class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-attributes
+class AuditHardwareOnHost(Relationship):
 	sub_classes: dict[str, type] = {}
 	backend_method_prefix = "auditHardwareOnHost"
 	hardware_attributes: dict[str, dict[str, Any]] = {}
 
-	def __init__(  # pylint: disable=too-many-arguments,too-many-branches,too-many-statements
+	def __init__(
 		self,
-		hardwareClass: str,  # pylint: disable=invalid-name
-		hostId: str,  # pylint: disable=invalid-name
+		hardwareClass: str,
+		hostId: str,
 		firstseen: str | None = None,
 		lastseen: str | None = None,
 		state: int | None = None,
@@ -3293,7 +3272,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 					kwargs[attribute] = None
 
 		if self.hardware_attributes.get(hardwareClass):
-			for (attribute, value) in list(kwargs.items()):
+			for attribute, value in list(kwargs.items()):
 				attr_type = self.hardware_attributes[hardwareClass].get(attribute)
 				if not attr_type:
 					del kwargs[attribute]
@@ -3316,13 +3295,13 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 				elif "int" in attr_type:
 					try:
 						kwargs[attribute] = forceInt(value)
-					except Exception as err:  # pylint: disable=broad-except
+					except Exception as err:
 						logger.trace(err)
 						kwargs[attribute] = None
 				elif attr_type == "double":
 					try:
 						kwargs[attribute] = forceFloat(value)
-					except Exception as err:  # pylint: disable=broad-except
+					except Exception as err:
 						logger.trace(err)
 						kwargs[attribute] = None
 				else:
@@ -3330,7 +3309,7 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 						f"Attribute '{attribute}' of hardware class '{hardwareClass}' has unknown type '{type}'"
 					)
 		else:
-			for (attribute, value) in kwargs.items():
+			for attribute, value in kwargs.items():
 				if isinstance(value, str):
 					kwargs[attribute] = forceString(value).strip()
 
@@ -3344,32 +3323,30 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 
 		try:
 			if getattr(self, "vendorId", None):
-				self.vendorId = forceHardwareVendorId(self.vendorId)  # type: ignore[has-type] # pylint: disable=invalid-name
+				self.vendorId = forceHardwareVendorId(self.vendorId)  # type: ignore[has-type]
 		except AttributeError:
 			pass
 
 		try:
 			if getattr(self, "subsystemVendorId", None):
-				# pylint: disable=invalid-name
 				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)  # type: ignore[has-type]
 		except AttributeError:
 			pass
 
 		try:
 			if getattr(self, "deviceId", None):
-				self.deviceId = forceHardwareDeviceId(self.deviceId)  # type: ignore[has-type] # pylint: disable=invalid-name
+				self.deviceId = forceHardwareDeviceId(self.deviceId)  # type: ignore[has-type]
 		except AttributeError:
 			pass
 
 		try:
 			if getattr(self, "subsystemDeviceId", None):
-				# pylint: disable=invalid-name
 				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)  # type: ignore[has-type]
 		except AttributeError:
 			pass
 
 	@staticmethod
-	def setHardwareConfig(hardwareConfig: list[dict[str, Any]]) -> None:  # pylint: disable=invalid-name
+	def setHardwareConfig(hardwareConfig: list[dict[str, Any]]) -> None:
 		hardware_attributes: dict[str, dict[str, Any]] = {}
 		for config in hardwareConfig:
 			hw_class = config["Class"]["Opsi"]
@@ -3387,41 +3364,41 @@ class AuditHardwareOnHost(Relationship):  # pylint: disable=too-many-instance-at
 		if self.state is None:
 			self.setState(1)
 
-	def getHostId(self) -> str:  # pylint: disable=invalid-name
+	def getHostId(self) -> str:
 		return self.hostId
 
-	def setHostId(self, hostId: str) -> None:  # pylint: disable=invalid-name
-		self.hostId = forceHostId(hostId)  # pylint: disable=invalid-name
+	def setHostId(self, hostId: str) -> None:
+		self.hostId = forceHostId(hostId)
 
-	def setHardwareClass(self, hardwareClass: str) -> None:  # pylint: disable=invalid-name
-		self.hardwareClass = forceString(hardwareClass)  # pylint: disable=invalid-name
+	def setHardwareClass(self, hardwareClass: str) -> None:
+		self.hardwareClass = forceString(hardwareClass)
 
-	def getHardwareClass(self) -> str:  # pylint: disable=invalid-name
+	def getHardwareClass(self) -> str:
 		return self.hardwareClass
 
-	def getFirstseen(self) -> str | None:  # pylint: disable=invalid-name
+	def getFirstseen(self) -> str | None:
 		return self.firstseen
 
-	def setFirstseen(self, firstseen: str) -> None:  # pylint: disable=invalid-name
+	def setFirstseen(self, firstseen: str) -> None:
 		self.firstseen = forceOpsiTimestamp(firstseen)
 
-	def getLastseen(self) -> str | None:  # pylint: disable=invalid-name
+	def getLastseen(self) -> str | None:
 		return self.firstseen
 
-	def setLastseen(self, lastseen: str) -> None:  # pylint: disable=invalid-name
+	def setLastseen(self, lastseen: str) -> None:
 		self.lastseen = forceOpsiTimestamp(lastseen)
 
-	def getState(self) -> int | None:  # pylint: disable=invalid-name
+	def getState(self) -> int | None:
 		return self.state
 
-	def setState(self, state: int) -> None:  # pylint: disable=invalid-name
+	def setState(self, state: int) -> None:
 		self.state = forceAuditState(state)
 
-	def toAuditHardware(self) -> AuditHardware:  # pylint: disable=invalid-name
+	def toAuditHardware(self) -> AuditHardware:
 		audit_hardware_hash = {"type": "AuditHardware"}
 		attributes = set(AuditHardware.hardware_attributes.get(self.getHardwareClass(), {}).keys())
 
-		for (attribute, value) in self.toHash().items():
+		for attribute, value in self.toHash().items():
 			if attribute == "type":
 				continue
 
@@ -3481,7 +3458,7 @@ def serialize(obj: Any, deep: bool = False) -> Any:
 	return obj
 
 
-def deserialize(obj: Any, deep: bool = False, prevent_object_creation: bool = False) -> Any:  # pylint: disable=invalid-name
+def deserialize(obj: Any, deep: bool = False, prevent_object_creation: bool = False) -> Any:
 	# This is performance critical!
 	if isinstance(obj, list):
 		return [deserialize(o, deep=deep, prevent_object_creation=prevent_object_creation) for o in obj]
@@ -3492,7 +3469,7 @@ def deserialize(obj: Any, deep: bool = False, prevent_object_creation: bool = Fa
 				return obj_type.fromHash(obj)  # type: ignore[union-attr]
 			except KeyError:
 				pass
-			except Exception as err:  # pylint: disable=broad-except
+			except Exception as err:
 				logger.error(err, exc_info=True)
 				raise ValueError(f"Failed to create object from dict {obj}: {err}") from err
 		if deep:

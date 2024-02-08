@@ -45,7 +45,7 @@ class RepoMetaMetadataFile:
 
 @dataclass
 class RepoMetaPackageCompatibility:
-	os: OperatingSystem  # pylint: disable=invalid-name
+	os: OperatingSystem
 	arch: Architecture
 
 	@classmethod
@@ -63,13 +63,13 @@ class RepoMetaPackageCompatibility:
 
 @dataclass
 class RepoMetaProductDependency:
-	productAction: str  # pylint: disable=invalid-name
-	requiredProductId: str  # pylint: disable=invalid-name
-	requiredProductVersion: str | None = None  # pylint: disable=invalid-name
-	requiredPackageVersion: str | None = None  # pylint: disable=invalid-name
-	requiredAction: str | None = None  # pylint: disable=invalid-name
-	requiredInstallationStatus: str | None = None  # pylint: disable=invalid-name
-	requirementType: str | None = None  # pylint: disable=invalid-name
+	productAction: str
+	requiredProductId: str
+	requiredProductVersion: str | None = None
+	requiredPackageVersion: str | None = None
+	requiredAction: str | None = None
+	requiredInstallationStatus: str | None = None
+	requirementType: str | None = None
 
 	@classmethod
 	def from_product_dependency(cls, product_dependency: ProductDependency) -> RepoMetaProductDependency:
@@ -100,7 +100,7 @@ class RepoMetaPackageDependency:
 
 
 @dataclass
-class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
+class RepoMetaPackage:
 	url: str | list[str]
 	size: int
 	md5_hash: str
@@ -124,7 +124,7 @@ class RepoMetaPackage:  # pylint: disable=too-many-instance-attributes
 		return f"{self.product_version}-{self.package_version}"
 
 	@classmethod
-	def from_package_file(cls, package_file: Path, url: str | list[str]) -> RepoMetaPackage:  # pylint: disable=too-many-arguments
+	def from_package_file(cls, package_file: Path, url: str | list[str]) -> RepoMetaPackage:
 		logger.notice("Reading package file %s", package_file)
 		data: dict[str, Any] = {"url": url, "size": package_file.stat().st_size}
 		with open(package_file, "rb", buffering=0) as file_handle:
@@ -267,8 +267,7 @@ class RepoMetaPackageCollection:
 		else:
 			p_data = msgpack.decode(data)
 
-		self.schema_version = p_data.get(
-			"schema_version", self.schema_version)
+		self.schema_version = p_data.get("schema_version", self.schema_version)
 		self.repository = RepoMetaRepository(**p_data.get("repository", {}))
 		self.metadata_files = [RepoMetaMetadataFile(entry.get("type"), entry.get("urls")) for entry in p_data.get("metadata_files", [])]
 		self.packages = {}

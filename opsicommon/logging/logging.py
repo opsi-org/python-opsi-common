@@ -19,6 +19,7 @@ import sys
 import tempfile
 import warnings
 from contextlib import contextmanager
+from dataclasses import dataclass
 from logging import (
 	NOTSET,
 	FileHandler,
@@ -33,7 +34,7 @@ from logging.handlers import RotatingFileHandler
 from traceback import format_stack, format_tb
 from typing import IO, Any, Generator
 from urllib.parse import quote
-from dataclasses import dataclass
+
 from colorlog import ColoredFormatter
 from rich.console import Console
 
@@ -56,7 +57,7 @@ context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("contex
 
 
 class OPSILogger(logging.Logger):
-	def __init__(self, name: str, level: int | str = NOTSET) -> None:  # pylint: disable=useless-super-delegation
+	def __init__(self, name: str, level: int | str = NOTSET) -> None:
 		super().__init__(name, level)
 
 	def secret(self, msg: Any, *args: Any, **kwargs: Any) -> None:
@@ -118,16 +119,16 @@ class OPSILogger(logging.Logger):
 	comment = essential
 	devel = essential
 
-	def findCaller(  # pylint: disable=invalid-name
+	def findCaller(
 		self,
 		stack_info: bool = False,
-		stacklevel: int = 1,  # pylint: disable=unused-argument
+		stacklevel: int = 1,
 	) -> tuple[str, int, str, None]:
 		"""
 		Find the stack frame of the caller so that we can note the source
 		file name, line number and function name.
 		"""
-		frame = sys._getframe(1)  # pylint: disable=protected-access
+		frame = sys._getframe(1)
 		try:
 			while frame:
 				if frame.f_code.co_name == "_log":
@@ -156,7 +157,7 @@ orig_getLogger = logging.getLogger
 logger = orig_getLogger()
 
 
-def logrecord_init(  # pylint: disable=too-many-arguments
+def logrecord_init(
 	self: LogRecord,
 	name: str,
 	level: int,
@@ -223,7 +224,7 @@ def handle_log_exception(
 				stat_info = os.stat(exc.filename)
 				text += f"File permissions: {stat_info.st_mode:o}, owner: {stat_info.st_uid}, group: {stat_info.st_gid}\n"
 				text += f"Process uid: {os.geteuid()}, gid: {os.getegid()}\n"
-			except Exception:  # pylint: disable=broad-except
+			except Exception:
 				pass
 
 		text += "Traceback (most recent call last):\n"
@@ -244,7 +245,7 @@ def handle_log_exception(
 		if log:
 			logger.error(text)
 
-	except Exception:  # pylint: disable=broad-except
+	except Exception:
 		pass
 
 
@@ -356,7 +357,7 @@ class ContextSecretFormatter(Formatter):
 
 	logger_name_in_context_string = False
 
-	def __init__(self, orig_formatter: Formatter) -> None:  # pylint: disable=super-init-not-called
+	def __init__(self, orig_formatter: Formatter) -> None:
 		"""
 		ContextSecretFormatter constructor
 
@@ -546,7 +547,7 @@ class RichConsoleHandler(Handler):
 			record.log_color, record.reset = self._styles[record.levelname]
 			msg = self.format(record)
 			self._console.print(msg)
-		except Exception:  # pylint: disable=broad-except
+		except Exception:
 			self.handleError(record)
 
 
@@ -579,7 +580,7 @@ class ObservableHandler(Handler, metaclass=Singleton):
 			for observer in self._observers:
 				try:
 					observer.messageChanged(self, message)
-				except Exception as err:  # pylint: disable=broad-except
+				except Exception as err:
 					handle_log_exception(err)
 
 
@@ -595,7 +596,7 @@ class _LoggingState:
 _logging_state = _LoggingState()
 
 
-def logging_config(  # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-statements
+def logging_config(
 	*,
 	stderr_level: int | None = None,
 	stderr_format: str | None = None,
@@ -996,7 +997,7 @@ def print_logger_info() -> None:
 
 
 def init_warnings_capture(traceback_log_level: int = logging.INFO) -> None:
-	def _log_warning(  # pylint: disable=too-many-arguments,unused-argument
+	def _log_warning(
 		message: str,
 		category: Any,
 		filename: str,

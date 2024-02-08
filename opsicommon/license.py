@@ -194,10 +194,8 @@ def generate_license_id() -> str:
 
 
 @attr.s(slots=True, auto_attribs=True, kw_only=True)
-class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
-	id: str = attr.ib(  # pylint: disable=invalid-name
-		factory=generate_license_id, validator=attr.validators.matches_re(OPSI_LICENCE_ID_REGEX)
-	)
+class OpsiLicense:
+	id: str = attr.ib(factory=generate_license_id, validator=attr.validators.matches_re(OPSI_LICENCE_ID_REGEX))
 
 	type: str = attr.ib(
 		default=OPSI_LICENSE_TYPE_STANDARD, validator=attr.validators.in_((OPSI_LICENSE_TYPE_CORE, OPSI_LICENSE_TYPE_STANDARD))
@@ -206,7 +204,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	schema_version: int = attr.ib(default=2, converter=int)
 
 	@schema_version.validator
-	def validate_schema_version(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
+	def validate_schema_version(self, attribute: str, value: Any) -> None:
 		if not isinstance(value, int) or value <= 0:
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -215,21 +213,21 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	customer_id: str = attr.ib(default=None)
 
 	@customer_id.validator
-	def validate_customer_id(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
+	def validate_customer_id(self, attribute: str, value: Any) -> None:
 		if self.schema_version > 1 and self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^[a-zA-Z0-9\-_]{3,}$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
 	customer_name: str = attr.ib()
 
 	@customer_name.validator
-	def validate_customer_name(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
+	def validate_customer_name(self, attribute: str, value: Any) -> None:
 		if self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^\S.*\S$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
 	customer_address: str = attr.ib(default=None)
 
 	@customer_address.validator
-	def validate_customer_address(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
+	def validate_customer_address(self, attribute: str, value: Any) -> None:
 		if self.schema_version > 1 and self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^\S.*\S$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -242,7 +240,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	)
 
 	@service_id.validator
-	def validate_service_id(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
+	def validate_service_id(self, attribute: str, value: Any) -> None:
 		if value is not None and not re.match(r"^[a-z0-9\-\.]+$", value):
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -251,7 +249,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	client_number: int = attr.ib(converter=int, validator=attr.validators.instance_of(int))
 
 	@client_number.validator
-	def validate_client_number(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
+	def validate_client_number(self, attribute: str, value: Any) -> None:
 		if value <= 0:
 			raise ValueError(f"Invalid value for {attribute}", value)
 
@@ -264,7 +262,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 	revoked_ids: list[str] = attr.ib(default=[])
 
 	@revoked_ids.validator
-	def validate_revoked_ids(self, attribute: str, value: Any) -> None:  # pylint: disable=bad-classmethod-argument
+	def validate_revoked_ids(self, attribute: str, value: Any) -> None:
 		if not isinstance(value, list):
 			raise ValueError(f"Invalid value for {attribute}", value)
 		for val in value:
@@ -380,7 +378,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 			try:
 				if self.schema_version == 1:
 					h_int = int.from_bytes(_hash.digest(), "big")  # type: ignore[union-attr]
-					s_int = public_key._encrypt(int(self.signature.hex()))  # type: ignore[attr-defined] # pylint: disable=protected-access
+					s_int = public_key._encrypt(int(self.signature.hex()))  # type: ignore[attr-defined]
 					self._cached_signature_valid = h_int == s_int
 				else:
 					pss.new(public_key).verify(_hash, self.signature)  # type: ignore[arg-type]
@@ -391,7 +389,7 @@ class OpsiLicense:  # pylint: disable=too-few-public-methods,too-many-instance-a
 
 		return self._cached_signature_valid
 
-	def _get_state(self, test_revoked: bool = True, at_date: date | None = None) -> str:  # pylint: disable=too-many-return-statements
+	def _get_state(self, test_revoked: bool = True, at_date: date | None = None) -> str:
 		if not at_date:
 			at_date = date.today()
 
@@ -482,7 +480,7 @@ class OpsiLicenseFile:
 			file.write(data)
 
 
-class OpsiModulesFile:  # pylint: disable=too-few-public-methods
+class OpsiModulesFile:
 	def __init__(self, filename: Path | str) -> None:
 		self.filename = filename if isinstance(filename, Path) else Path(filename)
 		self._licenses: dict[str, OpsiLicense] = {}
@@ -556,7 +554,7 @@ class OpsiModulesFile:  # pylint: disable=too-few-public-methods
 
 
 class OpsiLicensePool:
-	def __init__(  # pylint: disable=too-many-arguments
+	def __init__(
 		self,
 		license_file_path: str | Path | None = None,
 		modules_file_path: str | Path | None = None,
@@ -613,7 +611,7 @@ class OpsiLicensePool:
 				module_ids.add(lic.module_id)
 		return sorted(list(module_ids))
 
-	def get_licenses(  # pylint: disable=too-many-arguments
+	def get_licenses(
 		self,
 		exclude_ids: list[str] | None = None,
 		valid_only: bool = False,
@@ -675,7 +673,7 @@ class OpsiLicensePool:
 					dates.add(lic.valid_until + timedelta(days=1))
 		return sorted(dates)
 
-	def get_modules(self, at_date: date | None = None) -> dict[str, Any]:  # pylint: disable=too-many-branches
+	def get_modules(self, at_date: date | None = None) -> dict[str, Any]:
 		if not at_date:
 			at_date = date.today()
 
@@ -736,7 +734,7 @@ class OpsiLicensePool:
 		return modules
 
 	def get_legacy_modules(self) -> dict[str, Any] | None:
-		for lic in self.get_licenses():  # pylint: disable=too-many-nested-blocks
+		for lic in self.get_licenses():
 			if lic.schema_version == 1:
 				modules = {"signature": lic.signature.hex()}
 				for line in lic.additional_data.split("\r\n"):
@@ -791,11 +789,11 @@ class OpsiLicensePool:
 		self._read_modules_file()
 
 
-_default_opsi_license_pool = None  # pylint: disable=invalid-name
+_default_opsi_license_pool = None
 
 
 def set_default_opsi_license_pool(pool: OpsiLicensePool | None) -> None:
-	global _default_opsi_license_pool  # pylint: disable=invalid-name,global-statement
+	global _default_opsi_license_pool
 	_default_opsi_license_pool = pool
 
 
@@ -806,7 +804,7 @@ def get_default_opsi_license_pool(
 	client_limit_warning_percent: int | None = 95,
 	client_limit_warning_absolute: int | None = 5,
 ) -> OpsiLicensePool:
-	global _default_opsi_license_pool  # pylint: disable=invalid-name,global-statement
+	global _default_opsi_license_pool
 	if not _default_opsi_license_pool:
 		_default_opsi_license_pool = OpsiLicensePool(
 			license_file_path=license_file_path,

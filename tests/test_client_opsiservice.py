@@ -106,13 +106,13 @@ class MyConnectionListener(ServiceConnectionListener):
 		self.events.append(("closed", service_client, None))
 
 
-def test_arguments() -> None:  # pylint: disable=too-many-statements
+def test_arguments() -> None:
 	# address
 	assert ServiceClient("localhost").base_url == "https://localhost:4447"
 	assert ServiceClient("https://localhost").base_url == "https://localhost:4447"
 	assert ServiceClient("https://localhost:4448").base_url == "https://localhost:4448"
 	assert ServiceClient("https://localhost:4448/xy").base_url == "https://localhost:4448"
-	assert ServiceClient("https://localhost:4448/xy")._jsonrpc_path == "/xy"  # pylint: disable=protected-access
+	assert ServiceClient("https://localhost:4448/xy")._jsonrpc_path == "/xy"
 	assert ServiceClient("localhost:4448").base_url == "https://localhost:4448"
 	assert ServiceClient("1.2.3.4").base_url == "https://1.2.3.4:4447"
 	assert ServiceClient("::1").base_url == "https://[::1]:4447"
@@ -129,20 +129,20 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 
 	# username / password
 	client = ServiceClient("localhost")
-	assert client._username is None  # pylint: disable=protected-access
-	assert client._password is None  # pylint: disable=protected-access
+	assert client._username is None
+	assert client._password is None
 
 	client = ServiceClient("localhost", username="", password="")
-	assert client._username == ""  # pylint: disable=protected-access
-	assert client._password == ""  # pylint: disable=protected-access
+	assert client._username == ""
+	assert client._password == ""
 
 	client = ServiceClient("localhost", username="user", password="pass")
-	assert client._username == "user"  # pylint: disable=protected-access
-	assert client._password == "pass"  # pylint: disable=protected-access
+	assert client._username == "user"
+	assert client._password == "pass"
 
 	client = ServiceClient("https://usr:pas@localhost")
-	assert client._username == "usr"  # pylint: disable=protected-access
-	assert client._password == "pas"  # pylint: disable=protected-access
+	assert client._username == "usr"
+	assert client._password == "pas"
 
 	with pytest.raises(ValueError, match="Different usernames supplied"):
 		client = ServiceClient("https://usr:pas@localhost", username="user", password="pass")
@@ -157,15 +157,13 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 		client = ServiceClient("https://usr:pas@localhost", password="pass")
 
 	client = ServiceClient("https://:pass@localhost")
-	assert client._username == ""  # pylint: disable=protected-access
-	assert client._password == "pass"  # pylint: disable=protected-access
+	assert client._username == ""
+	assert client._password == "pass"
 
 	# verify / ca_cert_file
-	assert ServiceClient("::1")._ca_cert_file is None  # pylint: disable=protected-access
-	assert ServiceClient("::1", ca_cert_file="cacert.pem")._ca_cert_file == Path("cacert.pem")  # pylint: disable=protected-access
-	assert ServiceClient("::1", ca_cert_file=Path("/x/cacert.pem"))._ca_cert_file == Path(  # pylint: disable=protected-access
-		"/x/cacert.pem"
-	)
+	assert ServiceClient("::1")._ca_cert_file is None
+	assert ServiceClient("::1", ca_cert_file="cacert.pem")._ca_cert_file == Path("cacert.pem")
+	assert ServiceClient("::1", ca_cert_file=Path("/x/cacert.pem"))._ca_cert_file == Path("/x/cacert.pem")
 
 	for server_role in ("configserver", ""):
 		with opsi_config({"host.server-role": server_role}):
@@ -174,16 +172,14 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 				if mode == ServiceVerificationFlags.OPSI_CA and server_role == "configserver":
 					expect = ServiceVerificationFlags.STRICT_CHECK
 
-				assert expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=mode)._verify  # pylint: disable=protected-access
-				assert expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=mode.value)._verify  # pylint: disable=protected-access
-				assert expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=[mode])._verify  # pylint: disable=protected-access
-				assert (
-					expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=[mode.value])._verify  # pylint: disable=protected-access
-				)
+				assert expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=mode)._verify
+				assert expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=mode.value)._verify
+				assert expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=[mode])._verify
+				assert expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=[mode.value])._verify
 
-	assert ServiceClient(  # pylint: disable=protected-access
-		"::1", ca_cert_file="ca.pem", verify=ServiceVerificationFlags.STRICT_CHECK
-	)._verify == [ServiceVerificationFlags.STRICT_CHECK]
+	assert ServiceClient("::1", ca_cert_file="ca.pem", verify=ServiceVerificationFlags.STRICT_CHECK)._verify == [
+		ServiceVerificationFlags.STRICT_CHECK
+	]
 
 	for mode in ServiceVerificationFlags.OPSI_CA, ServiceVerificationFlags.UIB_OPSI_CA:
 		with pytest.raises(ValueError, match="ca_cert_file required"):
@@ -192,29 +188,29 @@ def test_arguments() -> None:  # pylint: disable=too-many-statements
 		ServiceClient("::1", verify="bad_mode")
 
 	# session_cookie
-	assert ServiceClient("::1", session_cookie="cookie=val")._session_cookie == "cookie=val"  # pylint: disable=protected-access
+	assert ServiceClient("::1", session_cookie="cookie=val")._session_cookie == "cookie=val"
 	with pytest.raises(ValueError):
 		assert ServiceClient("::1", session_cookie="cookie")
 
 	# session_lifetime
-	assert ServiceClient("::1", session_lifetime=10)._session_lifetime == 10  # pylint: disable=protected-access
-	assert ServiceClient("::1", session_lifetime=-3)._session_lifetime == 1  # pylint: disable=protected-access
+	assert ServiceClient("::1", session_lifetime=10)._session_lifetime == 10
+	assert ServiceClient("::1", session_lifetime=-3)._session_lifetime == 1
 
 	# proxy_url
-	assert ServiceClient("::1", proxy_url="system")._proxy_url == "system"  # pylint: disable=protected-access
-	assert ServiceClient("::1", proxy_url=None)._proxy_url is None  # type: ignore[arg-type]  # pylint: disable=protected-access
-	assert ServiceClient("::1", proxy_url="none")._proxy_url is None  # type: ignore[arg-type]  # pylint: disable=protected-access
-	assert ServiceClient("::1", proxy_url="https://proxy:1234")._proxy_url == "https://proxy:1234"  # pylint: disable=protected-access
+	assert ServiceClient("::1", proxy_url="system")._proxy_url == "system"
+	assert ServiceClient("::1", proxy_url=None)._proxy_url is None  # type: ignore[arg-type]
+	assert ServiceClient("::1", proxy_url="none")._proxy_url is None  # type: ignore[arg-type]
+	assert ServiceClient("::1", proxy_url="https://proxy:1234")._proxy_url == "https://proxy:1234"
 
 	# user_agent
-	assert ServiceClient("::1")._user_agent == f"opsi-service-client/{__version__}"  # pylint: disable=protected-access
-	assert ServiceClient("::1", user_agent=None)._user_agent == f"opsi-service-client/{__version__}"  # pylint: disable=protected-access
-	assert ServiceClient("::1", user_agent="my app")._user_agent == "my app"  # pylint: disable=protected-access
+	assert ServiceClient("::1")._user_agent == f"opsi-service-client/{__version__}"
+	assert ServiceClient("::1", user_agent=None)._user_agent == f"opsi-service-client/{__version__}"
+	assert ServiceClient("::1", user_agent="my app")._user_agent == "my app"
 
 	# connect_timeout
-	assert ServiceClient("::1", connect_timeout=123)._connect_timeout == 123.0  # pylint: disable=protected-access
-	assert ServiceClient("::1", connect_timeout=1.2)._connect_timeout == 1.2  # pylint: disable=protected-access
-	assert ServiceClient("::1", connect_timeout=-1)._connect_timeout == 0.0  # pylint: disable=protected-access
+	assert ServiceClient("::1", connect_timeout=123)._connect_timeout == 123.0
+	assert ServiceClient("::1", connect_timeout=1.2)._connect_timeout == 1.2
+	assert ServiceClient("::1", connect_timeout=-1)._connect_timeout == 0.0
 
 
 def test_set_addresses() -> None:
@@ -231,7 +227,7 @@ def test_set_addresses() -> None:
 	assert service_client.base_url == "https://localhost:4447"
 
 
-def test_read_write_ca_cert_file(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
+def test_read_write_ca_cert_file(tmpdir: Path) -> None:
 	ca_cert_file = tmpdir / "ca_certs.pem"
 	ca_cert1, _ = create_ca(subject={"CN": "python-opsi-common test CA 1"}, valid_days=30)
 	ca_cert2, _ = create_ca(subject={"CN": "python-opsi-common test CA 2"}, valid_days=30)
@@ -288,7 +284,7 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:  # pylint: disable=too-m
 		def run(self) -> None:
 			try:
 				self.client.write_ca_cert_file(self.certs)
-			except Exception as err:  # pylint: disable=broad-exception-caught
+			except Exception as err:
 				self.err = err
 
 	class CAReadThread(Thread):
@@ -301,16 +297,16 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:  # pylint: disable=too-m
 		def run(self) -> None:
 			try:
 				self.certs = self.client.read_ca_cert_file()
-			except Exception as err:  # pylint: disable=broad-exception-caught
+			except Exception as err:
 				self.err = err
 
 	write_threads = [CAWriteThread(service_client, certs) for _ in range(50)]
 	read_threads = [CAReadThread(service_client) for _ in range(50)]
-	for idx in range(len(write_threads)):  # pylint: disable=consider-using-enumerate
+	for idx in range(len(write_threads)):
 		write_threads[idx].start()
 		read_threads[idx].start()
 
-	for idx in range(len(write_threads)):  # pylint: disable=consider-using-enumerate
+	for idx in range(len(write_threads)):
 		write_threads[idx].join()
 		read_threads[idx].join()
 		if write_threads[idx].err:
@@ -386,7 +382,7 @@ def test_get_opsi_ca_state(tmpdir: Path) -> None:
 	assert service_client.get_opsi_ca_state() == OpsiCaState.EXPIRED
 
 
-def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
+def test_verify(tmpdir: Path) -> None:
 	other_ca_cert, _ = create_ca(subject={"CN": "python-opsi-common test other ca"}, valid_days=3)
 
 	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3)
@@ -431,7 +427,7 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 			with pytest.raises(OpsiServiceVerificationError):
 				client.connect_messagebus()
 
-			assert client._request(method="HEAD", path="/", verify=False).status_code == 200  # pylint: disable=protected-access
+			assert client._request(method="HEAD", path="/", verify=False).status_code == 200
 
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=ca_cert_file, verify="strict_check") as client:
 			client.connect()
@@ -478,7 +474,7 @@ def test_verify(tmpdir: Path) -> None:  # pylint: disable=too-many-statements
 			client.connect()
 
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert)
-			assert client.get("/")[0] == 200  # pylint: disable=unsubscriptable-object
+			assert client.get("/")[0] == 200
 
 		# uib_opsi_ca (means uib_opsi_ca + opsi_ca)
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="uib_opsi_ca") as client:
@@ -743,7 +739,7 @@ def test_proxy(tmp_path: Path) -> None:
 		("apache 2.0.1", (0,), "application/json", None, False),
 	),
 )
-def test_server_name_handling(  # pylint: disable=too-many-arguments
+def test_server_name_handling(
 	tmp_path: Path,
 	server_name: str,
 	expected_version: tuple,
@@ -789,7 +785,7 @@ def test_server_name_handling(  # pylint: disable=too-many-arguments
 		log_file.write_bytes(b"")
 
 
-def test_connect_disconnect() -> None:  # pylint: disable=too-many-statements
+def test_connect_disconnect() -> None:
 	with log_level_stderr(9), http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
 		listener = MyConnectionListener()
 		with ServiceClient() as client:
@@ -858,9 +854,9 @@ def test_connect_disconnect() -> None:  # pylint: disable=too-many-statements
 		assert client.messagebus_connected is False
 		assert client.connected is False
 
-		print("_connected", client.messagebus._connected)  # pylint: disable=protected-access
-		print("_should_be_connected", client.messagebus._should_be_connected)  # pylint: disable=protected-access
-		print("_connected_result", client.messagebus._connected_result.is_set())  # pylint: disable=protected-access
+		print("_connected", client.messagebus._connected)
+		print("_should_be_connected", client.messagebus._should_be_connected)
+		print("_connected_result", client.messagebus._connected_result.is_set())
 		print("is_alive", client.messagebus.is_alive())
 
 		client.connect_messagebus()
@@ -880,19 +876,19 @@ def test_requests() -> None:
 			server.response_body = b"content"
 			response = client.get("/")
 
-			status_code, reason, headers, content = response  # pylint: disable=unsubscriptable-object,unpacking-non-sequence
+			status_code, reason, headers, content = response
 			assert status_code == server.response_status[0]
 			assert reason == server.response_status[1]
-			assert headers["server"] == server.response_headers["server"]  # type: ignore  # pylint: disable=unsubscriptable-object
+			assert headers["server"] == server.response_headers["server"]  # type: ignore
 			assert content == server.response_body
 
-			assert response[0] == server.response_status[0]  # pylint: disable=unsubscriptable-object
-			assert response[1] == server.response_status[1]  # pylint: disable=unsubscriptable-object
-			assert response[2]["server"] == server.response_headers["server"]  # type: ignore  # pylint: disable=unsubscriptable-object
-			assert response[3] == server.response_body  # pylint: disable=unsubscriptable-object
+			assert response[0] == server.response_status[0]
+			assert response[1] == server.response_status[1]
+			assert response[2]["server"] == server.response_headers["server"]  # type: ignore
+			assert response[3] == server.response_body
 
 			with pytest.raises(IndexError):
-				response[4]  # pylint: disable=pointless-statement,unsubscriptable-object
+				response[4]
 
 			assert response.status_code == server.response_status[0]
 			assert response.reason == server.response_status[1]
@@ -914,12 +910,12 @@ def test_raw_requests() -> None:
 			raw_response.raise_for_status()
 
 
-def test_request_exceptions() -> None:  # pylint: disable=too-many-statements
+def test_request_exceptions() -> None:
 	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)"}) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			server.response_status = (200, "OK")
 			client.connect()
-			assert client.get("/")[0] == 200  # pylint: disable=unsubscriptable-object
+			assert client.get("/")[0] == 200
 
 			server.response_status = (500, "Internal Server Error")
 			server.response_body = b"content"
@@ -927,7 +923,7 @@ def test_request_exceptions() -> None:  # pylint: disable=too-many-statements
 				client.get("/")
 			assert exc_info.value.content == "content"
 			assert exc_info.value.status_code == 500
-			assert client.get("/", allow_status_codes=[500])[0] == 500  # pylint: disable=unsubscriptable-object
+			assert client.get("/", allow_status_codes=[500])[0] == 500
 
 			server.response_status = (401, "Unauthorized")
 			with pytest.raises(OpsiServiceAuthenticationError) as exc_info:
@@ -972,7 +968,7 @@ def test_request_exceptions() -> None:  # pylint: disable=too-many-statements
 			# 60 = default value
 			assert int((exc_info.value.until or -999) - now) in (59, 60)
 
-			client._service_unavailable = None  # pylint: disable=protected-access
+			client._service_unavailable = None
 			server.response_headers["Retry-After"] = "-1"
 			now = time.time()
 			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
@@ -980,7 +976,7 @@ def test_request_exceptions() -> None:  # pylint: disable=too-many-statements
 			# 1 = min
 			assert int((exc_info.value.until or -999) - now) in (0, 1)
 
-			client._service_unavailable = None  # pylint: disable=protected-access
+			client._service_unavailable = None
 			server.response_headers["Retry-After"] = "999999"
 			now = time.time()
 			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
@@ -1021,7 +1017,7 @@ def test_messagebus_reconnect() -> None:
 
 		for _ in range(3):
 			rpc_id += 1
-			msg = JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+			msg = JSONRPCResponseMessage(
 				sender="service:worker:test:1", channel="host:test-client.uib.local", rpc_id=str(rpc_id), result="RESULT"
 			)
 			handler.ws_send_message(lz4.frame.compress(msg.to_msgpack(), compression_level=0, block_linked=True))
@@ -1037,12 +1033,12 @@ def test_messagebus_reconnect() -> None:
 			with listener.register(client.messagebus):
 				client.connect_messagebus()
 				time.sleep(3)
-				assert client.messagebus._subscribed_channels == ["chan1", "chan2", "chan3"]  # pylint: disable=protected-access
+				assert client.messagebus._subscribed_channels == ["chan1", "chan2", "chan3"]
 
 				rpc_id = 10
 				server.restart(new_cert=True)
 				time.sleep(10)
-				assert client.messagebus._subscribed_channels == ["chan1", "chan2", "chan3"]  # pylint: disable=protected-access
+				assert client.messagebus._subscribed_channels == ["chan1", "chan2", "chan3"]
 
 			print("messages", listener.messages)
 			expected_messages = 6 + 1  # 6 * JSONRPCResponseMessage + 1 * ChannelSubscriptionEventMessage
@@ -1062,7 +1058,7 @@ def test_messagebus_reconnect_exception() -> None:
 
 		def messagebus_connection_closed(self, messagebus: Messagebus) -> None:
 			self.closed += 1
-			self.next_connect_wait.append(messagebus._next_connect_wait)  # pylint: disable=protected-access
+			self.next_connect_wait.append(messagebus._next_connect_wait)
 
 	num = 0
 
@@ -1070,14 +1066,14 @@ def test_messagebus_reconnect_exception() -> None:
 		nonlocal num
 		num += 1
 		if num == 2:
-			handler._ws_close(1013, "Maintenance mode\nRetry-After: 5")  # pylint: disable=protected-access
+			handler._ws_close(1013, "Maintenance mode\nRetry-After: 5")
 		else:
 			smsg = ChannelSubscriptionEventMessage(
 				sender="service:worker:test:1", channel="host:test-client.uib.local", subscribed_channels=["chan1", "chan2", "chan3"]
 			)
 			handler.ws_send_message(lz4.frame.compress(smsg.to_msgpack(), compression_level=0, block_linked=True))
 			if num <= 3:
-				handler._ws_close()  # pylint: disable=protected-access
+				handler._ws_close()
 
 	with http_test_server(
 		generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
@@ -1160,16 +1156,16 @@ def test_timeouts() -> None:
 				client.get("/", read_timeout=2)
 			assert round(time.time() - start) >= 2
 
-			assert client.get("/", read_timeout=4)[0] == 200  # pylint: disable=unsubscriptable-object
+			assert client.get("/", read_timeout=4)[0] == 200
 
 
 def test_messagebus_ping() -> None:
 	pong_count = 0
 
 	def ws_connect_callback(handler: HTTPTestServerRequestHandler) -> None:
-		handler._ws_send_message(handler._opcode_ping, b"")  # pylint: disable=protected-access
+		handler._ws_send_message(handler._opcode_ping, b"")
 
-	def _on_pong(messagebus: Messagebus, app: WebSocketApp, message: bytes) -> None:  # pylint: disable=unused-argument
+	def _on_pong(messagebus: Messagebus, app: WebSocketApp, message: bytes) -> None:
 		nonlocal pong_count
 		pong_count += 1
 
@@ -1220,7 +1216,7 @@ def test_jsonrpc(tmp_path: Path) -> None:
 			assert reqs[0]["method"] == "HEAD"
 			# get interface
 			assert reqs[1]["method"] == "POST"
-			for idx in range(len(params)):  # pylint: disable=consider-using-enumerate
+			for idx in range(len(params)):
 				assert reqs[idx + 2]["path"] == "/rpc"
 				assert reqs[idx + 2]["method"] == "POST"
 				assert reqs[idx + 2]["request"]["method"] == "method"
@@ -1300,8 +1296,8 @@ def test_jsonrpc_interface(tmp_path: Path) -> None:
 			client.jsonrpc(method="test_method", params={"arg1": 1, "arg3": "3"})
 			client.jsonrpc(method="test_method", params={"arg2": 2})
 			client.jsonrpc(method="test_method", params={"arg3": "3"})
-			client.test_method(1, 2, x=3, y=4)  # type: ignore[attr-defined]  # pylint: disable=no-member
-			client.test_method(1, x="y")  # type: ignore[attr-defined]  # pylint: disable=no-member
+			client.test_method(1, 2, x=3, y=4)  # type: ignore[attr-defined]
+			client.test_method(1, x="y")  # type: ignore[attr-defined]
 
 			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
 			assert reqs[0]["method"] == "HEAD"
@@ -1315,15 +1311,15 @@ def test_jsonrpc_interface(tmp_path: Path) -> None:
 			assert reqs[6]["request"]["params"] == [1, 2, {"x": 3, "y": 4}]
 			assert reqs[7]["request"]["params"] == [1, "default2", {"x": "y"}]
 
-			class Test:  # pylint: disable=too-few-public-methods
+			class Test:
 				pass
 
 			log_file.unlink()
 			test_obj = Test()
 			client.create_jsonrpc_methods(test_obj)
-			test_obj.backend_getInterface()  # type: ignore[attr-defined]  # pylint: disable=no-member
-			test_obj.test_method(1, x="y")  # type: ignore[attr-defined]  # pylint: disable=no-member
-			test_obj.backend_exit()  # type: ignore[attr-defined]  # pylint: disable=no-member
+			test_obj.backend_getInterface()  # type: ignore[attr-defined]
+			test_obj.test_method(1, x="y")  # type: ignore[attr-defined]
+			test_obj.backend_exit()  # type: ignore[attr-defined]
 			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
 			assert reqs[0]["request"]["method"] == "test_method"
 			assert reqs[1]["method"] == "POST"
@@ -1457,7 +1453,7 @@ def test_backend_manager_and_get_service_client(tmp_path: Path) -> None:
 				with catch_warnings():
 					simplefilter("ignore")
 					backend = BackendManager()
-				backend.test_method(arg1=1, arg2=2)  # type: ignore[attr-defined]  # pylint: disable=no-member
+				backend.test_method(arg1=1, arg2=2)  # type: ignore[attr-defined]
 
 				reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
 
@@ -1510,7 +1506,7 @@ def test_messagebus_jsonrpc() -> None:
 		nonlocal rpc_error
 		msg = JSONRPCRequestMessage.from_msgpack(lz4.frame.decompress(message))
 		time.sleep(delay)
-		res = JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+		res = JSONRPCResponseMessage(
 			sender="service:worker:test:1",
 			channel="host:test-client.uib.local",
 			rpc_id=msg.rpc_id,
@@ -1568,7 +1564,7 @@ def test_messagebus_multi_thread() -> None:
 
 	def ws_message_callback(handler: HTTPTestServerRequestHandler, message: bytes) -> None:
 		msg = JSONRPCRequestMessage.from_msgpack(message)
-		res = JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+		res = JSONRPCResponseMessage(
 			sender="service:worker:test:1", channel="host:test-client.uib.local", rpc_id=msg.rpc_id, result=f"RESULT {msg.rpc_id}"
 		)
 		handler.ws_send_message(res.to_msgpack())
@@ -1591,7 +1587,7 @@ def test_messagebus_multi_thread() -> None:
 				assert res["error"] is None
 
 
-def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
+def test_messagebus_listener() -> None:
 	class StoringListener(MessagebusListener):
 		def __init__(self, message_types: Iterable[MessageType | str] | None = None) -> None:
 			super().__init__(message_types=message_types)
@@ -1635,7 +1631,7 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 	def ws_connect_callback(handler: HTTPTestServerRequestHandler) -> None:
 		now = timestamp()
 		handler.ws_send_message(
-			JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+			JSONRPCResponseMessage(
 				id="00000000-0000-4000-8000-000000000001",
 				sender="service:worker:test:1",
 				channel="host:test-client.uib.local",
@@ -1644,7 +1640,7 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 			).to_msgpack()
 		)
 		handler.ws_send_message(
-			JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+			JSONRPCResponseMessage(
 				id="00000000-0000-4000-8000-000000000002",
 				sender="service:worker:test:2",
 				channel="host:test-client.uib.local",
@@ -1653,13 +1649,13 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 			).to_msgpack()
 		)
 		handler.ws_send_message(
-			JSONRPCResponseMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+			JSONRPCResponseMessage(
 				id="00000000-0000-4000-8000-000000000003", sender="service:worker:test:3", channel="host:test-client.uib.local", rpc_id="3"
 			).to_msgpack()
 		)
 		handler.ws_send_message(b"DO NOT CRASH ON INVALID DATA")
 		handler.ws_send_message(
-			FileUploadResultMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+			FileUploadResultMessage(
 				id="00000000-0000-4000-8000-000000000004",
 				sender="service:worker:test:1",
 				channel="host:test-client.uib.local",
@@ -1668,7 +1664,7 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 			).to_msgpack()
 		)
 		handler.ws_send_message(
-			FileUploadResultMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+			FileUploadResultMessage(
 				id="00000000-0000-4000-8000-000000000005",
 				sender="service:worker:test:1",
 				channel="host:test-client.uib.local",
@@ -1687,10 +1683,10 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 				listener3.register(client.messagebus),
 				listener4.register(client.messagebus),
 			):
-				assert len(client.messagebus._listener) == 4  # pylint: disable=protected-access
+				assert len(client.messagebus._listener) == 4
 				client.messagebus.reconnect_wait_min = 2
 				client.messagebus.reconnect_wait_max = 2
-				client.messagebus._connect_timeout = 2  # pylint: disable=protected-access
+				client.messagebus._connect_timeout = 2
 				client.connect_messagebus()
 				# Receive messages for 3 seconds
 				time.sleep(3)
@@ -1700,7 +1696,7 @@ def test_messagebus_listener() -> None:  # pylint: disable=too-many-statements
 				time.sleep(5)
 				client.disconnect()
 
-			assert len(client.messagebus._listener) == 0  # pylint: disable=protected-access
+			assert len(client.messagebus._listener) == 0
 
 			for listener in (listener1, listener2, listener3, listener4):
 				assert listener.connection_open_calls == 2
@@ -1812,7 +1808,7 @@ def test_permission_error_ca_cert_file() -> None:
 
 @pytest.mark.windows
 def test_permission_error_ca_cert_file_lock() -> None:
-	from opsicommon.system.windows import _lock_file, _unlock_file  # pylint: disable=import-outside-toplevel
+	from opsicommon.system.windows import _lock_file, _unlock_file
 
 	load_verify_locations_orig = SSLContext.load_verify_locations
 	attempts = 0

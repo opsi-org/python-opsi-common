@@ -352,32 +352,32 @@ def test_opsi_license_pool_add_remove_license(tmp_path: Path) -> None:
 	shutil.copytree("tests/data/license", str(license_file_path))
 	olp = OpsiLicensePool(license_file_path=str(license_file_path), modules_file_path=str(modules_file_path))
 	olp.load()
-	licenses = list(olp._licenses.values())  # pylint: disable=protected-access
+	licenses = list(olp._licenses.values())
 	assert len(licenses) == 25
 	for lic in licenses:
 		lic.get_state()
-		assert len(lic._cached_state) > 0  # pylint: disable=protected-access
+		assert len(lic._cached_state) > 0
 
 	removed_lic = licenses.pop()
 	olp.remove_license(removed_lic)
 
-	licenses = list(olp._licenses.values())  # pylint: disable=protected-access
+	licenses = list(olp._licenses.values())
 	assert len(licenses) == 24
 	# Assert empty cache
 	for lic in licenses:
-		assert len(lic._cached_state) == 0  # pylint: disable=protected-access
+		assert len(lic._cached_state) == 0
 
 	# Fill cache
 	for lic in licenses:
 		lic.get_state()
-		assert len(lic._cached_state) > 0  # pylint: disable=protected-access
+		assert len(lic._cached_state) > 0
 
 	olp.add_license(removed_lic)
-	licenses = list(olp._licenses.values())  # pylint: disable=protected-access
+	licenses = list(olp._licenses.values())
 	assert len(licenses) == 25
 	# Assert empty cache
 	for lic in licenses:
-		assert len(lic._cached_state) == 0  # pylint: disable=protected-access
+		assert len(lic._cached_state) == 0
 
 
 def test_opsi_license_pool_licenses_checksum() -> None:
@@ -512,7 +512,7 @@ def test_licensing_info_and_cache() -> None:
 		(1000, 100, 1032, 110, 100000, 100000, OPSI_MODULE_STATE_OVER_LIMIT, False, OPSI_MODULE_STATE_OVER_LIMIT, False),
 	),
 )
-def test_license_state_client_number_warning_and_thresholds(  # pylint: disable=too-many-arguments,too-many-locals
+def test_license_state_client_number_warning_and_thresholds(
 	lic_scalability1: int,
 	lic_linux: int,
 	clients_total: int,
@@ -682,7 +682,7 @@ def test_license_state_cache() -> None:
 		lic = OpsiLicense(**LIC1)
 		lic.sign(private_key)
 
-		assert len(lic._cached_state) == 0  # pylint: disable=protected-access
+		assert len(lic._cached_state) == 0
 
 		lic.valid_from = date.today() - timedelta(days=10)
 		lic.valid_until = date.today() - timedelta(days=1)
@@ -690,10 +690,10 @@ def test_license_state_cache() -> None:
 
 		for num in range(1, MAX_STATE_CACHE_VALUES + 5):
 			assert lic.get_state(at_date=date.today() + timedelta(days=num)) == OPSI_LICENSE_STATE_EXPIRED
-			assert len(lic._cached_state) == min(MAX_STATE_CACHE_VALUES, num)  # pylint: disable=protected-access
+			assert len(lic._cached_state) == min(MAX_STATE_CACHE_VALUES, num)
 
 		lic.clear_cache()
-		assert len(lic._cached_state) == 0  # pylint: disable=protected-access
+		assert len(lic._cached_state) == 0
 
 		today = date.today()
 		start = time.perf_counter_ns()
@@ -709,7 +709,7 @@ def test_license_state_cache() -> None:
 			assert time_ns * 2 < uncached_time_ns
 
 			# Cache should keep size
-			assert len(lic._cached_state) == 1  # pylint: disable=protected-access
+			assert len(lic._cached_state) == 1
 
 
 def test_opsi_license_pool_unknown_module_id() -> None:

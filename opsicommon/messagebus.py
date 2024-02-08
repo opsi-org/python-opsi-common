@@ -86,12 +86,12 @@ UUID4Str = Annotated[
 MessageT = TypeVar("MessageT", bound="Message")
 
 
-class Message(BaseModel, ABC):  # pylint: disable=too-many-instance-attributes
+class Message(BaseModel, ABC):
 	type: str  # Custom message types are allowed
 	sender: str
 	channel: str
 	back_channel: str | None = None
-	id: UUID4Str = Field(default_factory=lambda: str(uuid4()))  # pylint: disable=invalid-name
+	id: UUID4Str = Field(default_factory=lambda: str(uuid4()))
 	created: int = Field(default_factory=timestamp)
 	expires: int = Field(default_factory=lambda: timestamp() + DEFAULT_MESSAGE_VALIDITY_PERIOD)
 	ref_id: str | None = None

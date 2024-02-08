@@ -6,11 +6,12 @@ test_package_wim
 
 from datetime import datetime, timezone
 from pathlib import Path
-from subprocess import run, CalledProcessError
-from unittest.mock import patch, PropertyMock
+from subprocess import CalledProcessError, run
+from unittest.mock import PropertyMock, patch
 
 import pytest
-from opsicommon.package.wim import wim_capture, wim_info, WIMImageInfo, WIMImageWindowsInfo, WIMInfo
+
+from opsicommon.package.wim import WIMImageInfo, WIMImageWindowsInfo, WIMInfo, wim_capture, wim_info
 
 WIMLIB_MISSING = False
 WIMLIB_ERROR = ""
@@ -396,7 +397,7 @@ WIMBoot compatible:     no
 
 
 def test_wim_info() -> None:
-	class Proc:  # pylint: disable=too-few-public-methods
+	class Proc:
 		stdout = WIM_INFO_WIN10
 		returncode = 0
 

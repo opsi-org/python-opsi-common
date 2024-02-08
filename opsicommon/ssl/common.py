@@ -173,7 +173,7 @@ def create_ca(
 	return (builder.sign(ca_key, hashes.SHA256()), key)
 
 
-def create_server_cert(  # pylint: disable=too-many-arguments,too-many-locals
+def create_server_cert(
 	*,
 	subject: x509.Name | dict[str, str],
 	valid_days: int,

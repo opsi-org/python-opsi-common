@@ -25,7 +25,7 @@ from opsicommon.objects import (
 
 object_classes = []
 pre_globals = list(globals())
-from opsicommon.objects import (  # pylint: disable=wrong-import-position,unused-import
+from opsicommon.objects import (  # noqa: E402
 	AuditHardware,
 	AuditHardwareOnHost,
 	AuditSoftware,
@@ -333,10 +333,10 @@ def test_get_possible_class_attributes() -> None:
 		"systemUUID",
 	}
 
-	class Test(Entity):  # pylint: disable=too-few-public-methods
+	class Test(Entity):
 		sub_classes: Dict[str, type] = {}
 
-		def __init__(no_self: Any, arg: Any) -> None:  # pylint: disable=unused-argument,no-self-argument
+		def __init__(no_self: Any, arg: Any) -> None:
 			pass
 
 	assert get_possible_class_attributes(Test) == {"no_self", "arg", "type"}
@@ -656,7 +656,7 @@ def test_getting_helpful_error_message_with_baseclass_relationship() -> None:
 				"requirementType": "after",
 				"requiredInstallationStatus": "installed",
 				"requiredProductId": "mshotfix",
-				"product_id": "msservicepack"
+				"product_id": "msservicepack",
 				# The following attributes are missing:
 				# * productVersion
 				# * packageVersion
@@ -692,7 +692,7 @@ def test_getting_helpful_error_message_with_baseclass_entity() -> None:
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_no_arguments() -> None:
-	class NoArgs(BaseObject):  # pylint: disable=too-few-public-methods
+	class NoArgs(BaseObject):
 		def __init__(self) -> None:
 			pass
 
@@ -701,8 +701,8 @@ def test_get_mandatory_constructor_args_from_constructor_with_no_arguments() -> 
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_only_mandatory_arguments() -> None:
-	class OnlyMandatory(BaseObject):  # pylint: disable=too-few-public-methods
-		def __init__(self, arg1: Any, arg2: Any, arg3: Any) -> None:  # pylint: disable=unused-argument
+	class OnlyMandatory(BaseObject):
+		def __init__(self, arg1: Any, arg2: Any, arg3: Any) -> None:
 			pass
 
 	obj = OnlyMandatory(1, 1, 1)
@@ -710,8 +710,8 @@ def test_get_mandatory_constructor_args_from_constructor_with_only_mandatory_arg
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_only_optional_arguments() -> None:
-	class OnlyOptional(BaseObject):  # pylint: disable=too-few-public-methods
-		def __init__(self, only: int = 1, optional: int = 2, arguments: Any = None) -> None:  # pylint: disable=unused-argument
+	class OnlyOptional(BaseObject):
+		def __init__(self, only: int = 1, optional: int = 2, arguments: Any = None) -> None:
 			pass
 
 	obj = OnlyOptional()
@@ -719,8 +719,8 @@ def test_get_mandatory_constructor_args_from_constructor_with_only_optional_argu
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_mixed_arguments() -> None:
-	class MixedArgs(BaseObject):  # pylint: disable=too-few-public-methods
-		def __init__(self, arg1: bool, arg2: bool, kwarg1: int = 0, kwarg2: int = 0) -> None:  # pylint: disable=unused-argument
+	class MixedArgs(BaseObject):
+		def __init__(self, arg1: bool, arg2: bool, kwarg1: int = 0, kwarg2: int = 0) -> None:
 			pass
 
 	obj = MixedArgs(True, True)
@@ -728,8 +728,8 @@ def test_get_mandatory_constructor_args_from_constructor_with_mixed_arguments() 
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_wildcard_arguments() -> None:
-	class WildcardOnly(BaseObject):  # pylint: disable=too-few-public-methods
-		def __init__(self, *only: Any) -> None:  # pylint: disable=unused-argument
+	class WildcardOnly(BaseObject):
+		def __init__(self, *only: Any) -> None:
 			pass
 
 	obj = WildcardOnly("yeah", "great", "thing")
@@ -737,8 +737,8 @@ def test_get_mandatory_constructor_args_from_constructor_with_wildcard_arguments
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_keyword_arguments() -> None:
-	class Kwargz(BaseObject):  # pylint: disable=too-few-public-methods
-		def __init__(self, **kwargs: Any) -> None:  # pylint: disable=unused-argument
+	class Kwargz(BaseObject):
+		def __init__(self, **kwargs: Any) -> None:
 			pass
 
 	obj = Kwargz(goand=1, get="asdf", them=[], girl=True)
@@ -746,8 +746,8 @@ def test_get_mandatory_constructor_args_from_constructor_with_keyword_arguments(
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_mixed_with_args_and_kwargs() -> None:
-	class KwargzAndMore(BaseObject):  # pylint: disable=too-few-public-methods
-		def __init__(self, crosseyed: bool, heart: bool, *more: Any, **kwargs: Any) -> None:  # pylint: disable=unused-argument
+	class KwargzAndMore(BaseObject):
+		def __init__(self, crosseyed: bool, heart: bool, *more: Any, **kwargs: Any) -> None:
 			pass
 
 	obj = KwargzAndMore(False, True, "some", "more", things="here")
@@ -851,6 +851,7 @@ def test_hardware_config() -> None:
 	for ahoh in data:
 		ahw = AuditHardwareOnHost.fromHash(ahoh)
 		ahw.toAuditHardware()
+
 
 def test_host_init() -> None:
 	host = Host("test.dom.tld", "desc", "notes", "00:01:02:03:04:05", "172.16.1.1", "inv001", "9f3f1c96-1821-413c-b850-0507a17c7e47")

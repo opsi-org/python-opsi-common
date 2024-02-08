@@ -46,17 +46,17 @@ class LegacyControlFile:
 	valueContinuationRegex = re.compile(r"^\s(.*)$")
 	optionRegex = re.compile(r"^([^\:]+)\s*\:\s*(.*)$")
 
-	def __init__(self, control_file: Path | None = None) -> None:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+	def __init__(self, control_file: Path | None = None) -> None:
 		self._sections: dict[str, str | list[dict[str, str]]] = {}
 		self.product = None
-		self.productDependencies = []  # pylint: disable=invalid-name
-		self.productProperties: list[ProductProperty] = []  # pylint: disable=invalid-name
-		self.packageDependencies: list[dict[str, str | None]] = []  # pylint: disable=invalid-name
+		self.productDependencies = []
+		self.productProperties: list[ProductProperty] = []
+		self.packageDependencies: list[dict[str, str | None]] = []
 
 		if not control_file:
 			return
 
-		productAttributes = set(  # pylint: disable=invalid-name
+		productAttributes = set(
 			[
 				"id",
 				"type",
@@ -78,7 +78,7 @@ class LegacyControlFile:
 				"userloginscript",
 			]
 		)
-		dependencyAttributes = set(  # pylint: disable=invalid-name
+		dependencyAttributes = set(
 			[
 				"action",
 				"requiredproduct",
@@ -90,13 +90,11 @@ class LegacyControlFile:
 				"requirementtype",
 			]
 		)
-		propertyAttributes = set(  # pylint: disable=invalid-name
-			["type", "name", "default", "values", "description", "editable", "multivalue"]
-		)
+		propertyAttributes = set(["type", "name", "default", "values", "description", "editable", "multivalue"])
 
-		sectionType = None  # pylint: disable=invalid-name
+		sectionType = None
 		option = None
-		for lineNum, line in enumerate(control_file.read_text().splitlines(), start=1):  # pylint: disable=invalid-name
+		for lineNum, line in enumerate(control_file.read_text().splitlines(), start=1):
 			if line and line.startswith((";", "#")):
 				# Comment
 				continue
@@ -105,7 +103,7 @@ class LegacyControlFile:
 
 			match = self.sectionRegex.search(line)
 			if match:
-				sectionType = match.group(1).strip().lower()  # pylint: disable=invalid-name
+				sectionType = match.group(1).strip().lower()
 				if sectionType not in ("package", "product", "windows", "productdependency", "productproperty", "changelog"):
 					raise ValueError(f"Parse error in line {lineNum}: unknown section '{sectionType}'")
 				if sectionType == "changelog":
@@ -243,13 +241,13 @@ class LegacyControlFile:
 						self._sections[sectionType][-1][option] += "\n"  # type: ignore
 					self._sections[sectionType][-1][option] += value.lstrip()  # type: ignore
 
-		for sectionType, secs in self._sections.items():  # pylint: disable=too-many-nested-blocks,invalid-name
+		for sectionType, secs in self._sections.items():
 			if sectionType == "changelog":
 				continue
 
-			for i, currentSection in enumerate(secs):  # pylint: disable=invalid-name
+			for i, currentSection in enumerate(secs):
 				for option, value in currentSection.items():  # type: ignore
-					if (  # pylint: disable=too-many-boolean-expressions
+					if (
 						(sectionType == "product" and option == "productclasses")
 						or (sectionType == "package" and option == "depends")
 						or (sectionType == "productproperty" and option in ("default", "values"))
@@ -261,7 +259,7 @@ class LegacyControlFile:
 							value = from_json(value.strip())
 							# Remove duplicates
 							value = forceUniqueList(value)
-						except Exception as err:  # pylint: disable=broad-except
+						except Exception as err:
 							logger.trace("Failed to read json string '%s': %s", value.strip(), err)  # type: ignore
 							value = value.replace("\n", "")
 							value = value.replace("\t", "")
@@ -275,7 +273,7 @@ class LegacyControlFile:
 					if isinstance(value, str):
 						value = value.rstrip()
 
-					self._sections[sectionType][i][option] = value  # type: ignore  # pylint: disable=unnecessary-dict-index-lookup
+					self._sections[sectionType][i][option] = value  # type: ignore
 
 		if not self._sections.get("product"):
 			raise ValueError(f"Error in control file '{control_file}': 'product' section not found")
@@ -308,7 +306,7 @@ class LegacyControlFile:
 
 		# Create Product object
 		product = self._sections["product"][0]  # type: ignore
-		Class: type  # pylint: disable=invalid-name
+		Class: type
 		if product.get("type") == "NetbootProduct":  # type: ignore
 			Class = NetbootProduct
 		elif product.get("type") == "LocalbootProduct":  # type: ignore
@@ -316,17 +314,17 @@ class LegacyControlFile:
 		else:
 			raise ValueError(f"Error in control file '{control_file}': unknown product type '{product.get('type')}'")  # type: ignore
 
-		productVersion = product.get("version")  # type: ignore  # pylint: disable=invalid-name
+		productVersion = product.get("version")  # type: ignore
 		if not productVersion:
 			logger.warning("No product version given! Assuming 1.0.")
-			productVersion = 1.0  # pylint: disable=invalid-name
-		# pylint: disable=invalid-name
+			productVersion = 1.0
+
 		packageVersion = self._sections.get("package", [{}])[0].get("version") or product.get(  # type: ignore[union-attr]
 			"packageversion"
-		)  # pylint: disable=invalid-name
+		)
 		if not packageVersion:
 			logger.warning("No package version given! Assuming 1.")
-			packageVersion = 1  # pylint: disable=invalid-name
+			packageVersion = 1
 
 		self.product = Class(
 			id=product.get("id"),  # type: ignore
@@ -355,7 +353,7 @@ class LegacyControlFile:
 		self.product.setDefaults()
 
 		# Create ProductDependency objects
-		for productDependency in self._sections.get("productdependency", []):  # pylint: disable=invalid-name
+		for productDependency in self._sections.get("productdependency", []):
 			dependency = ProductDependency(
 				productId=self.product.getId(),
 				productVersion=self.product.getProductVersion(),
@@ -374,11 +372,11 @@ class LegacyControlFile:
 			self.productDependencies.append(dependency)
 
 		# Create ProductProperty objects
-		for productProperty in self._sections.get("productproperty", []):  # pylint: disable=invalid-name
+		for productProperty in self._sections.get("productproperty", []):
 			self.parse_product_property(productProperty)  # type: ignore
 
-	def parse_product_property(self, productProperty: dict[str, str]) -> None:  # pylint: disable=invalid-name
-		Class: type  # pylint: disable=invalid-name
+	def parse_product_property(self, productProperty: dict[str, str]) -> None:
+		Class: type
 		if productProperty.get("type", "").lower() in ("unicodeproductproperty", "unicode", ""):
 			Class = UnicodeProductProperty
 		elif productProperty.get("type", "").lower() in ("boolproductproperty", "bool"):
@@ -414,7 +412,7 @@ class LegacyControlFile:
 
 		self.productProperties[-1].setDefaults()
 
-	def generate_control_file(self, control_file: Path) -> None:  # pylint: disable=too-many-branches,too-many-statements
+	def generate_control_file(self, control_file: Path) -> None:
 		if not self.product:
 			raise RuntimeError("No product to generate control file for.")
 		lines = ["[Package]"]
@@ -432,11 +430,11 @@ class LegacyControlFile:
 		lines.append("")
 
 		lines.append("[Product]")
-		productType = self.product.getType()  # pylint: disable=invalid-name
+		productType = self.product.getType()
 		if productType == "LocalbootProduct":
-			productType = "localboot"  # pylint: disable=invalid-name
+			productType = "localboot"
 		elif productType == "NetbootProduct":
-			productType = "netboot"  # pylint: disable=invalid-name
+			productType = "netboot"
 		else:
 			raise ValueError(f"Unhandled product type '{productType}'")
 
@@ -444,7 +442,7 @@ class LegacyControlFile:
 		lines.append(f"id: {self.product.getId()}")
 		lines.append(f"name: {self.product.getName()}")
 		lines.append("description: ")
-		descLines = (self.product.getDescription() or "").split("\n")  # pylint: disable=invalid-name
+		descLines = (self.product.getDescription() or "").split("\n")
 		if len(descLines) > 0:
 			lines[-1] += descLines[0]
 			if len(descLines) > 1:
@@ -465,7 +463,7 @@ class LegacyControlFile:
 		if isinstance(self.product, LocalbootProduct):
 			lines.append(f"userLoginScript: {self.product.getUserLoginScript() or ''}")
 		if isinstance(self.product, NetbootProduct):
-			pxeConfigTemplate = self.product.getPxeConfigTemplate() or ""  # pylint: disable=invalid-name
+			pxeConfigTemplate = self.product.getPxeConfigTemplate() or ""
 			lines.append(f"pxeConfigTemplate: {pxeConfigTemplate}")
 		lines.append("")
 
@@ -491,11 +489,11 @@ class LegacyControlFile:
 				lines.append(f"requirementType: {dependency.getRequirementType()}")
 			lines.append("")
 
-		for productProperty in self.productProperties:  # pylint: disable=invalid-name
+		for productProperty in self.productProperties:
 			lines.append("[ProductProperty]")
-			productPropertyType = "unicode"  # pylint: disable=invalid-name
+			productPropertyType = "unicode"
 			if isinstance(productProperty, BoolProductProperty):
-				productPropertyType = "bool"  # pylint: disable=invalid-name
+				productPropertyType = "bool"
 			lines.append(f"type: {productPropertyType}")
 			lines.append(f"name: {productProperty.getPropertyId()}")
 			if not isinstance(productProperty, BoolProductProperty):
@@ -503,7 +501,7 @@ class LegacyControlFile:
 				lines.append(f"editable: {productProperty.getEditable()}")
 			if productProperty.getDescription():
 				lines.append("description: ")
-				descLines = (productProperty.getDescription() or "").split("\n")  # type: ignore  # pylint: disable=invalid-name
+				descLines = (productProperty.getDescription() or "").split("\n")  # type: ignore
 				if len(descLines) > 0:
 					lines[-1] += descLines[0]
 					if len(descLines) > 1:

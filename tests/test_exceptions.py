@@ -12,13 +12,13 @@ import pytest
 from hypothesis import given, strategies
 
 
-class FixtureRequest:  # pylint: disable=too-few-public-methods
+class FixtureRequest:
 	param: str
 
 
 exception_classes = []
 pre_globals = list(globals())
-from opsicommon.exceptions import (  # pylint: disable=wrong-import-position,unused-import
+from opsicommon.exceptions import (  # noqa: E402
 	BackendAuthenticationError,
 	BackendBadValueError,
 	BackendConfigurationError,
@@ -47,6 +47,34 @@ from opsicommon.exceptions import (  # pylint: disable=wrong-import-position,unu
 	RepositoryError,
 )
 
+__all__ = [
+	"BackendAuthenticationError",
+	"BackendBadValueError",
+	"BackendConfigurationError",
+	"BackendError",
+	"BackendIOError",
+	"BackendMissingDataError",
+	"BackendModuleDisabledError",
+	"BackendPermissionDeniedError",
+	"BackendReferentialIntegrityError",
+	"BackendTemporaryError",
+	"BackendUnableToConnectError",
+	"BackendUnaccomplishableError",
+	"LicenseConfigurationError",
+	"LicenseMissingError",
+	"OpsiBackupBackendNotFound",
+	"OpsiBackupFileError",
+	"OpsiBackupFileNotFound",
+	"OpsiBadRpcError",
+	"OpsiError",
+	"OpsiProductOrderingError",
+	"OpsiRpcError",
+	"OpsiServiceAuthenticationError",
+	"OpsiServiceConnectionError",
+	"OpsiServiceTimeoutError",
+	"OpsiServiceVerificationError",
+	"RepositoryError",
+]
 exception_classes = [obj for name, obj in dict(globals()).items() if name not in pre_globals and name != "pre_globals"]
 
 
@@ -76,17 +104,15 @@ def exception_parameter(request: FixtureRequest) -> Generator[str, None, None]:
 
 
 @pytest.fixture
-def exception(
-	exception_class: Type[Exception], exception_parameter: str  # pylint: disable=redefined-outer-name
-) -> Generator[Exception, None, None]:
+def exception(exception_class: Type[Exception], exception_parameter: str) -> Generator[Exception, None, None]:
 	yield exception_class(exception_parameter)
 
 
-def test_exception_can_be_printed(exception: Exception) -> None:  # pylint: disable=redefined-outer-name
+def test_exception_can_be_printed(exception: Exception) -> None:
 	print(exception)
 
 
-def test_exception_has__repr__(exception: Exception) -> None:  # pylint: disable=redefined-outer-name
+def test_exception_has__repr__(exception: Exception) -> None:
 	_repr = repr(exception)
 	assert _repr.startswith("<")
 	assert exception.__class__.__name__ in _repr
@@ -117,7 +143,7 @@ def test_opsi_product_ordering_error_ordering_is_accessible() -> None:
 	assert [3, 4, 5] == error.problematicRequirements
 
 
-def test_exception_is_sub_class_of_opsi_error(exception_class: Type[Exception]) -> None:  # pylint: disable=redefined-outer-name
+def test_exception_is_sub_class_of_opsi_error(exception_class: Type[Exception]) -> None:
 	with pytest.raises(OpsiError):
 		raise exception_class("message")
 

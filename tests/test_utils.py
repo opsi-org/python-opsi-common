@@ -61,7 +61,7 @@ def test_utc_timestamp() -> None:
 
 
 def test_singleton() -> None:
-	class TestSingleton(metaclass=Singleton):  # pylint: disable=too-few-public-methods
+	class TestSingleton(metaclass=Singleton):
 		pass
 
 	assert id(TestSingleton()) == id(TestSingleton())

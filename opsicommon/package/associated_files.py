@@ -8,6 +8,7 @@ handling of package content, hash files and more
 import os
 from hashlib import md5
 from pathlib import Path
+
 from pyzsync import create_zsync_file  # type: ignore[import]
 
 from opsicommon.logging import get_logger
@@ -47,10 +48,10 @@ def create_package_content_file(base_dir: Path) -> Path:
 					entry_type, size, additional = handle_file(path)
 				filename = str(path.relative_to(base_dir)).replace("'", "\\'")
 				lines.append(f"{entry_type} '{filename}' {size} {additional}")
-			except Exception as err:  # pylint: disable=broad-except
+			except Exception as err:
 				logger.error(err, exc_info=True)
 		package_content_file.write_text("\n".join(lines), encoding="utf-8")
-	except Exception as err:  # pylint: disable=broad-except
+	except Exception as err:
 		logger.error(err, exc_info=True)
 		raise RuntimeError(f"Failed to create package content file of directory '{base_dir}': {err}") from err
 	return package_content_file

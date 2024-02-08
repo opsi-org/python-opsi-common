@@ -56,7 +56,7 @@ OTHER_FORMAT = "[%(opsilevel)d] [%(asctime)s.%(msecs)03d] [%(contextstring)s] %(
 logger = get_logger()
 
 
-def test_levels() -> None:  # pylint: disable=redefined-outer-name
+def test_levels() -> None:
 	with log_stream(LOG_SECRET, format="%(message)s") as stream:
 		expected = ""
 		print_logger_info()
@@ -70,7 +70,7 @@ def test_levels() -> None:  # pylint: disable=redefined-outer-name
 		assert expected in stream.read()
 
 
-def test_caller_filename() -> None:  # pylint: disable=redefined-outer-name
+def test_caller_filename() -> None:
 	with log_stream(LOG_SECRET, format="%(levelname)s %(filename)s") as stream:
 		for level in ("secret", "trace", "debug", "info", "notice", "warning", "error", "critical", "essential"):
 			func = getattr(logger, level)
@@ -109,8 +109,8 @@ def test_log_exception_handler() -> None:
 	if os.path.exists(filename):
 		os.remove(filename)
 	try:
-		raise Exception("TESTäöüß")  # pylint: disable=broad-exception-raised
-	except Exception as err:  # pylint: disable=broad-except
+		raise Exception("TESTäöüß")
+	except Exception as err:
 		handle_log_exception(exc=err, record=log_record, log=True, temp_file=True, stderr=True)
 		with open(filename, "r", encoding="utf-8") as file:
 			data = file.read()
@@ -127,7 +127,7 @@ def test_permission_error_log_exception_handler(capsys: CaptureFixture[str]) -> 
 	test_file = f"/proc/{pid}/stat"
 	try:
 		os.remove(test_file)
-	except PermissionError as err:  # pylint: disable=broad-except
+	except PermissionError as err:
 		handle_log_exception(exc=err, record=log_record, log=False, temp_file=False, stderr=True)
 		captured = capsys.readouterr()
 		assert captured.err.startswith(
@@ -144,7 +144,7 @@ def test_secret_formatter_attr() -> None:
 	csf.format(log_record)
 
 
-def test_secret_filter() -> None:  # pylint: disable=redefined-outer-name,too-many-statements
+def test_secret_filter() -> None:
 	secret_filter.set_min_length(7)
 	secret_filter.add_secrets("PASSWORD", "2SHORT", "SECRETSTRING")
 
@@ -200,7 +200,7 @@ def test_secret_filter() -> None:  # pylint: disable=redefined-outer-name,too-ma
 		assert log.count("VISIBLE_SECRETSTRING") == 2
 
 
-def test_context() -> None:  # pylint: disable=redefined-outer-name
+def test_context() -> None:
 	with log_stream(LOG_SECRET) as stream:
 		set_format(
 			stderr_format=(
@@ -221,13 +221,13 @@ def test_context() -> None:  # pylint: disable=redefined-outer-name
 		assert "second-context" in log
 
 
-def test_context_threads() -> None:  # pylint: disable=redefined-outer-name
+def test_context_threads() -> None:
 	def common_work() -> None:
 		time.sleep(0.2)
 		logger.info("common_work")
 		time.sleep(0.2)
 
-	class Main:  # pylint: disable=too-few-public-methods
+	class Main:
 		def run(self) -> None:
 			AsyncMain().start()
 			for _ in range(5):  # perform 5 iterations
@@ -298,12 +298,12 @@ def test_context_threads() -> None:  # pylint: disable=redefined-outer-name
 			assert re.search(r"handler for client Client-0.*handling client Client-1", log) is None
 
 
-def test_observable_handler() -> None:  # pylint: disable=redefined-outer-name
-	class LogObserver:  # pylint: disable=too-few-public-methods
+def test_observable_handler() -> None:
+	class LogObserver:
 		def __init__(self) -> None:
 			self.messages: list[str] = []
 
-		def messageChanged(self, handler: logging.Handler, message: Any) -> None:  # pylint: disable=unused-argument,invalid-name
+		def messageChanged(self, handler: logging.Handler, message: Any) -> None:
 			self.messages.append(message)
 
 	assert not get_all_handlers(ObservableHandler)
@@ -327,7 +327,7 @@ def test_observable_handler() -> None:  # pylint: disable=redefined-outer-name
 	assert not get_all_handlers(ObservableHandler)
 
 
-def test_simple_colored() -> None:  # pylint: disable=redefined-outer-name
+def test_simple_colored() -> None:
 	with log_stream(LOG_WARNING, format=MY_FORMAT) as stream:
 		with log_context({"firstcontext": "asdf", "secondcontext": "jkl"}):
 			logger.error("test message")
@@ -336,7 +336,7 @@ def test_simple_colored() -> None:  # pylint: disable=redefined-outer-name
 		assert "asdf" in log and "jkl" in log
 
 
-def test_simple_plain() -> None:  # pylint: disable=redefined-outer-name
+def test_simple_plain() -> None:
 	with log_stream(LOG_WARNING, format=OTHER_FORMAT) as stream:
 		with log_context({"firstcontext": "asdf", "secondcontext": "jkl"}):
 			logger.error("test message")
@@ -345,7 +345,7 @@ def test_simple_plain() -> None:  # pylint: disable=redefined-outer-name
 		assert "asdf" in log and "jkl" in log
 
 
-def test_set_context() -> None:  # pylint: disable=redefined-outer-name
+def test_set_context() -> None:
 	with log_stream(LOG_WARNING, format=MY_FORMAT) as stream:
 		set_context({"firstcontext": "asdf", "secondcontext": "jkl"})
 		logger.error("test message")
@@ -380,7 +380,7 @@ def test_set_context() -> None:  # pylint: disable=redefined-outer-name
 		set_context(None)  # type: ignore[arg-type]
 
 
-def test_foreign_logs() -> None:  # pylint: disable=redefined-outer-name
+def test_foreign_logs() -> None:
 	with log_stream(LOG_DEBUG, format="%(message)s") as stream:
 		logger.error("message before request")
 
@@ -392,7 +392,7 @@ def test_foreign_logs() -> None:  # pylint: disable=redefined-outer-name
 		assert "www.uib.de" in log
 
 
-def test_filter() -> None:  # pylint: disable=redefined-outer-name
+def test_filter() -> None:
 	with log_stream(LOG_WARNING, format="%(message)s") as stream:
 		set_filter({"testkey": ["t1", "t3"]})
 		with log_context({"testkey": "t1"}):
@@ -415,7 +415,7 @@ def test_filter() -> None:  # pylint: disable=redefined-outer-name
 			set_filter("invalid")  # type: ignore[arg-type]
 
 
-def test_filter_from_string() -> None:  # pylint: disable=redefined-outer-name
+def test_filter_from_string() -> None:
 	with log_stream(LOG_WARNING, format="%(message)s") as stream:
 		# as one string (like --log-filter "")
 		set_filter_from_string("testkey = t1 , t3 ; alsotest = a1")
@@ -450,7 +450,7 @@ def test_filter_from_string() -> None:  # pylint: disable=redefined-outer-name
 			set_filter_from_string({"testkey": ["t1", "t3"]})  # type: ignore[arg-type]
 
 
-def test_log_devel() -> None:  # pylint: disable=redefined-outer-name
+def test_log_devel() -> None:
 	with log_stream(LOG_ERROR) as stream:
 		logger.warning("warning")
 		logger.devel("devel")
@@ -490,7 +490,7 @@ def test_log_warnings() -> None:
 		assert "test warning should be logged" in log
 
 
-def test_sub_logger() -> None:  # pylint: disable=redefined-outer-name
+def test_sub_logger() -> None:
 	sub_logger = get_logger("sub")
 
 	with log_stream(LOG_WARNING, format="%(message)s") as stream:

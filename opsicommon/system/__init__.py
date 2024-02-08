@@ -29,11 +29,17 @@ if SYSTEM == "linux":
 	)
 	from .posix import lock_file
 elif SYSTEM == "windows":
-	from .windows import get_system_uuid, set_system_datetime, lock_file
+	from .windows import get_system_uuid, lock_file, set_system_datetime
 elif SYSTEM == "darwin":
 	from .darwin import get_system_uuid, set_system_datetime
 	from .posix import lock_file
 
+__all__ = ["get_system_uuid", "lock_file", "set_system_datetime", "ensure_not_already_running"]
+if SYSTEM == "linux":
+	__all__ += [
+		"get_user_sessions",
+		"run_process_in_session",
+	]
 
 logger = get_logger("opsicommon.general")
 
@@ -66,7 +72,7 @@ def ensure_not_already_running(process_name: Optional[str] = None) -> None:
 				if proc.pid != our_pid and proc.pid not in ignore_pids:
 					other_pid = proc.pid
 					break
-	except Exception as err:  # pylint: disable=broad-except
+	except Exception as err:
 		logger.debug("Check for running processes failed: %s", err)
 
 	if other_pid:

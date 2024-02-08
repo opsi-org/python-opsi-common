@@ -11,8 +11,8 @@ import ctypes
 from contextlib import contextmanager
 from typing import Any, Generator
 
-import pywintypes  # type: ignore[import] # pylint: disable=import-error
-import win32crypt  # type: ignore[import] # pylint: disable=import-error
+import pywintypes  # type: ignore[import]
+import win32crypt  # type: ignore[import]
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
@@ -73,7 +73,7 @@ logger = get_logger("opsicommon.general")
 def _open_cert_store(
 	store_name: str,
 	ctype: bool = False,
-	force_close: bool = False,  # pylint: disable=unused-argument
+	force_close: bool = False,
 ) -> Generator[Any, None, None]:  # should be _win32typing.PyCERTSTORE if present
 	_open = win32crypt.CertOpenStore
 	if ctype:

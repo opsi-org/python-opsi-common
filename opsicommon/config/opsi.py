@@ -59,7 +59,7 @@ def read_backend_config_file(file: Path) -> dict[str, Any]:
 	if not file.exists():
 		return {}
 	loc: dict[str, Any] = {}
-	exec(compile(file.read_bytes(), "<string>", "exec"), None, loc)  # pylint: disable=exec-used
+	exec(compile(file.read_bytes(), "<string>", "exec"), None, loc)
 	return loc["config"]
 
 
@@ -89,7 +89,7 @@ def get_host_id(server_role: str) -> str:
 					match = regex.search(line.strip())
 					if match:
 						return forceFqdn(match.group(1))
-		except Exception:  # pylint: disable=broad-except
+		except Exception:
 			pass
 
 		try:
@@ -225,7 +225,7 @@ class OpsiConfig(metaclass=Singleton):
 		if persistent:
 			self.write_config_file()
 
-	def upgrade_config_file(self) -> None:  # pylint: disable=too-many-branches
+	def upgrade_config_file(self) -> None:
 		if self._upgrade_done or not self._upgrade_config:
 			return
 		# Convert ini (opsi < 4.3) to toml (opsi >= 4.3)
@@ -234,11 +234,11 @@ class OpsiConfig(metaclass=Singleton):
 			file.touch(mode=0o660)
 			try:
 				chown(file, group=DEFAULT_ADMIN_GROUP)
-			except Exception:  # pylint: disable=broad-except
+			except Exception:
 				pass
 			try:
 				chown(file, user=get_opsiconfd_user())
-			except Exception:  # pylint: disable=broad-except
+			except Exception:
 				pass
 		data = file.read_text(encoding="utf-8")
 		key_val_regex = re.compile(r"([^=]+)=(\s*)(.+)")

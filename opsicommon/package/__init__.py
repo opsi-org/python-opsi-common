@@ -209,7 +209,7 @@ class OpsiPackage:
 		control_file.write_text(tomlkit.dumps(data_dict))
 
 	# compression zstd, gz or bz2
-	def create_package_archive(  # pylint: disable=too-many-arguments, too-many-locals
+	def create_package_archive(
 		self,
 		base_dir: Path,
 		compression: Literal["zstd", "bz2", "gz"] = "zstd",

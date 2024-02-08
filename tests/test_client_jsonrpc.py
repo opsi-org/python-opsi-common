@@ -299,7 +299,7 @@ def test_pass_session_id(tmp_path: Path) -> None:
 def test_pass_invalid_session_id() -> None:
 	session_id = "1234556789"
 	client = JSONRPCClient("http://localhost", session_id=session_id, connect_on_init=False)
-	assert not client._session.cookies  # pylint: disable=protected-access
+	assert not client._session.cookies
 	assert not client.session_id
 
 
@@ -380,8 +380,8 @@ def test_interface_and_exit(tmp_path: Path) -> None:
 		assert client.getInterface()
 		client.disconnect()
 
-		client._connected = True  # pylint: disable=protected-access
-		client.execute_rpc = lambda method, params: exec('raise Exception("fail")')  # type: ignore[assignment]  # pylint: disable=exec-used
+		client._connected = True
+		client.execute_rpc = lambda method, params: exec('raise Exception("fail")')  # type: ignore[assignment]
 		client.disconnect()
 	request = json.loads(log_file.read_text(encoding="utf-8").strip().split("\n")[1])
 	assert request["request"]["method"] == "backend_exit"
@@ -416,5 +416,5 @@ def test_context_manager() -> None:
 		with JSONRPCClient(f"http://localhost:{server.port}") as client:
 			response = client.get("/path")
 			assert response.status_code == 200
-			assert client._connected  # pylint: disable=protected-access
-		assert not client._connected  # pylint: disable=protected-access
+			assert client._connected
+		assert not client._connected

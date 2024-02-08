@@ -5,11 +5,11 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import os.path
-from pathlib import Path
-import shutil
 import random
+import shutil
 import string
 from itertools import combinations_with_replacement
+from pathlib import Path
 
 import pytest
 
@@ -48,7 +48,7 @@ def librsync_testfile(tmp_path: Path) -> Path:
 
 
 @pytest.mark.skipif(IMPORT_FAILED, reason="Import failed.")
-def test_librsync_signature_base64_encoded(librsync_testfile: Path) -> None:  # pylint: disable=redefined-outer-name
+def test_librsync_signature_base64_encoded(librsync_testfile: Path) -> None:
 	assert librsync_signature(librsync_testfile) in (
 		"cnMBNgAACAAAAAAI/6410IBmvH1GKbBN\n",  # librsync1
 		"cnMBNwAACAAAAAAI/6410EtC5dhLF6sI\n",  # librsync2
@@ -56,7 +56,7 @@ def test_librsync_signature_base64_encoded(librsync_testfile: Path) -> None:  # 
 
 
 @pytest.mark.skipif(IMPORT_FAILED, reason="Import failed.")
-def test_librsync_signature_creation(librsync_testfile: Path) -> None:  # pylint: disable=redefined-outer-name
+def test_librsync_signature_creation(librsync_testfile: Path) -> None:
 	signature = librsync_signature(librsync_testfile, base64_encoded=False)
 	assert signature in (
 		b"rs\x016\x00\x00\x08\x00\x00\x00\x00\x08\xff\xae5\xd0\x80f\xbc}F)\xb0M",  # librsync1
@@ -65,7 +65,7 @@ def test_librsync_signature_creation(librsync_testfile: Path) -> None:  # pylint
 
 
 @pytest.mark.skipif(IMPORT_FAILED, reason="Import failed.")
-def test_librsync_delta_file_creation(librsync_testfile: Path, tmp_path: Path) -> None:  # pylint: disable=redefined-outer-name
+def test_librsync_delta_file_creation(librsync_testfile: Path, tmp_path: Path) -> None:
 	deltafile = tmp_path / "delta"
 	oldfile = tmp_path / "old"
 	oldfile.write_bytes(b"olddata")
@@ -96,9 +96,7 @@ def test_librsync_delta_size(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(IMPORT_FAILED, reason="Import failed.")
-def test_librsync_patch_file_does_not_alter_if_unneeded(
-	librsync_testfile: Path, tmp_path: Path  # pylint: disable=redefined-outer-name
-) -> None:
+def test_librsync_patch_file_does_not_alter_if_unneeded(librsync_testfile: Path, tmp_path: Path) -> None:
 	base_file = librsync_testfile
 	oldfile = tmp_path / "old"
 	delta_file = tmp_path / "base.delta"
@@ -121,9 +119,7 @@ def test_librsync_patch_file_does_not_alter_if_unneeded(
 
 
 @pytest.mark.skipif(IMPORT_FAILED, reason="Import failed.")
-def test_librsync_patch_file_creates_new_file_based_on_delta(
-	librsync_testfile: Path, tmp_path: Path  # pylint: disable=redefined-outer-name
-) -> None:
+def test_librsync_patch_file_creates_new_file_based_on_delta(librsync_testfile: Path, tmp_path: Path) -> None:
 	base_file = librsync_testfile
 	signature = librsync_signature(base_file, False)
 

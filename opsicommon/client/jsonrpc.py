@@ -61,7 +61,7 @@ class TimeoutHTTPAdapter(HTTPAdapter):
 			del kwargs["timeout"]
 		super().__init__(*args, **kwargs)
 
-	def send(  # pylint: disable=too-many-arguments
+	def send(
 		self,
 		request: PreparedRequest,
 		stream: bool = False,
@@ -75,7 +75,7 @@ class TimeoutHTTPAdapter(HTTPAdapter):
 		return super().send(request, stream, timeout, verify, cert, proxies)
 
 
-class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
+class JSONRPCClient:
 	_rpc_timeouts = {
 		"depot_installPackage": 4 * 3600,
 		"depot_librsyncPatchFile": 24 * 3600,
@@ -100,7 +100,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			return socket.AF_UNSPEC
 		return socket.AF_INET
 
-	def __init__(self, address: str, **kwargs: Any) -> None:  # pylint: disable=too-many-branches,too-many-statements
+	def __init__(self, address: str, **kwargs: Any) -> None:
 		"""
 		JSONRPC client
 		"""
@@ -295,9 +295,9 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 	@property
 	def session_id(self) -> Optional[str]:
-		if not self._session.cookies or not self._session.cookies._cookies:  # type: ignore[attr-defined] # pylint: disable=protected-access
+		if not self._session.cookies or not self._session.cookies._cookies:  # type: ignore[attr-defined]
 			return None
-		for tmp1 in self._session.cookies._cookies.values():  # type: ignore[attr-defined] # pylint: disable=protected-access
+		for tmp1 in self._session.cookies._cookies.values():  # type: ignore[attr-defined]
 			for tmp2 in tmp1.values():
 				for cookie in tmp2.values():
 					return f"{cookie.name}={unquote(cookie.value)}"
@@ -314,15 +314,15 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	serverVersion = server_version
 
 	@property
-	def serverName(self) -> Optional[str]:  # pylint: disable=invalid-name
+	def serverName(self) -> Optional[str]:
 		return self.server_name
 
 	@property
-	def new_host_id(self) -> Optional[str]:  # pylint: disable=invalid-name
+	def new_host_id(self) -> Optional[str]:
 		return self.x_opsi_new_host_id
 
 	@property
-	def new_host_key(self) -> Optional[str]:  # pylint: disable=invalid-name
+	def new_host_key(self) -> Optional[str]:
 		return self.x_opsi_new_host_key
 
 	@property
@@ -331,11 +331,11 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			self.connect()
 		return self._interface
 
-	def backend_getInterface(self) -> Optional[List[Dict[str, Any]]]:  # pylint: disable=invalid-name
+	def backend_getInterface(self) -> Optional[List[Dict[str, Any]]]:
 		return self.interface
 
 	@no_export
-	def getInterface(self) -> Optional[List[Dict[str, Any]]]:  # pylint: disable=invalid-name
+	def getInterface(self) -> Optional[List[Dict[str, Any]]]:
 		return self.interface
 
 	@no_export
@@ -400,9 +400,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		return self._execute_rpc(method, params)
 
-	def _execute_rpc(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
-		self, method: str, params: Optional[Union[List, Dict[str, Any]]] = None
-	) -> Any:
+	def _execute_rpc(self, method: str, params: Optional[Union[List, Dict[str, Any]]] = None) -> Any:
 		params = params or []
 
 		rpc_id = 0
@@ -431,7 +429,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			data = self._msgpack_encoder.encode(data_dict)
 		else:
 			headers["Accept"] = headers["Content-Type"] = "application/json"
-			data = self._json_encoder.encode(data_dict)  # pylint: disable=no-member
+			data = self._json_encoder.encode(data_dict)
 
 		if not isinstance(data, bytes):
 			data = data.encode("utf-8")
@@ -531,8 +529,8 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 			if content_type == "application/msgpack":
 				data = self._msgpack_decoder.decode(data)
 			else:
-				data = self._json_decoder.decode(data)  # pylint: disable=no-member
-		except Exception:  # pylint: disable=broad-except
+				data = self._json_decoder.decode(data)
+		except Exception:
 			if error_cls:
 				raise error_cls(f"{error_msg} (error on server)") from None
 			raise
@@ -553,7 +551,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 
 		return data
 
-	def _create_instance_methods(self) -> None:  # pylint: disable=too-many-locals
+	def _create_instance_methods(self) -> None:
 		if self._interface is None:
 			raise ValueError("No interface specification present for _create_instance_methods.")
 		for method in self._interface:
@@ -579,7 +577,7 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 					if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):
 						default = defaults[len(defaults) - len(args) + i]
 						if isinstance(default, str):
-							default = "{0!r}".format(default).replace('"', "'")  # pylint: disable=consider-using-f-string
+							default = "{0!r}".format(default).replace('"', "'")
 						arg_list.append(f"{argument}={default}")
 					else:
 						arg_list.append(argument)
@@ -600,11 +598,9 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 				logger.trace("%s: arg string is: %s", method_name, arg_string)
 				logger.trace("%s: call string is: %s", method_name, call_string)
 				with warnings.catch_warnings():
-					exec(  # pylint: disable=exec-used
-						f'def {method_name}(self, {arg_string}): return self.execute_rpc("{method_name}", [{call_string}])'
-					)
-					setattr(self, method_name, types.MethodType(eval(method_name), self))  # pylint: disable=eval-used
-			except Exception as err:  # pylint: disable=broad-except
+					exec(f'def {method_name}(self, {arg_string}): return self.execute_rpc("{method_name}", [{call_string}])')
+					setattr(self, method_name, types.MethodType(eval(method_name), self))
+			except Exception as err:
 				logger.critical("Failed to create instance method '%s': %s", method, err)
 
 	@no_export
@@ -621,11 +617,11 @@ class JSONRPCClient:  # pylint: disable=too-many-instance-attributes
 	def disconnect(self) -> None:
 		if self._connected:
 			try:
-				self.execute_rpc("backend_exit")  # pylint: disable=no-value-for-parameter
-			except Exception:  # pylint: disable=broad-except
+				self.execute_rpc("backend_exit")
+			except Exception:
 				pass
 			try:
 				self.session.close()
-			except Exception:  # pylint: disable=broad-except
+			except Exception:
 				pass
 			self._connected = False

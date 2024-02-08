@@ -76,7 +76,7 @@ LEVEL_TO_NAME = {
 	logging.ESSENTIAL: "ESSENTIAL",  # type: ignore[attr-defined]
 	logging.NONE: "NONE",  # type: ignore[attr-defined]
 }
-logging._levelToName = logging.level_to_name = LEVEL_TO_NAME  # type: ignore[attr-defined] # pylint: disable=protected-access
+logging._levelToName = logging.level_to_name = LEVEL_TO_NAME  # type: ignore[attr-defined]
 
 NAME_TO_LEVEL = {
 	"SECRET": logging.SECRET,  # type: ignore[attr-defined]
@@ -90,7 +90,7 @@ NAME_TO_LEVEL = {
 	"ESSENTIAL": logging.ESSENTIAL,  # type: ignore[attr-defined]
 	"NONE": logging.NONE,  # type: ignore[attr-defined]
 }
-logging._nameToLevel = logging.name_to_level = NAME_TO_LEVEL  # type: ignore[attr-defined] # pylint: disable=protected-access
+logging._nameToLevel = logging.name_to_level = NAME_TO_LEVEL  # type: ignore[attr-defined]
 
 LEVEL_TO_OPSI_LEVEL = {
 	logging.SECRET: LOG_SECRET,  # type: ignore[attr-defined]
@@ -105,7 +105,7 @@ LEVEL_TO_OPSI_LEVEL = {
 	logging.NONE: LOG_NONE,  # type: ignore[attr-defined]
 }
 logging.level_to_opsi_level = LEVEL_TO_OPSI_LEVEL  # type: ignore[attr-defined]
-logging._levelToOpsiLevel = LEVEL_TO_OPSI_LEVEL  # type: ignore[attr-defined] # pylint: disable=protected-access
+logging._levelToOpsiLevel = LEVEL_TO_OPSI_LEVEL  # type: ignore[attr-defined]
 
 OPSI_LEVEL_TO_LEVEL = {
 	LOG_SECRET: logging.SECRET,  # type: ignore[attr-defined]
@@ -120,4 +120,4 @@ OPSI_LEVEL_TO_LEVEL = {
 	LOG_NONE: logging.NONE,  # type: ignore[attr-defined]
 }
 logging.opsi_level_to_level = OPSI_LEVEL_TO_LEVEL  # type: ignore[attr-defined]
-logging._opsiLevelToLevel = OPSI_LEVEL_TO_LEVEL  # type: ignore[attr-defined] # pylint: disable=protected-access
+logging._opsiLevelToLevel = OPSI_LEVEL_TO_LEVEL  # type: ignore[attr-defined]

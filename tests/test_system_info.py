@@ -12,14 +12,14 @@ from unittest.mock import patch
 
 import pytest
 
-from opsicommon.system import info  # pylint: disable=unused-import
+from opsicommon.system import info
 from opsicommon.system.info import (
 	is_deb_based,
 	is_linux,
 	is_macos,
-	is_unix,
 	is_pacman_based,
 	is_rpm_based,
+	is_unix,
 	is_windows,
 	linux_distro_id,
 	linux_distro_id_like,

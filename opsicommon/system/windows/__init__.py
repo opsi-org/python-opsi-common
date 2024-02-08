@@ -11,10 +11,10 @@ from datetime import datetime
 from time import sleep, time
 from typing import IO, BinaryIO, Generator, TextIO
 
-import pywintypes  # type: ignore[import] # pylint: disable=import-error
-import win32api  # type: ignore[import] # pylint: disable=import-error
-import win32con  # type: ignore[import] # pylint: disable=import-error
-import win32file  # type: ignore[import] # pylint: disable=import-error
+import pywintypes  # type: ignore[import]
+import win32api  # type: ignore[import]
+import win32con  # type: ignore[import]
+import win32file  # type: ignore[import]
 
 
 def set_system_datetime(utc_datetime: datetime) -> None:
@@ -33,8 +33,8 @@ def set_system_datetime(utc_datetime: datetime) -> None:
 def get_system_uuid() -> str:
 	# Import wmi only when needed
 	# Import on module level can lead to problems during opsiclientd start on system startup
-	# pylint: disable=import-outside-toplevel
-	import wmi  # type: ignore[import] # pylint: disable=import-error
+
+	import wmi  # type: ignore[import]
 
 	wmi_inst = wmi.WMI()
 	for csp in wmi_inst.Win32_ComputerSystemProduct():
@@ -47,7 +47,7 @@ def _lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: f
 	start = time()
 	while True:
 		try:
-			hfile = win32file._get_osfhandle(file.fileno())  # pylint: disable=protected-access
+			hfile = win32file._get_osfhandle(file.fileno())
 			win32file.LockFileEx(hfile, lock_flags, 0, 0x7FFF0000, pywintypes.OVERLAPPED())
 			break
 		except pywintypes.error:
@@ -55,9 +55,11 @@ def _lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: f
 				raise TimeoutError(f"Failed to lock file after {timeout:0.2f} seconds") from None
 			sleep(0.1)
 
+
 def _unlock_file(file: TextIO | BinaryIO | IO) -> None:
-	hfile = win32file._get_osfhandle(file.fileno())  # pylint: disable=protected-access
+	hfile = win32file._get_osfhandle(file.fileno())
 	win32file.UnlockFileEx(hfile, 0, 0x7FFF0000, pywintypes.OVERLAPPED())
+
 
 @contextmanager
 def lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: float = 5.0) -> Generator[None, None, None]:

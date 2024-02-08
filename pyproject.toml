@@ -24,7 +24,6 @@ priority = "supplemental"
 
 [tool.ruff]
 line-length = 140
-ignore = [ "F401", "E402",]
 
 [tool.mypy]
 disallow_untyped_calls = true
@@ -64,11 +63,10 @@ version = ">=1.5"
 hypothesis = ">=6.32"
 mypy = ">=1.0"
 perflint = ">=0.7"
-pylint = ">=2.7"
 pytest = ">=7.0"
 pytest-cov = ">=4.0"
 pyupgrade = ">=3.0"
-ruff = "^0.1"
+ruff = "^0.2"
 types-orjson = ">=3.6"
 types-requests = ">=2.27"
 opsi-dev-tools = "^1.17"

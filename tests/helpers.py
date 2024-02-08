@@ -13,7 +13,7 @@ from opsicommon.logging import use_logging_config
 
 
 @contextmanager
-def log_stream(new_level: int, format: str | None = None) -> Generator[io.StringIO, None, None]:  # pylint: disable=redefined-builtin
+def log_stream(new_level: int, format: str | None = None) -> Generator[io.StringIO, None, None]:
 	stream = io.StringIO()
 	with use_logging_config(stderr_level=new_level, stderr_format=format, stderr_file=stream):
 		yield stream

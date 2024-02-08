@@ -90,7 +90,7 @@ def test_create_x509_name() -> None:
 def test_get_cert_path_and_cmd(
 	distro_id: str, distro_like: str, expected_path: str, expected_cmd: str, exc: Optional[Type[Exception]]
 ) -> None:
-	from opsicommon.ssl.linux import (  # pylint: disable=import-outside-toplevel
+	from opsicommon.ssl.linux import (
 		_get_cert_path_and_cmd,
 	)
 
@@ -103,7 +103,7 @@ def test_get_cert_path_and_cmd(
 
 
 # pyright: reportMissingModuleSource=false
-def test_create_ca() -> None:  # pylint: disable=too-many-locals
+def test_create_ca() -> None:
 	subject_dict: dict[str, str | None] = {"commonName": "opsi CA", "OU": "opsi", "emailAddress": "opsi@opsi.org"}
 	subject = x509_name_from_dict(subject_dict)
 	ca_cert, ca_key = create_ca(subject=subject, valid_days=100)
@@ -123,7 +123,7 @@ def test_create_ca() -> None:  # pylint: disable=too-many-locals
 	assert name_constraints.value.permitted_subtrees[2].value == "localhost"
 
 	try:
-		from OpenSSL.crypto import (  # type: ignore[import-untyped] # pylint: disable=import-outside-toplevel
+		from OpenSSL.crypto import (  # type: ignore[import-untyped]
 			FILETYPE_ASN1,
 			X509,
 			dump_certificate,
@@ -237,7 +237,7 @@ def test_install_load_remove_ca() -> None:
 @pytest.mark.linux
 @pytest.mark.windows
 @pytest.mark.admin_permissions
-def test_wget(tmp_path: Path) -> None:  # pylint: disable=redefined-outer-name, unused-argument
+def test_wget(tmp_path: Path) -> None:
 	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3)
 	kwargs: dict[str, Any] = {
 		"subject": {"CN": "python-opsi-common test server cert"},

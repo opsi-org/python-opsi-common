@@ -8,15 +8,15 @@ system.windows.subprocess
 
 from typing import Any
 
-import _winapi  # pylint: disable=import-error
-import ntsecuritycon  # type: ignore[import]  # pylint: disable=import-error
+import _winapi
+import ntsecuritycon  # type: ignore[import]
 import psutil
-import win32api  # type: ignore[import]  # pylint: disable=import-error
-import win32con  # type: ignore[import]  # pylint: disable=import-error
-import win32process  # type: ignore[import]  # pylint: disable=import-error
-import win32profile  # type: ignore[import]  # pylint: disable=import-error
-import win32security  # type: ignore[import]  # pylint: disable=import-error
-import win32ts  # type: ignore[import]  # pylint: disable=import-error
+import win32api  # type: ignore[import]
+import win32con  # type: ignore[import]
+import win32process  # type: ignore[import]
+import win32profile  # type: ignore[import]
+import win32security  # type: ignore[import]
+import win32ts  # type: ignore[import]
 
 
 def get_process(process_name: str, session_id: int) -> psutil.Process | None:
@@ -52,7 +52,7 @@ def get_process_user_token(process_id: int, duplicate: bool = False) -> int:
 CreateProcessOrig = _winapi.CreateProcess  # type: ignore[attr-defined]
 
 
-def CreateProcess(  # pylint: disable=invalid-name
+def CreateProcess(
 	__application_name: str | None,
 	__command_line: str | None,
 	__proc_attrs: Any,

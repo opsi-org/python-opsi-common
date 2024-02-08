@@ -58,9 +58,7 @@ def test_permission_registry() -> None:
 
 
 @pytest.mark.linux
-def test_set_rights_recursive(  # pylint: disable=too-many-locals
-	tmp_path: Path, some_secondary_group_name: str  # pylint: disable=redefined-outer-name
-) -> None:
+def test_set_rights_recursive(tmp_path: Path, some_secondary_group_name: str) -> None:
 	registry = PermissionRegistry()
 
 	user_id = os.getuid()
@@ -85,7 +83,7 @@ def test_set_rights_recursive(  # pylint: disable=too-many-locals
 		os.mkdir(path)
 		os.chmod(path, 0o707)
 	for path in (fil1, fil2, fil3, fil4, fil5, fil6, fil7):
-		open(path, "wb").close()  # pylint: disable=consider-using-with
+		open(path, "wb").close()
 		os.chmod(path, 0o606)
 
 	for permission in (
@@ -133,7 +131,7 @@ def test_set_rights_modify_file_exe(tmp_path: Path) -> None:
 		os.mkdir(path)
 		os.chmod(path, 0o777)
 	for path in (fil1, fil2, fil3):
-		open(path, "wb").close()  # pylint: disable=consider-using-with
+		open(path, "wb").close()
 	os.chmod(fil1, 0o666)
 	os.chmod(fil2, 0o775)
 	os.chmod(fil3, 0o777)
@@ -188,7 +186,7 @@ def test_set_rights_file_in_dir(tmp_path: Path) -> None:
 		os.mkdir(path)
 		os.chmod(path, 0o777)
 	for path in (fil1, fil2):
-		open(path, "wb").close()  # pylint: disable=consider-using-with
+		open(path, "wb").close()
 		os.chmod(path, 0o666)
 
 	registry.register_permission(

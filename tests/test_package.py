@@ -308,7 +308,7 @@ def test_create_package(compression: Literal["zstd", "bz2", "gz"]) -> None:
 
 
 @pytest.mark.parametrize("custom_only", (True, False))
-def test_create_package_custom(custom_only: bool) -> None:  # pylint: disable=too-many-statements
+def test_create_package_custom(custom_only: bool) -> None:
 	package = OpsiPackage()
 	control = TEST_DATA / "control.toml"
 	with make_temp_dir() as temp_dir:

@@ -48,7 +48,7 @@ from opsicommon.messagebus import (
 
 def test_message() -> None:
 	with pytest.raises(pydantic_core.ValidationError, match="Field required"):
-		Message()  # type: ignore[call-arg] # pylint: disable=missing-kwoa
+		Message()  # type: ignore[call-arg]
 	msg = Message(type=MessageType.JSONRPC_REQUEST, sender="291b9f3e-e370-428d-be30-1248a906ae86", channel="service:config:jsonrpc")
 	assert msg.type == "jsonrpc_request"
 	assert abs(time.time() * 1000 - msg.created) <= 2
@@ -64,7 +64,7 @@ def test_message() -> None:
 
 
 def test_message_to_from_dict() -> None:
-	msg1 = JSONRPCRequestMessage(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+	msg1 = JSONRPCRequestMessage(
 		sender="291b9f3e-e370-428d-be30-1248a906ae86", channel="service:config:jsonrpc", rpc_id="rpc1", method="test"
 	)
 	data = msg1.to_dict(none_values=True)

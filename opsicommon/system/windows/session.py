@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Iterable
 
-import win32ts  # type: ignore[import-not-found]  # pylint: disable=import-error
+import win32ts  # type: ignore[import-not-found]
 
 
 # pylint: disable=c-extension-no-member

@@ -22,7 +22,7 @@ from _pytest.nodes import Item
 from pluggy import Result
 
 
-def emit(*args: Any, **kwargs: Any) -> None:  # pylint: disable=unused-argument
+def emit(*args: Any, **kwargs: Any) -> None:
 	pass
 
 
@@ -58,7 +58,7 @@ def admin_permissions() -> bool:
 	try:
 		return os.geteuid() == 0
 	except AttributeError:
-		import ctypes  # pylint: disable=import-outside-toplevel
+		import ctypes
 
 		return ctypes.windll.shell32.IsUserAnAdmin() != 0  # type: ignore[attr-defined]
 
@@ -91,14 +91,14 @@ def pytest_runtest_setup(item: Item) -> None:
 
 
 @pytest.hookimpl(hookwrapper=True)
-def pytest_pyfunc_call(pyfuncitem: Callable | Coroutine) -> Generator[None, Result, None]:  # pylint: disable=unused-argument
+def pytest_pyfunc_call(pyfuncitem: Callable | Coroutine) -> Generator[None, Result, None]:
 	start_threads = set(threading.enumerate())
 
 	outcome: Result = yield
 
 	try:
 		_result = outcome.get_result()  # Will raise if outcome was exception
-	except BaseException as exc:  # pylint: disable=broad-exception-caught
+	except BaseException as exc:
 		outcome.force_exception(exc)
 		return
 

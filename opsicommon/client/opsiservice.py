@@ -163,11 +163,11 @@ class CallbackThread(Thread):
 			var.set(self._context[var])
 		try:
 			self.callback(**self.kwargs)
-		except Exception as err:  # pylint: disable=broad-except
+		except Exception as err:
 			logger.error("Error in %s: %s", self, err, exc_info=True)
 
 
-class ServiceConnectionListener:  # pylint: disable=too-few-public-methods
+class ServiceConnectionListener:
 	def connection_open(self, service_client: ServiceClient) -> None:
 		"""
 		Called when the connection to the service is opened.
@@ -215,10 +215,10 @@ class Response:
 			yield item
 
 
-class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class ServiceClient:
 	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]
 
-	def __init__(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+	def __init__(
 		self,
 		address: Iterable[str] | str | None = None,
 		*,
@@ -326,7 +326,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				if os.path.exists(opsi_config.config_file) and opsi_config.get("host", "server-role") == "configserver":
 					# Never fetch opsi ca on configserver
 					self._verify.remove(ServiceVerificationFlags.OPSI_CA)
-			except Exception as err:  # pylint: disable=broad-except
+			except Exception as err:
 				logger.debug(err, exc_info=True)
 
 		if not self._verify:
@@ -479,9 +479,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 
 	@property
 	def session_cookie(self) -> str | None:
-		if not self._session.cookies or not self._session.cookies._cookies:  # type: ignore[attr-defined] # pylint: disable=protected-access
+		if not self._session.cookies or not self._session.cookies._cookies:  # type: ignore[attr-defined]
 			return None
-		for tmp1 in self._session.cookies._cookies.values():  # type: ignore[attr-defined] # pylint: disable=protected-access
+		for tmp1 in self._session.cookies._cookies.values():  # type: ignore[attr-defined]
 			for tmp2 in tmp1.values():
 				for cookie in tmp2.values():
 					return f"{cookie.name}={unquote(cookie.value)}"
@@ -503,7 +503,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			try:
 				pem = f"-----BEGIN CERTIFICATE-----{match.group(1)}-----END CERTIFICATE-----"
 				certs.append(x509.load_pem_x509_certificate(pem.encode("utf-8")))
-			except Exception as err:  # pylint: disable=broad-except
+			except Exception as err:
 				logger.error("Failed to load cert %r: %s", match.group(1), err, exc_info=True)
 		return certs
 
@@ -546,7 +546,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		verify = False if skip_verify else self._session.verify
 		logger.info("Fetching opsi CA from service (verify=%s)", verify)
 
-		try:  # pylint: disable=broad-except
+		try:
 			response = self._session.get(f"{self.base_url}/ssl/opsi-ca-cert.pem", timeout=(self._connect_timeout, 5), verify=verify)
 			response.raise_for_status()
 		except Exception as err:
@@ -581,7 +581,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			return ca_certs
 		try:
 			ca_certs = self.read_ca_cert_file()
-		except Exception as err:  # pylint: disable=broad-except
+		except Exception as err:
 			logger.warning(err, exc_info=True)
 		return ca_certs
 
@@ -596,20 +596,20 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				return OpsiCaState.AVAILABLE
 		return OpsiCaState.UNAVAILABLE
 
-	def create_jsonrpc_methods(self, instance: Any = None) -> None:  # pylint: disable=too-many-locals
+	def create_jsonrpc_methods(self, instance: Any = None) -> None:
 		if self.jsonrpc_interface is None:
 			raise ValueError("Interface description not available")
 
 		instance = instance or self
 
-		def backend_getInterface(self: ServiceClient) -> list[dict[str, Any]]:  # pylint: disable=invalid-name,unused-variable
+		def backend_getInterface(self: ServiceClient) -> list[dict[str, Any]]:
 			return self.jsonrpc_interface
 
-		def backend_exit(self: ServiceClient) -> None:  # pylint: disable=unused-variable
+		def backend_exit(self: ServiceClient) -> None:
 			return self.disconnect()
 
-		for method in self.jsonrpc_interface:  # pylint: disable=too-many-nested-blocks
-			try:  # pylint: disable=too-many-nested-blocks
+		for method in self.jsonrpc_interface:
+			try:
 				method_name = method["name"]
 
 				if method_name not in ("backend_getInterface", "backend_exit"):
@@ -650,11 +650,9 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					logger.trace("%s: arg string is: %s", method_name, arg_string)
 					logger.trace("%s: call string is: %s", method_name, call_string)
 					with warnings.catch_warnings():
-						exec(  # pylint: disable=exec-used
-							f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])'
-						)
-				setattr(instance, method_name, MethodType(eval(method_name), self))  # pylint: disable=eval-used
-			except Exception as err:  # pylint: disable=broad-except
+						exec(f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])')
+				setattr(instance, method_name, MethodType(eval(method_name), self))
+			except Exception as err:
 				logger.error("Failed to create instance method '%s': %s", method, err)
 
 	@contextmanager
@@ -667,7 +665,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 		finally:
 			self.stop()
 
-	def connect(self) -> None:  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+	def connect(self) -> None:
 		if not self._addresses:
 			raise OpsiServiceConnectionError("Service address undefined")
 
@@ -793,18 +791,18 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 							set_system_datetime(server_dt)
 					else:
 						logger.debug("Not parsing non UTC date header: %s", response.headers["date"])
-				except Exception as err:  # pylint: disable=broad-except
+				except Exception as err:
 					logger.warning("Failed to process date header %r: %r", response.headers["date"], err, exc_info=True)
 
 			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file and not self.service_is_opsiclientd():
 				try:
 					self.fetch_opsi_ca(skip_verify=not verify)
-				except Exception as err:  # pylint: disable=broad-except
+				except Exception as err:
 					logger.error(err, exc_info=True)
 
 		try:
 			self.jsonrpc_interface = self.jsonrpc("backend_getInterface")
-		except Exception as err:  # pylint: disable=broad-except
+		except Exception as err:
 			logger.error("Failed to get interface description: %s", err, exc_info=True)
 
 		self._jsonrpc_method_params = {}
@@ -838,11 +836,11 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 					self.post("/session/logout")
 				else:
 					self.jsonrpc("backend_exit")
-			except Exception:  # pylint: disable=broad-except
+			except Exception:
 				pass
 			try:
 				self._session.close()
-			except Exception:  # pylint: disable=broad-except
+			except Exception:
 				pass
 
 		self._connected = False
@@ -865,7 +863,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			path = f"/{path}"
 		return f"{self.base_url}{path}"
 
-	def _request(  # pylint: disable=too-many-arguments
+	def _request(
 		self,
 		method: str,
 		path: str,
@@ -928,7 +926,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				elif err.response.status_code == 403:
 					cls = OpsiServicePermissionError
 				raise cls(str(err), status_code=err.response.status_code, content=err.response.text) from err
-			except Exception as err:  # pylint: disable=broad-except
+			except Exception as err:
 				raise OpsiServiceConnectionError(str(err)) from err
 		# Should never be reached
 		raise OpsiServiceConnectionError("Failed to connect")
@@ -975,7 +973,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 	) -> RequestsResponse | Response:
 		...
 
-	def request(  # pylint: disable=too-many-arguments
+	def request(
 		self,
 		method: str,
 		path: str,
@@ -1102,7 +1100,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 			raw_response=raw_response,
 		)
 
-	def jsonrpc(  # pylint: disable=too-many-branches,too-many-statements,too-many-locals
+	def jsonrpc(
 		self,
 		method: str,
 		params: tuple[Any, ...] | list[Any] | dict[str, Any] | None = None,
@@ -1216,7 +1214,7 @@ class ServiceClient:  # pylint: disable=too-many-instance-attributes,too-many-pu
 				rpc = self._json_decoder.decode(data)
 			if not return_result_only:
 				return rpc
-		except Exception:  # pylint: disable=broad-except
+		except Exception:
 			if error_cls:
 				raise error_cls(error_msg) from None
 			raise
@@ -1330,7 +1328,7 @@ class MessagebusListener:
 			self.messagebus.unregister_messagebus_listener(self)
 
 
-class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
+class Messagebus(Thread):
 	_messagebus_path = "/messagebus/v1"
 
 	def __init__(self, opsi_service_client: ServiceClient) -> None:
@@ -1370,7 +1368,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 	def websocket_connected(self) -> bool:
 		return bool(self._app and self._app.sock and self._app.sock.connected)
 
-	def _on_open(self, websocket: WebSocket) -> None:  # pylint: disable=unused-argument
+	def _on_open(self, websocket: WebSocket) -> None:
 		logger.debug("Websocket opened")
 		if not self._connected:
 			logger.notice("Connected to opsi messagebus")
@@ -1389,7 +1387,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 			self._run_listener_callback(listener, "messagebus_connection_established", messagebus=self)
 		self._connect_attempt = 0
 
-	def _on_error(self, websocket: WebSocket, error: Exception) -> None:  # pylint: disable=unused-argument
+	def _on_error(self, websocket: WebSocket, error: Exception) -> None:
 		status_code = getattr(error, "status_code", 0)
 		logger.warning("Websocket error: %d - %s", status_code, error)
 		self._connect_exception = error
@@ -1397,7 +1395,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		for listener in self._listener:
 			self._run_listener_callback(listener, "messagebus_connection_failed", messagebus=self, exception=error)
 
-	def _on_close(self, websocket: WebSocket, close_status_code: int, close_message: str) -> None:  # pylint: disable=unused-argument
+	def _on_close(self, websocket: WebSocket, close_status_code: int, close_message: str) -> None:
 		logger.info("Websocket closed with status_code=%r and message=%r", close_status_code, close_message)
 		self._connected = False
 		if close_status_code == 1013:
@@ -1418,7 +1416,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		for listener in self._listener:
 			self._run_listener_callback(listener, "messagebus_connection_closed", messagebus=self)
 
-	def _on_message(self, websocket: WebSocket, message: bytes) -> None:  # pylint: disable=unused-argument
+	def _on_message(self, websocket: WebSocket, message: bytes) -> None:
 		logger.debug("Websocket message received")
 		try:
 			if self.compression == "lz4":
@@ -1440,14 +1438,14 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 				if listener.message_types and msg.type not in listener.message_types:
 					continue
 				self._run_listener_callback(listener, callback, message=msg)
-		except Exception as err:  # pylint: disable=broad-except
+		except Exception as err:
 			logger.error("Failed to process websocket message: %s", err, exc_info=True)
 
-	def _on_ping(self, websocket: WebSocket, message: bytes) -> None:  # pylint: disable=unused-argument
+	def _on_ping(self, websocket: WebSocket, message: bytes) -> None:
 		logger.debug("Ping message received")
 		# We do not need to send a pong, the websocket library will do that for us
 
-	def _on_pong(self, websocket: WebSocket, message: bytes) -> None:  # pylint: disable=unused-argument
+	def _on_pong(self, websocket: WebSocket, message: bytes) -> None:
 		logger.debug("Pong message received")
 
 	def register_messagebus_listener(self, listener: MessagebusListener) -> None:
@@ -1469,7 +1467,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 				CallbackThread(callback, **kwargs).start()
 			else:
 				callback(**kwargs)
-		except Exception as err:  # pylint: disable=broad-except
+		except Exception as err:
 			logger.error("Error running callback %r on listener %r: %s", callback_name, listener, err, exc_info=True)
 
 	def wait_for_jsonrpc_response_message(self, rpc_id: str | int, timeout: float | None = None) -> JSONRPCResponseMessage:
@@ -1499,7 +1497,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		params = params or tuple()
 		if isinstance(params, list):
 			params = tuple(params)
-		msg = JSONRPCRequestMessage(sender="*", channel="service:config:jsonrpc", method=method, params=params)  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+		msg = JSONRPCRequestMessage(sender="*", channel="service:config:jsonrpc", method=method, params=params)
 		self.send_message(msg)
 		timeout = float(RPC_TIMEOUTS.get(method, 300))
 		res = self.wait_for_jsonrpc_response_message(rpc_id=msg.rpc_id, timeout=timeout)
@@ -1569,7 +1567,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		self._connected_result.clear()
 		self._connect_exception = None
 
-		sslopt: dict[str, str | ssl.VerifyMode] = {}  # pylint: disable=no-member
+		sslopt: dict[str, str | ssl.VerifyMode] = {}
 		if ServiceVerificationFlags.ACCEPT_ALL in self._client.verify:
 			sslopt["cert_reqs"] = ssl.CERT_NONE
 		if self._client.ca_cert_file:
@@ -1663,7 +1661,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		if self._app and self._app.sock:
 			try:
 				self._app.close()  # type: ignore[attr-defined]
-			except Exception as err:  # pylint: disable=broad-except
+			except Exception as err:
 				logger.error(err, exc_info=True)
 		self._connected = False
 		self._disconnected_result.set()
@@ -1672,7 +1670,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 		for var in self._context:
 			var.set(self._context[var])
 		logger.debug("Messagebus thread started")
-		try:  # pylint: disable=too-many-nested-blocks
+		try:
 			while not self._should_stop.wait(1):
 				if self._should_be_connected and not self._connected:
 					if self._next_connect_wait:
@@ -1683,7 +1681,7 @@ class Messagebus(Thread):  # pylint: disable=too-many-instance-attributes
 					logger.debug("Calling _connect()")
 					# Call of _connect() will block until the connection is lost
 					self._connect()
-		except Exception as err:  # pylint: disable=broad-except
+		except Exception as err:
 			logger.error(err, exc_info=True)
 
 	def stop(self) -> None:
@@ -1696,7 +1694,7 @@ class BackendManager(ServiceClient):
 	For backwards compatibility
 	"""
 
-	def __init__(self, username: str | None = None, password: str | None = None, **kwargs: Any) -> None:  # pylint: disable=unused-argument
+	def __init__(self, username: str | None = None, password: str | None = None, **kwargs: Any) -> None:
 		warnings.warn("BackendManager is deprecated, please use opsicommon.client.opsiservice.get_service_client()")
 		super().__init__(
 			address=opsi_config.get("service", "url"),

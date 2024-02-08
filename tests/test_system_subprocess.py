@@ -63,7 +63,7 @@ def test_path_cleanup() -> None:
 			r"C:\WINDOWS",
 			r"C:\WINDOWS\System32\Wbem",
 			r"C:\WINDOWS\System32\WindowsPowerShell\v1.0",
-			r"C:\Program Files (x86)\Git\cmd"
+			r"C:\Program Files (x86)\Git\cmd",
 		]
 		cmd = ["timeout", "2"]
 	patch_popen()

@@ -63,7 +63,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self._ws_opcode = 0x0
 		self.close_connection = False
 
-	def _log(self, data: Any) -> None:  # pylint: disable=invalid-name
+	def _log(self, data: Any) -> None:
 		if not self.server.log_file:
 			return
 
@@ -104,7 +104,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			ranges.append((start_byte, end_byte))
 		return ranges
 
-	def send_head(self) -> BufferedReader | BytesIO | None:  # pylint: disable=too-many-branches,too-many-statements
+	def send_head(self) -> BufferedReader | BytesIO | None:
 		"""Common code for GET and HEAD commands.
 
 		This sends the response code and MIME headers.
@@ -145,7 +145,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self.send_error(HTTPStatus.NOT_FOUND, "File not found")
 			return None
 		try:
-			file = open(path, "rb")  # pylint: disable=consider-using-with
+			file = open(path, "rb")
 		except OSError:
 			self.send_error(HTTPStatus.NOT_FOUND, "File not found")
 			return None
@@ -208,7 +208,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self.send_header("Last-Modified", self.date_time_string(round(fst.st_mtime)))
 			self.end_headers()
 			return file
-		except Exception:  # pylint: disable=broad-except
+		except Exception:
 			file.close()
 			raise
 
@@ -219,7 +219,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		if "date" not in [hdr.lower() for hdr in self.server.response_headers or {}]:
 			self.send_header("Date", self.date_time_string())
 
-	def do_POST(self) -> None:  # pylint: disable=invalid-name
+	def do_POST(self) -> None:
 		length = int(self.headers["Content-Length"])
 		request: Any = self.rfile.read(length)
 
@@ -262,7 +262,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			response = response[: self.server.send_max_bytes]
 		self.wfile.write(response)
 
-	def do_GET(self) -> None:  # pylint: disable=invalid-name,too-many-branches,too-many-statements
+	def do_GET(self) -> None:
 		self._log({"method": "GET", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
 		if self.headers.get("Upgrade") == "websocket":
 			if self.server.response_status:
@@ -276,7 +276,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self._ws_read_messages()
 			return None
 
-		if self.server.serve_directory:  # pylint: disable=too-many-nested-blocks
+		if self.server.serve_directory:
 			file = self.send_head()
 			if file:
 				try:
@@ -331,7 +331,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		self.wfile.write(response)
 		return None
 
-	def do_PUT(self) -> None:  # pylint: disable=invalid-name
+	def do_PUT(self) -> None:
 		"""Serve a PUT request."""
 		self._log({"method": "PUT", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
 		if self.server.serve_directory:
@@ -345,7 +345,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self.send_response(500, "Not implemented")
 			self.end_headers()
 
-	def do_MKCOL(self) -> None:  # pylint: disable=invalid-name
+	def do_MKCOL(self) -> None:
 		"""Serve a MKCOL request."""
 		self._log({"method": "MKCOL", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
 		if self.server.serve_directory:
@@ -357,7 +357,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self.send_response(500, "Not implemented")
 			self.end_headers()
 
-	def do_DELETE(self) -> None:  # pylint: disable=invalid-name
+	def do_DELETE(self) -> None:
 		"""Serve a DELETE request."""
 		self._log({"method": "DELETE", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
 		if self.server.serve_directory:
@@ -375,7 +375,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self.send_response(500, "Not implemented")
 			self.end_headers()
 
-	def do_HEAD(self) -> None:  # pylint: disable=invalid-name
+	def do_HEAD(self) -> None:
 		"""Serve a HEAD request."""
 		self._log({"method": "HEAD", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)})
 		if self.server.serve_directory:
@@ -384,7 +384,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self.send_response(200, "OK")
 			self.end_headers()
 
-	def do_CONNECT(self) -> None:  # pylint: disable=invalid-name
+	def do_CONNECT(self) -> None:
 		"""
 		Serve a CONNECT request.
 		For example, the CONNECT method can be used to access websites that use SSL (HTTPS).
@@ -424,21 +424,21 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		try:
 			self.connection.setblocking(False)
 			while self._ws_connected:
-				try:  # pylint: disable=loop-try-except-usage
+				try:
 					if self.server.stopping:
 						return
 					self._ws_read_next_message()
-				except ssl.SSLWantReadError:  # pylint: disable=dotted-import-in-loop
+				except ssl.SSLWantReadError:
 					# Timeout on non blocking read
-					time.sleep(0.1)  # pylint: disable=dotted-import-in-loop
+					time.sleep(0.1)
 				except WebSocketError as err:
-					if "read aborted while listening" in str(err):  # pylint: disable=loop-invariant-statement)
-						time.sleep(0.1)  # pylint: disable=dotted-import-in-loop
+					if "read aborted while listening" in str(err):
+						time.sleep(0.1)
 					else:
 						raise
 		except (socket.error, WebSocketError):
 			self._ws_close()
-		except Exception:  # pylint: disable=broad-except
+		except Exception:
 			self._ws_close()
 
 	def _ws_read_next_message(self) -> None:
@@ -481,7 +481,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		except socket.error:
 			# Websocket content error, time-out or disconnect.
 			self._ws_close()
-		except Exception as err:  # pylint: disable=broad-except
+		except Exception as err:
 			# Unexpected error in websocket connection.
 			print(err)
 			self._ws_close()
@@ -511,7 +511,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 				try:
 					self._ws_send_close(code, reason)
 					time.sleep(1)
-				except Exception:  # pylint: disable=broad-except
+				except Exception:
 					pass
 				self.on_ws_closed()
 			else:
@@ -544,7 +544,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 
 
 # Use ThreadingMixIn to handle requests in a separate thread
-class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):  # pylint: disable=too-many-instance-attributes
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 	block_on_close = True
 	daemon_threads = False
 	allow_reuse_address = True
@@ -592,8 +592,8 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):  # pylint: disable=too-ma
 		return self.test_server.send_max_bytes
 
 
-class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-instance-attributes
-	def __init__(  # pylint: disable=too-many-arguments
+class HTTPTestServer(threading.Thread, BaseServer):
+	def __init__(
 		self,
 		*,
 		log_file: Path | str | None = None,
@@ -639,19 +639,19 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		while True:
 			self._restart_server = False
 			self._cleanup_done.clear()
-			if self.generate_cert:  # pylint: disable=dotted-import-in-loop
+			if self.generate_cert:
 				self._generate_cert()
 			self.server = ThreadingHTTPServer(
 				self,
 				("::" if self.ip_version == 6 else "", self.port),
-				socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET,  # pylint: disable=dotted-import-in-loop
+				socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET,
 			)
 			self._init_ssl_socket()
 			# print("Server listening on port:" + str(self.port))
 			self.server.serve_forever()
 			if not self._restart_server:
 				break
-			time.sleep(3)  # pylint: disable=dotted-import-in-loop
+			time.sleep(3)
 			# print("Server restarting")
 
 	def set_option(self, name: str, value: Any) -> None:
@@ -664,12 +664,12 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		# Use 2048 bits for speedup
 		ca_cert, ca_key = create_ca(subject={"CN": "http_test_server ca"}, valid_days=3, bits=2048)
 
-		tmp = NamedTemporaryFile(delete=False)  # pylint: disable=consider-using-with
+		tmp = NamedTemporaryFile(delete=False)
 		tmp.write(as_pem(ca_key).encode("utf-8"))
 		tmp.close()
 		self.ca_key = tmp.name
 
-		tmp = NamedTemporaryFile(delete=False)  # pylint: disable=consider-using-with
+		tmp = NamedTemporaryFile(delete=False)
 		tmp.write(as_pem(ca_cert).encode("utf-8"))
 		tmp.close()
 		self.ca_cert = tmp.name
@@ -685,12 +685,12 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 		}
 		cert, key = create_server_cert(**kwargs)
 
-		tmp = NamedTemporaryFile(delete=False)  # pylint: disable=consider-using-with
+		tmp = NamedTemporaryFile(delete=False)
 		tmp.write(as_pem(key).encode("utf-8"))
 		tmp.close()
 		self.server_key = tmp.name
 
-		tmp = NamedTemporaryFile(delete=False)  # pylint: disable=consider-using-with
+		tmp = NamedTemporaryFile(delete=False)
 		tmp.write(as_pem(cert).encode("utf-8"))
 		tmp.close()
 		self.server_cert = tmp.name
@@ -736,17 +736,17 @@ class HTTPTestServer(threading.Thread, BaseServer):  # pylint: disable=too-many-
 	def wait_for_server_socket(self, timeout: int = 15) -> bool:
 		start = time.time()
 		sock_type = socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET
-		while time.time() - start < timeout:  # pylint: disable=dotted-import-in-loop
-			with closing(socket.socket(sock_type, socket.SOCK_STREAM)) as sock:  # pylint: disable=dotted-import-in-loop
+		while time.time() - start < timeout:
+			with closing(socket.socket(sock_type, socket.SOCK_STREAM)) as sock:
 				sock.settimeout(1)
-				res = sock.connect_ex(("::1" if self.ip_version == 6 else "127.0.0.1", self.port))  # pylint: disable=loop-invariant-statement
+				res = sock.connect_ex(("::1" if self.ip_version == 6 else "127.0.0.1", self.port))
 				if res == 0:
 					return True
 		return False
 
 
 @contextmanager
-def http_test_server(  # pylint: disable=too-many-arguments,too-many-locals
+def http_test_server(
 	*,
 	log_file: Path | str | None = None,
 	ip_version: str | int | None = None,
@@ -814,5 +814,5 @@ def opsi_config(conf_vars: dict[str, Any]) -> Generator[OpsiConfig, None, None]:
 		try:
 			if os.path.exists(config_file.name):
 				os.unlink(config_file.name)
-		except Exception:  # pylint: disable=broad-except
+		except Exception:
 			pass

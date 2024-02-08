@@ -85,7 +85,7 @@ def setup_users_and_groups(ignore_errors: bool = False) -> None:
 	except KeyError:
 		try:
 			create_group(groupname=opsi_config.get("groups", "admingroup"), system=False)
-		except Exception as err:  # pylint: disable=broad-except
+		except Exception as err:
 			if not ignore_errors:
 				raise
 			logger.info(err)
@@ -95,7 +95,7 @@ def setup_users_and_groups(ignore_errors: bool = False) -> None:
 	except KeyError:
 		try:
 			create_group(groupname=opsi_config.get("groups", "fileadmingroup"), system=True)
-		except Exception as err:  # pylint: disable=broad-except
+		except Exception as err:
 			if not ignore_errors:
 				raise
 			logger.info(err)
@@ -111,7 +111,7 @@ def setup_users_and_groups(ignore_errors: bool = False) -> None:
 				shell="/bin/false",
 				system=True,
 			)
-		except Exception as err:  # pylint: disable=broad-except
+		except Exception as err:
 			if not ignore_errors:
 				raise
 			logger.info(err)

@@ -155,7 +155,7 @@ def test_syncable(
 	zsync_info = read_zsync_file(zsync_new)
 	instructions = get_patch_instructions(zsync_info, archive_old)
 
-	same_bytes = sum([i.size for i in instructions if i.source != SOURCE_REMOTE])  # pylint: disable=consider-using-generator
+	same_bytes = sum([i.size for i in instructions if i.source != SOURCE_REMOTE])
 	percent_same = same_bytes * 100 / zsync_info.length
 
 	print(mode, compression, expect_min_percent_same, percent_same)

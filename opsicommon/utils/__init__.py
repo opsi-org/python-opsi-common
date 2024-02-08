@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 	from opsicommon.objects import Product, ProductOnClient, ProductOnDepot
 
 OBJECT_CLASSES: dict[str, Type["TBaseObject"]] = {}
-BaseObject: Type["TBaseObject"] | None = None  # pylint: disable=invalid-name
+BaseObject: Type["TBaseObject"] | None = None
 
 logger = get_logger("opsicommon.general")
 
@@ -127,7 +127,7 @@ def update_environment_from_config_files(files: list[Path] | None = None) -> Non
 	# https://apple.stackexchange.com/questions/226544/how-to-set-proxy-on-os-x-terminal-permanently
 
 
-def prepare_proxy_environment(  # pylint: disable=too-many-branches
+def prepare_proxy_environment(
 	hostname: str, proxy_url: str | None = "system", no_proxy_addresses: list[str] | None = None, session: Session | None = None
 ) -> Session:
 	"""
@@ -151,13 +151,13 @@ def prepare_proxy_environment(  # pylint: disable=too-many-branches
 		no_proxy_addresses = ["::1", "127.0.0.1", "ip6-localhost", "localhost"]
 	if session is None:
 		# Import is slow
-		from requests import Session  # pylint: disable=import-outside-toplevel
+		from requests import Session
 
 		session = Session()
 	if proxy_url:
 		try:
 			update_environment_from_config_files()
-		except Exception as error:  # pylint: disable=broad-except
+		except Exception as error:
 			logger.error("Failed to update environment from config files: %s", error)
 		# Use a proxy
 		no_proxy = [x.strip() for x in os.environ.get("no_proxy", "").split(",") if x.strip()]
@@ -219,11 +219,11 @@ def frozen_lru_cache(*decorator_args: Any) -> Callable:
 		def deserialise(value: str) -> Any:
 			try:
 				return json.loads(value)
-			except Exception:  # pylint: disable=broad-except
+			except Exception:
 				return value
 
 		def func_with_serialized_params(*args: Any, **kwargs: Any) -> Callable:
-			_args = tuple([deserialise(arg) for arg in args])  # pylint: disable=consider-using-generator
+			_args = tuple([deserialise(arg) for arg in args])
 			_kwargs = {k: deserialise(v) for k, v in kwargs.items()}
 			return func(*_args, **_kwargs)
 
@@ -231,9 +231,7 @@ def frozen_lru_cache(*decorator_args: Any) -> Callable:
 
 		@functools.wraps(func)
 		def lru_decorator(*args: Any, **kwargs: Any) -> Callable:
-			_args = tuple(  # pylint: disable=consider-using-generator
-				[json.dumps(arg, sort_keys=True) if type(arg) in (list, dict) else arg for arg in args]
-			)
+			_args = tuple([json.dumps(arg, sort_keys=True) if type(arg) in (list, dict) else arg for arg in args])
 			_kwargs = {k: json.dumps(v, sort_keys=True) if type(v) in (list, dict) else v for k, v in kwargs.items()}
 			return cached_function(*_args, **_kwargs)
 
@@ -306,7 +304,7 @@ def _legacy_cmpkey(version: str) -> tuple[str, ...]:
 
 # Inspired by packaging.version.LegacyVersion (deprecated)
 class LegacyVersion(Version):
-	def __init__(self, version: str):  # pylint: disable=super-init-not-called
+	def __init__(self, version: str):
 		self._version = str(version)  # type: ignore[assignment]
 		self._key = _legacy_cmpkey(self._version)  # type: ignore[assignment,arg-type]
 

@@ -6,15 +6,15 @@
 WIM handling
 """
 
+from dataclasses import dataclass, fields
 from datetime import datetime, timezone
 from pathlib import Path
-from subprocess import run, PIPE, STDOUT
-from dataclasses import dataclass, fields
-from types import UnionType, GenericAlias
+from subprocess import PIPE, STDOUT, run
+from types import GenericAlias, UnionType
 from typing import Any, cast
 
-from opsicommon.system.info import is_linux, is_unix
 from opsicommon.logging.logging import get_logger
+from opsicommon.system.info import is_linux, is_unix
 
 logger = get_logger("opsicommon.package")
 
@@ -54,7 +54,7 @@ def wim_capture(
 
 
 @dataclass(kw_only=True)
-class WIMImageWindowsInfo:  # pylint: disable=too-many-instance-attributes
+class WIMImageWindowsInfo:
 	architecture: str
 	product_name: str
 	edition_id: str
@@ -73,7 +73,7 @@ class WIMImageWindowsInfo:  # pylint: disable=too-many-instance-attributes
 
 
 @dataclass(kw_only=True)
-class WIMImageInfo:  # pylint: disable=too-many-instance-attributes
+class WIMImageInfo:
 	index: int
 	name: str
 	directory_count: int
@@ -92,7 +92,7 @@ class WIMImageInfo:  # pylint: disable=too-many-instance-attributes
 
 
 @dataclass(kw_only=True)
-class WIMInfo:  # pylint: disable=too-many-instance-attributes
+class WIMInfo:
 	guid: str
 	version: int
 	part_number: int
@@ -105,7 +105,7 @@ class WIMInfo:  # pylint: disable=too-many-instance-attributes
 	images: list[WIMImageInfo]
 
 
-def wim_info(wim_file: Path | str) -> WIMInfo:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+def wim_info(wim_file: Path | str) -> WIMInfo:
 	if not isinstance(wim_file, Path):
 		wim_file = Path(wim_file)
 
@@ -184,4 +184,4 @@ def wim_info(wim_file: Path | str) -> WIMInfo:  # pylint: disable=too-many-local
 		if windows_info:
 			data["windows_info"] = WIMImageWindowsInfo(**windows_info)
 		info_data["images"].append(WIMImageInfo(**data))
-	return WIMInfo(**info_data)  # type: ignore[arg-type]  # pylint: disable=missing-kwoa
+	return WIMInfo(**info_data)  # type: ignore[arg-type]

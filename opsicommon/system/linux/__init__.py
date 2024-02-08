@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Generator, List, Optional
 
 import psutil  # type: ignore[import]
+
 from opsicommon.logging import get_logger
 
 from .. import Session
@@ -84,7 +85,7 @@ def run_process_in_session(command: List[str], session_id: str, shell: bool = Fa
 	if impersonate and getpass.getuser() != session.username:
 		preexec_fn = functools.partial(drop_privileges, session.username)
 
-	return subprocess.Popen(  # pylint: disable=subprocess-popen-preexec-fn
+	return subprocess.Popen(
 		args=command, preexec_fn=preexec_fn, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=shell, env=env
 	)
 

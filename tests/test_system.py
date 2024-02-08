@@ -30,7 +30,7 @@ from opsicommon.system import (
 @pytest.mark.linux
 @pytest.mark.not_in_docker
 def test_get_user_sessions_linux() -> None:
-	from opsicommon.system import (  # pylint: disable=import-outside-toplevel
+	from opsicommon.system import (
 		get_user_sessions,
 	)
 
@@ -41,19 +41,15 @@ def test_get_user_sessions_linux() -> None:
 
 @pytest.mark.linux
 def test_get_user_sessions_linux_mock() -> None:
-	import psutil  # type: ignore[import]  # pylint: disable=import-outside-toplevel
+	import psutil  # type: ignore[import]
 
-	from opsicommon.system import (  # pylint: disable=import-outside-toplevel
+	from opsicommon.system import (
 		get_user_sessions,
 	)
 
 	with mock.patch(
 		"psutil.users",
-		lambda: [
-			psutil._common.suser(  # pylint: disable=protected-access
-				name="mockuser", terminal="tty3", host="", started=time.time(), pid=str(os.getpid())
-			)  # pylint: disable=protected-access
-		],
+		lambda: [psutil._common.suser(name="mockuser", terminal="tty3", host="", started=time.time(), pid=str(os.getpid()))],
 	):
 		assert "mockuser" in [sess.username for sess in get_user_sessions()]
 
@@ -61,7 +57,7 @@ def test_get_user_sessions_linux_mock() -> None:
 @pytest.mark.linux
 @pytest.mark.not_in_docker
 def test_run_process_in_session_linux() -> None:
-	from opsicommon.system import (  # pylint: disable=import-outside-toplevel
+	from opsicommon.system import (
 		get_user_sessions,
 		run_process_in_session,
 	)
@@ -103,7 +99,7 @@ def test_ensure_not_already_running_child_process_linux(tmpdir: Path) -> None:
 @pytest.mark.linux
 @pytest.mark.admin_permissions
 def test_drop_privileges() -> None:
-	from opsicommon.system.linux import (  # pylint: disable=import-outside-toplevel
+	from opsicommon.system.linux import (
 		drop_privileges,
 	)
 
@@ -128,7 +124,7 @@ def test_set_system_datetime() -> None:
 def test_get_kernel_params(tmpdir: Path) -> None:
 	cmdline_path = tmpdir / "cmdline"
 	cmdline_path.write_text("root=/root rw quiet splash apparmor=1 security=apparmor", encoding="utf-8")
-	# pylint: disable=import-outside-toplevel
+
 	from opsicommon.system.linux import get_kernel_params
 
 	with mock.patch("opsicommon.system.linux.CMDLINE_PATH", str(cmdline_path)):
@@ -141,10 +137,8 @@ def test_get_system_uuid() -> None:
 	assert UUID(system_uuid)
 
 
-class Task:  # type: ignore  # pylint: disable=too-few-public-methods
-	def __init__(  # pylint: disable=too-many-arguments
-		self, task_id: int, file: Path, res_queue: queue.Queue, exclusive: bool, timeout: float, wait: float
-	) -> None:
+class Task:  # type: ignore
+	def __init__(self, task_id: int, file: Path, res_queue: queue.Queue, exclusive: bool, timeout: float, wait: float) -> None:
 		self.task_id = task_id
 		self.file = file
 		self.exclusive = exclusive
@@ -166,15 +160,13 @@ class Task:  # type: ignore  # pylint: disable=too-few-public-methods
 						test_fh.truncate()
 					result = data
 					time.sleep(self.wait)
-		except Exception as err:  # pylint: disable=broad-exception-caught
+		except Exception as err:
 			result = err
 		self.res_queue.put((result, time.time() - start))
 
 
 class ThreadTask(threading.Thread):
-	def __init__(  # pylint: disable=too-many-arguments
-		self, task_id: int, file: Path, res_queue: queue.Queue, exclusive: bool, timeout: float, wait: float
-	) -> None:
+	def __init__(self, task_id: int, file: Path, res_queue: queue.Queue, exclusive: bool, timeout: float, wait: float) -> None:
 		threading.Thread.__init__(self)
 		self.task = Task(task_id, file, res_queue, exclusive, timeout, wait)
 
@@ -183,9 +175,7 @@ class ThreadTask(threading.Thread):
 
 
 class MultiprocessTask(multiprocessing.Process):
-	def __init__(  # pylint: disable=too-many-arguments
-		self, task_id: int, file: Path, res_queue: queue.Queue, exclusive: bool, timeout: float, wait: float
-	) -> None:
+	def __init__(self, task_id: int, file: Path, res_queue: queue.Queue, exclusive: bool, timeout: float, wait: float) -> None:
 		multiprocessing.Process.__init__(self)
 		self.task = Task(task_id, file, res_queue, exclusive, timeout, wait)
 

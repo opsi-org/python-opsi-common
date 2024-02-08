@@ -17,13 +17,13 @@ import ctypes.util
 import os
 import tempfile
 from pathlib import Path
-from typing import BinaryIO, Literal, cast, overload, Any
+from typing import Any, BinaryIO, Literal, cast, overload
 
 from opsicommon.logging import get_logger
 from opsicommon.types import forceString
 
 logger = get_logger("opsi.general")
-_librsync: ctypes.CDLL | None = None  # pylint: disable=invalid-name
+_librsync: ctypes.CDLL | None = None
 
 if os.name == "posix":
 	path = ctypes.util.find_library("rsync")
@@ -56,8 +56,9 @@ RS_MD4_SIG_MAGIC = 0x72730136
 #  DEFINES FROM librsync.h  #
 #############################
 
+
 # librsync.h: rs_buffers_s
-class Buffer(ctypes.Structure):  # pylint: disable=too-few-public-methods
+class Buffer(ctypes.Structure):
 	_fields_ = [
 		("next_in", ctypes.c_char_p),
 		("avail_in", ctypes.c_size_t),
@@ -139,12 +140,12 @@ def _execute(job: Any, input_handle: BinaryIO, output_handle: BinaryIO | None = 
 		block = input_handle.read(RS_JOB_BLOCKSIZE)
 		buff = Buffer()
 		# provide the data block via input buffer.
-		buff.next_in = ctypes.c_char_p(block)  # pylint: disable=attribute-defined-outside-init
-		buff.avail_in = ctypes.c_size_t(len(block))  # pylint: disable=attribute-defined-outside-init
-		buff.eof_in = ctypes.c_int(not block)  # pylint: disable=attribute-defined-outside-init
+		buff.next_in = ctypes.c_char_p(block)
+		buff.avail_in = ctypes.c_size_t(len(block))
+		buff.eof_in = ctypes.c_int(not block)
 		# Set up our buffer for output.
-		buff.next_out = ctypes.cast(out, ctypes.c_char_p)  # pylint: disable=attribute-defined-outside-init
-		buff.avail_out = ctypes.c_size_t(RS_JOB_BLOCKSIZE)  # pylint: disable=attribute-defined-outside-init
+		buff.next_out = ctypes.cast(out, ctypes.c_char_p)
+		buff.avail_out = ctypes.c_size_t(RS_JOB_BLOCKSIZE)
 		res = _librsync.rs_job_iter(job, ctypes.byref(buff))
 		if output_handle:
 			output_handle.write(out.raw[: RS_JOB_BLOCKSIZE - buff.avail_out])  # type: ignore
@@ -191,9 +192,7 @@ def librsync_signature(filename: Path | str, base64_encoded: bool = True) -> str
 
 	try:
 		with open(filename, "rb") as filehandle:
-			sigfile_handle = cast(
-				BinaryIO, tempfile.SpooledTemporaryFile(max_size=MAX_SPOOL, mode="wb+")  # pylint: disable=consider-using-with
-			)
+			sigfile_handle = cast(BinaryIO, tempfile.SpooledTemporaryFile(max_size=MAX_SPOOL, mode="wb+"))
 			job = None
 			if hasattr(_librsync, "RS_DEFAULT_STRONG_LEN"):
 				# librsync < 1.0.0
@@ -229,7 +228,7 @@ def librsync_delta_file(filename: Path | str, signature: bytes, deltafile: Path 
 		raise ValueError("filename and deltafile are the same file")
 
 	try:
-		sigfile_handle = tempfile.NamedTemporaryFile("wb+")  # pylint: disable=consider-using-with
+		sigfile_handle = tempfile.NamedTemporaryFile("wb+")
 		sigfile_handle.write(signature)
 		sigfile_handle.seek(0)
 

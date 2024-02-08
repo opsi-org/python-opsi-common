@@ -207,7 +207,7 @@ class PermissionRegistry(metaclass=Singleton):
 		)
 
 
-def set_rights(start_path: str | Path = "/") -> None:  # pylint: disable=too-many-branches
+def set_rights(start_path: str | Path = "/") -> None:
 	start_path = str(start_path)
 	logger.debug("Setting rights on %s", start_path)
 	permissions = PermissionRegistry().permissions
