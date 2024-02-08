@@ -723,7 +723,8 @@ class ServiceClient:
 					response = self._request(
 						method="HEAD",
 						path=self._jsonrpc_path,
-						timeout=(self._connect_timeout, self._connect_timeout),
+						connect_timeout=self._connect_timeout,
+						read_timeout=self._connect_timeout,
 						verify=verify_addr,
 						allow_status_codes=allow_status_codes,
 					)
@@ -833,9 +834,9 @@ class ServiceClient:
 		if self._connected:
 			try:
 				if self.server_version >= MIN_VERSION_SESSION_API:
-					self.post("/session/logout")
+					self.post("/session/logout", connect_timeout=3.0, read_timeout=5.0)
 				else:
-					self.jsonrpc("backend_exit")
+					self.jsonrpc("backend_exit", connect_timeout=3.0, read_timeout=5.0)
 			except Exception:
 				pass
 			try:
@@ -868,7 +869,8 @@ class ServiceClient:
 		method: str,
 		path: str,
 		headers: dict[str, str] | None = None,
-		timeout: float | tuple[float, float] = 60.0,
+		connect_timeout: float = 60.0,
+		read_timeout: float = 60.0,
 		data: bytes | None = None,
 		verify: str | bool | None = None,
 		allow_status_codes: Iterable[int] | None = None,
@@ -883,7 +885,13 @@ class ServiceClient:
 		for attempt in range(1, max_attempts + 1):
 			try:
 				response = self._session.request(
-					method=method, url=self._get_url(path), headers=headers, data=data, timeout=timeout, stream=True, verify=verify
+					method=method,
+					url=self._get_url(path),
+					headers=headers,
+					data=data,
+					timeout=(connect_timeout, read_timeout),
+					stream=True,
+					verify=verify,
 				)
 				if allow_status_codes and allow_status_codes != ... and response.status_code not in allow_status_codes:
 					response.raise_for_status()
@@ -938,6 +946,7 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
+		connect_timeout: float = 60.0,
 		read_timeout: float = 60.0,
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
@@ -952,6 +961,7 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
+		connect_timeout: float = 60.0,
 		read_timeout: float = 60.0,
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
@@ -966,6 +976,7 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
+		connect_timeout: float = 60.0,
 		read_timeout: float = 60.0,
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
@@ -979,6 +990,7 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
+		connect_timeout: float = 60.0,
 		read_timeout: float = 60.0,
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
@@ -986,7 +998,13 @@ class ServiceClient:
 	) -> Response | RequestsResponse:
 		self._assert_connected()
 		response = self._request(
-			method=method, path=path, headers=headers, timeout=read_timeout, data=data, allow_status_codes=allow_status_codes
+			method=method,
+			path=path,
+			headers=headers,
+			connect_timeout=connect_timeout,
+			read_timeout=read_timeout,
+			data=data,
+			allow_status_codes=allow_status_codes,
 		)
 		if raw_response:
 			return response
@@ -998,6 +1016,7 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
+		connect_timeout: float = 60.0,
 		read_timeout: float = 60.0,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
@@ -1010,6 +1029,7 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
+		connect_timeout: float = 60.0,
 		read_timeout: float = 60.0,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
@@ -1022,6 +1042,7 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
+		connect_timeout: float = 60.0,
 		read_timeout: float = 60.0,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
@@ -1033,12 +1054,19 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
+		connect_timeout: float = 60.0,
 		read_timeout: float = 60.0,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = False,
 	) -> Response | RequestsResponse:
 		return self.request(
-			"GET", path=path, headers=headers, read_timeout=read_timeout, allow_status_codes=allow_status_codes, raw_response=raw_response
+			"GET",
+			path=path,
+			headers=headers,
+			connect_timeout=connect_timeout,
+			read_timeout=read_timeout,
+			allow_status_codes=allow_status_codes,
+			raw_response=raw_response,
 		)
 
 	@overload
@@ -1048,6 +1076,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		*,
 		headers: dict[str, str] | None = None,
+		connect_timeout: float = 60.0,
 		read_timeout: float = 60.0,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
@@ -1061,6 +1090,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		*,
 		headers: dict[str, str] | None = None,
+		connect_timeout: float = 60.0,
 		read_timeout: float = 60.0,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
@@ -1074,6 +1104,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		*,
 		headers: dict[str, str] | None = None,
+		connect_timeout: float = 60.0,
 		read_timeout: float = 60.0,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
@@ -1086,6 +1117,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		*,
 		headers: dict[str, str] | None = None,
+		connect_timeout: float = 60.0,
 		read_timeout: float = 60.0,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = False,
@@ -1094,6 +1126,7 @@ class ServiceClient:
 			"POST",
 			path=path,
 			headers=headers,
+			connect_timeout=connect_timeout,
 			read_timeout=read_timeout,
 			data=data,
 			allow_status_codes=allow_status_codes,
@@ -1104,6 +1137,7 @@ class ServiceClient:
 		self,
 		method: str,
 		params: tuple[Any, ...] | list[Any] | dict[str, Any] | None = None,
+		connect_timeout: float = 60.0,
 		read_timeout: float | None = None,
 		return_result_only: bool = True,
 	) -> Any:
@@ -1178,6 +1212,7 @@ class ServiceClient:
 			self._jsonrpc_path,
 			headers=headers,
 			data=data,
+			connect_timeout=connect_timeout,
 			read_timeout=read_timeout,
 			allow_status_codes=allow_status_codes,  # type: ignore[arg-type]
 		)
