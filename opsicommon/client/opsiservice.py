@@ -46,6 +46,7 @@ from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3.exceptions import InsecureRequestWarning
 from websocket import WebSocket, WebSocketApp  # type: ignore[import]
+from websocket import setdefaulttimeout as websocket_setdefaulttimeout
 from websocket._abnf import ABNF  # type: ignore[import]
 
 from .. import __version__
@@ -256,7 +257,6 @@ class ServiceClient:
 		        To use in combination with fetch_opsi_ca.
 		        If opsi_ca from ca_cert_file is expired => accept_all.
 		"""
-		self._messagebus = Messagebus(self)
 
 		self._addresses: list[str] = []
 		self._address_index = 0
@@ -341,6 +341,7 @@ class ServiceClient:
 
 		self._user_agent = f"opsi-service-client/{__version__}" if user_agent is None else str(user_agent)
 		self._connect_timeout = max(0.0, float(connect_timeout))
+		self._read_timeout = 60.0
 
 		self.default_headers = {
 			"User-Agent": self._user_agent,
@@ -373,6 +374,8 @@ class ServiceClient:
 				self._session.verify = True
 
 		self.set_addresses(address)
+
+		self._messagebus = Messagebus(self)
 
 	@property
 	def addresses(self) -> Iterable[str] | str | None:
@@ -869,14 +872,19 @@ class ServiceClient:
 		method: str,
 		path: str,
 		headers: dict[str, str] | None = None,
-		connect_timeout: float = 60.0,
-		read_timeout: float = 60.0,
+		connect_timeout: float | None = None,
+		read_timeout: float | None = None,
 		data: bytes | None = None,
 		verify: str | bool | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 	) -> RequestsResponse:
 		if self._service_unavailable and self._service_unavailable.until and self._service_unavailable.until >= time.time():
 			raise self._service_unavailable
+
+		if connect_timeout is None:
+			connect_timeout = self._connect_timeout
+		if read_timeout is None:
+			read_timeout = self._read_timeout
 
 		self._service_unavailable = None
 
@@ -946,8 +954,8 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
-		connect_timeout: float = 60.0,
-		read_timeout: float = 60.0,
+		connect_timeout: float | None = None,
+		read_timeout: float | None = None,
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
@@ -961,8 +969,8 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
-		connect_timeout: float = 60.0,
-		read_timeout: float = 60.0,
+		connect_timeout: float | None = None,
+		read_timeout: float | None = None,
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
@@ -976,8 +984,8 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
-		connect_timeout: float = 60.0,
-		read_timeout: float = 60.0,
+		connect_timeout: float | None = None,
+		read_timeout: float | None = None,
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
@@ -990,8 +998,8 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
-		connect_timeout: float = 60.0,
-		read_timeout: float = 60.0,
+		connect_timeout: float | None = None,
+		read_timeout: float | None = None,
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = False,
@@ -1016,8 +1024,8 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
-		connect_timeout: float = 60.0,
-		read_timeout: float = 60.0,
+		connect_timeout: float | None = None,
+		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
 	) -> Response:
@@ -1029,8 +1037,8 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
-		connect_timeout: float = 60.0,
-		read_timeout: float = 60.0,
+		connect_timeout: float | None = None,
+		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
 	) -> RequestsResponse:
@@ -1042,8 +1050,8 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
-		connect_timeout: float = 60.0,
-		read_timeout: float = 60.0,
+		connect_timeout: float | None = None,
+		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
 	) -> RequestsResponse | Response:
@@ -1054,8 +1062,8 @@ class ServiceClient:
 		path: str,
 		*,
 		headers: dict[str, str] | None = None,
-		connect_timeout: float = 60.0,
-		read_timeout: float = 60.0,
+		connect_timeout: float | None = None,
+		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = False,
 	) -> Response | RequestsResponse:
@@ -1076,8 +1084,8 @@ class ServiceClient:
 		data: bytes | None = None,
 		*,
 		headers: dict[str, str] | None = None,
-		connect_timeout: float = 60.0,
-		read_timeout: float = 60.0,
+		connect_timeout: float | None = None,
+		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
 	) -> Response:
@@ -1090,8 +1098,8 @@ class ServiceClient:
 		data: bytes | None = None,
 		*,
 		headers: dict[str, str] | None = None,
-		connect_timeout: float = 60.0,
-		read_timeout: float = 60.0,
+		connect_timeout: float | None = None,
+		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
 	) -> RequestsResponse:
@@ -1104,8 +1112,8 @@ class ServiceClient:
 		data: bytes | None = None,
 		*,
 		headers: dict[str, str] | None = None,
-		connect_timeout: float = 60.0,
-		read_timeout: float = 60.0,
+		connect_timeout: float | None = None,
+		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
 	) -> RequestsResponse | Response:
@@ -1117,8 +1125,8 @@ class ServiceClient:
 		data: bytes | None = None,
 		*,
 		headers: dict[str, str] | None = None,
-		connect_timeout: float = 60.0,
-		read_timeout: float = 60.0,
+		connect_timeout: float | None = None,
+		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = False,
 	) -> Response | RequestsResponse:
@@ -1137,7 +1145,7 @@ class ServiceClient:
 		self,
 		method: str,
 		params: tuple[Any, ...] | list[Any] | dict[str, Any] | None = None,
-		connect_timeout: float = 60.0,
+		connect_timeout: float | None = None,
 		read_timeout: float | None = None,
 		return_result_only: bool = True,
 	) -> Any:
@@ -1381,7 +1389,7 @@ class Messagebus(Thread):
 		self._send_lock = Lock()
 		self._listener: list[MessagebusListener] = []
 		self._listener_lock = Lock()
-		self._connect_timeout = 10.0
+		self._connect_timeout = self._client._connect_timeout
 		self.ping_interval = 15.0  # Send ping every specified period in seconds.
 		self.ping_timeout = 10.0  # Ping timeout in seconds.
 		# After connection lost, reconnect after specified seconds (min/max).
@@ -1675,6 +1683,8 @@ class Messagebus(Thread):
 			self.ping_interval,
 			self.ping_timeout,
 		)
+
+		websocket_setdefaulttimeout(self._connect_timeout)
 		self._app.run_forever(  # type: ignore[attr-defined]
 			sslopt=sslopt,
 			skip_utf8_validation=True,

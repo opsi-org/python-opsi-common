@@ -1694,15 +1694,14 @@ def test_messagebus_listener() -> None:
 				server.stop()
 				# Wait for reconnect after 2 seconds (which will fail)
 				time.sleep(5)
-				client.disconnect()
 
 			assert len(client.messagebus._listener) == 0
 
 			for listener in (listener1, listener2, listener3, listener4):
 				assert listener.connection_open_calls == 2
 				assert listener.connection_established_calls == 1
-				assert listener.connection_closed_calls == 1
-				assert listener.connection_failed_calls == 1
+				assert listener.connection_closed_calls == 2
+				assert listener.connection_failed_calls == 2
 
 	# listener1 / listener3: JSONRPC_RESPONSE + FILE_UPLOAD_RESULT
 	for listener in (listener1, listener3):
