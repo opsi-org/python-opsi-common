@@ -15,7 +15,7 @@ from typing import IO, Any, Callable, Collection, Iterable, Mapping, Sequence
 SYSTEM = platform.system().lower()
 
 if SYSTEM == "windows":
-	from opsicommon.system.windows.subprocess import patch_create_process
+	from opsicommon.system.windows.subprocess import get_process, patch_create_process
 
 PopenOrig = subprocess.Popen
 
@@ -50,9 +50,28 @@ class Popen(PopenOrig):
 		umask: int = -1,
 		pipesize: int = -1,
 		process_group: int | None = None,
-		session: str | int | None = None,
+		session_id: str | int | None = None,
+		session_env: bool | None = None,
+		session_elevated: bool | None = None,
 	) -> None:
+		if SYSTEM != "windows" and session_id is not None:
+			raise NotImplementedError(f"Parameter 'session_id' not supported on {SYSTEM!r}")
+		if session_env is not None and session_id is None:
+			raise ValueError("Parameter 'session_env' requires 'session_id' to be set")
+		if session_elevated is not None and session_id is None:
+			raise ValueError("Parameter 'session_elevated' requires 'session_id' to be set")
+
+		if SYSTEM == "windows" and session_id and session_env:
+			proc = get_process("explorer.exe", session_id=int(session_id))
+			if not proc:
+				raise RuntimeError(f"Failed to find 'explorer.exe' in session {session_id}")
+			senv = proc.environ()
+			if env:
+				senv.update(env)
+			env = senv
+
 		env = dict(env or os.environ.copy())
+
 		lp_orig = env.get("LD_LIBRARY_PATH_ORIG")
 		if lp_orig is not None:
 			# Restore the original, unmodified value
@@ -62,6 +81,10 @@ class Popen(PopenOrig):
 			# Remove the env var as a last resort
 			env.pop("LD_LIBRARY_PATH", None)
 
+		for key in list(env.keys()):
+			if key.startswith("_opsi_popen_"):
+				del env[key]
+
 		path = env.get("PATH")
 		if path:
 			# Cleanup PATH variable
@@ -69,11 +92,10 @@ class Popen(PopenOrig):
 			values = list(dict.fromkeys(v for v in path.split(pathsep) if v and not ("pywin32_system32" in v and "opsi" in v)))
 			env["PATH"] = pathsep.join(values)
 
-		if session:
-			if SYSTEM == "windows":
-				env["_opsi_popen_session"] = str(session)
-			else:
-				raise NotImplementedError(f"Parameter 'session' not supported on {SYSTEM!r}")
+		if session_id and SYSTEM == "windows":
+			env["_opsi_popen_session_id"] = str(session_id)
+			env["_opsi_popen_session_elevated"] = str(int(bool(session_elevated)))
+
 		PopenOrig.__init__(  # type: ignore  # pylint: disable=non-parent-init-called
 			self,
 			args=args,

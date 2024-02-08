@@ -16,26 +16,23 @@ import win32con  # type: ignore[import]  # pylint: disable=import-error
 import win32process  # type: ignore[import]  # pylint: disable=import-error
 import win32profile  # type: ignore[import]  # pylint: disable=import-error
 import win32security  # type: ignore[import]  # pylint: disable=import-error
+import win32ts  # type: ignore[import]  # pylint: disable=import-error
 
-from opsicommon.system.windows.session import WtsState, get_windows_sessions
 
-
-def get_process_user_token(process: str, user: str) -> int:
-	user = user.lower()
-	process = process.lower()
-	pid = -1
+def get_process(process_name: str, session_id: int) -> psutil.Process | None:
+	process_name = process_name.lower()
+	session_id = int(session_id)
 	for proc in psutil.process_iter():
 		try:
-			if proc.username().split("\\")[-1].lower() == user and proc.name() == process:
-				pid = proc.pid
-				break
+			if proc.name() == process_name and win32ts.ProcessIdToSessionId(proc.pid) == session_id:
+				return proc
 		except psutil.AccessDenied:
 			pass
+	return None
 
-	if pid == -1:
-		raise RuntimeError(f"Process {process!r} of user {user!r} not found")
 
-	proc_handle = win32api.OpenProcess(win32con.MAXIMUM_ALLOWED, False, pid)
+def get_process_user_token(process_id: int) -> int:
+	proc_handle = win32api.OpenProcess(win32con.MAXIMUM_ALLOWED, False, process_id)
 	proc_token = win32security.OpenProcessToken(proc_handle, win32con.MAXIMUM_ALLOWED)
 	proc_token_dup = win32security.DuplicateTokenEx(
 		ExistingToken=proc_token,
@@ -64,7 +61,7 @@ def CreateProcess(  # pylint: disable=invalid-name
 	__current_directory: str | None,
 	__startup_info: Any,
 ) -> tuple[int, int, int, int]:
-	if not __env_mapping or not __env_mapping.get("_opsi_popen_session"):
+	if not __env_mapping or not __env_mapping.get("_opsi_popen_session_id"):
 		return CreateProcessOrig(
 			__application_name,
 			__command_line,
@@ -77,22 +74,14 @@ def CreateProcess(  # pylint: disable=invalid-name
 			__startup_info,
 		)
 
-	session_id: int | None = None
-	user: str | None = __env_mapping.pop("_opsi_popen_session")
-	try:
-		session_id = int(user)  # type: ignore[arg-type]
-		user = None
-	except ValueError:
-		pass
+	session_id = int(__env_mapping.pop("_opsi_popen_session_id"))
+	session_elevated = bool(int(__env_mapping.pop("_opsi_popen_session_elevated", "0")))
+	process_name = "winlogon.exe" if session_elevated else "explorer.exe"
+	proc = get_process(process_name=process_name, session_id=session_id)
+	if not proc:
+		raise RuntimeError(f"Failed to find '{process_name}' in session {session_id}")
 
-	if not user:
-		for session in get_windows_sessions(session_ids=session_id, states=(WtsState.ACTIVE, WtsState.CONNECTED, WtsState.DISCONNECTED)):
-			if session.username:
-				user = session.username
-		if not user:
-			raise RuntimeError(f"Failed to get username for session id {session_id}")
-
-	user_token = get_process_user_token(process="explorer.exe", user=user)
+	user_token = get_process_user_token(proc.pid)
 	startup_info = win32process.STARTUPINFO()
 	for attr, val in __startup_info.__dict__.items():
 		if attr != "lpAttributeList" and val is not None:
