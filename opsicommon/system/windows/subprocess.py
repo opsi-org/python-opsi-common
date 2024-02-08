@@ -31,7 +31,7 @@ def get_process(process_name: str, session_id: int) -> psutil.Process | None:
 	return None
 
 
-def get_process_user_token(process_id: int, duplicate: bool=False) -> int:
+def get_process_user_token(process_id: int, duplicate: bool = False) -> int:
 	proc_handle = win32api.OpenProcess(win32con.MAXIMUM_ALLOWED, False, process_id)
 	proc_token = win32security.OpenProcessToken(proc_handle, win32con.MAXIMUM_ALLOWED)
 	if not duplicate:

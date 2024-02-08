@@ -11,8 +11,7 @@ import pytest
 
 @pytest.mark.windows
 def test_get_sessions() -> None:
-	from opsicommon.system.windows.session import \
-	    get_windows_sessions  # pylint: disable=import-outside-toplevel
+	from opsicommon.system.windows.session import get_windows_sessions  # pylint: disable=import-outside-toplevel
 
 	sessions = get_windows_sessions()
 	assert sessions
@@ -22,10 +21,8 @@ def test_get_sessions() -> None:
 
 @pytest.mark.windows
 def test_popen_session() -> None:
-	from opsicommon.system.subprocess import \
-	    patch_popen  # pylint: disable=import-outside-toplevel
-	from opsicommon.system.windows.session import \
-	    get_windows_sessions  # pylint: disable=import-outside-toplevel
+	from opsicommon.system.subprocess import patch_popen  # pylint: disable=import-outside-toplevel
+	from opsicommon.system.windows.session import get_windows_sessions  # pylint: disable=import-outside-toplevel
 
 	patch_popen()
 	user_sessions = [s for s in get_windows_sessions() if s.username]

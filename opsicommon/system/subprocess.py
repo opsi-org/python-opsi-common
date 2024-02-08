@@ -16,9 +16,8 @@ SYSTEM = platform.system().lower()
 
 if SYSTEM == "windows":
 	import win32profile  # type: ignore[import] # pylint: disable=import-error
-	from opsicommon.system.windows.subprocess import (get_process,
-	                                                  get_process_user_token,
-	                                                  patch_create_process)
+
+	from opsicommon.system.windows.subprocess import get_process, get_process_user_token, patch_create_process
 
 
 PopenOrig = subprocess.Popen
