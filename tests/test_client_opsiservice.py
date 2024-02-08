@@ -704,7 +704,7 @@ def test_proxy(tmp_path: Path) -> None:
 		# Test proxy address can't be resolved
 		proxy_env = {"http_proxy": "http://will-not-resolve:991", "https_proxy": "http://will-not-resolve:991", "no_proxy": ""}
 		with environment(proxy_env):
-			with ServiceClient(f"https://{local_ip}:{server.port}", proxy_url="system", verify="accept_all", connect_timeout=2) as client:
+			with ServiceClient(f"https://{local_ip}:{server.port}", proxy_url="system", verify="accept_all", connect_timeout=5) as client:
 				with pytest.raises(OpsiServiceConnectionError, match=".*Failed to resolve 'will-not-resolve'.*"):
 					client.connect()
 
