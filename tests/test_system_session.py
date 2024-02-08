@@ -35,13 +35,12 @@ def test_popen_session() -> None:
 	if not user_sessions:
 		pytest.skip("No user sessions found")
 
-	username = user_sessions[0].username
-	for session in (username, user_sessions[0].session_id):
-		proc = subprocess.run(  # type: ignore[call-overload]
-			["powershell.exe", "-Command", "Write-Host $Env:USERNAME"],
-			check=True,
-			capture_output=True,
-			text=True,
-			session=session,
-		)
-		assert proc.stdout.strip() == username
+	proc = subprocess.run(  # type: ignore[call-overload]
+		["powershell.exe", "-Command", "Write-Host $Env:USERNAME"],
+		check=True,
+		capture_output=True,
+		text=True,
+		session_id=user_sessions[0].session_id,
+		session_elevated=False,
+	)
+	assert proc.stdout.strip() == user_sessions[0].username
