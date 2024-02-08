@@ -125,8 +125,14 @@ def test_fill_from_legacy_config_configserver(tmp_path: Path) -> None:
 		OpsiConfig._instances = {}
 		config = OpsiConfig()
 		global_conf.write_text("\n\n", encoding="utf-8")
-		with environment({"OPSI_HOSTNAME": "env-config.server.id"}):
+		with environment({"OPSI_HOST_ID": "", "OPSI_HOSTNAME": "env-config.server.id"}):
 			assert config.get("host", "id") == "env-config.server.id"
+
+		config_file.write_bytes(b"")
+		OpsiConfig._instances = {}
+		config = OpsiConfig()
+		with environment({"OPSI_HOST_ID": "env-config2.server.id", "OPSI_HOSTNAME": ""}):
+			assert config.get("host", "id") == "env-config2.server.id"
 
 
 def test_read_config_file(tmp_path: Path) -> None:
