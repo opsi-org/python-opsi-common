@@ -112,26 +112,29 @@ def get_host_key(server_role: str) -> str:
 	if not mysql_conf:
 		return ""
 
-	with Popen(
-		[
-			"mysql",
-			"--defaults-file=/dev/stdin",
-			"--skip-column-names",
-			"-h",
-			urlparse(mysql_conf["address"]).hostname or mysql_conf["address"],
-			"-D",
-			mysql_conf["database"],
-			"-e",
-			"SELECT opsiHostKey FROM HOST WHERE type='OpsiConfigserver';",
-		],
-		stdin=PIPE,
-		stdout=PIPE,
-		stderr=PIPE,
-	) as proc:
-		out = proc.communicate(input=f"[client]\nuser={mysql_conf['username']}\npassword={mysql_conf['password']}\n".encode())
-		if proc.returncode != 0:
-			return ""
-		return out[0].decode().strip()
+	try:
+		with Popen(
+			[
+				"mysql",
+				"--defaults-file=/dev/stdin",
+				"--skip-column-names",
+				"-h",
+				urlparse(mysql_conf["address"]).hostname or mysql_conf["address"],
+				"-D",
+				mysql_conf["database"],
+				"-e",
+				"SELECT opsiHostKey FROM HOST WHERE type='OpsiConfigserver';",
+			],
+			stdin=PIPE,
+			stdout=PIPE,
+			stderr=PIPE,
+		) as proc:
+			out = proc.communicate(input=f"[client]\nuser={mysql_conf['username']}\npassword={mysql_conf['password']}\n".encode())
+			if proc.returncode != 0:
+				return ""
+			return out[0].decode().strip()
+	except FileNotFoundError:
+		return ""
 
 
 def get_service_url(server_role: str) -> str:
