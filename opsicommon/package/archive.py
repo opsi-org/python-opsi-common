@@ -115,15 +115,17 @@ def decompress_command(archive: Path) -> str:
 
 
 def untar(tar: tarfile.TarFile, destination: Path, file_pattern: str | None = None) -> None:
-	relevant_members = []
-	if file_pattern:
-		for member in tar.getmembers():
-			if fnmatch.fnmatch(member.name, file_pattern):
-				relevant_members.append(member)
-		if not relevant_members:
-			raise FileNotFoundError(f"Did not find file pattern {file_pattern} in tar file")
-		logger.debug("Extracting members according to file pattern %s: %s", file_pattern, relevant_members)
-	tar.extractall(path=destination, members=relevant_members or None)
+	extracted_members = 0
+	for member in tar:
+		if file_pattern and not fnmatch.fnmatch(member.name, file_pattern):
+			logger.debug("Member does not match file pattern %r: %r", file_pattern, member.name)
+			continue
+		logger.debug("Extracting member: %r", member.name)
+		tar.extract(member, path=destination)
+		extracted_members += 1
+
+	if file_pattern and not extracted_members:
+		raise FileNotFoundError(f"Did not find file pattern {file_pattern} in tar file")
 
 
 # Warning: this is specific for linux!
