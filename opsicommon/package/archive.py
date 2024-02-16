@@ -14,7 +14,6 @@ import subprocess
 import tarfile
 from contextlib import contextmanager
 from functools import lru_cache
-from io import BytesIO
 from pathlib import Path
 from typing import Generator
 
@@ -147,20 +146,21 @@ def extract_archive_external(archive: Path, destination: Path, file_pattern: str
 def extract_archive_internal(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
 	logger.info("Extracting archive %s to destination %s", archive, destination)
 	destination.mkdir(parents=True, exist_ok=True)
+
 	if archive.suffixes and archive.suffixes[-1] == ".zstd":
 		decompressor = zstandard.ZstdDecompressor()
-		with BytesIO() as buffer, open(archive, mode="rb") as archive_handle:
-			_, bytes_written = decompressor.copy_stream(archive_handle, buffer)
-			buffer.seek(0)
-			with tarfile.open(fileobj=buffer, mode="r") as tar_object:
-				untar(tar_object, destination, file_pattern)
-		logger.debug("Wrote zstd stream of %s bytes (using %s bytes of memory)", bytes_written, decompressor.memory_size())
-	else:
-		file_type = get_file_type(archive)
-		if archive.suffixes and ".cpio" in archive.suffixes[-2:] or file_type == "cpio":
-			raise RuntimeError("Extracting cpio archives is not available on this platform.")
-		with tarfile.open(archive, mode="r") as tar_object:  # compression can be None, gz, bz2 or xz
-			untar(tar_object, destination, file_pattern)
+		with open(archive, "rb") as file:
+			with decompressor.stream_reader(file) as zstd_reader:
+				with tarfile.open(fileobj=zstd_reader, mode="r:") as tar_object:  # compression can be None, gz, bz2 or xz
+					untar(tar_object, destination, file_pattern)
+		return
+
+	file_type = get_file_type(archive)
+	if archive.suffixes and ".cpio" in archive.suffixes[-2:] or file_type == "cpio":
+		raise RuntimeError("Extracting cpio archives is not available on this platform.")
+
+	with tarfile.open(name=str(archive), mode="r") as tar_object:  # compression can be None, gz, bz2 or xz
+		untar(tar_object, destination, file_pattern)
 
 
 def extract_archive(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
@@ -247,20 +247,18 @@ def create_archive_internal(
 		return tarinfo
 
 	if compression == "zstd":
-		with open(archive, mode="wb") as outfile, BytesIO() as buffer:
-			with tarfile.open(fileobj=buffer, mode=mode, dereference=dereference) as tar_object:
-				for source in sources:
-					tar_object.add(source, arcname=source.relative_to(base_dir), filter=set_tarinfo)
-			# TODO: Set ZSTD_c_rsyncable / ZSTD_c_experimentalParam1 / 500 = 1
-			compressor = zstandard.ZstdCompressor()
-			buffer.seek(0)
-			_, bytes_written = compressor.copy_stream(buffer, outfile)
-			logger.debug("Wrote zstd stream of %s bytes (using %s bytes of memory)", bytes_written, compressor.memory_size())
-	else:
-		# Remark: everything except gz can handle Path-like archive, gz requires str
-		with tarfile.open(str(archive), mode=mode, dereference=dereference) as tar_object:
-			for source in sources:
-				tar_object.add(source, arcname=source.relative_to(base_dir), filter=set_tarinfo)
+		compressor = zstandard.ZstdCompressor()
+		with open(archive, "wb") as file:
+			with compressor.stream_writer(file) as zstd_writer:
+				with tarfile.open(fileobj=zstd_writer, dereference=dereference, mode="w:") as tar_object:
+					for source in sources:
+						tar_object.add(source, arcname=source.relative_to(base_dir), filter=set_tarinfo)
+		return
+
+	# Remark: everything except gz can handle Path-like archive, gz requires str
+	with tarfile.open(name=str(archive), mode=mode, dereference=dereference) as tar_object:
+		for source in sources:
+			tar_object.add(source, arcname=source.relative_to(base_dir), filter=set_tarinfo)
 
 
 def create_archive(archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False) -> None:

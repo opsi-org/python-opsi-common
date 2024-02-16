@@ -30,6 +30,7 @@ from opsicommon.package.archive import (
 	extract_archive_internal,
 )
 from opsicommon.package.associated_files import create_package_zsync_file
+from opsicommon.testing.helpers import memory_usage_monitor
 
 # File may not
 # * contain slash/backslash path delimiters
@@ -39,12 +40,12 @@ FILENAME_REGEX = r"^[^/\\]{4,64}$"
 def make_source_files(path: Path) -> Path:
 	source = path / "source"
 	source.mkdir()
-	(source / "test file with spaces").write_bytes(randbytes(128))
-	(source / "#how^can°people`think,this´is'a good~idea#").write_bytes(randbytes(128))
+	(source / "test file with spaces").write_bytes(randbytes(100_000_000))
+	(source / "#how^can°people`think,this´is'a good~idea#").write_bytes(randbytes(50_000_000))
 	(source / "test'dir").mkdir()
-	(source / "test'dir" / "testfileindir").write_bytes(randbytes(128))
+	(source / "test'dir" / "testfileindir").write_bytes(randbytes(10_000_000))
 	if platform.system().lower() != "windows":  # windows does not like ?, < and > characters
-		(source / "test'dir" / 'test"file$in€dir<with>special?').write_bytes(randbytes(128))
+		(source / "test'dir" / 'test"file$in€dir<with>special?').write_bytes(randbytes(1000))
 	return source
 
 
@@ -75,21 +76,30 @@ def test_archive_external_hypothesis(filename: str, data: bytes, compression: Li
 )
 def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"]) -> None:
 	source = make_source_files(tmp_path)
-	# setting group ownership of source to adm group - assuming this is present on every linux
-	shutil.chown(source, None, "adm")
-	archive = tmp_path / f"archive.tar.{compression}"
-	create_archive_external(archive, list(source.glob("*")), source, compression=compression)
-	# ownership of archive should be current user group
-	assert archive.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
-	# setting group ownership of archive to adm group - assuming this is present on every linux
-	shutil.chown(archive, None, "adm")
-	destination = tmp_path / "destination"
-	extract_archive_external(archive, destination)
-	# ownership of archive should be current user group
-	assert destination.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
-	contents = [file.relative_to(destination) for file in destination.rglob("*")]
-	for file in source.rglob("*"):
-		assert file.relative_to(source) in contents
+	with memory_usage_monitor(interval=0.01) as mem_monitor:
+		# Setting group ownership of source to adm group - assuming this is present on every linux
+		shutil.chown(source, None, "adm")
+		archive = tmp_path / f"archive.tar.{compression}"
+		create_archive_external(archive, list(source.glob("*")), source, compression=compression)
+
+		# Ownership of archive should be current user group
+		assert archive.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
+
+		# Setting group ownership of archive to adm group - assuming this is present on every linux
+		shutil.chown(archive, None, "adm")
+		destination = tmp_path / "destination"
+		extract_archive_external(archive, destination)
+
+		# Ownership of archive should be current user group
+		assert destination.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
+
+		contents = [file.relative_to(destination) for file in destination.rglob("*")]
+		for file in source.rglob("*"):
+			assert file.relative_to(source) in contents
+
+		mem_monitor.stop()
+		mem_monitor.print_stats()
+		assert mem_monitor.max_increase_rss < 20_000_000
 
 
 @pytest.mark.parametrize(
@@ -98,13 +108,20 @@ def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 )
 def test_archive_internal(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"]) -> None:
 	source = make_source_files(tmp_path)
-	archive = tmp_path / f"archive.tar.{compression}"
-	create_archive_internal(archive, list(source.glob("*")), source, compression=compression)
-	destination = tmp_path / "destination"
-	extract_archive_internal(archive, destination)
-	contents = [file.relative_to(destination) for file in destination.rglob("*")]
-	for file in source.rglob("*"):
-		assert file.relative_to(source) in contents
+	with memory_usage_monitor(interval=0.01) as mem_monitor:
+		archive = tmp_path / f"archive.tar.{compression}"
+		create_archive_internal(archive, list(source.glob("*")), source, compression=compression)
+
+		destination = tmp_path / "destination"
+		extract_archive_internal(archive, destination)
+
+		contents = [file.relative_to(destination) for file in destination.rglob("*")]
+		for file in source.rglob("*"):
+			assert file.relative_to(source) in contents
+
+		mem_monitor.stop()
+		mem_monitor.print_stats()
+		assert mem_monitor.max_increase_rss < 20_000_000
 
 
 @pytest.mark.linux
