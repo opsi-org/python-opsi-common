@@ -1874,13 +1874,12 @@ def test_permission_error_ca_cert_file() -> None:
 			return load_verify_locations_orig(self, cafile, capath, cadata)
 		raise OSError("Permission denied")
 
-	with (
-		mock.patch("ssl.SSLContext.load_verify_locations", load_verify_locations),
-		http_test_server(generate_cert=True) as server,
-	):
-		with ServiceClient(f"https://localhost:{server.port}", verify="opsi_ca", ca_cert_file=server.ca_cert) as client:
-			client.connect()
-			client.get("/")
+	with http_test_server(generate_cert=True) as server:
+		time.sleep(2)
+		with mock.patch("ssl.SSLContext.load_verify_locations", load_verify_locations):
+			with ServiceClient(f"https://localhost:{server.port}", verify="opsi_ca", ca_cert_file=server.ca_cert) as client:
+				client.connect()
+				client.get("/")
 
 
 @pytest.mark.windows
