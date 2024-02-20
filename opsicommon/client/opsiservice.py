@@ -225,6 +225,7 @@ class ServiceClient:
 		*,
 		username: str | None = None,
 		password: str | None = None,
+		client_cert_file: str | Path | None = None,
 		ca_cert_file: str | Path | None = None,
 		verify: str | Iterable[str] = ServiceVerificationFlags.STRICT_CHECK,
 		session_cookie: str | None = None,
@@ -292,6 +293,13 @@ class ServiceClient:
 
 		self.username = username
 		self.password = password
+
+		self._client_cert_file = None
+		if client_cert_file:
+			if not isinstance(client_cert_file, Path):
+				client_cert_file = Path(client_cert_file)
+			self._client_cert_file = client_cert_file
+			self._session.cert = str(self._client_cert_file)
 
 		self._ca_cert_file = None
 		if ca_cert_file:
@@ -446,6 +454,10 @@ class ServiceClient:
 	@property
 	def ca_cert_file(self) -> Path | None:
 		return self._ca_cert_file
+
+	@property
+	def client_cert_file(self) -> Path | None:
+		return self._client_cert_file
 
 	@property
 	def connected(self) -> bool:
@@ -837,15 +849,15 @@ class ServiceClient:
 		if self._connected:
 			try:
 				if self.server_version >= MIN_VERSION_SESSION_API:
-					self.post("/session/logout", connect_timeout=3.0, read_timeout=5.0)
+					self.post("/session/logout", connect_timeout=3.0, read_timeout=3.0)
 				else:
-					self.jsonrpc("backend_exit", connect_timeout=3.0, read_timeout=5.0)
+					self.jsonrpc("backend_exit", connect_timeout=3.0, read_timeout=3.0)
 			except Exception:
 				pass
-			try:
-				self._session.close()
-			except Exception:
-				pass
+		try:
+			self._session.close()
+		except Exception:
+			pass
 
 		self._connected = False
 		self.server_version = version.parse("0")
@@ -1589,8 +1601,23 @@ class Messagebus(Thread):
 				)
 				raise self._connect_exception
 			if self._connect_exception:
-				logger.debug("Raising connect exception %r", self._connect_exception)
-				raise OpsiServiceConnectionError(str(self._connect_exception)) from self._connect_exception
+				status_code = getattr(self._connect_exception, "status_code", 0)
+				headers = getattr(self._connect_exception, "headers", {})
+				cls: Type[OpsiServiceError] = OpsiServiceConnectionError
+				if status_code == 401:
+					cls = OpsiServiceAuthenticationError
+				elif status_code == 403:
+					cls = OpsiServicePermissionError
+				elif status_code == 503:
+					cls = OpsiServiceUnavailableError
+					self._next_connect_wait = 60
+					try:
+						retry_after = int(headers.get("Retry-After", ""))
+						self._next_connect_wait = max(1, min(retry_after, 7200))
+					except ValueError:
+						pass
+				logger.debug("Raising %r: %r", cls, self._connect_exception)
+				raise cls(str(self._connect_exception)) from self._connect_exception
 
 	def disconnect(self, wait: bool = True) -> None:
 		self._should_be_connected = False
@@ -1615,6 +1642,8 @@ class Messagebus(Thread):
 			sslopt["cert_reqs"] = ssl.CERT_NONE
 		if self._client.ca_cert_file:
 			sslopt["ca_certs"] = str(self._client.ca_cert_file)
+		if self._client.client_cert_file:
+			sslopt["certfile"] = str(self._client.client_cert_file)
 
 		proxy_type = None
 		http_proxy_host = None
