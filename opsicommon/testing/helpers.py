@@ -603,7 +603,9 @@ class HTTPTestServer(threading.Thread, BaseServer):
 		ip_version: str | int | None = None,
 		server_key: Path | str | None = None,
 		server_cert: Path | str | None = None,
+		ca_cert: Path | str | None = None,
 		generate_cert: bool = False,
+		client_verify_mode: ssl.VerifyMode = ssl.CERT_NONE,
 		response_headers: dict[str, str] | None = None,
 		response_status: tuple[int, str] | None = None,
 		response_body: bytes | None = None,
@@ -616,11 +618,12 @@ class HTTPTestServer(threading.Thread, BaseServer):
 		super().__init__()
 		self.log_file = str(log_file) if log_file else None
 		self.ip_version = 6 if int(ip_version or 4) == 6 else 4
-		self.ca_key: str | None = None
-		self.ca_cert: str | None = None
-		self.server_key = str(server_key) if server_key else None
-		self.server_cert = str(server_cert) if server_cert else None
+		self.ca_key: Path | None = None
+		self.ca_cert: Path | None = Path(ca_cert) if ca_cert else None
+		self.server_key: Path | None = Path(server_key) if server_key else None
+		self.server_cert: Path | None = Path(server_cert) if server_cert else None
 		self.generate_cert = generate_cert
+		self.client_verify_mode = client_verify_mode
 		self.response_headers = response_headers if response_headers else {}
 		self.response_status = response_status if response_status else None
 		self.response_body = response_body if response_body else None
@@ -661,7 +664,7 @@ class HTTPTestServer(threading.Thread, BaseServer):
 		setattr(self, name, value)
 
 	def _generate_cert(self) -> None:
-		if self.server_key and os.path.exists(self.server_key) and self.server_cert and os.path.exists(self.server_cert):
+		if self.server_key and self.server_key.exists() and self.server_cert and self.server_cert.exists():
 			return
 
 		# Use 2048 bits for speedup
@@ -670,12 +673,12 @@ class HTTPTestServer(threading.Thread, BaseServer):
 		tmp = NamedTemporaryFile(delete=False)
 		tmp.write(as_pem(ca_key).encode("utf-8"))
 		tmp.close()
-		self.ca_key = tmp.name
+		self.ca_key = Path(tmp.name)
 
 		tmp = NamedTemporaryFile(delete=False)
 		tmp.write(as_pem(ca_cert).encode("utf-8"))
 		tmp.close()
-		self.ca_cert = tmp.name
+		self.ca_cert = Path(tmp.name)
 
 		kwargs: dict[str, Any] = {
 			"subject": {"CN": "http_test_server server cert"},
@@ -691,28 +694,31 @@ class HTTPTestServer(threading.Thread, BaseServer):
 		tmp = NamedTemporaryFile(delete=False)
 		tmp.write(as_pem(key).encode("utf-8"))
 		tmp.close()
-		self.server_key = tmp.name
+		self.server_key = Path(tmp.name)
 
 		tmp = NamedTemporaryFile(delete=False)
 		tmp.write(as_pem(cert).encode("utf-8"))
 		tmp.close()
-		self.server_cert = tmp.name
+		self.server_cert = Path(tmp.name)
 
 	def _cleanup_cert(self) -> None:
 		if self.generate_cert:
-			if self.ca_key and os.path.exists(self.ca_key):
-				os.unlink(self.ca_key)
-			if self.ca_cert and os.path.exists(self.ca_cert):
-				os.unlink(self.ca_cert)
-			if self.server_key and os.path.exists(self.server_key):
-				os.unlink(self.server_key)
-			if self.server_cert and os.path.exists(self.server_cert):
-				os.unlink(self.server_cert)
+			if self.ca_key and self.ca_key.exists():
+				self.ca_key.unlink()
+			if self.ca_cert and self.ca_cert.exists():
+				self.ca_cert.unlink()
+			if self.server_key and self.server_key.exists():
+				self.server_key.unlink()
+			if self.server_cert and self.server_cert.exists():
+				self.server_cert.unlink()
 
 	def _init_ssl_socket(self) -> None:
 		if self.server and self.server_key and self.server_cert:
 			context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-			context.load_cert_chain(keyfile=self.server_key, certfile=self.server_cert)
+			context.verify_mode = self.client_verify_mode
+			context.load_cert_chain(keyfile=str(self.server_key), certfile=str(self.server_cert))
+			if self.ca_cert:
+				context.load_verify_locations(cafile=str(self.ca_cert))
 			self.server.socket = context.wrap_socket(sock=self.server.socket, server_side=True)
 
 	def stop(self, cleanup_cert: bool = True) -> None:
@@ -753,9 +759,11 @@ def http_test_server(
 	*,
 	log_file: Path | str | None = None,
 	ip_version: str | int | None = None,
+	ca_cert: Path | str | None = None,
 	server_key: Path | str | None = None,
 	server_cert: Path | str | None = None,
 	generate_cert: bool = False,
+	client_verify_mode: ssl.VerifyMode = ssl.CERT_NONE,
 	response_headers: dict[str, str] | None = None,
 	response_status: tuple[int, str] | None = None,
 	response_body: bytes | None = None,
@@ -768,9 +776,11 @@ def http_test_server(
 	server = HTTPTestServer(
 		log_file=log_file,
 		ip_version=ip_version,
+		ca_cert=ca_cert,
 		server_key=server_key,
 		server_cert=server_cert,
 		generate_cert=generate_cert,
+		client_verify_mode=client_verify_mode,
 		response_headers=response_headers,
 		response_status=response_status,
 		response_body=response_body,
