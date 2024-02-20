@@ -23,6 +23,7 @@ __all__ = (
 	"LicenseConfigurationError",
 	"LicenseMissingError",
 	"OpsiServiceAuthenticationError",
+	"OpsiServiceClientCertificateError",
 	"OpsiBackupBackendNotFound",
 	"OpsiBackupFileError",
 	"OpsiBackupFileNotFound",
@@ -83,6 +84,10 @@ class OpsiServiceError(OpsiError):
 
 class OpsiServiceAuthenticationError(OpsiServiceError):
 	ExceptionShortDescription = "Opsi service authentication error"
+
+
+class OpsiServiceClientCertificateError(OpsiServiceAuthenticationError):
+	ExceptionShortDescription = "Opsi service client certificate error"
 
 
 BackendAuthenticationError = OpsiServiceAuthenticationError
