@@ -12,6 +12,7 @@ import base64
 import json
 import platform
 import re
+import ssl
 import time
 import traceback
 from contextlib import contextmanager
@@ -47,6 +48,7 @@ from opsicommon.client.opsiservice import (
 	MessagebusListener,
 	OpsiCaState,
 	OpsiServiceAuthenticationError,
+	OpsiServiceClientCertificateError,
 	OpsiServiceConnectionError,
 	OpsiServiceError,
 	OpsiServicePermissionError,
@@ -515,6 +517,82 @@ def test_verify(tmpdir: Path) -> None:
 		) as client:
 			client.connect()
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == orig_ca_cert_as_pem
+
+
+def test_client_certificate(tmpdir: Path) -> None:
+	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3)
+	ca_key_file = tmpdir / "ca_key.pem"
+	ca_cert_file = tmpdir / "ca_cert.pem"
+	ca_key_file.write_text(as_pem(ca_key), encoding="utf-8")
+	ca_cert_file.write_text(as_pem(ca_cert), encoding="utf-8")
+
+	server_cert, server_key = create_server_cert(
+		subject={"CN": "python-opsi-common test server cert"},
+		valid_days=3,
+		ip_addresses={"127.0.0.1", "::1"},
+		hostnames={"localhost", "ip6-localhost"},
+		ca_key=ca_key,
+		ca_cert=ca_cert,
+	)
+	server_key_file = tmpdir / "server_key.pem"
+	server_cert_file = tmpdir / "server_cert.pem"
+	server_key_file.write_text(as_pem(server_key), encoding="utf-8")
+	server_cert_file.write_text(as_pem(server_cert), encoding="utf-8")
+
+	client_cert, client_key = create_server_cert(
+		subject={"CN": "python-opsi-common test client cert"},
+		valid_days=3,
+		ip_addresses={"127.0.0.1", "::1"},
+		hostnames={"localhost", "ip6-localhost"},
+		ca_key=ca_key,
+		ca_cert=ca_cert,
+	)
+	client_cert_file = tmpdir / "client_cert.pem"
+	client_cert_file.write_text(as_pem(client_key) + as_pem(client_cert), encoding="utf-8")
+
+	with (
+		opsi_config({"host.server-role": ""}),
+		http_test_server(
+			server_key=server_key_file,
+			server_cert=server_cert_file,
+			client_verify_mode=ssl.CERT_REQUIRED,
+			response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)"},
+		) as server,
+	):
+		with ServiceClient(
+			f"https://127.0.0.1:{server.port}",
+			verify=ServiceVerificationFlags.STRICT_CHECK,
+			ca_cert_file=ca_cert_file,
+		) as client:
+			with pytest.raises(OpsiServiceClientCertificateError, match="certificate required"):
+				client.get("/")
+
+		with ServiceClient(
+			f"https://127.0.0.1:{server.port}",
+			verify=ServiceVerificationFlags.STRICT_CHECK,
+			ca_cert_file=ca_cert_file,
+			client_cert_file=client_cert_file,
+		) as client:
+			with pytest.raises(OpsiServiceClientCertificateError, match="unknown ca"):
+				client.get("/")
+
+	with (
+		opsi_config({"host.server-role": ""}),
+		http_test_server(
+			server_key=server_key_file,
+			server_cert=server_cert_file,
+			ca_cert=ca_cert_file,
+			client_verify_mode=ssl.CERT_REQUIRED,
+			response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)"},
+		) as server,
+	):
+		with ServiceClient(
+			f"https://127.0.0.1:{server.port}",
+			verify=ServiceVerificationFlags.STRICT_CHECK,
+			ca_cert_file=ca_cert_file,
+			client_cert_file=client_cert_file,
+		) as client:
+			client.get("/")
 
 
 def test_cookie_handling(tmp_path: Path) -> None:
