@@ -54,6 +54,7 @@ from ..config import CA_CERT_FILE, OpsiConfig
 from ..exceptions import (
 	OpsiRpcError,
 	OpsiServiceAuthenticationError,
+	OpsiServiceClientCertificateError,
 	OpsiServiceConnectionError,
 	OpsiServiceError,
 	OpsiServicePermissionError,
@@ -917,12 +918,15 @@ class ServiceClient:
 					response.raise_for_status()
 				return response
 			except SSLError as err:
-				if "Permission denied" in str(err) and attempt < max_attempts:
+				str_err = str(err).lower()
+				if "permission denied" in str_err and attempt < max_attempts:
 					# Possible permission error in context.load_verify_locations accessing ca_cert_file (file locked?)
 					wait_time = random.randint(500, 3000) / 1000
 					logger.warning("%s, retrying in %0.3f seconds", err, wait_time)
 					time.sleep(wait_time)
 					continue
+				if "certificate required" in str_err or "unknown ca" in str_err:
+					raise OpsiServiceClientCertificateError(str(err)) from err
 				try:
 					if err.args[0].reason.args[0].errno == 8:
 						# EOF occurred in violation of protocol
