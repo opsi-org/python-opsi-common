@@ -559,6 +559,7 @@ def test_client_certificate(tmpdir: Path) -> None:
 			response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)"},
 		) as server,
 	):
+		time.sleep(1)
 		with ServiceClient(
 			f"https://127.0.0.1:{server.port}",
 			verify=ServiceVerificationFlags.STRICT_CHECK,
@@ -576,6 +577,8 @@ def test_client_certificate(tmpdir: Path) -> None:
 			with pytest.raises(OpsiServiceClientCertificateError, match="unknown ca"):
 				client.get("/")
 
+	time.sleep(1)
+
 	with (
 		opsi_config({"host.server-role": ""}),
 		http_test_server(
@@ -586,6 +589,7 @@ def test_client_certificate(tmpdir: Path) -> None:
 			response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)"},
 		) as server,
 	):
+		time.sleep(1)
 		with ServiceClient(
 			f"https://127.0.0.1:{server.port}",
 			verify=ServiceVerificationFlags.STRICT_CHECK,
