@@ -26,7 +26,7 @@ type = "UnicodeProductProperty"
 name = "propname"
 multivalue = false
 editable = true
-description = "this is a dummy property"
+description = "this is a dummy property (the\\directory)"
 values = ["a", "b"]
 default = ["a"]
 

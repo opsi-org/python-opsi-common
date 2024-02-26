@@ -97,7 +97,7 @@ def test_load_control(form: str) -> None:
 	assert len(package.product_properties) == 2
 	for prop in package.product_properties:
 		if prop.propertyId == "propname":
-			assert prop.description == "this is a dummy property"
+			assert prop.description == r"this is a dummy property (the\directory)"
 			assert prop.multiValue is False
 			assert prop.editable is True
 			assert prop.defaultValues == ["a"]

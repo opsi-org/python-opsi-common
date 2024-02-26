@@ -6,6 +6,7 @@
 handling for opsi control files
 """
 
+import re
 from typing import Any
 
 import tomlkit
@@ -23,6 +24,7 @@ from opsicommon.types import forceDictList
 
 
 def multiline_string(value: str) -> tomlkit.items.String:
+	value = re.sub(r"(?<!\\)\\(?!\\)", r"\\\\", value)
 	return tomlkit.items.String(tomlkit.items.StringType.MLB, value, value, tomlkit.items.Trivia())
 
 
