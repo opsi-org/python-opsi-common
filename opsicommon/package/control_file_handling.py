@@ -150,6 +150,10 @@ def dictify_product_properties(product_properties: list[ProductProperty]) -> lis
 			"values": prop.getPossibleValues(),
 			"default": prop.getDefaultValues(),
 		}
+		if prop.getType() == "BoolProductProperty":
+			del property_dict["values"]
+			del property_dict["multivalue"]
+			del property_dict["editable"]
 		properties_list.append({key: value for key, value in property_dict.items() if value is not None})
 	return properties_list
 

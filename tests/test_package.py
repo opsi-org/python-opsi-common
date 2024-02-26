@@ -151,6 +151,16 @@ def test_generate_control(source: str, destination: str) -> None:
 	with make_temp_dir() as temp_dir:
 		if destination == "new":
 			package.generate_control_file(temp_dir / "control.toml")
+			data = (temp_dir / "control.toml").read_text(encoding="utf-8")
+			# BoolProductProperty must not contain values, multivalue and editable
+			assert (
+				"[[ProductProperty]]\n"
+				'type = "BoolProductProperty"\n'
+				'name = "boolprop"\n'
+				'description = """this is a bool property"""\n'
+				"default = [false]\n"
+				"\n"
+			) in data
 		elif destination == "legacy":
 			package.generate_control_file_legacy(temp_dir / "control")
 		regenerated_package = OpsiPackage()
