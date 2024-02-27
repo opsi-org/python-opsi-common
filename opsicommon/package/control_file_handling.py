@@ -141,20 +141,21 @@ def dictify_product(product: Product) -> dict[str, Any]:
 def dictify_product_properties(product_properties: list[ProductProperty]) -> list[dict[str, Any]]:
 	properties_list = []
 	for prop in product_properties:
-		property_dict = {
+		property_dict: dict[str, Any] = {
 			"type": prop.getType(),
 			"name": prop.getPropertyId(),
-			"multivalue": prop.getMultiValue(),
-			"editable": prop.getEditable(),
 			"description": multiline_string(prop.getDescription() or ""),
-			"values": prop.getPossibleValues(),
 			"default": prop.getDefaultValues(),
 		}
-		if prop.getType() == "BoolProductProperty":
-			del property_dict["values"]
-			del property_dict["multivalue"]
-			del property_dict["editable"]
+		if prop.getType() != "BoolProductProperty":
+			property_dict["values"] = tomlkit.array("[]")
+			for val in prop.getPossibleValues() or []:
+				property_dict["values"].append(val)
+			property_dict["values"].multiline(True)
+			property_dict["multivalue"] = prop.getMultiValue()
+			property_dict["editable"] = prop.getEditable()
 		properties_list.append({key: value for key, value in property_dict.items() if value is not None})
+
 	return properties_list
 
 
