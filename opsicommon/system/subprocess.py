@@ -56,6 +56,7 @@ class Popen(PopenOrig):
 		session_id: str | int | None = None,
 		session_env: bool | None = None,
 		session_elevated: bool | None = None,
+		session_desktop: str | None = None,
 	) -> None:
 		if SYSTEM != "windows" and session_id is not None:
 			raise NotImplementedError(f"Parameter 'session_id' not supported on {SYSTEM!r}")
@@ -63,6 +64,8 @@ class Popen(PopenOrig):
 			raise ValueError("Parameter 'session_env' requires 'session_id' to be set")
 		if session_elevated is not None and session_id is None:
 			raise ValueError("Parameter 'session_elevated' requires 'session_id' to be set")
+		if session_desktop is not None and session_id is None:
+			raise ValueError("Parameter 'session_desktop' requires 'session_id' to be set")
 
 		if SYSTEM == "windows" and session_id and (session_env or session_env is None):
 			proc = get_process("explorer.exe", session_id=int(session_id))
@@ -98,6 +101,7 @@ class Popen(PopenOrig):
 
 		if session_id and SYSTEM == "windows":
 			env["_opsi_popen_session_id"] = str(session_id)
+			env["_opsi_popen_session_desktop"] = str(session_desktop)
 			env["_opsi_popen_session_elevated"] = str(int(bool(session_elevated)))
 
 		PopenOrig.__init__(  # type: ignore

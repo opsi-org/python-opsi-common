@@ -11,11 +11,13 @@ from typing import Any
 import _winapi
 import ntsecuritycon  # type: ignore[import]
 import psutil
+import pywintypes  # type: ignore[import]
 import win32api  # type: ignore[import]
 import win32con  # type: ignore[import]
 import win32process  # type: ignore[import]
 import win32profile  # type: ignore[import]
 import win32security  # type: ignore[import]
+import win32service  # type: ignore[import]
 import win32ts  # type: ignore[import]
 
 
@@ -49,6 +51,16 @@ def get_process_user_token(process_id: int, duplicate: bool = False) -> int:
 	return proc_token_dup
 
 
+def get_window_station_desktop_names() -> list[str]:
+	winsta = win32service.GetProcessWindowStation()
+	return [str(d) for d in winsta.EnumDesktops()]
+
+
+def create_window_station_desktop(name: str) -> None:
+	security_attributes = pywintypes.SECURITY_ATTRIBUTES()
+	win32service.CreateDesktop(name, 0, win32con.MAXIMUM_ALLOWED, security_attributes)
+
+
 CreateProcessOrig = _winapi.CreateProcess  # type: ignore[attr-defined]
 
 
@@ -78,6 +90,7 @@ def CreateProcess(
 
 	session_id = int(__env_mapping.pop("_opsi_popen_session_id"))
 	session_elevated = bool(int(__env_mapping.pop("_opsi_popen_session_elevated", "0")))
+	session_desktop = __env_mapping.pop("_opsi_popen_session_desktop", None)
 	process_name = "winlogon.exe" if session_elevated else "explorer.exe"
 	proc = get_process(process_name=process_name, session_id=session_id)
 	if not proc:
@@ -88,6 +101,11 @@ def CreateProcess(
 	for attr, val in __startup_info.__dict__.items():
 		if attr != "lpAttributeList" and val is not None:
 			setattr(startup_info, attr, val)
+
+	if session_desktop:
+		if session_desktop not in get_window_station_desktop_names():
+			create_window_station_desktop(session_desktop)
+		startup_info.lpDesktop = session_desktop
 
 	__env_mapping = win32profile.CreateEnvironmentBlock(user_token, False)
 	(process_handle, thread_handle, process_id, thread_id) = win32process.CreateProcessAsUser(
