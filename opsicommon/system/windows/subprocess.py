@@ -11,13 +11,11 @@ from typing import Any
 import _winapi
 import ntsecuritycon  # type: ignore[import]
 import psutil
-import pywintypes  # type: ignore[import]
 import win32api  # type: ignore[import]
 import win32con  # type: ignore[import]
 import win32process  # type: ignore[import]
 import win32profile  # type: ignore[import]
 import win32security  # type: ignore[import]
-import win32service  # type: ignore[import]
 import win32ts  # type: ignore[import]
 
 
@@ -49,16 +47,6 @@ def get_process_user_token(process_id: int, duplicate: bool = False) -> int:
 		TokenType=ntsecuritycon.TokenPrimary,
 	)
 	return proc_token_dup
-
-
-def get_window_station_desktop_names() -> list[str]:
-	winsta = win32service.GetProcessWindowStation()
-	return [str(d) for d in winsta.EnumDesktops()]
-
-
-def create_window_station_desktop(name: str) -> None:
-	security_attributes = pywintypes.SECURITY_ATTRIBUTES()
-	win32service.CreateDesktop(name, 0, win32con.MAXIMUM_ALLOWED, security_attributes)
 
 
 CreateProcessOrig = _winapi.CreateProcess  # type: ignore[attr-defined]
@@ -103,8 +91,10 @@ def CreateProcess(
 			setattr(startup_info, attr, val)
 
 	if session_desktop:
-		if session_desktop not in get_window_station_desktop_names():
-			create_window_station_desktop(session_desktop)
+		if r"\\" not in session_desktop:
+			session_desktop = f"WinSta0\\{session_desktop}"
+		if session_desktop.split("\\")[-1].lower() not in ("default", "winlogon"):
+			raise ValueError(f"Invalid desktop '{session_desktop}'")
 		startup_info.lpDesktop = session_desktop
 
 	__env_mapping = win32profile.CreateEnvironmentBlock(user_token, False)
