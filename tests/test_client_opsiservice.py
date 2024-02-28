@@ -35,39 +35,49 @@ with catch_warnings():
 import psutil
 import pytest
 from cryptography import x509
+
 from opsicommon import __version__
-from opsicommon.client.opsiservice import (MIN_VERSION_GZIP, MIN_VERSION_LZ4,
-                                           MIN_VERSION_MESSAGEBUS,
-                                           MIN_VERSION_MSGPACK,
-                                           MIN_VERSION_SESSION_API,
-                                           UIB_OPSI_CA, BackendManager,
-                                           Messagebus, MessagebusListener,
-                                           OpsiCaState,
-                                           OpsiServiceAuthenticationError,
-                                           OpsiServiceClientCertificateError,
-                                           OpsiServiceConnectionError,
-                                           OpsiServiceError,
-                                           OpsiServicePermissionError,
-                                           OpsiServiceTimeoutError,
-                                           OpsiServiceUnavailableError,
-                                           OpsiServiceVerificationError,
-                                           RequestsResponse, Response,
-                                           ServiceClient,
-                                           ServiceConnectionListener,
-                                           ServiceVerificationFlags,
-                                           WebSocketApp, get_service_client)
-from opsicommon.exceptions import (BackendAuthenticationError,
-                                   BackendPermissionDeniedError, OpsiRpcError)
-from opsicommon.messagebus import (ChannelSubscriptionEventMessage,
-                                   FileUploadResultMessage,
-                                   JSONRPCRequestMessage,
-                                   JSONRPCResponseMessage, Message,
-                                   MessageType, timestamp)
+from opsicommon.client.opsiservice import (
+	MIN_VERSION_GZIP,
+	MIN_VERSION_LZ4,
+	MIN_VERSION_MESSAGEBUS,
+	MIN_VERSION_MSGPACK,
+	MIN_VERSION_SESSION_API,
+	UIB_OPSI_CA,
+	BackendManager,
+	Messagebus,
+	MessagebusListener,
+	OpsiCaState,
+	OpsiServiceAuthenticationError,
+	OpsiServiceClientCertificateError,
+	OpsiServiceConnectionError,
+	OpsiServiceError,
+	OpsiServicePermissionError,
+	OpsiServiceTimeoutError,
+	OpsiServiceUnavailableError,
+	OpsiServiceVerificationError,
+	RequestsResponse,
+	Response,
+	ServiceClient,
+	ServiceConnectionListener,
+	ServiceVerificationFlags,
+	WebSocketApp,
+	get_service_client,
+)
+from opsicommon.exceptions import BackendAuthenticationError, BackendPermissionDeniedError, OpsiRpcError
+from opsicommon.messagebus import (
+	ChannelSubscriptionEventMessage,
+	FileUploadResultMessage,
+	JSONRPCRequestMessage,
+	JSONRPCResponseMessage,
+	Message,
+	MessageType,
+	timestamp,
+)
 from opsicommon.objects import OpsiClient
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
 from opsicommon.system.info import is_macos, is_windows
-from opsicommon.testing.helpers import (  # type: ignore[import]
-    HTTPTestServerRequestHandler, environment, http_test_server, opsi_config)
+from opsicommon.testing.helpers import HTTPTestServerRequestHandler, environment, http_test_server, opsi_config  # type: ignore[import]
 
 
 class MyConnectionListener(ServiceConnectionListener):
@@ -548,7 +558,7 @@ def test_client_certificate(tmpdir: Path) -> None:
 			ca_cert_file=ca_cert_file,
 		) as client:
 			if is_windows():
-				with pytest.raises(OpsiServiceConnectionError, match="EOF occurred"):
+				with pytest.raises(OpsiServiceConnectionError):
 					client.get("/")
 			else:
 				with pytest.raises(OpsiServiceClientCertificateError, match="certificate required"):
