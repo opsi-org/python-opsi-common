@@ -239,6 +239,7 @@ class ServiceClient:
 		username: str | None = None,
 		password: str | None = None,
 		client_cert_file: str | Path | None = None,
+		client_key_file: str | Path | None = None,
 		client_key_password: str | None = None,
 		ca_cert_file: str | Path | None = None,
 		verify: str | Iterable[str] = ServiceVerificationFlags.STRICT_CHECK,
@@ -309,15 +310,19 @@ class ServiceClient:
 		self.password = password
 
 		self._client_cert_file = None
+		self._client_key_file = None
 		self._client_key_password = None
 		if client_cert_file:
-			if not isinstance(client_cert_file, Path):
-				client_cert_file = Path(client_cert_file)
-			self._client_cert_file = client_cert_file
+			self._client_cert_file = Path(client_cert_file)
 			self._session.cert = str(self._client_cert_file)
+
+			if client_key_file:
+				self._client_key_file = Path(client_key_file)
+				self._session.cert = (str(self._client_cert_file), str(self._client_key_file))
+
 			self._client_key_password = client_key_password or None
 			# Test key loading (passphrase)
-			load_key(self._client_cert_file, self._client_key_password)
+			load_key(self._client_key_file or self._client_cert_file, self._client_key_password)
 			if self._client_key_password:
 				self._session.mount("https://", KeyPasswordHTTPAdapter(self._client_key_password))
 
@@ -478,6 +483,10 @@ class ServiceClient:
 	@property
 	def client_cert_file(self) -> Path | None:
 		return self._client_cert_file
+
+	@property
+	def client_key_file(self) -> Path | None:
+		return self._client_key_file
 
 	@property
 	def client_key_password(self) -> str | None:
@@ -1671,6 +1680,8 @@ class Messagebus(Thread):
 			sslopt["ca_certs"] = str(self._client.ca_cert_file)
 		if self._client.client_cert_file:
 			sslopt["certfile"] = str(self._client.client_cert_file)
+			if self._client.client_key_file:
+				sslopt["keyfile"] = str(self._client.client_key_file)
 			if self._client.client_key_password:
 				sslopt["password"] = self._client.client_key_password
 

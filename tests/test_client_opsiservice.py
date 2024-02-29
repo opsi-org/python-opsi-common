@@ -542,6 +542,7 @@ def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 	)
 	client_cert_file = tmpdir / "client_cert.pem"
 	client_cert_file.write_text(as_pem(client_key, passphrase=client_key_password) + as_pem(client_cert), encoding="utf-8")
+
 	with (
 		opsi_config({"host.server-role": ""}),
 		http_test_server(
@@ -602,6 +603,23 @@ def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 			verify=ServiceVerificationFlags.STRICT_CHECK,
 			ca_cert_file=ca_cert_file,
 			client_cert_file=client_cert_file,
+			client_key_password=client_key_password,
+		) as client:
+			client.get("/")
+			# Force websocket authentication
+			client._session.cookies = None  # type: ignore[assignment]
+			client.connect_messagebus()
+
+		client_key_file = tmpdir / "client_key.pem"
+		client_key_file.write_text(as_pem(client_key, passphrase=client_key_password), encoding="utf-8")
+		client_cert_file.write_text(as_pem(client_cert), encoding="utf-8")
+
+		with ServiceClient(
+			f"https://127.0.0.1:{server.port}",
+			verify=ServiceVerificationFlags.STRICT_CHECK,
+			ca_cert_file=ca_cert_file,
+			client_cert_file=client_cert_file,
+			client_key_file=client_key_file,
 			client_key_password=client_key_password,
 		) as client:
 			client.get("/")
