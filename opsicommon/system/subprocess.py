@@ -101,8 +101,9 @@ class Popen(PopenOrig):
 
 		if session_id and SYSTEM == "windows":
 			env["_opsi_popen_session_id"] = str(session_id)
-			env["_opsi_popen_session_desktop"] = str(session_desktop)
 			env["_opsi_popen_session_elevated"] = str(int(bool(session_elevated)))
+			if session_desktop:
+				env["_opsi_popen_session_desktop"] = str(session_desktop)
 
 		PopenOrig.__init__(  # type: ignore
 			self,
