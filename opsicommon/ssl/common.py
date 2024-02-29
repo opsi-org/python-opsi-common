@@ -8,6 +8,7 @@ ssl
 
 from datetime import datetime, timedelta, timezone
 from ipaddress import ip_address
+from pathlib import Path
 from typing import cast
 
 from cryptography import x509
@@ -83,6 +84,8 @@ def create_x509_name(subject: dict[str, str | None] | None = None) -> x509.Name:
 
 def as_pem(cert_or_key: x509.Certificate | rsa.RSAPrivateKey, passphrase: str | None = None) -> str:
 	if isinstance(cert_or_key, x509.Certificate):
+		if passphrase:
+			raise ValueError("Passphrase not supported for certificates")
 		return cert_or_key.public_bytes(encoding=serialization.Encoding.PEM).decode("ascii")
 	if isinstance(cert_or_key, rsa.RSAPrivateKey):
 		return cert_or_key.private_bytes(
@@ -93,6 +96,20 @@ def as_pem(cert_or_key: x509.Certificate | rsa.RSAPrivateKey, passphrase: str | 
 			else serialization.NoEncryption(),
 		).decode("ascii")
 	raise TypeError(f"Invalid type: {cert_or_key}")
+
+
+def load_key(key_file: str | Path, passphrase: str | None = None) -> rsa.RSAPrivateKey:
+	if not isinstance(key_file, Path):
+		key_file = Path(key_file)
+	try:
+		private_key = serialization.load_pem_private_key(
+			key_file.read_text(encoding="utf-8").encode("utf-8"), password=passphrase.encode("utf-8") if passphrase else None
+		)
+		if not isinstance(private_key, rsa.RSAPrivateKey):
+			raise ValueError(f"Not a RSA private key, but {private_key.__class__.__name__}")
+		return private_key
+	except ValueError as err:
+		raise RuntimeError(f"Failed to load private key from '{key_file}': {err}") from err
 
 
 def is_self_signed(ca_cert: x509.Certificate) -> bool:

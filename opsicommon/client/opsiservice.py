@@ -42,6 +42,7 @@ from cryptography.hazmat.primitives import serialization
 from packaging import version
 from requests import HTTPError, Session
 from requests import Response as RequestsResponse
+from requests.adapters import HTTPAdapter
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3.exceptions import InsecureRequestWarning
@@ -74,7 +75,7 @@ from ..messagebus import (
 	timestamp,
 )
 from ..objects import deserialize, serialize
-from ..ssl.common import x509_name_to_dict
+from ..ssl.common import load_key, x509_name_to_dict
 from ..system import lock_file, set_system_datetime
 from ..types import forceHostId, forceOpsiHostKey
 from ..utils import prepare_proxy_environment
@@ -217,6 +218,17 @@ class Response:
 			yield item
 
 
+class KeyPasswordHTTPAdapter(HTTPAdapter):
+	def __init__(self, key_password: str | None) -> None:
+		self.key_password = key_password
+		super().__init__()
+
+	def init_poolmanager(self, *args: Any, **kwargs: Any) -> None:
+		if self.key_password:
+			kwargs["key_password"] = self.key_password
+		super().init_poolmanager(*args, **kwargs)  # type: ignore[no-untyped-call]
+
+
 class ServiceClient:
 	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]
 
@@ -227,6 +239,7 @@ class ServiceClient:
 		username: str | None = None,
 		password: str | None = None,
 		client_cert_file: str | Path | None = None,
+		client_key_password: str | None = None,
 		ca_cert_file: str | Path | None = None,
 		verify: str | Iterable[str] = ServiceVerificationFlags.STRICT_CHECK,
 		session_cookie: str | None = None,
@@ -296,11 +309,17 @@ class ServiceClient:
 		self.password = password
 
 		self._client_cert_file = None
+		self._client_key_password = None
 		if client_cert_file:
 			if not isinstance(client_cert_file, Path):
 				client_cert_file = Path(client_cert_file)
 			self._client_cert_file = client_cert_file
 			self._session.cert = str(self._client_cert_file)
+			self._client_key_password = client_key_password or None
+			# Test key loading (passphrase)
+			load_key(self._client_cert_file, self._client_key_password)
+			if self._client_key_password:
+				self._session.mount("https://", KeyPasswordHTTPAdapter(self._client_key_password))
 
 		self._ca_cert_file = None
 		if ca_cert_file:
@@ -459,6 +478,10 @@ class ServiceClient:
 	@property
 	def client_cert_file(self) -> Path | None:
 		return self._client_cert_file
+
+	@property
+	def client_key_password(self) -> str | None:
+		return self._client_key_password
 
 	@property
 	def connected(self) -> bool:
@@ -1648,6 +1671,8 @@ class Messagebus(Thread):
 			sslopt["ca_certs"] = str(self._client.ca_cert_file)
 		if self._client.client_cert_file:
 			sslopt["certfile"] = str(self._client.client_cert_file)
+			if self._client.client_key_password:
+				sslopt["password"] = self._client.client_key_password
 
 		proxy_type = None
 		http_proxy_host = None

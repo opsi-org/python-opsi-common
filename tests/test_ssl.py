@@ -25,6 +25,7 @@ from opsicommon.ssl import (
 	install_ca,
 	is_self_signed,
 	load_ca,
+	load_key,
 	remove_ca,
 	x509_name_from_dict,
 	x509_name_to_dict,
@@ -206,14 +207,44 @@ def test_create_server_cert() -> None:
 def test_as_pem() -> None:
 	subject = {"CN": "opsi CA", "OU": "opsi", "emailAddress": "opsi@opsi.org"}
 	cert, key = create_ca(subject=subject, valid_days=100)
+
 	pem = as_pem(cert, "")
 	assert pem.startswith("-----BEGIN CERTIFICATE-----")
-	pem = as_pem(key, None)
+
+	pem = as_pem(cert, None)
+	assert pem.startswith("-----BEGIN CERTIFICATE-----")
+
+	with pytest.raises(ValueError):
+		pem = as_pem(cert, "password")
+
+	pem = as_pem(key)
 	assert pem.startswith("-----BEGIN PRIVATE KEY-----")
+
 	pem = as_pem(key, "password")
 	assert pem.startswith("-----BEGIN ENCRYPTED PRIVATE KEY-----")
+
 	with pytest.raises(TypeError):
 		as_pem(create_x509_name({}))  # type: ignore[arg-type]
+
+
+def test_load_key(tmp_path: Path) -> None:
+	key_file = tmp_path / "key.pem"
+	key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+	key_file.write_text(as_pem(key, passphrase="password"), encoding="utf-8")
+	with pytest.raises(RuntimeError, match=r".*Bad decrypt. Incorrect password\?.*"):
+		load_key(key_file, "wrongpassword")
+	with pytest.raises(TypeError, match=r".*Password was not given but private key is encrypted.*"):
+		load_key(key_file)
+	l_key = load_key(key_file, "password")
+	assert l_key.private_bytes(
+		encoding=serialization.Encoding.PEM,
+		format=serialization.PrivateFormat.TraditionalOpenSSL,
+		encryption_algorithm=serialization.NoEncryption(),
+	) == key.private_bytes(
+		encoding=serialization.Encoding.PEM,
+		format=serialization.PrivateFormat.TraditionalOpenSSL,
+		encryption_algorithm=serialization.NoEncryption(),
+	)
 
 
 @pytest.mark.admin_permissions

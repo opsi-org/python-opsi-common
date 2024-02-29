@@ -511,7 +511,8 @@ def test_verify(tmpdir: Path) -> None:
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == orig_ca_cert_as_pem
 
 
-def test_client_certificate(tmpdir: Path) -> None:
+@pytest.mark.parametrize("client_key_password", (None, "kd7ejsUU&sjsdl!="))
+def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3)
 	ca_key_file = tmpdir / "ca_key.pem"
 	ca_cert_file = tmpdir / "ca_cert.pem"
@@ -540,8 +541,7 @@ def test_client_certificate(tmpdir: Path) -> None:
 		ca_cert=ca_cert,
 	)
 	client_cert_file = tmpdir / "client_cert.pem"
-	client_cert_file.write_text(as_pem(client_key) + as_pem(client_cert), encoding="utf-8")
-
+	client_cert_file.write_text(as_pem(client_key, passphrase=client_key_password) + as_pem(client_cert), encoding="utf-8")
 	with (
 		opsi_config({"host.server-role": ""}),
 		http_test_server(
@@ -552,6 +552,16 @@ def test_client_certificate(tmpdir: Path) -> None:
 		) as server,
 	):
 		time.sleep(1)
+
+		if client_key_password:
+			with pytest.raises(TypeError, match="Password was not given but private key is encrypted"):
+				ServiceClient(
+					f"https://127.0.0.1:{server.port}",
+					verify=ServiceVerificationFlags.STRICT_CHECK,
+					ca_cert_file=ca_cert_file,
+					client_cert_file=client_cert_file,
+				)
+
 		with ServiceClient(
 			f"https://127.0.0.1:{server.port}",
 			verify=ServiceVerificationFlags.STRICT_CHECK,
@@ -569,6 +579,7 @@ def test_client_certificate(tmpdir: Path) -> None:
 			verify=ServiceVerificationFlags.STRICT_CHECK,
 			ca_cert_file=ca_cert_file,
 			client_cert_file=client_cert_file,
+			client_key_password=client_key_password,
 		) as client:
 			with pytest.raises(OpsiServiceClientCertificateError, match="unknown ca"):
 				client.get("/")
@@ -591,8 +602,12 @@ def test_client_certificate(tmpdir: Path) -> None:
 			verify=ServiceVerificationFlags.STRICT_CHECK,
 			ca_cert_file=ca_cert_file,
 			client_cert_file=client_cert_file,
+			client_key_password=client_key_password,
 		) as client:
 			client.get("/")
+			# Force websocket authentication
+			client._session.cookies = None  # type: ignore[assignment]
+			client.connect_messagebus()
 
 
 def test_cookie_handling(tmp_path: Path) -> None:
