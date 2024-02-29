@@ -78,7 +78,7 @@ def CreateProcess(
 
 	session_id = int(__env_mapping.pop("_opsi_popen_session_id"))
 	session_elevated = bool(int(__env_mapping.pop("_opsi_popen_session_elevated", "0")))
-	session_desktop = __env_mapping.pop("_opsi_popen_session_desktop", None)
+	session_desktop = __env_mapping.pop("_opsi_popen_session_desktop", "")
 	process_name = "winlogon.exe" if session_elevated else "explorer.exe"
 	proc = get_process(process_name=process_name, session_id=session_id)
 	if not proc:
