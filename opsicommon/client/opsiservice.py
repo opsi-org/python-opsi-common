@@ -312,6 +312,8 @@ class ServiceClient:
 		self._client_cert_file = None
 		self._client_key_file = None
 		self._client_key_password = None
+		if client_key_password:
+			secret_filter.add_secrets(client_key_password)
 		if client_cert_file:
 			self._client_cert_file = Path(client_cert_file)
 			self._session.cert = str(self._client_cert_file)
