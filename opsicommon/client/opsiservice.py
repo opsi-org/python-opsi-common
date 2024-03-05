@@ -322,7 +322,14 @@ class ServiceClient:
 				self._client_key_file = Path(client_key_file)
 				self._session.cert = (str(self._client_cert_file), str(self._client_key_file))
 
+			logger.info(
+				"Using client certificate file '%s' and key file '%s'",
+				self._client_cert_file,
+				self._client_key_file or self._client_cert_file,
+			)
 			self._client_key_password = client_key_password or None
+
+			logger.debug("Trying to load private key")
 			# Test key loading (passphrase)
 			load_key(self._client_key_file or self._client_cert_file, self._client_key_password)
 			if self._client_key_password:
@@ -728,7 +735,7 @@ class ServiceClient:
 			ca_cert_file_exists = self._ca_cert_file and self._ca_cert_file.exists()
 			verify = self._session.verify
 			logger.debug(
-				"ca_cert_file: %r, exists: %r, verify_flags: %r, session.verify: %r, verify: %r",
+				"ca_cert_file: '%s', exists: %r, verify_flags: %r, session.verify: %r, verify: %r",
 				self._ca_cert_file,
 				ca_cert_file_exists,
 				self._verify,
