@@ -32,11 +32,10 @@ from logging import (
 )
 from logging.handlers import RotatingFileHandler
 from traceback import format_stack, format_tb
-from typing import IO, Any, Generator
+from typing import IO, TYPE_CHECKING, Any, Generator
 from urllib.parse import quote
 
 from colorlog import ColoredFormatter
-from rich.console import Console
 
 from .constants import (
 	DATETIME_FORMAT,
@@ -52,6 +51,9 @@ from .constants import (
 	SECRET_REPLACEMENT_STRING,
 	TRACE,
 )
+
+if TYPE_CHECKING:
+	from rich.console import Console
 
 context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("context", default={})
 
@@ -647,6 +649,8 @@ def logging_config(
 		stderr_file = _logging_state.stderr_file or sys.stderr
 	stderr_file_changed = stderr_file != _logging_state.stderr_file
 	_logging_state.stderr_file = stderr_file
+	# Importing rich is slow, so check class name instead of using isinstance
+	stderr_is_rich_console = stderr_file and stderr_file.__class__.__name__ == "Console"
 
 	if stderr_level is not None:
 		if stderr_level < 10:
@@ -685,10 +689,10 @@ def logging_config(
 				remove_all_handlers(handler_name="opsi_stderr_handler")
 			if stderr_level != LOG_NONE:
 				shandler: Handler
-				if isinstance(stderr_file, Console):
-					shandler = RichConsoleHandler(console=stderr_file)
+				if stderr_is_rich_console:
+					shandler = RichConsoleHandler(console=stderr_file)  # type: ignore[arg-type]
 				else:
-					shandler = StreamHandler(stream=stderr_file)
+					shandler = StreamHandler(stream=stderr_file)  # type: ignore[type-var]
 				shandler.name = "opsi_stderr_handler"
 				logging.root.addHandler(shandler)
 		for hdlr in get_all_handlers((StreamHandler, RichConsoleHandler)):
@@ -721,7 +725,8 @@ def logging_config(
 		stderr_format
 		and "(log_color)" in stderr_format
 		and stderr_file
-		and not isinstance(stderr_file, Console)
+		and not stderr_is_rich_console
+		and hasattr(stderr_file, "isatty")
 		and not stderr_file.isatty()
 	):
 		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")
