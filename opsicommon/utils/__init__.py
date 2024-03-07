@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network, ip_address, ip_network
 from pathlib import Path
 from types import EllipsisType
-from typing import TYPE_CHECKING, Any, Callable, Generator, Literal, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Generator, Iterable, Literal, Type, Union
 
 from packaging.version import InvalidVersion, Version
 from typing_extensions import deprecated
@@ -396,3 +396,37 @@ def execute(
 	except FileNotFoundError as exc:
 		err = f"Command {cmd[0]!r} not found"
 		raise RuntimeError(err) from exc
+
+
+def retry(
+	retries: int = 3, wait: float = 0, exceptions: Iterable[Type[Exception]] | None = None, caught_exceptions: list[Exception] | None = None
+) -> Callable:
+	"""
+	Decorator to retry a function.
+	:param retries: Number of retries
+	:param wait: Time to wait between retries
+	:param exceptions: Exception to catch, if None catch all exceptions
+	"""
+	attempts = 1 + retries
+
+	def decorator(func: Callable) -> Callable:
+		def wrapper(*args: Any, **kwargs: Any) -> Any:
+			for attempt in range(1, attempts + 1):
+				try:
+					return func(*args, **kwargs)
+				except Exception as exc:
+					logger.warning("Attempt %d of %d failed with [%s] %s", attempt, attempts, exc.__class__.__name__, exc)
+					if attempt == attempts:
+						logger.debug("No retry because the maximum number of %d attempts has been reached", attempts)
+						raise
+					if exceptions and not any(isinstance(exc, exc_type) for exc_type in exceptions):
+						logger.debug("No retry because excetion type %s is not in %s", exc.__class__.__name__, exceptions)
+						raise
+					if caught_exceptions is not None:
+						caught_exceptions.append(exc)
+					if wait > 0:
+						time.sleep(wait)
+
+		return wrapper
+
+	return decorator

@@ -7,6 +7,7 @@ This file is part of opsi - https://www.opsi.org
 import datetime
 import os
 import platform
+import time
 from contextlib import contextmanager
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
 from pathlib import Path
@@ -14,8 +15,7 @@ from typing import Generator, Literal
 
 import pytest
 
-from opsicommon.logging.constants import LEVEL_TO_OPSI_LEVEL
-from opsicommon.logging.logging import StreamHandler, get_all_handlers, logging_config
+from opsicommon.logging import LEVEL_TO_OPSI_LEVEL, LOG_WARNING, StreamHandler, get_all_handlers, logging_config, use_logging_config
 from opsicommon.objects import Product
 from opsicommon.utils import (
 	Singleton,
@@ -25,6 +25,7 @@ from opsicommon.utils import (
 	generate_opsi_host_key,
 	ip_address_in_network,
 	prepare_proxy_environment,
+	retry,
 	timestamp,
 	update_environment_from_config_files,
 	utc_timestamp,
@@ -241,3 +242,36 @@ def test_prepare_proxy_environment_file(tmp_path: Path) -> None:
 	finally:
 		if env:
 			os.environ = env  # type: ignore[assignment]
+
+
+def test_retry() -> None:
+	with use_logging_config(stderr_level=LOG_WARNING):
+		caught_exceptions: list[Exception] = []
+
+		@retry(retries=2, wait=0.5, exceptions=(ValueError,), caught_exceptions=caught_exceptions)
+		def failing_function() -> None:
+			raise ValueError("Test")
+
+		start = time.time()
+		with pytest.raises(ValueError):
+			failing_function()
+		assert time.time() - start >= 1
+
+		assert len(caught_exceptions) == 2
+		assert isinstance(caught_exceptions[0], ValueError)
+		assert isinstance(caught_exceptions[1], ValueError)
+
+		caught_exceptions = []
+
+		@retry(retries=10, exceptions=(PermissionError, ValueError), caught_exceptions=caught_exceptions)
+		def failing_function2() -> None:
+			if len(caught_exceptions) < 2:
+				raise PermissionError("Test")
+			if len(caught_exceptions) < 4:
+				raise ValueError("Test")
+			raise RuntimeError("Test")
+
+		with pytest.raises(RuntimeError):
+			failing_function2()
+
+		assert len(caught_exceptions) == 4
