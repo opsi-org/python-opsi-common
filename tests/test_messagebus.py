@@ -13,9 +13,10 @@ import pydantic_core
 import pytest
 from pydantic import ValidationError
 
-from opsicommon.messagebus import (
+from opsicommon.messagebus.message import (
 	ChannelSubscriptionEventMessage,
 	ChannelSubscriptionRequestMessage,
+	ErrorCode,
 	EventMessage,
 	FileChunkMessage,
 	FileErrorMessage,
@@ -25,7 +26,6 @@ from opsicommon.messagebus import (
 	JSONRPCRequestMessage,
 	JSONRPCResponseMessage,
 	Message,
-	MessageErrorEnum,
 	MessageType,
 	ProcessDataReadMessage,
 	ProcessDataWriteMessage,
@@ -99,7 +99,7 @@ def test_message_to_from_msgpack() -> None:
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "service:config:jsonrpc",
 				"ref_id": "3cd293fd-bad8-4ff0-a7c3-610979e1dae6",
-				"error": {"message": "general error", "code": MessageErrorEnum.FILE_NOT_FOUND, "details": "error details"},
+				"error": {"message": "general error", "code": ErrorCode.FILE_NOT_FOUND, "details": "error details"},
 			},
 			None,
 		),
@@ -141,7 +141,7 @@ def test_message_to_from_msgpack() -> None:
 				"rpc_id": "1",
 				"result": None,
 				"error": {
-					"code": MessageErrorEnum.FILE_NOT_FOUND,
+					"code": ErrorCode.FILE_NOT_FOUND,
 					"message": "error",
 					"data": {"class": "ValueError", "details": "details"},
 				},
@@ -238,7 +238,7 @@ def test_message_to_from_msgpack() -> None:
 				"channel": "host:x.y.z",
 				"terminal_id": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"error": {
-					"code": MessageErrorEnum.FILE_NOT_FOUND,
+					"code": ErrorCode.FILE_NOT_FOUND,
 					"message": "error",
 					"details": {"class": "ValueError", "details": "details"},
 				},
@@ -288,7 +288,7 @@ def test_message_to_from_msgpack() -> None:
 				"channel": "host:x.y.z",
 				"file_id": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"error": {
-					"code": MessageErrorEnum.FILE_NOT_FOUND,
+					"code": ErrorCode.FILE_NOT_FOUND,
 					"message": "error",
 					"details": {"class": "ValueError", "details": "details"},
 				},
@@ -380,7 +380,7 @@ def test_message_to_from_msgpack() -> None:
 				"channel": "host:x.y.z",
 				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"error": {
-					"code": MessageErrorEnum.FILE_NOT_FOUND,
+					"code": ErrorCode.FILE_NOT_FOUND,
 					"message": "error",
 					"details": {"class": "ValueError", "details": "details"},
 				},
