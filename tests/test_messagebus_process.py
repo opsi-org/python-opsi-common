@@ -68,7 +68,7 @@ async def test_process_messagebus_message() -> None:
 
 	assert isinstance(messages_sent[0], ProcessDataReadMessage)
 	assert messages_sent[0].process_id == process_start_request.process_id
-	assert messages_sent[0].stdout == b"hello\n"
+	assert messages_sent[0].stdout == b"hello\r\n" if is_windows() else b"hello\n"
 
 	assert isinstance(messages_sent[1], ProcessStopEventMessage)
 	assert messages_sent[1].process_id == process_start_request.process_id
