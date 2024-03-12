@@ -25,7 +25,7 @@ from opsicommon.system.info import is_windows
 async def test_process_messagebus_message() -> None:
 	sender = "test_sender"
 	channel = "test_channel"
-	messages_sent = []
+	messages_sent: list[Message] = []
 
 	async def send_message(message: Message) -> None:
 		nonlocal messages_sent
@@ -58,6 +58,9 @@ async def test_process_messagebus_message() -> None:
 		await process_messagebus_message(process_data_write_message, send_message=send_message)
 
 	await wait_for_messages(1)
+	for message in messages_sent:
+		print(message.to_dict())
+
 	assert len(messages_sent) == 1
 	assert isinstance(messages_sent[0], ProcessDataReadMessage)
 	assert messages_sent[0].process_id == process_start_request.process_id
@@ -74,7 +77,7 @@ async def test_process_messagebus_message() -> None:
 
 
 async def test_stop_running_processes() -> None:
-	messages_sent = []
+	messages_sent: list[Message] = []
 
 	async def send_message(message: Message) -> None:
 		nonlocal messages_sent
