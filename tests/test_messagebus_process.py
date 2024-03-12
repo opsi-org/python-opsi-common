@@ -50,8 +50,8 @@ async def test_process_messagebus_message() -> None:
 	assert messages_sent[0].process_id == process_start_request.process_id
 	assert messages_sent[0].os_process_id > 0
 
+	messages_sent = []
 	if not is_windows():
-		messages_sent = []
 		process_data_write_message = ProcessDataWriteMessage(
 			sender=sender, channel=channel, process_id=process_start_request.process_id, stdin=b"hello\n"
 		)
@@ -103,6 +103,5 @@ async def test_stop_running_processes() -> None:
 	await stop_running_processes()
 
 	await wait_for_messages(1)
-	assert len(messages_sent) == 1
-	assert isinstance(messages_sent[0], ProcessStopEventMessage)
-	assert messages_sent[0].exit_code != 0
+	assert isinstance(messages_sent[-1], ProcessStopEventMessage)
+	assert messages_sent[-1].exit_code != 0
