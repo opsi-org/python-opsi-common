@@ -65,7 +65,7 @@ from opsicommon.client.opsiservice import (
 	get_service_client,
 )
 from opsicommon.exceptions import BackendAuthenticationError, BackendPermissionDeniedError, OpsiRpcError
-from opsicommon.messagebus import (
+from opsicommon.messagebus.message import (
 	ChannelSubscriptionEventMessage,
 	FileUploadResultMessage,
 	JSONRPCRequestMessage,

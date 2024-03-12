@@ -65,7 +65,7 @@ from ..exceptions import (
 )
 from ..logging import get_logger, secret_filter
 from ..logging.constants import TRACE
-from ..messagebus import (
+from ..messagebus.message import (
 	ChannelSubscriptionEventMessage,
 	ChannelSubscriptionRequestMessage,
 	JSONRPCRequestMessage,
