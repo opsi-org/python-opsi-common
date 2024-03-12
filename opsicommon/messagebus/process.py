@@ -54,7 +54,7 @@ def get_locale_encoding(shell: bool = False) -> str:
 
 
 class Process:
-	block_size = 8192
+	max_data_size = 8192
 
 	def __init__(self, process_start_request: ProcessStartRequestMessage, send_message: Callable) -> None:
 		self._proc: AsyncioProcess | None = None
@@ -86,7 +86,7 @@ class Process:
 	async def _stdout_reader(self) -> None:
 		assert self._proc and self._proc.stdout
 		while True:
-			data = await self._proc.stdout.read(self.block_size)
+			data = await self._proc.stdout.read(self.max_data_size)
 			if not data:
 				break
 			message = ProcessDataReadMessage(
@@ -97,7 +97,7 @@ class Process:
 	async def _stderr_reader(self) -> None:
 		assert self._proc and self._proc.stderr
 		while True:
-			data = await self._proc.stderr.read(self.block_size)
+			data = await self._proc.stderr.read(self.max_data_size)
 			if not data:
 				break
 			message = ProcessDataReadMessage(
