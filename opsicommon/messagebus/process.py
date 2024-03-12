@@ -83,18 +83,6 @@ class Process:
 			info = f"finished - exit code {self._proc.returncode}"
 		return f"{self._command[0]} ({info})"
 
-	# def wait_for_stop(self, timeout: float = 10.0) -> None:
-	# current_time = time()
-	# while time() < current_time + timeout:
-	# if not self.is_alive():
-	# logger.debug("Thread %r finished", self)
-	# return
-	# sleep(0.2)
-	# raise TimeoutError(f"Reached timeout of {timeout}s while waiting for process-thread to terminate.")
-
-	# def write_stdin(self, data: bytes) -> None:
-	# asyncio.run_coroutine_threadsafe(self._write_stdin(data), self._loop)
-
 	async def _stdout_reader(self) -> None:
 		assert self._proc and self._proc.stdout
 		while True:
