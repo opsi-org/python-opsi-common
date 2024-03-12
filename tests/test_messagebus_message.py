@@ -3,7 +3,7 @@
 # All rights reserved.
 # License: AGPL-3.0
 """
-messagebustypes tests
+messagebus.message tests
 """
 
 import time
@@ -328,7 +328,7 @@ def test_message_to_from_msgpack() -> None:
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
-				"local_process_id": 1234,
+				"os_process_id": 1234,
 				"locale_encoding": "utf-8",
 			},
 			None,

@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# opsiconfd is part of the desktop management solution opsi http://www.opsi.org
-# Copyright (c) 2020-2021 uib GmbH <info@uib.de>
-# All rights reserved.
+# Copyright (c) uib GmbH <info@uib.de>
 # License: AGPL-3.0
 """
-opsicommon.messagebus
+This file is part of opsi - https://www.opsi.org
 """
 from __future__ import annotations
 
@@ -22,9 +20,6 @@ message_decoder = msgspec.msgpack.Decoder()
 message_encoder = msgspec.msgpack.Encoder()
 
 
-CONNECTION_USER_CHANNEL = "@"
-CONNECTION_SESSION_CHANNEL = "$"
-DEFAULT_PROCESS_EXECUTE_TIMEOUT = 60.0  # Seconds until process should be interrupted
 DEFAULT_MESSAGE_VALIDITY_PERIOD = 60000  # Milliseconds
 
 
@@ -384,7 +379,7 @@ class ProcessStartRequestMessage(ProcessMessage):
 
 	type: str = MessageType.PROCESS_START_REQUEST.value
 	command: tuple[str, ...] = tuple()
-	timeout: float = DEFAULT_PROCESS_EXECUTE_TIMEOUT
+	timeout: int = 0
 	shell: bool = False
 
 
@@ -396,7 +391,7 @@ class ProcessStartEventMessage(ProcessMessage):
 	"""
 
 	type: str = MessageType.PROCESS_START_EVENT.value
-	local_process_id: int
+	os_process_id: int
 	locale_encoding: str | None = None
 
 

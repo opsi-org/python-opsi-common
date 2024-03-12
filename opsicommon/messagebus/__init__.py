@@ -5,3 +5,6 @@
 """
 This file is part of opsi - https://www.opsi.org
 """
+
+CONNECTION_USER_CHANNEL = "@"
+CONNECTION_SESSION_CHANNEL = "$"
