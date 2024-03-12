@@ -39,7 +39,7 @@ async def test_process_messagebus_message() -> None:
 				raise TimeoutError(f"Timeout waiting for {count} messages")
 			await asyncio.sleep(0.1)
 
-	command = ("echo hello; timeout /t 2",) if is_windows() else ("cat",)
+	command = ("echo hello; timeout /t 5",) if is_windows() else ("cat",)
 	process_start_request = ProcessStartRequestMessage(sender=sender, channel=channel, command=command, shell=True)
 	await process_messagebus_message(process_start_request, send_message=send_message)
 
