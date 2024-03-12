@@ -39,7 +39,7 @@ async def test_process_messagebus_message() -> None:
 				raise TimeoutError(f"Timeout waiting for {count} messages")
 			await asyncio.sleep(0.1)
 
-	command = ("echo hello; timeout /t 1",) if is_windows() else ("cat",)
+	command = ("echo hello; timeout /t 2",) if is_windows() else ("cat",)
 	process_start_request = ProcessStartRequestMessage(sender=sender, channel=channel, command=command, shell=True)
 	await process_messagebus_message(process_start_request, send_message=send_message)
 
@@ -57,11 +57,11 @@ async def test_process_messagebus_message() -> None:
 		)
 		await process_messagebus_message(process_data_write_message, send_message=send_message)
 
-		await wait_for_messages(1)
-		assert len(messages_sent) == 1
-		assert isinstance(messages_sent[0], ProcessDataReadMessage)
-		assert messages_sent[0].process_id == process_start_request.process_id
-		assert messages_sent[0].stdout == b"hello\n"
+	await wait_for_messages(1)
+	assert len(messages_sent) == 1
+	assert isinstance(messages_sent[0], ProcessDataReadMessage)
+	assert messages_sent[0].process_id == process_start_request.process_id
+	assert messages_sent[0].stdout == b"hello\n"
 
 	messages_sent = []
 	process_stop_request_message = ProcessStopRequestMessage(sender=sender, channel=channel, process_id=process_start_request.process_id)
