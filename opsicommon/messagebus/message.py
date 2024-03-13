@@ -391,6 +391,7 @@ class ProcessStartEventMessage(ProcessMessage):
 	"""
 
 	type: str = MessageType.PROCESS_START_EVENT.value
+	# The field was renamed from local_process_id to os_process_id in 4.3.7.5
 	os_process_id: int = Field(validation_alias=AliasChoices("os_process_id", "local_process_id"))
 	locale_encoding: str | None = None
 
