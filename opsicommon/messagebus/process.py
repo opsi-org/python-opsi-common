@@ -56,10 +56,11 @@ def get_locale_encoding(shell: bool = False) -> str:
 class Process:
 	max_data_size = 8192
 
-	def __init__(self, process_start_request: ProcessStartRequestMessage, send_message: Callable) -> None:
+	def __init__(self, process_start_request: ProcessStartRequestMessage, send_message: Callable, back_channel: str | None = None) -> None:
 		self._proc: AsyncioProcess | None = None
 		self._send_message: Callable = send_message
 		self._process_start_request = process_start_request
+		self._back_channel = back_channel or CONNECTION_SESSION_CHANNEL
 		self._loop = asyncio.get_event_loop()
 
 	@property
@@ -134,7 +135,7 @@ class Process:
 			sender=CONNECTION_USER_CHANNEL,
 			channel=self._response_channel,
 			process_id=self._process_id,
-			back_channel=CONNECTION_SESSION_CHANNEL,
+			back_channel=self._back_channel,
 			os_process_id=self._proc.pid,
 			locale_encoding=locale_encoding,
 		)
@@ -181,7 +182,7 @@ class Process:
 					del processes[self._process_id]
 
 
-async def process_messagebus_message(message: ProcessMessage, send_message: Callable) -> None:
+async def process_messagebus_message(message: ProcessMessage, send_message: Callable, back_channel: str | None = None) -> None:
 	with processes_lock:
 		process = processes.get(message.process_id)
 
@@ -189,7 +190,7 @@ async def process_messagebus_message(message: ProcessMessage, send_message: Call
 		if isinstance(message, ProcessStartRequestMessage):
 			if not process:
 				with processes_lock:
-					process = Process(process_start_request=message, send_message=send_message)
+					process = Process(process_start_request=message, send_message=send_message, back_channel=back_channel)
 					processes[message.process_id] = process
 					await processes[message.process_id].start()
 			else:
@@ -219,5 +220,5 @@ async def process_messagebus_message(message: ProcessMessage, send_message: Call
 
 
 async def stop_running_processes() -> None:
-	for process_id in list(processes.keys()):
-		await processes[process_id].stop()
+	for process in list(processes.values()):
+		await process.stop()
