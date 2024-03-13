@@ -14,7 +14,7 @@ from typing import Annotated, Any, Type, TypeVar, cast
 from uuid import uuid4
 
 import msgspec
-from pydantic import AfterValidator, BaseModel, Field, StringConstraints
+from pydantic import AfterValidator, AliasChoices, BaseModel, Field, StringConstraints
 
 message_decoder = msgspec.msgpack.Decoder()
 message_encoder = msgspec.msgpack.Encoder()
@@ -391,7 +391,7 @@ class ProcessStartEventMessage(ProcessMessage):
 	"""
 
 	type: str = MessageType.PROCESS_START_EVENT.value
-	os_process_id: int
+	os_process_id: int = Field(validation_alias=AliasChoices("os_process_id", "local_process_id"))
 	locale_encoding: str | None = None
 
 

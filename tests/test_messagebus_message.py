@@ -417,3 +417,17 @@ def test_message_types(message_class: Type[Message], attributes: Union[dict, Non
 		values = msg.to_dict(none_values=True)
 		for key, value in attributes.items():
 			assert values[key] == value
+
+
+def test_legacy_attribute_name() -> None:
+	data = {
+		"type": "process_start_event",
+		"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
+		"channel": "291b9f3e-e370-428d-be30-1248a906ae86",
+		"process_id": "291b9f3e-e370-428d-be30-1248a906ae86",
+		"local_process_id": 1234,
+		"locale_encoding": "utf-8",
+	}
+	msg = Message.from_dict(data)
+	assert isinstance(msg, ProcessStartEventMessage)
+	assert msg.os_process_id == 1234
