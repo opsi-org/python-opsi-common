@@ -11,12 +11,8 @@ from unittest.mock import patch
 
 import pytest
 
-from opsicommon.config.opsi import (
-	DEFAULT_OPSICONFD_USER,
-	OPSICONFD_CONF,
-	OpsiConfig,
-	get_opsiconfd_user,
-)
+from opsicommon.config.opsi import (DEFAULT_OPSICONFD_USER, OPSICONFD_CONF,
+                                    OpsiConfig, get_opsiconfd_user)
 from opsicommon.testing.helpers import environment  # type: ignore[import]
 
 
@@ -299,3 +295,19 @@ port = 443
 	)
 	# Call the function and assert the return value is the default opsiconfd user
 	assert get_opsiconfd_user() == DEFAULT_OPSICONFD_USER
+
+
+def test_read_config_file_with_invalid_groups(tmp_path: Path) -> None:
+	config_file = tmp_path / "opsi.conf"
+	OpsiConfig._instances = {}
+	OpsiConfig.config_file = str(config_file)
+	data = """
+	[groups]
+	fileadmingroup = "opsifile admins"
+	admingroup = "opsiadmin"
+	readonly = ""
+	"""
+	config_file.write_text(dedent(data), encoding="utf-8")
+	with pytest.raises(ValueError):
+		config_file.read_config_file()
+
