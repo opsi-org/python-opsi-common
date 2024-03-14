@@ -5,6 +5,7 @@
 """
 This file is part of opsi - https://www.opsi.org
 """
+
 from __future__ import annotations
 
 from abc import ABC
@@ -51,6 +52,8 @@ class MessageType(StrEnum):
 	FILE_ERROR = "file_error"
 	FILE_UPLOAD_REQUEST = "file_upload_request"
 	FILE_UPLOAD_RESULT = "file_upload_result"
+	FILE_DOWNLOAD_REQUEST = "file_download_request"
+	FILE_DOWNLOAD_INFORMATION = "file_download_information"
 	FILE_CHUNK = "file_chunk"
 
 
@@ -489,6 +492,26 @@ class FileUploadResultMessage(FileMessage):
 	path: str | None = None
 
 
+class FileDownloadRequestMessage(FileMessage):
+	"""
+	Message for requesting a file download
+	"""
+
+	type: str = MessageType.FILE_DOWNLOAD_REQUEST
+	origin_path: str | None = None
+	terminal_id: str | None = None
+
+
+class FileDownloadInformationMessage(FileMessage):
+	"""
+	Message with information like file exists, size, etc.
+	"""
+
+	type: str = MessageType.FILE_DOWNLOAD_REQUEST
+	is_file: bool = False
+	size: int | None = None
+
+
 class FileChunkMessage(FileMessage):
 	"""
 	Message to send a chunk of a file
@@ -530,6 +553,9 @@ MESSAGE_TYPE_TO_CLASS = {
 	MessageType.PROCESS_DATA_WRITE.value: ProcessDataWriteMessage,
 	MessageType.FILE_ERROR.value: FileErrorMessage,
 	MessageType.FILE_UPLOAD_REQUEST.value: FileUploadRequestMessage,
+	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
+	MessageType.FILE_DOWNLOAD_REQUEST.value: FileDownloadRequestMessage,
+	MessageType.FILE_DOWNLOAD_INFORMATION.value: FileDownloadInformationMessage,
 	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
 	MessageType.FILE_CHUNK.value: FileChunkMessage,
 }
