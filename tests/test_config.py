@@ -299,8 +299,8 @@ port = 443
 
 def test_read_config_file_with_invalid_groups(tmp_path: Path) -> None:
 	config_file = tmp_path / "opsi.conf"
-	OpsiConfig._instances = {}
-	OpsiConfig.config_file = str(config_file)
+	opsi_config = OpsiConfig()
+	opsi_config.config_file = str(config_file)
 	data = """
 	[groups]
 	fileadmingroup = "opsifile admins"
@@ -309,5 +309,6 @@ def test_read_config_file_with_invalid_groups(tmp_path: Path) -> None:
 	"""
 	config_file.write_text(dedent(data), encoding="utf-8")
 	with pytest.raises(ValueError):
-		config_file.read_config_file()
+		opsi_config.read_config_file()
+	opsi_config.config_file = "/etc/opsi/opsi.conf"
 
