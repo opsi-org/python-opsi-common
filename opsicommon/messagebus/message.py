@@ -508,7 +508,7 @@ class FileDownloadInformationMessage(FileMessage):
 	"""
 
 	type: str = MessageType.FILE_DOWNLOAD_REQUEST
-	is_file: bool = False
+	exists: bool = False
 	size: int | None = None
 
 
