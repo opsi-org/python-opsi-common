@@ -8,7 +8,6 @@ This file is part of opsi - https://www.opsi.org
 
 # pyright: reportMissingImports=false
 import ctypes
-from ctypes.wintypes import DWORD, BYTE
 from contextlib import contextmanager
 from typing import Any, Generator
 

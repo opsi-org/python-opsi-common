@@ -11,8 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
-from opsicommon.config.opsi import (DEFAULT_OPSICONFD_USER, OPSICONFD_CONF,
-                                    OpsiConfig, get_opsiconfd_user)
+from opsicommon.config.opsi import DEFAULT_OPSICONFD_USER, OPSICONFD_CONF, OpsiConfig, get_opsiconfd_user
 from opsicommon.testing.helpers import environment  # type: ignore[import]
 
 
@@ -311,4 +310,3 @@ def test_read_config_file_with_invalid_groups(tmp_path: Path) -> None:
 	with pytest.raises(ValueError):
 		opsi_config.read_config_file()
 	opsi_config.config_file = "/etc/opsi/opsi.conf"
-
