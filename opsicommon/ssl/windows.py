@@ -8,6 +8,7 @@ This file is part of opsi - https://www.opsi.org
 
 # pyright: reportMissingImports=false
 import ctypes
+from ctypes.wintypes import DWORD, BYTE
 from contextlib import contextmanager
 from typing import Any, Generator
 
@@ -50,6 +51,7 @@ CERT_STORE_ADD_NEWER_INHERIT_PROPERTIES = 7
 
 CERT_FIND_SUBJECT_STR = 0x00080007
 CERT_FIND_SUBJECT_NAME = 0x00020007
+CERT_FIND_SHA1_HASH = 0x10000
 CERT_NAME_SIMPLE_DISPLAY_TYPE = 4
 CERT_NAME_FRIENDLY_DISPLAY_TYPE = 5
 
@@ -141,38 +143,27 @@ def remove_ca(subject_name: str, sha1_fingerprint: str | None = None) -> bool:
 
 	store_name = "Root"
 	removed = 0
-	with _open_cert_store(store_name, ctype=True) as store:
-		while True:
-			p_cert_ctx = crypt32.CertFindCertificateInStore(
-				store,
-				X509_ASN_ENCODING,
-				0,
-				CERT_FIND_SUBJECT_STR,  # Searches for a certificate that contains the specified subject name string
-				subject_name,
-				None,
-			)
-			if p_cert_ctx == 0:
-				break
-
+	with _open_cert_store(store_name, force_close=False) as store:
+		for certificate in store.CertEnumCertificatesInStore():
+			ca_cert = x509.load_der_x509_certificate(data=certificate.CertEncoded)
+			try:
+				common_name = ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
+			except IndexError:
+				continue
+			if not isinstance(common_name, str):
+				common_name = common_name.decode("utf-8")
+			logger.trace("Checking certificate %s", common_name)
+			if common_name != subject_name:
+				continue
 			if sha1_fingerprint:
-				ca_cert = x509.load_der_x509_certificate(data=p_cert_ctx.CertEncoded)
-				if sha1_fingerprint != ca_cert.fingerprint(hashes.SHA1()).hex().upper():
-					crypt32.CertFreeCertificateContext(p_cert_ctx)
+				ca_fingerprint = ca_cert.fingerprint(hashes.SHA1()).hex().upper()
+				if ca_fingerprint != sha1_fingerprint:
 					continue
-
-			cbsize = crypt32.CertGetNameStringW(p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, None, 0)
-			buf = ctypes.create_unicode_buffer(cbsize)
-			cbsize = crypt32.CertGetNameStringW(p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, buf, cbsize)
-			logger.info("Removing CA '%s' (%s) from '%s' store", subject_name, buf.value, store_name)
-			crypt32.CertDeleteCertificateFromStore(p_cert_ctx)
-			crypt32.CertFreeCertificateContext(p_cert_ctx)
+			certificate.CertDeleteCertificateFromStore()
 			removed += 1
-			if removed >= 100:
-				raise RuntimeError(f"Stop loop after removing {removed} certficates")
 
 	if not removed:
-		# Cert not found
-		logger.info("CA '%s' not found in store '%s', nothing to remove", subject_name, store_name)
+		logger.info("CA '%s' (%s) not found, nothing to remove", subject_name, sha1_fingerprint)
 		return False
 
 	return True

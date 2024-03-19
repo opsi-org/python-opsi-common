@@ -85,7 +85,7 @@ def remove_ca(subject_name: str, sha1_fingerprint: str | None = None) -> bool:
 			remove_cas.append(ca_fingerprint)
 
 	if not remove_cas:
-		logger.info("CA '%s' not found, nothing to remove", subject_name)
+		logger.info("CA '%s' (%s) not found, nothing to remove", subject_name, sha1_fingerprint)
 		return False
 
 	with security_authorization():

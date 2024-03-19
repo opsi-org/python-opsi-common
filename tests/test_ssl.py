@@ -252,6 +252,10 @@ def test_load_key(tmp_path: Path) -> None:
 @pytest.mark.admin_permissions
 def test_install_load_remove_ca() -> None:
 	subject_name = "python-opsi-common test ca"
+	remove_ca(subject_name)
+	all_cas = list(load_cas(subject_name))
+	assert len(list(all_cas)) == 0
+
 	ca_cert1, _ca_key = create_ca(subject={"CN": subject_name}, valid_days=3)
 	install_ca(ca_cert1)
 	try:
