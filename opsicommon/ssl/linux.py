@@ -7,16 +7,16 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import os
-from typing import Tuple
+from typing import Generator, Tuple
 
 import distro
 from cryptography import x509
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 
 from opsicommon.logging import get_logger
 from opsicommon.utils import execute
 
-__all__ = ("install_ca", "load_ca", "remove_ca")
+__all__ = ("install_ca", "load_cas", "load_ca", "remove_ca")
 
 
 logger = get_logger("opsicommon.general")
@@ -55,7 +55,7 @@ def install_ca(ca_cert: x509.Certificate) -> None:
 	execute([cmd])
 
 
-def load_ca(subject_name: str) -> x509.Certificate | None:
+def load_cas(subject_name: str) -> Generator[x509.Certificate, None, None]:
 	system_cert_path, _cmd = _get_cert_path_and_cmd()
 	if os.path.exists(system_cert_path):
 		for root, _dirs, files in os.walk(system_cert_path):
@@ -67,13 +67,23 @@ def load_ca(subject_name: str) -> x509.Certificate | None:
 						if not isinstance(common_name, str):
 							common_name = common_name.decode("utf-8")
 						if common_name == subject_name:
-							return ca_cert
+							yield ca_cert
 					except ValueError:
 						continue
-	return None
 
 
-def remove_ca(subject_name: str) -> bool:
+def load_ca(subject_name: str) -> x509.Certificate | None:
+	try:
+		return next(load_cas(subject_name))
+	except StopIteration:
+		logger.notice("Did not find CA %r", subject_name)
+		return None
+
+
+def remove_ca(subject_name: str, sha1_fingerprint: str | None = None) -> bool:
+	if sha1_fingerprint:
+		sha1_fingerprint = sha1_fingerprint.upper()
+
 	system_cert_path, cmd = _get_cert_path_and_cmd()
 	removed = 0
 	if os.path.exists(system_cert_path):
@@ -84,6 +94,8 @@ def remove_ca(subject_name: str) -> bool:
 					try:
 						ca_cert = x509.load_pem_x509_certificate(data=file.read())
 						if ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == subject_name:
+							if sha1_fingerprint and sha1_fingerprint != ca_cert.fingerprint(hashes.SHA1()).hex().upper():
+								continue
 							logger.info("Removing CA '%s' (%s)", subject_name, filename)
 							os.remove(filename)
 							removed += 1

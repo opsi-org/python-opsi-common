@@ -14,13 +14,13 @@ from typing import Any, Generator
 import pywintypes  # type: ignore[import]
 import win32crypt  # type: ignore[import]
 from cryptography import x509
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 
 from opsicommon.logging import get_logger
 
 crypt32 = ctypes.WinDLL("crypt32.dll")  # type: ignore[attr-defined]
 
-__all__ = ("install_ca", "load_ca", "remove_ca")
+__all__ = ("install_ca", "load_cas", "load_ca", "remove_ca")
 
 # lpszStoreProvider
 CERT_STORE_PROV_SYSTEM = 0x0000000A
@@ -108,7 +108,7 @@ def install_ca(ca_cert: x509.Certificate) -> None:
 		)
 
 
-def load_ca(subject_name: str) -> x509.Certificate | None:
+def load_cas(subject_name: str) -> Generator[x509.Certificate, None, None]:
 	store_name = "Root"
 	logger.debug("Trying to find %s in certificate store", subject_name)
 	with _open_cert_store(store_name, force_close=False) as store:
@@ -121,15 +121,24 @@ def load_ca(subject_name: str) -> x509.Certificate | None:
 				continue
 			if not isinstance(common_name, str):
 				common_name = common_name.decode("utf-8")
-			logger.trace("checking certificate %s", common_name)
+			logger.trace("Checking certificate %s", common_name)
 			if common_name == subject_name:
-				logger.debug("Found matching ca %s", subject_name)
-				return ca_cert
-	logger.debug("Did not find ca")
-	return None
+				logger.debug("Found matching CA %s", subject_name)
+				yield ca_cert
 
 
-def remove_ca(subject_name: str) -> bool:
+def load_ca(subject_name: str) -> x509.Certificate | None:
+	try:
+		return next(load_cas(subject_name))
+	except StopIteration:
+		logger.notice("Did not find CA %r", subject_name)
+		return None
+
+
+def remove_ca(subject_name: str, sha1_fingerprint: str | None = None) -> bool:
+	if sha1_fingerprint:
+		sha1_fingerprint = sha1_fingerprint.upper()
+
 	store_name = "Root"
 	removed = 0
 	with _open_cert_store(store_name, ctype=True) as store:
@@ -145,6 +154,12 @@ def remove_ca(subject_name: str) -> bool:
 			if p_cert_ctx == 0:
 				break
 
+			if sha1_fingerprint:
+				ca_cert = x509.load_der_x509_certificate(data=p_cert_ctx.CertEncoded)
+				if sha1_fingerprint != ca_cert.fingerprint(hashes.SHA1()).hex().upper():
+					crypt32.CertFreeCertificateContext(p_cert_ctx)
+					continue
+
 			cbsize = crypt32.CertGetNameStringW(p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, None, 0)
 			buf = ctypes.create_unicode_buffer(cbsize)
 			cbsize = crypt32.CertGetNameStringW(p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, buf, cbsize)
@@ -152,7 +167,7 @@ def remove_ca(subject_name: str) -> bool:
 			crypt32.CertDeleteCertificateFromStore(p_cert_ctx)
 			crypt32.CertFreeCertificateContext(p_cert_ctx)
 			removed += 1
-			if removed >= 25:
+			if removed >= 100:
 				raise RuntimeError(f"Stop loop after removing {removed} certficates")
 
 	if not removed:
