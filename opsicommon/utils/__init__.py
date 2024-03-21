@@ -80,12 +80,29 @@ def timestamp(secs: float = 0.0, date_only: bool = False) -> str:
 	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(secs))
 
 
+__now = datetime.now
+__utc = timezone.utc
+
+
 def utc_timestamp(date_only: bool = False) -> str:
-	"""Returns a utc timestamp in format YYYY-mm-dd[ HH:MM:SS]"""
-	now = datetime.now(timezone.utc)
+	"""Returns a UTC timestamp in format YYYY-mm-dd[ HH:MM:SS]"""
+	now = __now(tz=__utc)
 	if date_only:
 		return now.strftime("%Y-%m-%d")
 	return now.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def unix_timestamp(*, millis: bool = False, add_seconds: float = 0.0) -> float:
+	"""
+	Returns the current unix timestamp (UTC).
+	If `millis` is True, the timestamp is in milliseconds.
+	`add_seconds` can be used to add or subtract seconds from the current time.
+	"""
+	# Do not use time.time() as the behaviour can be platform and timezone dependent
+	unix_ts = __now(tz=__utc).timestamp() + add_seconds
+	if millis:
+		return unix_ts * 1000
+	return unix_ts
 
 
 class Singleton(type):

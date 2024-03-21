@@ -27,6 +27,7 @@ from opsicommon.utils import (
 	prepare_proxy_environment,
 	retry,
 	timestamp,
+	unix_timestamp,
 	update_environment_from_config_files,
 	utc_timestamp,
 )
@@ -59,6 +60,16 @@ def test_utc_timestamp() -> None:
 	assert utc_timestamp() == now.strftime("%Y-%m-%d %H:%M:%S")
 	now = datetime.datetime.now(datetime.timezone.utc)
 	assert utc_timestamp(date_only=True) == now.strftime("%Y-%m-%d")
+
+
+def test_unix_timestamp() -> None:
+	# TODO: mock timezones
+	unix_ts = unix_timestamp()
+	assert isinstance(unix_ts, float)
+	unix_ts_ms = unix_timestamp(millis=True)
+	assert unix_ts_ms / 1000 - unix_ts < 2
+	assert (unix_timestamp(add_seconds=30) - (unix_ts + 30)) < 2
+	assert (unix_timestamp(add_seconds=-30) - (unix_ts - 30)) < 2
 
 
 def test_singleton() -> None:

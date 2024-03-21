@@ -1521,10 +1521,11 @@ class Messagebus(Thread):
 				message = lz4.frame.decompress(message)
 			msg = Message.from_msgpack(message)
 
-			expired = msg.expires and msg.expires <= timestamp()
+			cur_timestamp = timestamp()
+			expired = msg.expires and msg.expires <= cur_timestamp
 			if expired:
 				callback = "expired_message_received"
-				logger.info("Received expired message: %r", msg)
+				logger.info("Received expired message: %r (expires=%d, timestamp=%d)", msg, msg.expires, cur_timestamp)
 			else:
 				callback = "message_received"
 				logger.debug("Received message: %r", msg)

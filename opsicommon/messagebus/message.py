@@ -9,12 +9,13 @@ from __future__ import annotations
 
 from abc import ABC
 from enum import StrEnum
-from time import time
 from typing import Annotated, Any, Type, TypeVar, cast
 from uuid import uuid4
 
 import msgspec
 from pydantic import AfterValidator, AliasChoices, BaseModel, Field, StringConstraints
+
+from opsicommon.utils import unix_timestamp
 
 message_decoder = msgspec.msgpack.Decoder()
 message_encoder = msgspec.msgpack.Encoder()
@@ -64,8 +65,12 @@ class ErrorCode(StrEnum):
 MessageErrorEnum = ErrorCode
 
 
-def timestamp() -> int:
-	return int(time() * 1000)
+def timestamp(add_seconds: float = 0.0) -> int:
+	"""
+	Returns the current time (UTC) as messagebus timestamp.
+	`add_seconds` can be used to add or subtract seconds from the current time.
+	"""
+	return int(unix_timestamp(millis=True, add_seconds=add_seconds))
 
 
 class Error(BaseModel):

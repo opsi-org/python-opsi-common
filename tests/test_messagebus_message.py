@@ -6,7 +6,6 @@
 messagebus.message tests
 """
 
-import time
 from typing import Type, Union
 
 import pydantic_core
@@ -43,7 +42,15 @@ from opsicommon.messagebus.message import (
 	TerminalOpenRequestMessage,
 	TerminalResizeEventMessage,
 	TerminalResizeRequestMessage,
+	timestamp,
 )
+
+
+def test_timestamp() -> None:
+	mbts = timestamp()
+	assert isinstance(mbts, int)
+	assert timestamp(add_seconds=10) - (mbts + 10_000) < 500
+	assert timestamp(add_seconds=-10) - (mbts - 10_000) < 500
 
 
 def test_message() -> None:
@@ -51,8 +58,8 @@ def test_message() -> None:
 		Message()  # type: ignore[call-arg]
 	msg = Message(type=MessageType.JSONRPC_REQUEST, sender="291b9f3e-e370-428d-be30-1248a906ae86", channel="service:config:jsonrpc")
 	assert msg.type == "jsonrpc_request"
-	assert abs(time.time() * 1000 - msg.created) <= 2
-	assert abs(time.time() * 1000 - msg.expires + 60000) <= 2
+	assert abs(timestamp() - msg.created) <= 2
+	assert abs(timestamp() - msg.expires + 60000) <= 2
 	assert msg.sender == "291b9f3e-e370-428d-be30-1248a906ae86"
 	assert len(msg.id) == 36
 
