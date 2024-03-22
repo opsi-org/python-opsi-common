@@ -71,7 +71,7 @@ class Process:
 		self._loop = asyncio.get_event_loop()
 
 	def __str__(self) -> str:
-		return f"{self.__class__.__name__}({self._file_upload_request})"
+		return f"{self.__class__.__name__}({self._process_start_request})"
 
 	__repr__ = __str__
 
