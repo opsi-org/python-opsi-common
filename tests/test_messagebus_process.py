@@ -82,7 +82,7 @@ async def test_execute_error() -> None:
 	assert not messages[0].back_channel
 	assert messages[0].channel == "test_sender"
 	if is_windows():
-		assert "The system cannot find the file specified" in messages[0].error.message
+		assert "[WinError 2]" in messages[0].error.message
 	else:
 		assert "No such file or directory: 'command_not_found'" in messages[0].error.message
 
