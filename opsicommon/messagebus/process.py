@@ -70,10 +70,14 @@ class Process:
 		self._back_channel = back_channel or CONNECTION_SESSION_CHANNEL
 		self._loop = asyncio.get_event_loop()
 
-	def __str__(self) -> str:
-		return f"{self.__class__.__name__}({self._process_start_request})"
+	def __repr__(self) -> str:
+		return f"Process(command={self._command}, id={self._process_id}, shell={self._process_start_request.shell})"
 
-	__repr__ = __str__
+	def __str__(self) -> str:
+		info = "running"
+		if self._proc and self._proc.returncode:
+			info = f"finished - exit code {self._proc.returncode}"
+		return f"{self._command[0]} ({info})"
 
 	@property
 	def _command(self) -> tuple[str, ...]:
@@ -86,15 +90,6 @@ class Process:
 	@property
 	def _response_channel(self) -> str:
 		return self._process_start_request.response_channel
-
-	def __repr__(self) -> str:
-		return f"Process(command={self._command}, id={self._process_id}, shell={self._process_start_request.shell})"
-
-	def __str__(self) -> str:
-		info = "running"
-		if self._proc and self._proc.returncode:
-			info = f"finished - exit code {self._proc.returncode}"
-		return f"{self._command[0]} ({info})"
 
 	async def _stdout_reader(self) -> None:
 		assert self._proc and self._proc.stdout
