@@ -35,7 +35,7 @@ from opsicommon.messagebus.message import (
 
 processes: dict[str, Process] = {}
 processes_lock = Lock()
-logger = get_logger("opsiclientd")
+logger = get_logger()
 
 
 @lru_cache()
@@ -124,10 +124,12 @@ class Process:
 			message = ProcessErrorMessage(
 				sender=CONNECTION_USER_CHANNEL,
 				channel=self._response_channel,
+				ref_id=self._process_start_request.id,
 				process_id=self._process_id,
 				error=Error(message=str(error)),
 			)
 			await self._send_message(message)
+			await self._loop.run_in_executor(None, remove_process, self._process_id)
 			return
 
 		locale_encoding = await self._loop.run_in_executor(None, get_locale_encoding, self._process_start_request.shell)
@@ -177,9 +179,7 @@ class Process:
 		except Exception as err:
 			logger.error(err, exc_info=True)
 		finally:
-			with processes_lock:
-				if self._process_id in processes:
-					del processes[self._process_id]
+			await self._loop.run_in_executor(None, remove_process, self._process_id)
 
 
 async def process_messagebus_message(message: ProcessMessage, send_message: Callable, back_channel: str | None = None) -> None:
@@ -192,7 +192,7 @@ async def process_messagebus_message(message: ProcessMessage, send_message: Call
 				with processes_lock:
 					process = Process(process_start_request=message, send_message=send_message, back_channel=back_channel)
 					processes[message.process_id] = process
-					await processes[message.process_id].start()
+				await process.start()
 			else:
 				raise RuntimeError(f"Process already open: {process!r}")
 			return
@@ -213,12 +213,23 @@ async def process_messagebus_message(message: ProcessMessage, send_message: Call
 			msg = ProcessErrorMessage(
 				sender=CONNECTION_USER_CHANNEL,
 				channel=message.response_channel,
+				ref_id=message.id,
 				process_id=message.process_id,
 				error=Error(message=str(err)),
 			)
 			await send_message(msg)
+			await asyncio.get_event_loop().run_in_executor(None, remove_process, message.process_id)
+
+
+def remove_process(process_id: str) -> None:
+	with processes_lock:
+		try:
+			del processes[process_id]
+		except KeyError:
+			pass
 
 
 async def stop_running_processes() -> None:
-	for process in list(processes.values()):
-		await process.stop()
+	with processes_lock:
+		for process in list(processes.values()):
+			await process.stop()

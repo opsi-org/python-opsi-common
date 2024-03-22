@@ -18,7 +18,7 @@ from opsicommon.messagebus.message import (
 	ErrorCode,
 	EventMessage,
 	FileChunkMessage,
-	FileErrorMessage,
+	FileTransferErrorMessage,
 	FileUploadRequestMessage,
 	FileUploadResultMessage,
 	GeneralErrorMessage,
@@ -289,7 +289,7 @@ def test_message_to_from_msgpack() -> None:
 			None,
 		),
 		(
-			FileErrorMessage,
+			FileTransferErrorMessage,
 			{
 				"sender": "291b9f3e-e370-428d-be30-1248a906ae86",
 				"channel": "host:x.y.z",
