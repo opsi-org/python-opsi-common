@@ -7,6 +7,7 @@ messagebus.process tests
 """
 
 
+from opsicommon.messagebus import CONNECTION_USER_CHANNEL
 from opsicommon.messagebus.message import (
 	ProcessDataReadMessage,
 	ProcessDataWriteMessage,
@@ -77,6 +78,9 @@ async def test_execute_error() -> None:
 	assert isinstance(messages[0], ProcessErrorMessage)
 	assert messages[0].process_id == process_start_request.process_id
 	assert messages[0].ref_id == process_start_request.id
+	assert messages[0].sender == CONNECTION_USER_CHANNEL
+	assert not messages[0].back_channel
+	assert messages[0].channel == "test_sender"
 	if is_windows():
 		assert "The system cannot find the file specified" in messages[0].error.message
 	else:

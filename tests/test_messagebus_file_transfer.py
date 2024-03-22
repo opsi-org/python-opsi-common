@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from opsicommon.logging import LOG_TRACE, use_logging_config
-from opsicommon.messagebus import CONNECTION_SESSION_CHANNEL, CONNECTION_USER_CHANNEL
+from opsicommon.messagebus import CONNECTION_USER_CHANNEL
 from opsicommon.messagebus.file_transfer import process_messagebus_message, stop_running_file_transfers
 from opsicommon.messagebus.message import (
 	FileChunkMessage,
@@ -50,7 +50,7 @@ async def test_file_upload(tmp_path: Path) -> None:
 	assert isinstance(messages[0], FileTransferErrorMessage)
 	assert messages[0].sender == CONNECTION_USER_CHANNEL
 	assert not messages[0].back_channel
-	assert messages[0].channel == CONNECTION_SESSION_CHANNEL
+	assert messages[0].channel == "test_sender"
 	assert messages[0].file_id == file_upload_request.file_id
 	assert "No such file or directory" in messages[0].error.message
 
