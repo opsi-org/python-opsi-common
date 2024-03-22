@@ -77,7 +77,10 @@ async def test_execute_error() -> None:
 	assert isinstance(messages[0], ProcessErrorMessage)
 	assert messages[0].process_id == process_start_request.process_id
 	assert messages[0].ref_id == process_start_request.id
-	assert "No such file or directory: 'command_not_found'" in messages[0].error.message
+	if is_windows():
+		assert "The system cannot find the file specified" in messages[0].error.message
+	else:
+		assert "No such file or directory: 'command_not_found'" in messages[0].error.message
 
 	process_stop_request_message = ProcessStopRequestMessage(sender=sender, channel=channel, process_id=process_start_request.process_id)
 	await process_messagebus_message(process_stop_request_message, send_message=message_sender.send_message)

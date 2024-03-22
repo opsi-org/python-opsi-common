@@ -10,6 +10,7 @@ import asyncio
 from pathlib import Path
 from unittest.mock import patch
 
+from opsicommon.logging import LOG_TRACE, use_logging_config
 from opsicommon.messagebus.file_transfer import process_messagebus_message, stop_running_file_transfers
 from opsicommon.messagebus.message import (
 	FileChunkMessage,
@@ -94,7 +95,7 @@ async def test_upload_chunk_timeout(tmp_path: Path) -> None:
 	chunk_timeout = 3
 	message_sender = MessageSender()
 
-	with patch("opsicommon.messagebus.file_transfer.FileUpload.chunk_timeout", chunk_timeout):
+	with use_logging_config(stderr_level=LOG_TRACE), patch("opsicommon.messagebus.file_transfer.FileUpload.chunk_timeout", chunk_timeout):
 		file_upload_request = FileUploadRequestMessage(
 			sender=sender,
 			channel=channel,
