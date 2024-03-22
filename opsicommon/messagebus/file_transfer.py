@@ -54,6 +54,11 @@ class FileUpload:
 		self._should_stop = False
 		self._completed = False
 
+	def __str__(self) -> str:
+		return f"{self.__class__.__name__}({self._file_upload_request})"
+
+	__repr__ = __str__
+
 	@property
 	def _file_id(self) -> str:
 		return self._file_upload_request.file_id

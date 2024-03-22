@@ -70,6 +70,11 @@ class Process:
 		self._back_channel = back_channel or CONNECTION_SESSION_CHANNEL
 		self._loop = asyncio.get_event_loop()
 
+	def __str__(self) -> str:
+		return f"{self.__class__.__name__}({self._file_upload_request})"
+
+	__repr__ = __str__
+
 	@property
 	def _command(self) -> tuple[str, ...]:
 		return self._process_start_request.command
