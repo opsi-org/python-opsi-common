@@ -36,8 +36,15 @@ class FileUpload:
 	chunk_timeout = 300
 	default_destination: Path | None = None
 
-	def __init__(self, file_upload_request: FileUploadRequestMessage, send_message: Callable, back_channel: str | None = None) -> None:
+	def __init__(
+		self,
+		file_upload_request: FileUploadRequestMessage,
+		send_message: Callable,
+		sender: str = CONNECTION_USER_CHANNEL,
+		back_channel: str | None = None,
+	) -> None:
 		self._send_message: Callable = send_message
+		self._sender = sender
 		self._file_upload_request = file_upload_request
 		self._back_channel = back_channel or CONNECTION_SESSION_CHANNEL
 		self._loop = asyncio.get_event_loop()
@@ -90,7 +97,7 @@ class FileUpload:
 			return
 
 		message = FileUploadResponseMessage(
-			sender=CONNECTION_USER_CHANNEL,
+			sender=self._sender,
 			channel=self._response_channel,
 			file_id=self._file_id,
 			back_channel=self._back_channel,
@@ -123,9 +130,10 @@ class FileUpload:
 			logger.debug("Last chunk received")
 			self._completed = True
 			upload_result = FileUploadResultMessage(
-				sender=CONNECTION_USER_CHANNEL,
-				channel=self._back_channel,
+				sender=self._sender,
+				channel=self._response_channel,
 				file_id=self._file_id,
+				back_channel=self._back_channel,
 				path=str(self._file_path),
 			)
 			await self._send_message(upload_result)
@@ -152,8 +160,8 @@ class FileUpload:
 	async def _error(self, error: str, message: Message | None = None) -> None:
 		logger.error(error)
 		error_message = FileTransferErrorMessage(
-			sender=CONNECTION_USER_CHANNEL,
-			channel=self._back_channel,
+			sender=self._sender,
+			channel=self._response_channel,
 			ref_id=message.id if message else None,
 			file_id=self._file_id,
 			error=Error(
@@ -166,7 +174,13 @@ class FileUpload:
 		self._should_stop = True
 
 
-async def process_messagebus_message(message: FileTransferMessage, send_message: Callable, back_channel: str | None = None) -> None:
+async def process_messagebus_message(
+	message: FileTransferMessage,
+	send_message: Callable,
+	*,
+	sender: str = CONNECTION_USER_CHANNEL,
+	back_channel: str | None = None,
+) -> None:
 	with file_transfers_lock:
 		file_transfer = file_transfers.get(message.file_id)
 
@@ -174,7 +188,12 @@ async def process_messagebus_message(message: FileTransferMessage, send_message:
 		if isinstance(message, FileUploadRequestMessage):
 			if not file_transfer:
 				with file_transfers_lock:
-					file_transfer = FileUpload(file_upload_request=message, send_message=send_message, back_channel=back_channel)
+					file_transfer = FileUpload(
+						file_upload_request=message,
+						send_message=send_message,
+						sender=sender,
+						back_channel=back_channel,
+					)
 					file_transfers[message.file_id] = file_transfer
 				await file_transfer.start()
 			else:
@@ -192,7 +211,7 @@ async def process_messagebus_message(message: FileTransferMessage, send_message:
 			await file_transfer.stop()
 		else:
 			msg = FileTransferErrorMessage(
-				sender=CONNECTION_USER_CHANNEL,
+				sender=sender,
 				channel=message.response_channel,
 				ref_id=message.id,
 				file_id=message.file_id,

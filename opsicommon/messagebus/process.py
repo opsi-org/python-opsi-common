@@ -56,9 +56,16 @@ def get_locale_encoding(shell: bool = False) -> str:
 class Process:
 	max_data_size = 8192
 
-	def __init__(self, process_start_request: ProcessStartRequestMessage, send_message: Callable, back_channel: str | None = None) -> None:
+	def __init__(
+		self,
+		process_start_request: ProcessStartRequestMessage,
+		send_message: Callable,
+		sender: str = CONNECTION_USER_CHANNEL,
+		back_channel: str | None = None,
+	) -> None:
 		self._proc: AsyncioProcess | None = None
 		self._send_message: Callable = send_message
+		self._sender = sender
 		self._process_start_request = process_start_request
 		self._back_channel = back_channel or CONNECTION_SESSION_CHANNEL
 		self._loop = asyncio.get_event_loop()
@@ -91,7 +98,10 @@ class Process:
 			if not data:
 				break
 			message = ProcessDataReadMessage(
-				sender=CONNECTION_USER_CHANNEL, channel=self._response_channel, process_id=self._process_id, stdout=data
+				sender=self._sender,
+				channel=self._response_channel,
+				process_id=self._process_id,
+				stdout=data,
 			)
 			await self._send_message(message)
 
@@ -102,7 +112,10 @@ class Process:
 			if not data:
 				break
 			message = ProcessDataReadMessage(
-				sender=CONNECTION_USER_CHANNEL, channel=self._response_channel, process_id=self._process_id, stderr=data
+				sender=self._sender,
+				channel=self._response_channel,
+				process_id=self._process_id,
+				stderr=data,
 			)
 			await self._send_message(message)
 
@@ -122,7 +135,7 @@ class Process:
 		except Exception as error:
 			logger.error(error, exc_info=True)
 			message = ProcessErrorMessage(
-				sender=CONNECTION_USER_CHANNEL,
+				sender=self._sender,
 				channel=self._response_channel,
 				ref_id=self._process_start_request.id,
 				process_id=self._process_id,
@@ -134,7 +147,7 @@ class Process:
 
 		locale_encoding = await self._loop.run_in_executor(None, get_locale_encoding, self._process_start_request.shell)
 		message = ProcessStartEventMessage(
-			sender=CONNECTION_USER_CHANNEL,
+			sender=self._sender,
 			channel=self._response_channel,
 			process_id=self._process_id,
 			back_channel=self._back_channel,
@@ -173,7 +186,10 @@ class Process:
 		logger.info("%r finished with exit code %d", self, exit_code)
 		try:
 			message = ProcessStopEventMessage(
-				sender=CONNECTION_USER_CHANNEL, channel=self._response_channel, process_id=self._process_id, exit_code=exit_code
+				sender=self._sender,
+				channel=self._response_channel,
+				process_id=self._process_id,
+				exit_code=exit_code,
 			)
 			await self._send_message(message)
 		except Exception as err:
@@ -182,7 +198,13 @@ class Process:
 			await self._loop.run_in_executor(None, remove_process, self._process_id)
 
 
-async def process_messagebus_message(message: ProcessMessage, send_message: Callable, back_channel: str | None = None) -> None:
+async def process_messagebus_message(
+	message: ProcessMessage,
+	send_message: Callable,
+	*,
+	sender: str = CONNECTION_USER_CHANNEL,
+	back_channel: str | None = None,
+) -> None:
 	with processes_lock:
 		process = processes.get(message.process_id)
 
@@ -190,7 +212,12 @@ async def process_messagebus_message(message: ProcessMessage, send_message: Call
 		if isinstance(message, ProcessStartRequestMessage):
 			if not process:
 				with processes_lock:
-					process = Process(process_start_request=message, send_message=send_message, back_channel=back_channel)
+					process = Process(
+						process_start_request=message,
+						send_message=send_message,
+						sender=sender,
+						back_channel=back_channel,
+					)
 					processes[message.process_id] = process
 				await process.start()
 			else:
@@ -211,7 +238,7 @@ async def process_messagebus_message(message: ProcessMessage, send_message: Call
 			await process.stop()
 		else:
 			msg = ProcessErrorMessage(
-				sender=CONNECTION_USER_CHANNEL,
+				sender=sender,
 				channel=message.response_channel,
 				ref_id=message.id,
 				process_id=message.process_id,

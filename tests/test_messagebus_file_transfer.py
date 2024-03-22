@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from opsicommon.logging import LOG_TRACE, use_logging_config
+from opsicommon.messagebus import CONNECTION_SESSION_CHANNEL, CONNECTION_USER_CHANNEL
 from opsicommon.messagebus.file_transfer import process_messagebus_message, stop_running_file_transfers
 from opsicommon.messagebus.message import (
 	FileChunkMessage,
@@ -47,6 +48,10 @@ async def test_file_upload(tmp_path: Path) -> None:
 	messages = await message_sender.wait_for_messages(count=1)
 	assert len(messages) == 1
 	assert isinstance(messages[0], FileTransferErrorMessage)
+	assert messages[0].sender == CONNECTION_USER_CHANNEL
+	assert not messages[0].back_channel
+	assert messages[0].channel == CONNECTION_SESSION_CHANNEL
+	assert messages[0].file_id == file_upload_request.file_id
 	assert "No such file or directory" in messages[0].error.message
 
 	# Create the upload directory and try again
@@ -59,10 +64,14 @@ async def test_file_upload(tmp_path: Path) -> None:
 		size=file_size,
 		destination_dir=str(upload_path),
 	)
-	await process_messagebus_message(file_upload_request, send_message=message_sender.send_message)
+	await process_messagebus_message(
+		file_upload_request, send_message=message_sender.send_message, sender="test_res_sender", back_channel="test_res_channel"
+	)
 
 	messages = await message_sender.wait_for_messages(count=1)
 	assert isinstance(messages[0], FileUploadResponseMessage)
+	assert messages[0].sender == "test_res_sender"
+	assert messages[0].back_channel == "test_res_channel"
 	assert messages[0].file_id == file_upload_request.file_id
 	assert messages[0].path == str(upload_path / test_file.name)
 
