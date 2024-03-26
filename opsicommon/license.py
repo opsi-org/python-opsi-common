@@ -661,7 +661,7 @@ class OpsiLicensePool:
 		data = zlib.crc32(
 			b"".join(sorted([lic.get_checksum(with_signature=False).encode("utf-8") for lic in self.get_licenses(valid_only=True)]))
 		)
-		return f"{data:x}"
+		return f"{data:08x}"
 
 	def get_relevant_dates(self) -> list[date]:
 		dates = set()

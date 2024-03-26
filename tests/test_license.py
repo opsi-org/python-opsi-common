@@ -255,12 +255,12 @@ def test_opsi_license_to_from_dict() -> None:
 def test_opsi_license_hash() -> None:
 	lic = OpsiLicense(**LIC1)
 	assert lic.get_hash(hex_digest=True) == (
-		"be5af16ca516aaa2bff8d48348c66f008fef6c3f0c162b0a1df6d0ac8fa71097"
-		"46829608a6c3000b99f14c427d11075674f38acfc1f92b868970e57d615e3116"
+		"48f66b80da530eede6dda641d25a5716aabc3515873890b40cfdc53263e6bb30"
+		"145b5558c384b8c94fbcd6b33ce57edafd5b65489b6da07b58dcf75a9c352cea"
 	)
 	assert lic.get_hash(digest=True) == bytes.fromhex(
-		"be5af16ca516aaa2bff8d48348c66f008fef6c3f0c162b0a1df6d0ac8fa71097"
-		"46829608a6c3000b99f14c427d11075674f38acfc1f92b868970e57d615e3116"
+		"48f66b80da530eede6dda641d25a5716aabc3515873890b40cfdc53263e6bb30"
+		"145b5558c384b8c94fbcd6b33ce57edafd5b65489b6da07b58dcf75a9c352cea"
 	)
 
 
@@ -391,22 +391,22 @@ def test_opsi_license_pool_licenses_checksum() -> None:
 	olp = OpsiLicensePool()
 	private_key, public_key = generate_key_pair(return_pem=False)
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
-		assert olp.get_licenses_checksum() == "0"
+		assert olp.get_licenses_checksum() == "00000000"
 
 		lic1 = OpsiLicense(**LIC1)
 		lic1.module_id = "directory-connector"
 		olp.add_license(lic1)
 		# Unsigned license
-		assert olp.get_licenses_checksum() == "0"
+		assert olp.get_licenses_checksum() == "00000000"
 
 		lic1.sign(private_key)
-		assert olp.get_licenses_checksum() == "78370ff9"
+		assert olp.get_licenses_checksum() == "0a753ec9"
 
 		lic2 = OpsiLicense(**LIC1)
 		lic2.module_id = "dynamic_depot"
 		lic2.sign(private_key)
 		olp.add_license(lic2)
-		assert olp.get_licenses_checksum() == "b14d1b40"
+		assert olp.get_licenses_checksum() == "9659f392"
 
 
 def test_opsi_license_pool_relevant_dates() -> None:
