@@ -9,6 +9,7 @@ General utility functions.
 from __future__ import annotations
 
 import functools
+import gzip
 import json
 import os
 import platform
@@ -17,6 +18,7 @@ import secrets
 import subprocess
 import tempfile
 import time
+import zlib
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network, ip_address, ip_network
@@ -24,6 +26,7 @@ from pathlib import Path
 from types import EllipsisType
 from typing import TYPE_CHECKING, Any, Callable, Generator, Iterable, Literal, Type, Union
 
+import lz4.frame  # type: ignore[import]
 from packaging.version import InvalidVersion, Version
 from typing_extensions import deprecated
 
@@ -42,8 +45,8 @@ if TYPE_CHECKING:
 	from opsicommon.objects import BaseObject as TBaseObject
 	from opsicommon.objects import Product, ProductOnClient, ProductOnDepot
 
-OBJECT_CLASSES: dict[str, Type["TBaseObject"]] = {}
-BaseObject: Type["TBaseObject"] | None = None
+OBJECT_CLASSES: dict[str, Type[TBaseObject]] = {}
+BaseObject: Type[TBaseObject] | None = None
 
 logger = get_logger("opsicommon.general")
 
@@ -447,3 +450,57 @@ def retry(
 		return wrapper
 
 	return decorator
+
+
+def decompress_data(data: bytes, compression: Literal["lz4", "deflate", "gz", "gzip"]) -> bytes:
+	compressed_size = len(data)
+
+	decompress_start = time.perf_counter()
+	if compression == "lz4":
+		data = lz4.frame.decompress(data)
+	elif compression == "deflate":
+		data = zlib.decompress(data)
+	elif compression in ("gz", "gzip"):
+		data = gzip.decompress(data)
+	else:
+		raise ValueError(f"Unhandled compression {compression!r}")
+	decompress_end = time.perf_counter()
+
+	uncompressed_size = len(data)
+	get_logger().debug(
+		"%s decompression ratio: %d => %d = %0.2f%%, time: %0.2fms",
+		compression,
+		compressed_size,
+		uncompressed_size,
+		100 - 100 * (compressed_size / uncompressed_size),
+		1000 * (decompress_end - decompress_start),
+	)
+	return data
+
+
+def compress_data(
+	data: bytes, compression: Literal["lz4", "deflate", "gz", "gzip"], compression_level: int = 0, lz4_block_linked: bool = True
+) -> bytes:
+	uncompressed_size = len(data)
+
+	compress_start = time.perf_counter()
+	if compression == "lz4":
+		data = lz4.frame.compress(data, compression_level=compression_level, block_linked=lz4_block_linked)
+	elif compression == "deflate":
+		data = zlib.compress(data)
+	elif compression in ("gz", "gzip"):
+		data = gzip.compress(data)
+	else:
+		raise ValueError(f"Unhandled compression {compression!r}")
+	compress_end = time.perf_counter()
+
+	compressed_size = len(data)
+	logger.debug(
+		"%s compression ratio: %d => %d = %0.2f%%, time: %0.2fms",
+		compression,
+		uncompressed_size,
+		compressed_size,
+		100 - 100 * (compressed_size / uncompressed_size),
+		1000 * (compress_end - compress_start),
+	)
+	return data

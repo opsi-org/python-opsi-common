@@ -7,6 +7,7 @@ This file is part of opsi - https://www.opsi.org
 import datetime
 import os
 import platform
+import random
 import time
 from contextlib import contextmanager
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
@@ -21,6 +22,8 @@ from opsicommon.utils import (
 	Singleton,
 	combine_versions,
 	compare_versions,
+	compress_data,
+	decompress_data,
 	frozen_lru_cache,
 	generate_opsi_host_key,
 	ip_address_in_network,
@@ -286,3 +289,13 @@ def test_retry() -> None:
 			failing_function2()
 
 		assert len(caught_exceptions) == 4
+
+
+@pytest.mark.parametrize(
+	"compression",
+	("lz4", "deflate", "gz", "gzip"),
+)
+def test_compress_decompress(compression: Literal["lz4", "deflate", "gz", "gzip"]) -> None:
+	data = random.randbytes(50_000)
+	comp_data = compress_data(data=data, compression=compression)
+	assert decompress_data(data=comp_data, compression=compression) == data
