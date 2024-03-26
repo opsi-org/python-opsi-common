@@ -6,7 +6,6 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-
 import json
 import re
 import shutil
@@ -61,7 +60,7 @@ LIC1: Dict[str, Any] = {
 	"client_number": 1000,
 	"issued_at": "2021-08-05",
 	"valid_from": "2021-09-01",
-	"valid_until": "2024-12-31",
+	"valid_until": "2025-12-31",
 	"revoked_ids": ["c6af25cf-62e4-4b90-8f4b-21c542d8b74b", "cc4e2986-d28d-4bef-807b-a74ba9a8df04"],
 	"note": "Some notes",
 	"additional_data": None,
@@ -651,8 +650,14 @@ def test_free_module_state() -> None:
 		lic = OpsiLicense(**kwargs)
 		lic.sign(private_key)
 
+		kwargs["module_id"] = OPSI_FREE_MODULE_IDS[0]
+		kwargs["client_number"] = 890
+		lic2 = OpsiLicense(**kwargs)
+		lic2.sign(private_key)
+
 		olp = OpsiLicensePool(client_info=client_info)
 		olp.add_license(lic)
+		olp.add_license(lic2)
 
 		assert lic.get_state() == OPSI_LICENSE_STATE_VALID
 
