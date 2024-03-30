@@ -652,41 +652,42 @@ def test_free_module_state() -> None:
 		return {"macos": 0, "linux": 0, "windows": 1000}
 
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
-		kwargs = LIC1.copy()
-		kwargs["module_id"] = OPSI_FREE_MODULE_IDS[0]
-		kwargs["client_number"] = 100
-		lic = OpsiLicense(**kwargs)
-		lic.sign(private_key)
+		for module_id in OPSI_FREE_MODULE_IDS:
+			kwargs = LIC1.copy()
+			kwargs["module_id"] = module_id
+			kwargs["client_number"] = 100
+			lic = OpsiLicense(**kwargs)
+			lic.sign(private_key)
 
-		kwargs["module_id"] = OPSI_FREE_MODULE_IDS[0]
-		kwargs["client_number"] = 890
-		lic2 = OpsiLicense(**kwargs)
-		lic2.sign(private_key)
+			kwargs["module_id"] = module_id
+			kwargs["client_number"] = 890
+			lic2 = OpsiLicense(**kwargs)
+			lic2.sign(private_key)
 
-		olp = OpsiLicensePool(client_info=client_info)
-		olp.add_license(lic)
-		olp.add_license(lic2)
+			olp = OpsiLicensePool(client_info=client_info)
+			olp.add_license(lic)
+			olp.add_license(lic2)
 
-		assert lic.get_state() == OPSI_LICENSE_STATE_VALID
+			assert lic.get_state() == OPSI_LICENSE_STATE_VALID
 
-		module = olp.get_modules()[OPSI_FREE_MODULE_IDS[0]]
-		assert module["client_number"] == OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
-		assert module["state"] == OPSI_MODULE_STATE_FREE
-		assert module["available"] is True
+			module = olp.get_modules()[module_id]
+			assert module["state"] == OPSI_MODULE_STATE_FREE
+			assert module["client_number"] == OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
+			assert module["available"] is True
 
-		kwargs["valid_until"] = "2020-01-01"
-		lic = OpsiLicense(**kwargs)
-		lic.sign(private_key)
+			kwargs["valid_until"] = "2020-01-01"
+			lic = OpsiLicense(**kwargs)
+			lic.sign(private_key)
 
-		olp = OpsiLicensePool(client_info=client_info)
-		olp.add_license(lic)
+			olp = OpsiLicensePool(client_info=client_info)
+			olp.add_license(lic)
 
-		assert lic.get_state() == OPSI_LICENSE_STATE_EXPIRED
+			assert lic.get_state() == OPSI_LICENSE_STATE_EXPIRED
 
-		module = olp.get_modules()[OPSI_FREE_MODULE_IDS[0]]
-		assert module["client_number"] == OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
-		assert module["state"] == OPSI_MODULE_STATE_FREE
-		assert module["available"] is True
+			module = olp.get_modules()[module_id]
+			assert module["client_number"] == OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
+			assert module["state"] == OPSI_MODULE_STATE_FREE
+			assert module["available"] is True
 
 
 def test_license_state_cache() -> None:
