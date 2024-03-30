@@ -81,11 +81,13 @@ OPSI_MODULE_IDS = (
 	"local_imaging",
 	"macos_agent",
 	"monitoring",
+	"mysql_backend",
 	"roaming_profiles",
 	"scalability1",
 	"secureboot",
 	"swondemand",
 	"treeview",
+	"uefi",
 	"userroles",
 	"vista",
 	"wim-capture",
@@ -682,6 +684,7 @@ class OpsiLicensePool:
 		modules: dict[str, dict[str, Any]] = {}
 		for module_id in OPSI_MODULE_IDS:
 			if module_id in OPSI_FREE_MODULE_IDS:
+				print("FREE", module_id)
 				modules[module_id] = {
 					"available": True,
 					"state": OPSI_MODULE_STATE_FREE,

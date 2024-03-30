@@ -36,6 +36,7 @@ from opsicommon.license import (
 	OPSI_MODULE_STATE_LICENSED,
 	OPSI_MODULE_STATE_OVER_LIMIT,
 	OPSI_MODULE_STATE_UNLICENSED,
+	OPSI_OBSOLETE_MODULE_IDS,
 	OpsiLicense,
 	OpsiLicenseFile,
 	OpsiLicensePool,
@@ -91,6 +92,13 @@ def _read_modules_file(modules_file: Union[Path, str]) -> Tuple[Dict[str, str], 
 	if not (expires and customer and signature):
 		raise RuntimeError(f"Failed to parse {modules_file}")
 	return modules, expires, customer, signature
+
+
+def test_constants() -> None:
+	for module in OPSI_FREE_MODULE_IDS:
+		assert module in OPSI_MODULE_IDS
+	for module in OPSI_OBSOLETE_MODULE_IDS:
+		assert module in OPSI_MODULE_IDS
 
 
 def test_generate_key_pair() -> None:
