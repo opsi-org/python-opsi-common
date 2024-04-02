@@ -85,6 +85,7 @@ def test_create_x509_name() -> None:
 		("", "ubuntu", "/usr/local/share/ca-certificates", "update-ca-certificates", None),
 		("sles", "sles", "/usr/share/pki/trust/anchors", "update-ca-certificates", None),
 		("suse", "", "/usr/share/pki/trust/anchors", "update-ca-certificates", None),
+		("oracle", "", "/usr/share/pki/ca-trust-source/anchors", "update-ca-trust", None),
 		("unknown", "", "", "", RuntimeError),
 		("", "", "", "", RuntimeError),
 		(None, None, "", "", RuntimeError),
