@@ -129,10 +129,10 @@ def update_environment_from_config_files(files: list[Path] | None = None) -> Non
 			if not path.exists() or not path.is_file():
 				continue
 			logger.debug("Updating environment from %s", path)
-			with path.open("r", encoding="utf-8") as handle:
-				for line in handle:
+			with path.open("r", encoding="utf-8") as file:
+				for line in file:
 					line = line.strip()
-					if not line or line.startswith("#"):
+					if not line or line.startswith("#") or "=" not in line:
 						continue
 					key, value = line.split("=", 1)
 					key = key.lstrip("export").strip().lower()
@@ -179,6 +179,12 @@ def prepare_proxy_environment(
 			update_environment_from_config_files()
 		except Exception as error:
 			logger.error("Failed to update environment from config files: %s", error)
+		logger.debug(
+			"Current proxy related environment variables: http_proxy=%s, https_proxy=%s, no_proxy=%s",
+			os.environ.get("http_proxy"),
+			os.environ.get("https_proxy"),
+			os.environ.get("no_proxy"),
+		)
 		# Use a proxy
 		no_proxy = [x.strip() for x in os.environ.get("no_proxy", "").split(",") if x.strip()]
 		if proxy_url.lower() == "system":
