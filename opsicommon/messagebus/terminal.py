@@ -26,6 +26,7 @@ from opsicommon.messagebus.message import (
 	TerminalDataReadMessage,
 	TerminalDataWriteMessage,
 	TerminalErrorMessage,
+	TerminalMessage,
 	TerminalOpenEventMessage,
 	TerminalOpenRequestMessage,
 	TerminalResizeEventMessage,
@@ -282,7 +283,7 @@ class Terminal:
 
 
 async def process_messagebus_message(
-	message: TerminalOpenRequestMessage | TerminalDataWriteMessage | TerminalResizeRequestMessage | TerminalCloseRequestMessage,
+	message: TerminalMessage,
 	send_message: Callable,
 	*,
 	sender: str = CONNECTION_USER_CHANNEL,
@@ -328,7 +329,10 @@ async def process_messagebus_message(
 			if create_new:
 				await terminal.start_reader()
 		elif terminal:
-			await terminal.process_message(message)
+			if isinstance(message, (TerminalDataWriteMessage, TerminalResizeRequestMessage, TerminalCloseRequestMessage)):
+				await terminal.process_message(message)
+			else:
+				raise ValueError(f"Invalid message type {type(message)} received")
 		else:
 			raise RuntimeError("Invalid terminal id")
 	except Exception as err:
