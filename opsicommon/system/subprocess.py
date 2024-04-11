@@ -7,18 +7,19 @@ system.subprocess
 """
 
 import os
-import platform
 import subprocess
 from os import PathLike, pathsep
 from typing import IO, Any, Callable, Collection, Iterable, Mapping, Sequence
 
-SYSTEM = platform.system().lower()
+from opsicommon.system.info import SYSTEM, is_posix, is_windows
 
-if SYSTEM == "windows":
+if is_windows():
 	import win32profile  # type: ignore[import]
 
 	from opsicommon.system.windows.subprocess import get_process, get_process_user_token, patch_create_process
 
+if is_posix():
+	from opsicommon.system.posix.subprocess import get_subprocess_environment
 
 PopenOrig = subprocess.Popen
 
@@ -58,7 +59,7 @@ class Popen(PopenOrig):
 		session_elevated: bool | None = None,
 		session_desktop: str | None = None,
 	) -> None:
-		if SYSTEM != "windows" and session_id is not None:
+		if (not is_windows()) and session_id is not None:
 			raise NotImplementedError(f"Parameter 'session_id' not supported on {SYSTEM!r}")
 		if session_env is not None and session_id is None:
 			raise ValueError("Parameter 'session_env' requires 'session_id' to be set")
@@ -67,7 +68,7 @@ class Popen(PopenOrig):
 		if session_desktop is not None and session_id is None:
 			raise ValueError("Parameter 'session_desktop' requires 'session_id' to be set")
 
-		if SYSTEM == "windows" and session_id and (session_env or session_env is None):
+		if is_windows() and session_id and (session_env or session_env is None):
 			proc = get_process("explorer.exe", session_id=int(session_id))
 			if not proc:
 				raise RuntimeError(f"Failed to find 'explorer.exe' in session {session_id}")
@@ -78,15 +79,8 @@ class Popen(PopenOrig):
 			env = senv
 
 		env = dict(env or os.environ.copy())
-
-		lp_orig = env.get("LD_LIBRARY_PATH_ORIG")
-		if lp_orig is not None:
-			# Restore the original, unmodified value
-			env["LD_LIBRARY_PATH"] = lp_orig
-		else:
-			# This happens when LD_LIBRARY_PATH was not set.
-			# Remove the env var as a last resort
-			env.pop("LD_LIBRARY_PATH", None)
+		if is_posix():
+			env = get_subprocess_environment(env)
 
 		for key in list(env.keys()):
 			if key.startswith("_opsi_popen_"):
@@ -99,7 +93,7 @@ class Popen(PopenOrig):
 			values = list(dict.fromkeys(v for v in path.split(pathsep) if v and not ("pywin32_system32" in v and "opsi" in v)))
 			env["PATH"] = pathsep.join(values)
 
-		if session_id and SYSTEM == "windows":
+		if session_id and is_windows():
 			env["_opsi_popen_session_id"] = str(session_id)
 			env["_opsi_popen_session_elevated"] = str(int(bool(session_elevated)))
 			if session_desktop:
@@ -138,5 +132,5 @@ class Popen(PopenOrig):
 
 def patch_popen() -> None:
 	subprocess.Popen = Popen  # type: ignore
-	if SYSTEM == "windows":
+	if is_windows():
 		patch_create_process()

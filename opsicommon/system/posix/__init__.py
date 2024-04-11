@@ -6,10 +6,16 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-from typing import BinaryIO, Generator, TextIO, IO
 from contextlib import contextmanager
-from fcntl import LOCK_SH, LOCK_EX, LOCK_NB, LOCK_UN, flock
-from time import time, sleep
+from fcntl import LOCK_EX, LOCK_NB, LOCK_SH, LOCK_UN, flock
+from time import sleep, time
+from typing import IO, BinaryIO, Generator, TextIO
+
+from opsicommon.logging import get_logger
+
+LD_LIBRARY_EXCLUDE_LIST = ["/usr/lib/opsiclientd"]
+
+logger = get_logger()
 
 
 @contextmanager

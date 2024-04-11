@@ -8,15 +8,13 @@ This file is part of opsi - https://www.opsi.org
 
 from __future__ import annotations
 
-import os
-from asyncio import Task, get_running_loop
+import shlex
+from asyncio import Task, get_running_loop, wait_for
 from pathlib import Path
 from threading import Lock
 from time import time
 from typing import Callable
 
-from pexpect import spawn  # type: ignore[import]
-from pexpect.exceptions import EOF, TIMEOUT, ExceptionPexpect  # type: ignore[import]
 from psutil import AccessDenied, NoSuchProcess, Process
 
 from opsicommon.logging import get_logger
@@ -33,35 +31,79 @@ from opsicommon.messagebus.message import (
 	TerminalResizeEventMessage,
 	TerminalResizeRequestMessage,
 )
+from opsicommon.system.info import is_windows
 
+DEFAULT_ROWS = 30
+DEFAULT_COLUMNS = 120
 PTY_READER_BLOCK_SIZE = 16 * 1024
 
 terminals: dict[str, Terminal] = {}
 terminals_lock = Lock()
 logger = get_logger()
 
+if is_windows():
 
-def start_pty(
-	shell: str, rows: int | None = 30, cols: int | None = 120, cwd: str | None = None, env: dict[str, str] | None = None
-) -> spawn:
-	rows = rows or 30
-	cols = cols or 120
-	if env is None:
-		env = os.environ.copy()
-	env.update({"TERM": "xterm-256color"})
-	logger.info("Starting new pty with shell %r, rows %r, cols %r, cwd %r", shell, rows, cols, cwd)
-	try:
-		return spawn(shell, dimensions=(rows, cols), env=env, cwd=cwd, use_poll=True)
-	except ExceptionPexpect as err:
-		raise RuntimeError(f"Failed to start pty with shell {shell!r}: {err}") from err
+	def start_pty(
+		shell: str,
+		rows: int | None = DEFAULT_ROWS,
+		cols: int | None = DEFAULT_COLUMNS,
+		cwd: str | None = None,
+		env: dict[str, str] | None = None,
+	) -> tuple[int, Callable, Callable, Callable, Callable]:
+		rows = rows or DEFAULT_ROWS
+		cols = cols or DEFAULT_COLUMNS
+
+		logger.info("Starting new pty with shell %r, rows %r, cols %r, cwd %r", shell, rows, cols, cwd)
+		try:
+			# Import of winpty may sometimes fail because of problems with the needed dll.
+			# Therefore we do not import at toplevel
+			from winpty import PtyProcess  # type: ignore[import]
+
+			process = PtyProcess.spawn(shlex.split(shell), dimensions=(rows, cols), env=env, cwd=cwd)
+		except Exception as err:
+			raise RuntimeError(f"Failed to start pty with shell {shell!r}: {err}") from err
+
+		def read(length: int) -> bytes:
+			return process.read(length).encode("utf-8")
+
+		def write(data: bytes) -> int:
+			return process.write(data.decode("utf-8"))
+
+		return (process.pid, read, write, process.setwinsize, process.close)
+else:
+
+	def start_pty(
+		shell: str,
+		rows: int | None = DEFAULT_ROWS,
+		cols: int | None = DEFAULT_COLUMNS,
+		cwd: str | None = None,
+		env: dict[str, str] | None = None,
+	) -> tuple[int, Callable, Callable, Callable, Callable]:
+		rows = rows or DEFAULT_ROWS
+		cols = cols or DEFAULT_COLUMNS
+
+		logger.info("Starting new pty with shell %r, rows %r, cols %r, cwd %r", shell, rows, cols, cwd)
+
+		from ptyprocess import PtyProcess  # type: ignore[import]
+
+		from opsicommon.system.posix.subprocess import get_subprocess_environment
+
+		env = get_subprocess_environment(env)
+		env.update({"TERM": "xterm-256color"})
+		try:
+			proc = PtyProcess.spawn(shlex.split(shell), dimensions=(rows, cols), env=env, cwd=cwd)
+		except Exception as err:
+			raise RuntimeError(f"Failed to start pty with shell {shell!r}: {err}") from err
+		return (proc.pid, proc.read, proc.write, proc.setwinsize, proc.terminate)
 
 
 class Terminal:
-	default_rows = 30
+	default_rows = DEFAULT_ROWS
+	default_cols = DEFAULT_COLUMNS
 	max_rows = 100
-	default_cols = 120
 	max_cols = 300
 	idle_timeout = 8 * 3600
+	read_timeout = 5
 
 	def __init__(
 		self,
@@ -75,11 +117,17 @@ class Terminal:
 		self._sender = sender
 		self._terminal_open_request = terminal_open_request
 		self._back_channel = back_channel or CONNECTION_SESSION_CHANNEL
-		self._default_shell = default_shell
+		self._default_shell = "cmd.exe" if is_windows() else "bash"
+		if default_shell:
+			self._default_shell = default_shell
 		self._loop = get_running_loop()
 		self._last_usage = time()
 		self._cwd = str(Path.home())
-		self._pty: spawn | None = None
+		self._pty_pid: int | None = None
+		self._pty_read: Callable | None = None
+		self._pty_write: Callable | None = None
+		self._pty_set_size: Callable | None = None
+		self._pty_stop: Callable | None = None
 		self._closing = False
 		self._pty_reader_task: Task | None = None
 		self._set_size(terminal_open_request.rows, terminal_open_request.cols)
@@ -92,7 +140,13 @@ class Terminal:
 		shell = self._terminal_open_request.shell or self._default_shell
 		if not shell:
 			raise RuntimeError("No shell specified")
-		self._pty = await self._loop.run_in_executor(
+		(
+			self._pty_pid,
+			self._pty_read,
+			self._pty_write,
+			self._pty_set_size,
+			self._pty_stop,
+		) = await self._loop.run_in_executor(
 			None,
 			start_pty,
 			shell,
@@ -115,14 +169,14 @@ class Terminal:
 
 	async def set_size(self, rows: int | None = None, cols: int | None = None) -> None:
 		self._set_size(rows, cols)
-		if self._pty:
-			await self._loop.run_in_executor(None, self._pty.setwinsize, self.rows, self.cols)
+		if self._pty_set_size:
+			await self._loop.run_in_executor(None, self._pty_set_size, self.rows, self.cols)
 
 	def get_cwd(self) -> Path | None:
-		if not self._pty:
+		if not self._pty_pid:
 			return None
 		try:
-			proc = Process(self._pty.pid)
+			proc = Process(self._pty_pid)
 		except (NoSuchProcess, ValueError):
 			return None
 
@@ -137,38 +191,41 @@ class Terminal:
 
 	async def _pty_reader(self) -> None:
 		pty_reader_block_size = PTY_READER_BLOCK_SIZE
+		read_timeout = self.read_timeout
 		try:
-			while self._pty and not self._closing:
+			while self._pty_read and not self._closing:
+				logger.trace("Read from pty")
+				future = self._loop.run_in_executor(None, self._pty_read, pty_reader_block_size)
 				try:
-					logger.trace("Read from pty")
-					data = await self._loop.run_in_executor(None, self._pty.read_nonblocking, pty_reader_block_size, 1.0)
-					logger.trace(data)
-					self._last_usage = time()
-					message = TerminalDataReadMessage(
-						sender=self._sender, channel=self._response_channel, terminal_id=self.terminal_id, data=data
-					)
-					await self._send_message(message)
-				except TIMEOUT:
-					if time() > self._last_usage + self.idle_timeout:
-						logger.notice("Terminal %r timed out", self.terminal_id)
-						await self.close()
-		except EOF:
-			# shell exit
+					data = await wait_for(future, read_timeout)
+				except TimeoutError:
+					if time() - self._last_usage > self.idle_timeout:
+						raise
+					continue
+				if not data:
+					raise EOFError("EOF (no data)")
+				logger.trace(data)
+				if self._closing:
+					break
+				self._last_usage = time()
+				message = TerminalDataReadMessage(
+					sender=self._sender, channel=self._response_channel, terminal_id=self.terminal_id, data=data
+				)
+				await self._send_message(message)
+		except TimeoutError:
+			logger.info("Terminal timed out")
+			await self.close()
+		except (IOError, EOFError):
 			await self.close()
 		except Exception as err:
 			logger.error(err, exc_info=True)
 			await self.close()
 
-	def _pty_write(self, data: bytes) -> None:
-		if self._closing or not self._pty:
-			return
-		self._pty.write(data)
-		self._pty.flush()
-
 	async def process_message(self, message: TerminalDataWriteMessage | TerminalResizeRequestMessage | TerminalCloseRequestMessage) -> None:
 		if isinstance(message, TerminalDataWriteMessage):
-			# Do not wait for completion to minimize rtt
-			self._loop.run_in_executor(None, self._pty_write, message.data)
+			if not self._closing and self._pty_write:
+				# Do not wait for completion to minimize rtt
+				self._loop.run_in_executor(None, self._pty_write, message.data)
 		elif isinstance(message, TerminalResizeRequestMessage):
 			await self.set_size(message.rows, message.cols)
 			res_message = TerminalResizeEventMessage(
@@ -201,12 +258,18 @@ class Terminal:
 				await self._send_message(res_message)
 			if self.terminal_id in terminals:
 				del terminals[self.terminal_id]
-			if self._pty:
-				self._pty.close(True)
+			if self._pty_stop:
+				self._pty_stop()
 			if self._pty_reader_task:
 				self._pty_reader_task.cancel()
 		except Exception as err:
 			logger.error(err, exc_info=True)
+		finally:
+			self._pty_pid = None
+			self._pty_read = None
+			self._pty_write = None
+			self._pty_set_size = None
+			self._pty_stop = None
 
 
 async def process_messagebus_message(

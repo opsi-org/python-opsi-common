@@ -11,6 +11,7 @@ import asyncio
 import time
 import uuid
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -35,39 +36,47 @@ def test_start_pty_params(tmp_path: Path) -> None:
 	cols = 150
 	rows = 20
 	env = {"TEST": "test"}
-	pty = start_pty(shell="/bin/bash", rows=rows, cols=cols, cwd=str_path, env=env)
+	(
+		pty_pid,
+		pty_read,
+		pty_write,
+		pty_set_size,
+		pty_stop,
+	) = start_pty(shell="/bin/bash", rows=rows, cols=cols, cwd=str_path, env=env)
+	assert pty_pid > 0
+
 	time.sleep(2)
-	data = pty.read_nonblocking(size=4096, timeout=3)
+	data = pty_read(size=4096)
 	print("read:", data)
 	lines = data.decode("utf-8").split("\r\n")
 
-	pty.write("pwd\r\n".encode("utf-8"))
-	pty.flush()
+	pty_write("pwd\r\n".encode("utf-8"))
 	time.sleep(2)
-	data = pty.read_nonblocking(size=4096, timeout=3)
+	data = pty_read(size=4096)
 	print("read:", data)
 	lines = data.decode("utf-8").split("\r\n")
 	assert lines[0] == "pwd"
 	assert lines[1] == str_path
 
-	pty.write("env\r\n".encode("utf-8"))
-	pty.flush()
+	pty_write("env\r\n".encode("utf-8"))
 	time.sleep(2)
-	data = pty.read_nonblocking(size=4096, timeout=3)
+	data = pty_read(size=4096)
 	print("read:", data)
 	lines = data.decode("utf-8").split("\r\n")
 	assert lines[0] == "env"
 	assert "TEST=test" in lines
 	assert "TERM=xterm-256color" in lines
 
-	pty.write("stty size\r\n".encode("utf-8"))
-	pty.flush()
+	pty_write("stty size\r\n".encode("utf-8"))
 	time.sleep(2)
-	data = pty.read_nonblocking(size=4096, timeout=3)
+	data = pty_read(size=4096)
 	print("read:", data)
 	lines = data.decode("utf-8").split("\r\n")
 	assert lines[0] == "stty size"
 	assert lines[1] == f"{rows} {cols}"
+
+	pty_set_size(20, 100)
+	pty_stop()
 
 
 def test_start_pty_fail() -> None:
@@ -80,13 +89,14 @@ async def test_terminal_params() -> None:
 	rows = 25
 	terminal_id = str(uuid.uuid4())
 	sender = "service_worker:pytest:1"
+	shell = "/bin/bash" if not is_windows() else "cmd.exe"
 
 	assert not terminals
 
 	message_sender = MessageSender()
 
 	terminal_open_request = TerminalOpenRequestMessage(
-		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, shell="/bin/bash", rows=rows, cols=cols
+		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, shell=shell, rows=rows, cols=cols
 	)
 	await process_messagebus_message(message=terminal_open_request, send_message=message_sender.send_message, sender=sender)
 
@@ -133,7 +143,7 @@ async def test_terminal_params() -> None:
 	cols = 160
 	rows = 30
 	terminal_open_request = TerminalOpenRequestMessage(
-		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, shell="/bin/bash", rows=rows, cols=cols
+		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, shell=shell, rows=rows, cols=cols
 	)
 	await process_messagebus_message(message=terminal_open_request, send_message=message_sender.send_message, sender=sender)
 
@@ -166,10 +176,29 @@ async def test_terminal_params() -> None:
 	assert messages[0].terminal_id == terminal_id
 
 
+async def test_terminal_timeout() -> None:
+	terminal_id = str(uuid.uuid4())
+	sender = "service_worker:pytest:1"
+
+	assert not terminals
+
+	message_sender = MessageSender()
+
+	terminal_open_request = TerminalOpenRequestMessage(
+		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id
+	)
+	with patch("opsicommon.messagebus.terminal.Terminal.read_timeout", 1), patch("opsicommon.messagebus.terminal.Terminal.idle_timeout", 3):
+		await process_messagebus_message(message=terminal_open_request, send_message=message_sender.send_message, sender=sender)
+		await message_sender.wait_for_messages(count=2)
+		await asyncio.sleep(4)
+		messages = await message_sender.wait_for_messages(count=1)
+		assert isinstance(messages[0], TerminalCloseEventMessage)
+
+
 async def test_terminal_fail() -> None:
 	terminal_id = str(uuid.uuid4())
 
-	message_sender = MessageSender()
+	message_sender = MessageSender(print_messages=True)
 
 	terminal_open_request = TerminalOpenRequestMessage(
 		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, shell="/fail/shell"

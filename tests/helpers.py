@@ -34,10 +34,13 @@ def environment(**env_vars: str) -> Generator[None, None, None]:
 
 
 class MessageSender:
-	def __init__(self) -> None:
+	def __init__(self, print_messages: bool = False) -> None:
+		self.print_messages = print_messages
 		self.messages_sent: list[Message] = []
 
 	async def send_message(self, message: Message) -> None:
+		if self.print_messages:
+			print(message.to_dict())
 		self.messages_sent.append(message)
 
 	async def wait_for_messages(
