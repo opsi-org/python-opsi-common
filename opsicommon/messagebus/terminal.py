@@ -8,7 +8,6 @@ This file is part of opsi - https://www.opsi.org
 
 from __future__ import annotations
 
-import os
 import shlex
 from asyncio import Task, get_running_loop, wait_for
 from pathlib import Path
@@ -73,7 +72,7 @@ if is_windows():
 			process.close()
 			try:
 				# Help _read_in_thread to terminate
-				process.pty.set_size(1,1)
+				process.pty.set_size(1, 1)
 			except Exception:
 				pass
 
