@@ -27,7 +27,7 @@ from opsicommon.messagebus.message import (
 	TerminalOpenRequestMessage,
 )
 from opsicommon.messagebus.terminal import Terminal, process_messagebus_message, start_pty, stop_running_terminals, terminals
-from opsicommon.system.info import is_posix, is_windows, is_macos
+from opsicommon.system.info import is_macos, is_posix, is_windows
 
 from .helpers import MessageSender
 
@@ -50,14 +50,14 @@ def test_start_pty_params(tmp_path: Path) -> None:
 	time.sleep(2)
 	data = pty_read(4096)
 	print("read:", data)
-	lines = [l.strip() for l in data.decode("utf-8").split("\n")]
+	lines = [line.strip() for line in data.decode("utf-8").split("\n")]
 
 	command = "cd" if is_windows() else "pwd"
 	pty_write(f"{command}\r\n".encode("utf-8"))
 	time.sleep(2)
 	data = pty_read(4096)
 	print("read:", data)
-	lines = [l.strip() for l in data.decode("utf-8").split("\n")]
+	lines = [line.strip() for line in data.decode("utf-8").split("\n")]
 	assert lines[0] == command
 	assert lines[1].strip().endswith(str_path)
 
@@ -66,7 +66,10 @@ def test_start_pty_params(tmp_path: Path) -> None:
 	time.sleep(2)
 	data = pty_read(4096)
 	print("read:", data)
-	lines = [l.strip() for l in data.decode("utf-8").split("\n")]
+	lines = [line.strip() for line in data.decode("utf-8").split("\n")]
+	print("--------------------------------------")
+	for line in lines:
+		print(f">{line}<")
 	assert lines[0] == command
 	assert "TEST=test" in lines
 	if is_posix():
@@ -77,7 +80,7 @@ def test_start_pty_params(tmp_path: Path) -> None:
 		time.sleep(2)
 		data = pty_read(4096)
 		print("read:", data)
-		lines = [l.strip() for l in data.decode("utf-8").split("\n")]
+		lines = [line.strip() for line in data.decode("utf-8").split("\n")]
 		assert lines[0] == "stty size"
 		assert lines[1] == f"{rows} {cols}"
 
