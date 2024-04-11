@@ -8,11 +8,12 @@ messagebus.terminal tests
 
 
 import asyncio
+import os
 import time
 import uuid
 from pathlib import Path
 from unittest.mock import patch
-import os
+
 import pytest
 
 from opsicommon.messagebus.message import (
@@ -26,7 +27,7 @@ from opsicommon.messagebus.message import (
 	TerminalOpenRequestMessage,
 )
 from opsicommon.messagebus.terminal import Terminal, process_messagebus_message, start_pty, stop_running_terminals, terminals
-from opsicommon.system.info import is_windows, is_posix
+from opsicommon.system.info import is_posix, is_windows
 
 from .helpers import MessageSender
 
@@ -36,8 +37,7 @@ def test_start_pty_params(tmp_path: Path) -> None:
 	cols = 150
 	rows = 20
 
-	env = dict(os.environ)
-	env["TEST"] = "test"
+	env = {"PATH": os.environ["PATH"], "TEST": "test"}
 	(
 		pty_pid,
 		pty_read,
@@ -68,6 +68,8 @@ def test_start_pty_params(tmp_path: Path) -> None:
 	print("read:", data)
 	lines = data.decode("utf-8").split("\r\n")
 	assert lines[0] == command
+	for line in lines:
+		print(line)
 	assert "TEST=test" in lines
 	if is_posix():
 		assert "TERM=xterm-256color" in lines

@@ -35,7 +35,6 @@ from opsicommon.system.info import is_windows
 
 DEFAULT_ROWS = 30
 DEFAULT_COLUMNS = 120
-PTY_READER_BLOCK_SIZE = 16 * 1024
 
 terminals: dict[str, Terminal] = {}
 terminals_lock = Lock()
@@ -89,7 +88,8 @@ else:
 		from opsicommon.system.posix.subprocess import get_subprocess_environment
 
 		env = get_subprocess_environment(env)
-		env.update({"TERM": "xterm-256color"})
+		if "TERM" not in env:
+			env["TERM"] = "xterm-256color"
 		try:
 			proc = PtyProcess.spawn(shlex.split(shell), dimensions=(rows, cols), env=env, cwd=cwd)
 		except Exception as err:
@@ -100,6 +100,7 @@ else:
 class Terminal:
 	default_rows = DEFAULT_ROWS
 	default_cols = DEFAULT_COLUMNS
+	pty_reader_block_size = 16 * 1024
 	max_rows = 100
 	max_cols = 300
 	idle_timeout = 8 * 3600
@@ -190,7 +191,7 @@ class Terminal:
 		return Path(cwd)
 
 	async def _pty_reader(self) -> None:
-		pty_reader_block_size = PTY_READER_BLOCK_SIZE
+		pty_reader_block_size = self.pty_reader_block_size
 		read_timeout = self.read_timeout
 		try:
 			while self._pty_read and not self._closing:
