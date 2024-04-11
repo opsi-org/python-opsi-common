@@ -8,6 +8,7 @@ This file is part of opsi - https://www.opsi.org
 
 from __future__ import annotations
 
+import os
 import shlex
 from asyncio import Task, get_running_loop, wait_for
 from pathlib import Path
@@ -68,7 +69,15 @@ if is_windows():
 		def write(data: bytes) -> int:
 			return process.write(data.decode("utf-8"))
 
-		return (process.pid, read, write, process.setwinsize, process.close)
+		def close() -> None:
+			process.close()
+			try:
+				# Help _read_in_thread to terminate
+				process.pty.set_size(1,1)
+			except Exception:
+				pass
+
+		return (process.pid, read, write, process.setwinsize, close)
 else:
 
 	def start_pty(
@@ -260,7 +269,7 @@ class Terminal:
 			if self.terminal_id in terminals:
 				del terminals[self.terminal_id]
 			if self._pty_stop:
-				self._pty_stop()
+				await self._loop.run_in_executor(None, self._pty_stop)
 			if self._pty_reader_task:
 				self._pty_reader_task.cancel()
 		except Exception as err:

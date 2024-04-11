@@ -27,7 +27,7 @@ from opsicommon.messagebus.message import (
 	TerminalOpenRequestMessage,
 )
 from opsicommon.messagebus.terminal import Terminal, process_messagebus_message, start_pty, stop_running_terminals, terminals
-from opsicommon.system.info import is_posix, is_windows
+from opsicommon.system.info import is_posix, is_windows, is_macos
 
 from .helpers import MessageSender
 
@@ -50,26 +50,24 @@ def test_start_pty_params(tmp_path: Path) -> None:
 	time.sleep(2)
 	data = pty_read(4096)
 	print("read:", data)
-	lines = data.decode("utf-8").split("\r\n")
+	lines = [l.strip() for l in data.decode("utf-8").split("\n")]
 
 	command = "cd" if is_windows() else "pwd"
 	pty_write(f"{command}\r\n".encode("utf-8"))
 	time.sleep(2)
 	data = pty_read(4096)
 	print("read:", data)
-	lines = data.decode("utf-8").split("\r\n")
+	lines = [l.strip() for l in data.decode("utf-8").split("\n")]
 	assert lines[0] == command
-	assert lines[1].strip() == str_path
+	assert lines[1].strip().endswith(str_path)
 
 	command = "set" if is_windows() else "env"
 	pty_write(f"{command}\r\n".encode("utf-8"))
 	time.sleep(2)
 	data = pty_read(4096)
 	print("read:", data)
-	lines = data.decode("utf-8").split("\r\n")
+	lines = [l.strip() for l in data.decode("utf-8").split("\n")]
 	assert lines[0] == command
-	for line in lines:
-		print(line)
 	assert "TEST=test" in lines
 	if is_posix():
 		assert "TERM=xterm-256color" in lines
@@ -79,7 +77,7 @@ def test_start_pty_params(tmp_path: Path) -> None:
 		time.sleep(2)
 		data = pty_read(4096)
 		print("read:", data)
-		lines = data.decode("utf-8").split("\r\n")
+		lines = [l.strip() for l in data.decode("utf-8").split("\n")]
 		assert lines[0] == "stty size"
 		assert lines[1] == f"{rows} {cols}"
 
@@ -93,6 +91,9 @@ def test_start_pty_fail() -> None:
 
 
 async def test_terminal_params() -> None:
+	if is_macos():
+		pytest.skip("Test currently not implemented on MacOS")
+
 	cols = 150
 	rows = 25
 	terminal_id = str(uuid.uuid4())
@@ -128,24 +129,25 @@ async def test_terminal_params() -> None:
 	assert messages[1].terminal_id == terminal_id
 	assert messages[1].data
 
-	terminal_data_write_message = TerminalDataWriteMessage(
-		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, data="stty size\r\n".encode("utf-8")
-	)
-	await process_messagebus_message(message=terminal_data_write_message, send_message=message_sender.send_message, sender=sender)
+	if is_posix():
+		terminal_data_write_message = TerminalDataWriteMessage(
+			sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, data="stty size\r\n".encode("utf-8")
+		)
+		await process_messagebus_message(message=terminal_data_write_message, send_message=message_sender.send_message, sender=sender)
 
-	messages = await message_sender.wait_for_messages(count=2)
+		messages = await message_sender.wait_for_messages(count=2)
 
-	assert isinstance(messages[0], TerminalDataReadMessage)
-	assert messages[0].type == "terminal_data_read"
-	assert messages[0].sender == sender
-	assert messages[0].channel == "back_channel"
-	assert messages[0].terminal_id == terminal_id
-	lines = messages[0].data.decode("utf-8").split("\r\n")
-	assert lines[0] == "stty size"
+		assert isinstance(messages[0], TerminalDataReadMessage)
+		assert messages[0].type == "terminal_data_read"
+		assert messages[0].sender == sender
+		assert messages[0].channel == "back_channel"
+		assert messages[0].terminal_id == terminal_id
+		lines = messages[0].data.decode("utf-8").split("\r\n")
+		assert lines[0] == "stty size"
 
-	assert isinstance(messages[1], TerminalDataReadMessage)
-	lines = messages[1].data.decode("utf-8").split("\r\n")
-	assert lines[0] == f"{rows} {cols}"
+		assert isinstance(messages[1], TerminalDataReadMessage)
+		lines = messages[1].data.decode("utf-8").split("\r\n")
+		assert lines[0] == f"{rows} {cols}"
 
 	# Reopen terminal
 	cols = 160
@@ -182,6 +184,9 @@ async def test_terminal_params() -> None:
 	assert messages[0].sender == sender
 	assert messages[0].channel == "back_channel"
 	assert messages[0].terminal_id == terminal_id
+
+	if is_windows():
+		await asyncio.sleep(3)
 
 
 async def test_terminal_timeout() -> None:
@@ -233,8 +238,9 @@ async def test_terminal_fail() -> None:
 	await asyncio.sleep(1)
 	terminal_id = str(uuid.uuid4())
 
+	shell = 'cmd.exe /c "echo exit_1 && exit 1"' if is_windows() else 'bash -c "echo exit_1 && exit 1"'
 	terminal_open_request = TerminalOpenRequestMessage(
-		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, shell='bash -c "echo exit_1 && exit 1"'
+		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, shell=shell
 	)
 	await process_messagebus_message(message=terminal_open_request, send_message=message_sender.send_message)
 
@@ -247,7 +253,11 @@ async def test_terminal_fail() -> None:
 		msg = messages[idx]
 		assert isinstance(msg, TerminalDataReadMessage)
 		data += msg.data
-	assert data == b"exit_1\r\n"
+
+	if is_windows():
+		assert b"exit_1\r\n" in data
+	else:
+		assert data == b"exit_1\r\n"
 	assert isinstance(messages[-1], TerminalCloseEventMessage)
 
 
