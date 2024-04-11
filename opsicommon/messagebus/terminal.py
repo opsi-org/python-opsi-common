@@ -10,9 +10,7 @@ from __future__ import annotations
 
 import os
 from asyncio import Task, get_running_loop
-from os import getuid
 from pathlib import Path
-from pwd import getpwuid
 from threading import Lock
 from time import time
 from typing import Callable
@@ -80,7 +78,7 @@ class Terminal:
 		self._default_shell = default_shell
 		self._loop = get_running_loop()
 		self._last_usage = time()
-		self._cwd = getpwuid(getuid()).pw_dir
+		self._cwd = str(Path.home())
 		self._pty: spawn | None = None
 		self._closing = False
 		self._pty_reader_task: Task | None = None
