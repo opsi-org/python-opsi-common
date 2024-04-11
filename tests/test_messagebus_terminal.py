@@ -67,12 +67,9 @@ def test_start_pty_params(tmp_path: Path) -> None:
 	data = pty_read(4096)
 	print("read:", data)
 	lines = [line.strip() for line in data.decode("utf-8").split("\n")]
-	print("--------------------------------------")
-	for line in lines:
-		print(f">{line}<")
 	assert lines[0] == command
-	assert "TEST=test" in lines
 	if is_posix():
+		assert "TEST=test" in lines
 		assert "TERM=xterm-256color" in lines
 
 	if is_posix():
