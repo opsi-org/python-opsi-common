@@ -68,7 +68,7 @@ class Process:
 		self._sender = sender
 		self._process_start_request = process_start_request
 		self._back_channel = back_channel or CONNECTION_SESSION_CHANNEL
-		self._loop = asyncio.get_event_loop()
+		self._loop = asyncio.get_running_loop()
 
 	def __repr__(self) -> str:
 		return f"Process(command={self._command}, id={self._process_id}, shell={self._process_start_request.shell})"

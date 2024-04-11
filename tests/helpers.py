@@ -40,11 +40,15 @@ class MessageSender:
 	async def send_message(self, message: Message) -> None:
 		self.messages_sent.append(message)
 
-	async def wait_for_messages(self, count: int, timeout: float = 10.0, clear_messages: bool = True) -> list[Message]:
+	async def wait_for_messages(
+		self, count: int, timeout: float = 10.0, clear_messages: bool = True, error_on_timeout: bool = True
+	) -> list[Message]:
 		start = time.time()
 		while len(self.messages_sent) < count:
 			if time.time() - start > timeout:
-				raise TimeoutError(f"Timeout waiting for {count} messages")
+				if error_on_timeout:
+					raise TimeoutError(f"Timeout waiting for {count} messages")
+				break
 			await asyncio.sleep(0.1)
 		if not clear_messages:
 			return self.messages_sent

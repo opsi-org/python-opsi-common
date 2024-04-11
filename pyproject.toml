@@ -47,6 +47,7 @@ pyzsync = ">=1.2"
 tomlkit = "^0.12"
 pydantic = "^2.5"
 cryptography = "^42.0"
+pexpect = "^4.9.0"
 
 [tool.ruff.format]
 indent-style = "tab"
