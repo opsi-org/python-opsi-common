@@ -1427,6 +1427,22 @@ url = "http://pypi.uib.gmbh:8080/simple"
 reference = "uibpypi"
 
 [[package]]
+name = "ptyprocess"
+version = "0.7.0"
+description = "Run a subprocess in a pseudo terminal"
+optional = false
+python-versions = "*"
+files = [
+    {file = "ptyprocess-0.7.0-py2.py3-none-any.whl", hash = "sha256:4b41f3967fce3af57cc7e94b888626c18bf37a083e3651ca8feeb66d492fef35"},
+    {file = "ptyprocess-0.7.0.tar.gz", hash = "sha256:5c5d0a3b48ceee0b48485e0c26037c0acd7d29765ca3fbb5cb3831d347423220"},
+]
+
+[package.source]
+type = "legacy"
+url = "http://pypi.uib.gmbh:8080/simple"
+reference = "uibpypi"
+
+[[package]]
 name = "pycparser"
 version = "2.22"
 description = "C parser in Python"
@@ -2816,4 +2832,4 @@ reference = "uibpypi"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "3bd03b57304c55397cc5c25216da6147f3f1d009405744456b6b032a193cdbac"
+content-hash = "4f91f5bd8e5da1dae2d34ef9c4275cfcd161d4dc64a94652e0af2b696c36de33"
