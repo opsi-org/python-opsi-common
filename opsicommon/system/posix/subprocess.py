@@ -16,7 +16,7 @@ LD_LIBRARY_EXCLUDE_LIST = ["/usr/lib/opsiclientd"]
 logger = get_logger()
 
 
-def get_subprocess_environment(env: dict = None):
+def get_subprocess_environment(env: dict[str, str] | None = None) -> dict[str, str]:
 	if env is None:
 		env = os.environ.copy()
 
