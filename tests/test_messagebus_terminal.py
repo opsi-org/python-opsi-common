@@ -12,7 +12,7 @@ import time
 import uuid
 from pathlib import Path
 from unittest.mock import patch
-
+import os
 import pytest
 
 from opsicommon.messagebus.message import (
@@ -26,7 +26,7 @@ from opsicommon.messagebus.message import (
 	TerminalOpenRequestMessage,
 )
 from opsicommon.messagebus.terminal import Terminal, process_messagebus_message, start_pty, stop_running_terminals, terminals
-from opsicommon.system.info import is_windows
+from opsicommon.system.info import is_windows, is_posix
 
 from .helpers import MessageSender
 
@@ -35,45 +35,51 @@ def test_start_pty_params(tmp_path: Path) -> None:
 	str_path = str(tmp_path)
 	cols = 150
 	rows = 20
-	env = {"TEST": "test"}
+
+	env = dict(os.environ)
+	env["TEST"] = "test"
 	(
 		pty_pid,
 		pty_read,
 		pty_write,
 		pty_set_size,
 		pty_stop,
-	) = start_pty(shell="/bin/bash", rows=rows, cols=cols, cwd=str_path, env=env)
+	) = start_pty(shell="cmd.exe" if is_windows() else "bash", rows=rows, cols=cols, cwd=str_path, env=env)
 	assert pty_pid > 0
 
 	time.sleep(2)
-	data = pty_read(size=4096)
+	data = pty_read(4096)
 	print("read:", data)
 	lines = data.decode("utf-8").split("\r\n")
 
-	pty_write("pwd\r\n".encode("utf-8"))
+	command = "cd" if is_windows() else "pwd"
+	pty_write(f"{command}\r\n".encode("utf-8"))
 	time.sleep(2)
-	data = pty_read(size=4096)
+	data = pty_read(4096)
 	print("read:", data)
 	lines = data.decode("utf-8").split("\r\n")
-	assert lines[0] == "pwd"
-	assert lines[1] == str_path
+	assert lines[0] == command
+	assert lines[1].strip() == str_path
 
-	pty_write("env\r\n".encode("utf-8"))
+	command = "set" if is_windows() else "env"
+	pty_write(f"{command}\r\n".encode("utf-8"))
 	time.sleep(2)
-	data = pty_read(size=4096)
+	data = pty_read(4096)
 	print("read:", data)
 	lines = data.decode("utf-8").split("\r\n")
-	assert lines[0] == "env"
+	assert lines[0] == command
 	assert "TEST=test" in lines
-	assert "TERM=xterm-256color" in lines
+	if is_posix():
+		assert "TERM=xterm-256color" in lines
 
-	pty_write("stty size\r\n".encode("utf-8"))
-	time.sleep(2)
-	data = pty_read(size=4096)
-	print("read:", data)
-	lines = data.decode("utf-8").split("\r\n")
-	assert lines[0] == "stty size"
-	assert lines[1] == f"{rows} {cols}"
+	if is_posix():
+		pty_write("stty size\r\n".encode("utf-8"))
+		time.sleep(2)
+		data = pty_read(4096)
+		print("read:", data)
+		lines = data.decode("utf-8").split("\r\n")
+		assert lines[0] == "stty size"
+		assert lines[1] == f"{rows} {cols}"
 
 	pty_set_size(20, 100)
 	pty_stop()
