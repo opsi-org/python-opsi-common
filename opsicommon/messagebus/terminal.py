@@ -258,7 +258,7 @@ class Terminal:
 		except TimeoutError as err:
 			logger.info("Terminal timed out: %s", err)
 		except (IOError, EOFError) as err:
-			logger.info("Terminal IO error: %s", err)
+			logger.debug("Terminal IO error: %s", err)
 			if not self._closing:
 				await self.close()
 		except Exception as err:
