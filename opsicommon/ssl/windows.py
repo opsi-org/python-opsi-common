@@ -14,13 +14,13 @@ from typing import Any, Generator
 import pywintypes  # type: ignore[import]
 import win32crypt  # type: ignore[import]
 from cryptography import x509
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 
 from opsicommon.logging import get_logger
 
 crypt32 = ctypes.WinDLL("crypt32.dll")  # type: ignore[attr-defined]
 
-__all__ = ("install_ca", "load_ca", "remove_ca")
+__all__ = ("install_ca", "load_cas", "load_ca", "remove_ca")
 
 # lpszStoreProvider
 CERT_STORE_PROV_SYSTEM = 0x0000000A
@@ -50,6 +50,7 @@ CERT_STORE_ADD_NEWER_INHERIT_PROPERTIES = 7
 
 CERT_FIND_SUBJECT_STR = 0x00080007
 CERT_FIND_SUBJECT_NAME = 0x00020007
+CERT_FIND_SHA1_HASH = 0x10000
 CERT_NAME_SIMPLE_DISPLAY_TYPE = 4
 CERT_NAME_FRIENDLY_DISPLAY_TYPE = 5
 
@@ -108,7 +109,7 @@ def install_ca(ca_cert: x509.Certificate) -> None:
 		)
 
 
-def load_ca(subject_name: str) -> x509.Certificate | None:
+def load_cas(subject_name: str) -> Generator[x509.Certificate, None, None]:
 	store_name = "Root"
 	logger.debug("Trying to find %s in certificate store", subject_name)
 	with _open_cert_store(store_name, force_close=False) as store:
@@ -121,43 +122,47 @@ def load_ca(subject_name: str) -> x509.Certificate | None:
 				continue
 			if not isinstance(common_name, str):
 				common_name = common_name.decode("utf-8")
-			logger.trace("checking certificate %s", common_name)
+			logger.trace("Checking certificate %s", common_name)
 			if common_name == subject_name:
-				logger.debug("Found matching ca %s", subject_name)
-				return ca_cert
-	logger.debug("Did not find ca")
-	return None
+				logger.debug("Found matching CA %s", subject_name)
+				yield ca_cert
 
 
-def remove_ca(subject_name: str) -> bool:
+def load_ca(subject_name: str) -> x509.Certificate | None:
+	try:
+		return next(load_cas(subject_name))
+	except StopIteration:
+		logger.notice("Did not find CA %r", subject_name)
+		return None
+
+
+def remove_ca(subject_name: str, sha1_fingerprint: str | None = None) -> bool:
+	if sha1_fingerprint:
+		sha1_fingerprint = sha1_fingerprint.upper()
+
 	store_name = "Root"
 	removed = 0
-	with _open_cert_store(store_name, ctype=True) as store:
-		while True:
-			p_cert_ctx = crypt32.CertFindCertificateInStore(
-				store,
-				X509_ASN_ENCODING,
-				0,
-				CERT_FIND_SUBJECT_STR,  # Searches for a certificate that contains the specified subject name string
-				subject_name,
-				None,
-			)
-			if p_cert_ctx == 0:
-				break
-
-			cbsize = crypt32.CertGetNameStringW(p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, None, 0)
-			buf = ctypes.create_unicode_buffer(cbsize)
-			cbsize = crypt32.CertGetNameStringW(p_cert_ctx, CERT_NAME_FRIENDLY_DISPLAY_TYPE, 0, None, buf, cbsize)
-			logger.info("Removing CA '%s' (%s) from '%s' store", subject_name, buf.value, store_name)
-			crypt32.CertDeleteCertificateFromStore(p_cert_ctx)
-			crypt32.CertFreeCertificateContext(p_cert_ctx)
+	with _open_cert_store(store_name, force_close=False) as store:
+		for certificate in store.CertEnumCertificatesInStore():
+			ca_cert = x509.load_der_x509_certificate(data=certificate.CertEncoded)
+			try:
+				common_name = ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
+			except IndexError:
+				continue
+			if not isinstance(common_name, str):
+				common_name = common_name.decode("utf-8")
+			logger.trace("Checking certificate %s", common_name)
+			if common_name != subject_name:
+				continue
+			if sha1_fingerprint:
+				ca_fingerprint = ca_cert.fingerprint(hashes.SHA1()).hex().upper()
+				if ca_fingerprint != sha1_fingerprint:
+					continue
+			certificate.CertDeleteCertificateFromStore()
 			removed += 1
-			if removed >= 25:
-				raise RuntimeError(f"Stop loop after removing {removed} certficates")
 
 	if not removed:
-		# Cert not found
-		logger.info("CA '%s' not found in store '%s', nothing to remove", subject_name, store_name)
+		logger.info("CA '%s' (%s) not found, nothing to remove", subject_name, sha1_fingerprint)
 		return False
 
 	return True

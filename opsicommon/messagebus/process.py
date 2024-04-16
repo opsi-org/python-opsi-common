@@ -35,7 +35,7 @@ from opsicommon.messagebus.message import (
 
 processes: dict[str, Process] = {}
 processes_lock = Lock()
-logger = get_logger("opsiclientd")
+logger = get_logger()
 
 
 @lru_cache()
@@ -56,12 +56,28 @@ def get_locale_encoding(shell: bool = False) -> str:
 class Process:
 	max_data_size = 8192
 
-	def __init__(self, process_start_request: ProcessStartRequestMessage, send_message: Callable, back_channel: str | None = None) -> None:
+	def __init__(
+		self,
+		process_start_request: ProcessStartRequestMessage,
+		send_message: Callable,
+		sender: str = CONNECTION_USER_CHANNEL,
+		back_channel: str | None = None,
+	) -> None:
 		self._proc: AsyncioProcess | None = None
 		self._send_message: Callable = send_message
+		self._sender = sender
 		self._process_start_request = process_start_request
 		self._back_channel = back_channel or CONNECTION_SESSION_CHANNEL
-		self._loop = asyncio.get_event_loop()
+		self._loop = asyncio.get_running_loop()
+
+	def __repr__(self) -> str:
+		return f"Process(command={self._command}, id={self._process_id}, shell={self._process_start_request.shell})"
+
+	def __str__(self) -> str:
+		info = "running"
+		if self._proc and self._proc.returncode:
+			info = f"finished - exit code {self._proc.returncode}"
+		return f"{self._command[0]} ({info})"
 
 	@property
 	def _command(self) -> tuple[str, ...]:
@@ -75,15 +91,6 @@ class Process:
 	def _response_channel(self) -> str:
 		return self._process_start_request.response_channel
 
-	def __repr__(self) -> str:
-		return f"Process(command={self._command}, id={self._process_id}, shell={self._process_start_request.shell})"
-
-	def __str__(self) -> str:
-		info = "running"
-		if self._proc and self._proc.returncode:
-			info = f"finished - exit code {self._proc.returncode}"
-		return f"{self._command[0]} ({info})"
-
 	async def _stdout_reader(self) -> None:
 		assert self._proc and self._proc.stdout
 		while True:
@@ -91,7 +98,10 @@ class Process:
 			if not data:
 				break
 			message = ProcessDataReadMessage(
-				sender=CONNECTION_USER_CHANNEL, channel=self._response_channel, process_id=self._process_id, stdout=data
+				sender=self._sender,
+				channel=self._response_channel,
+				process_id=self._process_id,
+				stdout=data,
 			)
 			await self._send_message(message)
 
@@ -102,7 +112,10 @@ class Process:
 			if not data:
 				break
 			message = ProcessDataReadMessage(
-				sender=CONNECTION_USER_CHANNEL, channel=self._response_channel, process_id=self._process_id, stderr=data
+				sender=self._sender,
+				channel=self._response_channel,
+				process_id=self._process_id,
+				stderr=data,
 			)
 			await self._send_message(message)
 
@@ -122,17 +135,19 @@ class Process:
 		except Exception as error:
 			logger.error(error, exc_info=True)
 			message = ProcessErrorMessage(
-				sender=CONNECTION_USER_CHANNEL,
+				sender=self._sender,
 				channel=self._response_channel,
+				ref_id=self._process_start_request.id,
 				process_id=self._process_id,
 				error=Error(message=str(error)),
 			)
 			await self._send_message(message)
+			await self._loop.run_in_executor(None, remove_process, self._process_id)
 			return
 
 		locale_encoding = await self._loop.run_in_executor(None, get_locale_encoding, self._process_start_request.shell)
 		message = ProcessStartEventMessage(
-			sender=CONNECTION_USER_CHANNEL,
+			sender=self._sender,
 			channel=self._response_channel,
 			process_id=self._process_id,
 			back_channel=self._back_channel,
@@ -171,18 +186,25 @@ class Process:
 		logger.info("%r finished with exit code %d", self, exit_code)
 		try:
 			message = ProcessStopEventMessage(
-				sender=CONNECTION_USER_CHANNEL, channel=self._response_channel, process_id=self._process_id, exit_code=exit_code
+				sender=self._sender,
+				channel=self._response_channel,
+				process_id=self._process_id,
+				exit_code=exit_code,
 			)
 			await self._send_message(message)
 		except Exception as err:
 			logger.error(err, exc_info=True)
 		finally:
-			with processes_lock:
-				if self._process_id in processes:
-					del processes[self._process_id]
+			await self._loop.run_in_executor(None, remove_process, self._process_id)
 
 
-async def process_messagebus_message(message: ProcessMessage, send_message: Callable, back_channel: str | None = None) -> None:
+async def process_messagebus_message(
+	message: ProcessMessage,
+	send_message: Callable,
+	*,
+	sender: str = CONNECTION_USER_CHANNEL,
+	back_channel: str | None = None,
+) -> None:
 	with processes_lock:
 		process = processes.get(message.process_id)
 
@@ -190,9 +212,14 @@ async def process_messagebus_message(message: ProcessMessage, send_message: Call
 		if isinstance(message, ProcessStartRequestMessage):
 			if not process:
 				with processes_lock:
-					process = Process(process_start_request=message, send_message=send_message, back_channel=back_channel)
+					process = Process(
+						process_start_request=message,
+						send_message=send_message,
+						sender=sender,
+						back_channel=back_channel,
+					)
 					processes[message.process_id] = process
-					await processes[message.process_id].start()
+				await process.start()
 			else:
 				raise RuntimeError(f"Process already open: {process!r}")
 			return
@@ -211,14 +238,25 @@ async def process_messagebus_message(message: ProcessMessage, send_message: Call
 			await process.stop()
 		else:
 			msg = ProcessErrorMessage(
-				sender=CONNECTION_USER_CHANNEL,
+				sender=sender,
 				channel=message.response_channel,
+				ref_id=message.id,
 				process_id=message.process_id,
 				error=Error(message=str(err)),
 			)
 			await send_message(msg)
+			await asyncio.get_event_loop().run_in_executor(None, remove_process, message.process_id)
+
+
+def remove_process(process_id: str) -> None:
+	with processes_lock:
+		try:
+			del processes[process_id]
+		except KeyError:
+			pass
 
 
 async def stop_running_processes() -> None:
-	for process in list(processes.values()):
-		await process.stop()
+	with processes_lock:
+		for process in list(processes.values()):
+			await process.stop()

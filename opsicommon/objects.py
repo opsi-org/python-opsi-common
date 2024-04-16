@@ -16,7 +16,7 @@ from datetime import date, datetime
 from functools import lru_cache
 from inspect import getfullargspec
 from types import GeneratorType
-from typing import Any, Callable, Generator, Type, TypeVar
+from typing import Any, Callable, Generator, Self, Type, TypeVar
 
 import msgspec
 
@@ -159,6 +159,9 @@ class BaseObject:
 	@classproperty
 	def backendMethodPrefix(cls) -> str:
 		return cls.backend_method_prefix
+
+	def clone(self, identOnly: bool = False) -> Self:
+		raise NotImplementedError("Method clone not implemented")
 
 	def getBackendMethodPrefix(self) -> str:
 		return self.backend_method_prefix
@@ -432,7 +435,7 @@ class Entity(BaseObject):
 	def setDefaults(self) -> None:
 		BaseObject.setDefaults(self)
 
-	def clone(self, identOnly: bool = False) -> Any:
+	def clone(self, identOnly: bool = False) -> Self:
 		_hash = {}
 
 		if identOnly:
@@ -456,7 +459,7 @@ class Relationship(BaseObject):
 	def setDefaults(self) -> None:
 		BaseObject.setDefaults(self)
 
-	def clone(self, identOnly: bool = False) -> Any:
+	def clone(self, identOnly: bool = False) -> Self:
 		_hash = {}
 		if identOnly:
 			ident_attributes = self.getIdentAttributes()

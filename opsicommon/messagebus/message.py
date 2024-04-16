@@ -10,12 +10,13 @@ from __future__ import annotations
 
 from abc import ABC
 from enum import StrEnum
-from time import time
 from typing import Annotated, Any, Type, TypeVar, cast
 from uuid import uuid4
 
 import msgspec
 from pydantic import AfterValidator, AliasChoices, BaseModel, Field, StringConstraints
+
+from opsicommon.utils import unix_timestamp
 
 message_decoder = msgspec.msgpack.Decoder()
 message_encoder = msgspec.msgpack.Encoder()
@@ -49,8 +50,9 @@ class MessageType(StrEnum):
 	PROCESS_STOP_EVENT = "process_stop_event"
 	PROCESS_DATA_READ = "process_data_read"
 	PROCESS_DATA_WRITE = "process_data_write"
-	FILE_ERROR = "file_error"
+	FILE_TRANSFER_ERROR = "file_transfer_error"
 	FILE_UPLOAD_REQUEST = "file_upload_request"
+	FILE_UPLOAD_RESPONSE = "file_upload_response"
 	FILE_UPLOAD_RESULT = "file_upload_result"
 	FILE_DOWNLOAD_REQUEST = "file_download_request"
 	FILE_DOWNLOAD_INFORMATION = "file_download_information"
@@ -67,8 +69,12 @@ class ErrorCode(StrEnum):
 MessageErrorEnum = ErrorCode
 
 
-def timestamp() -> int:
-	return int(time() * 1000)
+def timestamp(add_seconds: float = 0.0) -> int:
+	"""
+	Returns the current time (UTC) as messagebus timestamp.
+	`add_seconds` can be used to add or subtract seconds from the current time.
+	"""
+	return int(unix_timestamp(millis=True, add_seconds=add_seconds))
 
 
 class Error(BaseModel):
@@ -443,10 +449,10 @@ class ProcessDataWriteMessage(ProcessMessage):
 	stdin: bytes = b""
 
 
-# FileUpload
-class FileMessage(Message, ABC):
+# File transfer
+class FileTransferMessage(Message, ABC):
 	"""
-	Message regarding a file.
+	Message regarding a file transfer.
 
 	Contains a unique file_id.
 	"""
@@ -454,18 +460,18 @@ class FileMessage(Message, ABC):
 	file_id: UUID4Str = Field(default_factory=lambda: str(uuid4()))
 
 
-class FileErrorMessage(FileMessage):
+class FileTransferErrorMessage(FileTransferMessage):
 	"""
-	Message reporting a file related Error
+	Message reporting a file transfer related Error
 
 	Used to transport Error object via messagebus.
 	"""
 
-	type: str = MessageType.FILE_ERROR.value
+	type: str = MessageType.FILE_TRANSFER_ERROR.value
 	error: Error
 
 
-class FileUploadRequestMessage(FileMessage):
+class FileUploadRequestMessage(FileTransferMessage):
 	"""
 	Message for requesting a file upload
 
@@ -481,7 +487,18 @@ class FileUploadRequestMessage(FileMessage):
 	terminal_id: str | None = None
 
 
-class FileUploadResultMessage(FileMessage):
+class FileUploadResponseMessage(FileTransferMessage):
+	"""
+	Message to send as response to a file upload request
+
+	Contains the local path of the file to be uploaded.
+	"""
+
+	type: str = MessageType.FILE_UPLOAD_RESPONSE.value
+	path: str | None = None
+
+
+class FileUploadResultMessage(FileTransferMessage):
 	"""
 	Message to send after file upload concluded
 
@@ -551,8 +568,10 @@ MESSAGE_TYPE_TO_CLASS = {
 	MessageType.PROCESS_STOP_EVENT.value: ProcessStopEventMessage,
 	MessageType.PROCESS_DATA_READ.value: ProcessDataReadMessage,
 	MessageType.PROCESS_DATA_WRITE.value: ProcessDataWriteMessage,
-	MessageType.FILE_ERROR.value: FileErrorMessage,
+	MessageType.FILE_TRANSFER_ERROR.value: FileTransferErrorMessage,
+	"file_error": FileTransferErrorMessage,  # Legacy name
 	MessageType.FILE_UPLOAD_REQUEST.value: FileUploadRequestMessage,
+	MessageType.FILE_UPLOAD_RESPONSE.value: FileUploadResponseMessage,
 	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
 	MessageType.FILE_DOWNLOAD_REQUEST.value: FileDownloadRequestMessage,
 	MessageType.FILE_DOWNLOAD_INFORMATION.value: FileDownloadInformationMessage,

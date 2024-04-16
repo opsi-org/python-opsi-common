@@ -160,10 +160,7 @@ class PermissionRegistry(metaclass=Singleton):
 			DirPermission("/var/log/opsi", opsiconfd_user, admin_group, 0o660, 0o770),
 			DirPermission("/var/lib/opsi", opsiconfd_user, fileadmin_group, 0o660, 0o770),
 		)
-		self.register_permission(
-			DirPermission("/etc/opsi/ssl", opsiconfd_user, admin_group, 0o600, 0o750),
-			FilePermission("/etc/opsi/ssl/opsi-ca-cert.pem", opsiconfd_user, admin_group, 0o644),
-		)
+		self.register_permission(DirPermission("/etc/opsi/ssl", opsiconfd_user, admin_group, 0o600, 0o750, recursive=False))
 		self.register_permission(
 			DirPermission("/var/lib/opsi/public", opsiconfd_user, fileadmin_group, 0o664, 0o2775, modify_file_exe=False),
 			DirPermission("/var/lib/opsi/depot", opsiconfd_user, fileadmin_group, 0o660, 0o2770, modify_file_exe=False),
@@ -171,7 +168,7 @@ class PermissionRegistry(metaclass=Singleton):
 			DirPermission("/var/lib/opsi/workbench", opsiconfd_user, fileadmin_group, 0o660, 0o2770, modify_file_exe=False),
 		)
 
-		pxe_dir = "/tftpboot/linux"
+		pxe_dir = "/tftpboot/opsi"
 		if linux_distro_id_like_contains(("sles", "opensuse")):
 			pxe_dir = "/var/lib/tftpboot/opsi"
 		self.register_permission(DirPermission(pxe_dir, opsiconfd_user, fileadmin_group, 0o664, 0o775))

@@ -7,6 +7,7 @@ This file is part of opsi - https://www.opsi.org
 import datetime
 import os
 import platform
+import random
 import time
 from contextlib import contextmanager
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
@@ -21,12 +22,15 @@ from opsicommon.utils import (
 	Singleton,
 	combine_versions,
 	compare_versions,
+	compress_data,
+	decompress_data,
 	frozen_lru_cache,
 	generate_opsi_host_key,
 	ip_address_in_network,
 	prepare_proxy_environment,
 	retry,
 	timestamp,
+	unix_timestamp,
 	update_environment_from_config_files,
 	utc_timestamp,
 )
@@ -59,6 +63,16 @@ def test_utc_timestamp() -> None:
 	assert utc_timestamp() == now.strftime("%Y-%m-%d %H:%M:%S")
 	now = datetime.datetime.now(datetime.timezone.utc)
 	assert utc_timestamp(date_only=True) == now.strftime("%Y-%m-%d")
+
+
+def test_unix_timestamp() -> None:
+	# TODO: mock timezones
+	unix_ts = unix_timestamp()
+	assert isinstance(unix_ts, float)
+	unix_ts_ms = unix_timestamp(millis=True)
+	assert unix_ts_ms / 1000 - unix_ts < 2
+	assert (unix_timestamp(add_seconds=30) - (unix_ts + 30)) < 2
+	assert (unix_timestamp(add_seconds=-30) - (unix_ts - 30)) < 2
 
 
 def test_singleton() -> None:
@@ -275,3 +289,13 @@ def test_retry() -> None:
 			failing_function2()
 
 		assert len(caught_exceptions) == 4
+
+
+@pytest.mark.parametrize(
+	"compression",
+	("lz4", "deflate", "gz", "gzip"),
+)
+def test_compress_decompress(compression: Literal["lz4", "deflate", "gz", "gzip"]) -> None:
+	data = random.randbytes(50_000)
+	comp_data = compress_data(data=data, compression=compression)
+	assert decompress_data(data=comp_data, compression=compression) == data

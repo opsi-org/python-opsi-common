@@ -155,8 +155,7 @@ class OpsiCaState(str, Enum):
 
 class CallbackThread(Thread):
 	def __init__(self, callback: Callable, **kwargs: Any) -> None:
-		super().__init__()
-		self.daemon = True
+		super().__init__(daemon=True, name="opsiservice-CallbackThread")
 		self.callback = callback
 		self.kwargs = kwargs
 		self._context = copy_context()
@@ -1432,8 +1431,7 @@ class Messagebus(Thread):
 	_messagebus_path = "/messagebus/v1"
 
 	def __init__(self, opsi_service_client: ServiceClient) -> None:
-		super().__init__()
-		self.daemon = True
+		super().__init__(daemon=True, name="opsiservice-Messagebus")
 		self._context = copy_context()
 		self._client = opsi_service_client
 		self._app: WebSocketApp | None = None
@@ -1523,10 +1521,11 @@ class Messagebus(Thread):
 				message = lz4.frame.decompress(message)
 			msg = Message.from_msgpack(message)
 
-			expired = msg.expires and msg.expires <= timestamp()
+			cur_timestamp = timestamp()
+			expired = msg.expires and msg.expires <= cur_timestamp
 			if expired:
 				callback = "expired_message_received"
-				logger.info("Received expired message: %r", msg)
+				logger.info("Received expired message: %r (expires=%d, timestamp=%d)", msg, msg.expires, cur_timestamp)
 			else:
 				callback = "message_received"
 				logger.debug("Received message: %r", msg)

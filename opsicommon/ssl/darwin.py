@@ -7,6 +7,7 @@ This file is part of opsi - https://www.opsi.org
 """
 
 import os
+import re
 import subprocess
 import tempfile
 from contextlib import contextmanager
@@ -18,7 +19,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from opsicommon.logging import get_logger
 from opsicommon.utils import execute
 
-__all__ = ("install_ca", "load_ca", "remove_ca")
+__all__ = ("install_ca", "load_cas", "load_ca", "remove_ca")
 
 
 logger = get_logger("opsicommon.general")
@@ -46,38 +47,50 @@ def install_ca(ca_cert: x509.Certificate) -> None:
 		os.remove(pem_file.name)
 
 
-def load_ca(subject_name: str) -> x509.Certificate | None:
+def load_cas(subject_name: str) -> Generator[x509.Certificate, None, None]:
 	try:
 		pem = subprocess.check_output(
-			["security", "find-certificate", "-p", "-c", subject_name, "/Library/Keychains/System.keychain"],
+			["security", "find-certificate", "-a", "-p", "-c", subject_name, "/Library/Keychains/System.keychain"],
 			shell=False,
 			stderr=subprocess.STDOUT,
+			text=True,
 		)
 	except subprocess.CalledProcessError as err:
 		if "could not be found" in err.output.decode():
-			pem = None
-		else:
-			raise
-	if not pem or not pem.strip():
-		logger.notice("did not find certificate %s", subject_name)
+			return
+		raise
+	for cert_match in re.finditer(r"(-+BEGIN CERTIFICATE-+.*?-+END CERTIFICATE-+)", pem, re.DOTALL):
+		try:
+			yield x509.load_pem_x509_certificate(cert_match.group(1).encode("utf-8"))
+		except Exception as err:
+			logger.error("Failed to load certificate: %s", err)
+
+
+def load_ca(subject_name: str) -> x509.Certificate | None:
+	try:
+		return next(load_cas(subject_name))
+	except StopIteration:
+		logger.notice("Did not find CA %r", subject_name)
 		return None
-	return x509.load_pem_x509_certificate(data=pem.strip())
 
 
-def remove_ca(subject_name: str) -> bool:
-	ca_cert = load_ca(subject_name)
-	if not ca_cert:
-		logger.info("CA '%s' not found, nothing to remove", subject_name)
+def remove_ca(subject_name: str, sha1_fingerprint: str | None = None) -> bool:
+	if sha1_fingerprint:
+		sha1_fingerprint = sha1_fingerprint.upper()
+
+	remove_cas = []
+	for ca_cert in load_cas(subject_name):
+		ca_fingerprint = ca_cert.fingerprint(hashes.SHA1()).hex().upper()
+		if not sha1_fingerprint or ca_fingerprint == sha1_fingerprint:
+			remove_cas.append(ca_fingerprint)
+
+	if not remove_cas:
+		logger.info("CA '%s' (%s) not found, nothing to remove", subject_name, sha1_fingerprint)
 		return False
 
-	removed_sha1_hash = None
-	while ca_cert:
-		logger.info("Removing CA '%s'", subject_name)
-		sha1_hash = ca_cert.fingerprint(hashes.SHA1()).hex().upper()
-		if removed_sha1_hash and sha1_hash == removed_sha1_hash:
-			raise RuntimeError(f"Failed to remove certficate {removed_sha1_hash}")
-		with security_authorization():
-			execute(["security", "delete-certificate", "-Z", sha1_hash, "/Library/Keychains/System.keychain", "-t"])
-		removed_sha1_hash = sha1_hash
-		ca_cert = load_ca(subject_name)
+	with security_authorization():
+		for ca_fingerprint in remove_cas:
+			logger.info("Removing CA '%s' (%s)", subject_name, ca_fingerprint)
+			execute(["security", "delete-certificate", "-Z", ca_fingerprint, "/Library/Keychains/System.keychain", "-t"])
+
 	return True

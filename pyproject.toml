@@ -4,7 +4,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "python-opsi-common"
-version = "4.3.7.7"
+version = "4.3.11.0"
 description = "The opsi python common library"
 homepage = "https://www.opsi.org"
 license = "AGPL-3.0"
@@ -47,6 +47,7 @@ pyzsync = ">=1.2"
 tomlkit = "^0.12"
 pydantic = "^2.5"
 cryptography = "^42.0"
+ptyprocess = "^0.7"
 
 [tool.ruff.format]
 indent-style = "tab"
@@ -54,6 +55,10 @@ indent-style = "tab"
 [tool.poetry.dependencies.pywin32]
 platform = "win32"
 version = ">=303"
+
+[tool.poetry.dependencies.pywinpty]
+platform = "win32"
+version = "^2.0"
 
 [tool.poetry.dependencies.wmi]
 platform = "win32"

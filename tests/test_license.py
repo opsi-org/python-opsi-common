@@ -6,7 +6,6 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-
 import json
 import re
 import shutil
@@ -37,6 +36,7 @@ from opsicommon.license import (
 	OPSI_MODULE_STATE_LICENSED,
 	OPSI_MODULE_STATE_OVER_LIMIT,
 	OPSI_MODULE_STATE_UNLICENSED,
+	OPSI_OBSOLETE_MODULE_IDS,
 	OpsiLicense,
 	OpsiLicenseFile,
 	OpsiLicensePool,
@@ -61,7 +61,7 @@ LIC1: Dict[str, Any] = {
 	"client_number": 1000,
 	"issued_at": "2021-08-05",
 	"valid_from": "2021-09-01",
-	"valid_until": "2024-12-31",
+	"valid_until": "2025-12-31",
 	"revoked_ids": ["c6af25cf-62e4-4b90-8f4b-21c542d8b74b", "cc4e2986-d28d-4bef-807b-a74ba9a8df04"],
 	"note": "Some notes",
 	"additional_data": None,
@@ -92,6 +92,13 @@ def _read_modules_file(modules_file: Union[Path, str]) -> Tuple[Dict[str, str], 
 	if not (expires and customer and signature):
 		raise RuntimeError(f"Failed to parse {modules_file}")
 	return modules, expires, customer, signature
+
+
+def test_constants() -> None:
+	for module in OPSI_FREE_MODULE_IDS:
+		assert module in OPSI_MODULE_IDS
+	for module in OPSI_OBSOLETE_MODULE_IDS:
+		assert module in OPSI_MODULE_IDS
 
 
 def test_generate_key_pair() -> None:
@@ -256,12 +263,12 @@ def test_opsi_license_to_from_dict() -> None:
 def test_opsi_license_hash() -> None:
 	lic = OpsiLicense(**LIC1)
 	assert lic.get_hash(hex_digest=True) == (
-		"be5af16ca516aaa2bff8d48348c66f008fef6c3f0c162b0a1df6d0ac8fa71097"
-		"46829608a6c3000b99f14c427d11075674f38acfc1f92b868970e57d615e3116"
+		"48f66b80da530eede6dda641d25a5716aabc3515873890b40cfdc53263e6bb30"
+		"145b5558c384b8c94fbcd6b33ce57edafd5b65489b6da07b58dcf75a9c352cea"
 	)
 	assert lic.get_hash(digest=True) == bytes.fromhex(
-		"be5af16ca516aaa2bff8d48348c66f008fef6c3f0c162b0a1df6d0ac8fa71097"
-		"46829608a6c3000b99f14c427d11075674f38acfc1f92b868970e57d615e3116"
+		"48f66b80da530eede6dda641d25a5716aabc3515873890b40cfdc53263e6bb30"
+		"145b5558c384b8c94fbcd6b33ce57edafd5b65489b6da07b58dcf75a9c352cea"
 	)
 
 
@@ -392,22 +399,22 @@ def test_opsi_license_pool_licenses_checksum() -> None:
 	olp = OpsiLicensePool()
 	private_key, public_key = generate_key_pair(return_pem=False)
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
-		assert olp.get_licenses_checksum() == "0"
+		assert olp.get_licenses_checksum() == "00000000"
 
 		lic1 = OpsiLicense(**LIC1)
 		lic1.module_id = "directory-connector"
 		olp.add_license(lic1)
 		# Unsigned license
-		assert olp.get_licenses_checksum() == "0"
+		assert olp.get_licenses_checksum() == "00000000"
 
 		lic1.sign(private_key)
-		assert olp.get_licenses_checksum() == "78370ff9"
+		assert olp.get_licenses_checksum() == "0a753ec9"
 
 		lic2 = OpsiLicense(**LIC1)
 		lic2.module_id = "dynamic_depot"
 		lic2.sign(private_key)
 		olp.add_license(lic2)
-		assert olp.get_licenses_checksum() == "b14d1b40"
+		assert olp.get_licenses_checksum() == "9659f392"
 
 
 def test_opsi_license_pool_relevant_dates() -> None:
@@ -645,35 +652,42 @@ def test_free_module_state() -> None:
 		return {"macos": 0, "linux": 0, "windows": 1000}
 
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
-		kwargs = LIC1.copy()
-		kwargs["module_id"] = OPSI_FREE_MODULE_IDS[0]
-		kwargs["client_number"] = 100
-		lic = OpsiLicense(**kwargs)
-		lic.sign(private_key)
+		for module_id in OPSI_FREE_MODULE_IDS:
+			kwargs = LIC1.copy()
+			kwargs["module_id"] = module_id
+			kwargs["client_number"] = 100
+			lic = OpsiLicense(**kwargs)
+			lic.sign(private_key)
 
-		olp = OpsiLicensePool(client_info=client_info)
-		olp.add_license(lic)
+			kwargs["module_id"] = module_id
+			kwargs["client_number"] = 890
+			lic2 = OpsiLicense(**kwargs)
+			lic2.sign(private_key)
 
-		assert lic.get_state() == OPSI_LICENSE_STATE_VALID
+			olp = OpsiLicensePool(client_info=client_info)
+			olp.add_license(lic)
+			olp.add_license(lic2)
 
-		module = olp.get_modules()[OPSI_FREE_MODULE_IDS[0]]
-		assert module["client_number"] == OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
-		assert module["state"] == OPSI_MODULE_STATE_FREE
-		assert module["available"] is True
+			assert lic.get_state() == OPSI_LICENSE_STATE_VALID
 
-		kwargs["valid_until"] = "2020-01-01"
-		lic = OpsiLicense(**kwargs)
-		lic.sign(private_key)
+			module = olp.get_modules()[module_id]
+			assert module["state"] == OPSI_MODULE_STATE_FREE
+			assert module["client_number"] == OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
+			assert module["available"] is True
 
-		olp = OpsiLicensePool(client_info=client_info)
-		olp.add_license(lic)
+			kwargs["valid_until"] = "2020-01-01"
+			lic = OpsiLicense(**kwargs)
+			lic.sign(private_key)
 
-		assert lic.get_state() == OPSI_LICENSE_STATE_EXPIRED
+			olp = OpsiLicensePool(client_info=client_info)
+			olp.add_license(lic)
 
-		module = olp.get_modules()[OPSI_FREE_MODULE_IDS[0]]
-		assert module["client_number"] == OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
-		assert module["state"] == OPSI_MODULE_STATE_FREE
-		assert module["available"] is True
+			assert lic.get_state() == OPSI_LICENSE_STATE_EXPIRED
+
+			module = olp.get_modules()[module_id]
+			assert module["client_number"] == OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
+			assert module["state"] == OPSI_MODULE_STATE_FREE
+			assert module["available"] is True
 
 
 def test_license_state_cache() -> None:

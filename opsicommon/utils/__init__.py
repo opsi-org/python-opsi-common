@@ -9,6 +9,7 @@ General utility functions.
 from __future__ import annotations
 
 import functools
+import gzip
 import json
 import os
 import platform
@@ -17,6 +18,7 @@ import secrets
 import subprocess
 import tempfile
 import time
+import zlib
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network, ip_address, ip_network
@@ -24,6 +26,7 @@ from pathlib import Path
 from types import EllipsisType
 from typing import TYPE_CHECKING, Any, Callable, Generator, Iterable, Literal, Type, Union
 
+import lz4.frame  # type: ignore[import]
 from packaging.version import InvalidVersion, Version
 from typing_extensions import deprecated
 
@@ -42,8 +45,8 @@ if TYPE_CHECKING:
 	from opsicommon.objects import BaseObject as TBaseObject
 	from opsicommon.objects import Product, ProductOnClient, ProductOnDepot
 
-OBJECT_CLASSES: dict[str, Type["TBaseObject"]] = {}
-BaseObject: Type["TBaseObject"] | None = None
+OBJECT_CLASSES: dict[str, Type[TBaseObject]] = {}
+BaseObject: Type[TBaseObject] | None = None
 
 logger = get_logger("opsicommon.general")
 
@@ -80,12 +83,29 @@ def timestamp(secs: float = 0.0, date_only: bool = False) -> str:
 	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(secs))
 
 
+__now = datetime.now
+__utc = timezone.utc
+
+
 def utc_timestamp(date_only: bool = False) -> str:
-	"""Returns a utc timestamp in format YYYY-mm-dd[ HH:MM:SS]"""
-	now = datetime.now(timezone.utc)
+	"""Returns a UTC timestamp in format YYYY-mm-dd[ HH:MM:SS]"""
+	now = __now(tz=__utc)
 	if date_only:
 		return now.strftime("%Y-%m-%d")
 	return now.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def unix_timestamp(*, millis: bool = False, add_seconds: float = 0.0) -> float:
+	"""
+	Returns the current unix timestamp (UTC).
+	If `millis` is True, the timestamp is in milliseconds.
+	`add_seconds` can be used to add or subtract seconds from the current time.
+	"""
+	# Do not use time.time() as the behaviour can be platform and timezone dependent
+	unix_ts = __now(tz=__utc).timestamp() + add_seconds
+	if millis:
+		return unix_ts * 1000
+	return unix_ts
 
 
 class Singleton(type):
@@ -109,10 +129,10 @@ def update_environment_from_config_files(files: list[Path] | None = None) -> Non
 			if not path.exists() or not path.is_file():
 				continue
 			logger.debug("Updating environment from %s", path)
-			with path.open("r", encoding="utf-8") as handle:
-				for line in handle:
+			with path.open("r", encoding="utf-8") as file:
+				for line in file:
 					line = line.strip()
-					if not line or line.startswith("#"):
+					if not line or line.startswith("#") or "=" not in line:
 						continue
 					key, value = line.split("=", 1)
 					key = key.lstrip("export").strip().lower()
@@ -159,6 +179,12 @@ def prepare_proxy_environment(
 			update_environment_from_config_files()
 		except Exception as error:
 			logger.error("Failed to update environment from config files: %s", error)
+		logger.debug(
+			"Current proxy related environment variables: http_proxy=%s, https_proxy=%s, no_proxy=%s",
+			os.environ.get("http_proxy"),
+			os.environ.get("https_proxy"),
+			os.environ.get("no_proxy"),
+		)
 		# Use a proxy
 		no_proxy = [x.strip() for x in os.environ.get("no_proxy", "").split(",") if x.strip()]
 		if proxy_url.lower() == "system":
@@ -430,3 +456,57 @@ def retry(
 		return wrapper
 
 	return decorator
+
+
+def decompress_data(data: bytes, compression: Literal["lz4", "deflate", "gz", "gzip"]) -> bytes:
+	compressed_size = len(data)
+
+	decompress_start = time.perf_counter()
+	if compression == "lz4":
+		data = lz4.frame.decompress(data)
+	elif compression == "deflate":
+		data = zlib.decompress(data)
+	elif compression in ("gz", "gzip"):
+		data = gzip.decompress(data)
+	else:
+		raise ValueError(f"Unhandled compression {compression!r}")
+	decompress_end = time.perf_counter()
+
+	uncompressed_size = len(data)
+	get_logger().debug(
+		"%s decompression ratio: %d => %d = %0.2f%%, time: %0.2fms",
+		compression,
+		compressed_size,
+		uncompressed_size,
+		100 - 100 * (compressed_size / uncompressed_size),
+		1000 * (decompress_end - decompress_start),
+	)
+	return data
+
+
+def compress_data(
+	data: bytes, compression: Literal["lz4", "deflate", "gz", "gzip"], compression_level: int = 0, lz4_block_linked: bool = True
+) -> bytes:
+	uncompressed_size = len(data)
+
+	compress_start = time.perf_counter()
+	if compression == "lz4":
+		data = lz4.frame.compress(data, compression_level=compression_level, block_linked=lz4_block_linked)
+	elif compression == "deflate":
+		data = zlib.compress(data)
+	elif compression in ("gz", "gzip"):
+		data = gzip.compress(data)
+	else:
+		raise ValueError(f"Unhandled compression {compression!r}")
+	compress_end = time.perf_counter()
+
+	compressed_size = len(data)
+	logger.debug(
+		"%s compression ratio: %d => %d = %0.2f%%, time: %0.2fms",
+		compression,
+		uncompressed_size,
+		compressed_size,
+		100 - 100 * (compressed_size / uncompressed_size),
+		1000 * (compress_end - compress_start),
+	)
+	return data

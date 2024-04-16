@@ -25,12 +25,14 @@ from opsicommon.ssl import (
 	install_ca,
 	is_self_signed,
 	load_ca,
+	load_cas,
 	load_key,
 	remove_ca,
 	x509_name_from_dict,
 	x509_name_to_dict,
 )
 from opsicommon.ssl.common import subject_to_dict
+from opsicommon.system.info import is_linux
 from opsicommon.testing.helpers import http_test_server  # type: ignore[import]
 
 
@@ -83,6 +85,7 @@ def test_create_x509_name() -> None:
 		("", "ubuntu", "/usr/local/share/ca-certificates", "update-ca-certificates", None),
 		("sles", "sles", "/usr/share/pki/trust/anchors", "update-ca-certificates", None),
 		("suse", "", "/usr/share/pki/trust/anchors", "update-ca-certificates", None),
+		("oracle", "", "/usr/share/pki/ca-trust-source/anchors", "update-ca-trust", None),
 		("unknown", "", "", "", RuntimeError),
 		("", "", "", "", RuntimeError),
 		(None, None, "", "", RuntimeError),
@@ -250,18 +253,74 @@ def test_load_key(tmp_path: Path) -> None:
 @pytest.mark.admin_permissions
 def test_install_load_remove_ca() -> None:
 	subject_name = "python-opsi-common test ca"
-	ca_cert, _ca_key = create_ca(subject={"CN": subject_name}, valid_days=3)
-	install_ca(ca_cert)
+	remove_ca(subject_name)
+	all_cas = list(load_cas(subject_name))
+	assert len(list(all_cas)) == 0
+
+	ca_cert1, _ca_key = create_ca(subject={"CN": subject_name}, valid_days=3)
+	install_ca(ca_cert1)
 	try:
 		loaded_ca_cert = load_ca(subject_name)
 		assert loaded_ca_cert
 		assert loaded_ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == subject_name
+
+		all_cas = list(load_cas(subject_name))
+		assert len(list(all_cas)) == 1
+
+		remove_ca(subject_name, ca_cert1.fingerprint(hashes.SHA1()).hex().upper())
+
+		assert not load_ca(subject_name)
+
+		all_cas = list(load_cas(subject_name))
+		assert len(list(all_cas)) == 0
+
+		# Install again and remove without supplying fingerprint
+		install_ca(ca_cert1)
+
+		loaded_ca_cert = load_ca(subject_name)
+		assert loaded_ca_cert
+		assert loaded_ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == subject_name
+
+		all_cas = list(load_cas(subject_name))
+		assert len(list(all_cas)) == 1
+
+		remove_ca(subject_name)
+
+		assert not load_ca(subject_name)
+
+		all_cas = list(load_cas(subject_name))
+		assert len(list(all_cas)) == 0
+
+		# CA with same subject but other fingerprint
+		ca_cert2, _ca_key = create_ca(subject={"CN": subject_name}, valid_days=3)
+		install_ca(ca_cert1)
+		install_ca(ca_cert2)
+
+		if not is_linux():
+			# On Linux only one CA with the same subject can be installed
+			all_cas = list(load_cas(subject_name))
+			assert len(list(all_cas)) == 2
+
+			loaded_ca_cert = load_ca(subject_name)
+			assert loaded_ca_cert
+			assert loaded_ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == subject_name
+
+			remove_ca(subject_name, ca_cert1.fingerprint(hashes.SHA1()).hex().upper())
+
+			all_cas = list(load_cas(subject_name))
+			assert len(list(all_cas)) == 1
+			assert all_cas[0].fingerprint(hashes.SHA1()).hex().upper() == ca_cert2.fingerprint(hashes.SHA1()).hex().upper()
+
+			install_ca(ca_cert1)
+			all_cas = list(load_cas(subject_name))
+			assert len(list(all_cas)) == 2
+
+			remove_ca(subject_name)
+			all_cas = list(load_cas(subject_name))
+			assert len(list(all_cas)) == 0
+
 	finally:
 		remove_ca(subject_name)
-	loaded_ca_cert = load_ca(subject_name)
-	assert loaded_ca_cert is None
-	# Remove not existing ca
-	remove_ca(subject_name)
 
 
 # TODO: darwin
