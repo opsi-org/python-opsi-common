@@ -509,7 +509,7 @@ class FileUploadResultMessage(FileTransferMessage):
 	path: str | None = None
 
 
-class FileDownloadRequestMessage(FileMessage):
+class FileDownloadRequestMessage(FileTransferMessage):
 	"""
 	Message for requesting a file download
 	"""
@@ -519,7 +519,7 @@ class FileDownloadRequestMessage(FileMessage):
 	terminal_id: str | None = None
 
 
-class FileDownloadInformationMessage(FileMessage):
+class FileDownloadInformationMessage(FileTransferMessage):
 	"""
 	Message with information like file exists, size, etc.
 	"""
@@ -529,7 +529,7 @@ class FileDownloadInformationMessage(FileMessage):
 	size: int | None = None
 
 
-class FileChunkMessage(FileMessage):
+class FileChunkMessage(FileTransferMessage):
 	"""
 	Message to send a chunk of a file
 
