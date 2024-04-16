@@ -113,7 +113,7 @@ class Terminal:
 	pty_reader_block_size = 16 * 1024
 	max_rows = 100
 	max_cols = 300
-	idle_timeout = 5  # 8 * 3600
+	idle_timeout = 8 * 3600
 
 	def __init__(
 		self,
