@@ -575,6 +575,5 @@ MESSAGE_TYPE_TO_CLASS = {
 	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
 	MessageType.FILE_DOWNLOAD_REQUEST.value: FileDownloadRequestMessage,
 	MessageType.FILE_DOWNLOAD_INFORMATION.value: FileDownloadInformationMessage,
-	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
 	MessageType.FILE_CHUNK.value: FileChunkMessage,
 }

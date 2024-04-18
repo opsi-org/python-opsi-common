@@ -188,13 +188,13 @@ class FileUpload(FileTransfer):
 			back_channel=back_channel,
 		)
 
-		self.message = FileUploadResponseMessage(
-			sender=self._sender,
-			channel=self._response_channel,
-			file_id=self._file_id,
-			back_channel=self._back_channel,
-			path=str(self._file_path),
-		)
+		# self.message = FileUploadResponseMessage(
+		# sender=self._sender,
+		# channel=self._response_channel,
+		# file_id=self._file_id,
+		# back_channel=self._back_channel,
+		# path=str(self._file_path),
+		# )
 
 	async def start(self) -> None:
 		logger.notice("Received FileUploadRequestMessage %r", self)
@@ -230,7 +230,15 @@ class FileUpload(FileTransfer):
 			await self._error(str(error), message=self._file_upload_request)
 			return
 
-		await self._send_message(self.message)
+		message = FileUploadResponseMessage(
+			sender=self._sender,
+			channel=self._response_channel,
+			file_id=self._file_id,
+			back_channel=self._back_channel,
+			path=str(self._file_path),
+		)
+
+		await self._send_message(message)
 
 		self._manager_task = self._loop.create_task(self._manager())
 		logger.info("Started %r", self)
