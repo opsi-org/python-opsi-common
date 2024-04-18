@@ -515,7 +515,7 @@ class FileDownloadRequestMessage(FileTransferMessage):
 	"""
 
 	type: str = MessageType.FILE_DOWNLOAD_REQUEST
-	origin_path: str | None = None
+	path: str | None = None
 	terminal_id: str | None = None
 
 

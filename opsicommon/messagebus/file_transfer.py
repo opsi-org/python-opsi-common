@@ -269,6 +269,17 @@ async def process_messagebus_message(
 			else:
 				raise RuntimeError(f"File upload already running: {file_transfer!r}")
 			return
+		elif isinstance(message, FileDownloadRequestMessage):
+			if not file_transfer:
+				with file_transfers_lock:
+					file_transfer = FileDownload(
+						# TODO
+					)
+					file_transfer[message.file_id] = file_transfer
+				await file_transfer.start()
+			else:
+				raise RuntimeError(f"File download already running: {file_transfer!r}")
+			return
 		if not file_transfer:
 			raise RuntimeError(f"File transfer {message.file_id} not found")
 		if isinstance(message, FileChunkMessage):
