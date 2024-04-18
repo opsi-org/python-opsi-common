@@ -15,13 +15,14 @@ from opsicommon.messagebus import CONNECTION_USER_CHANNEL
 from opsicommon.messagebus.file_transfer import process_messagebus_message, stop_running_file_transfers
 from opsicommon.messagebus.message import (
 	FileChunkMessage,
+	FileDownloadRequestMessage,
 	FileTransferErrorMessage,
 	FileUploadRequestMessage,
 	FileUploadResponseMessage,
 	FileUploadResultMessage,
 )
 
-from .helpers import MessageSender
+from .helpers import MessageSender, MessageServer
 
 
 async def test_file_upload(tmp_path: Path) -> None:
@@ -95,6 +96,19 @@ async def test_file_upload(tmp_path: Path) -> None:
 	messages = await message_sender.wait_for_messages(count=1)
 	assert len(messages) == 1
 	assert isinstance(messages[0], FileUploadResultMessage)
+
+
+async def test_file_download(tmp_path: Path) -> None:
+	sender = "test_sender"
+	channel = "test_channel"
+	message_server = MessageServer()
+
+	file_download_request = FileDownloadRequestMessage(
+		sender=sender,
+		channel=channel,
+		path=message_server.path,
+	)
+	# TODO
 
 
 async def test_upload_chunk_timeout(tmp_path: Path) -> None:

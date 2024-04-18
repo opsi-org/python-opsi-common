@@ -9,7 +9,7 @@ import io
 import os
 import time
 from contextlib import contextmanager
-from typing import Generator
+from typing import Generator, Path
 
 from opsicommon.logging import use_logging_config
 from opsicommon.messagebus.message import Message
@@ -58,4 +58,52 @@ class MessageSender:
 
 		messages = self.messages_sent.copy()
 		self.messages_sent = []
+		return messages
+
+
+class MessageServer:
+	def __init__(self, print_messages: bool = False) -> None:
+		self.path: Path | None = None
+		self.size: int | None = None
+		self.print_messages = print_messages
+		self.message_sent: list[Message] = []
+
+
+	def gen_test_file(self, tmp_path: Path, file_name: str, error_if_file_exists: bool = False) -> None:
+		chunk_size = 1000
+		test_file = Path(tmp_path) / file_name
+		if test_file.is_file():
+			if error_if_file_exists:
+				raise FileExistsError(f"File {str(test_file)} alredy exists")
+			return
+		test_file.write_text("opsi" * chunk_size, encoding="ascii")
+		file_size = test_file.stat().st_size
+		assert file_size == chunk_size * 4
+		self.path = test_file
+		self.size = file_size
+
+	async def send_messages(self, messages: Message) -> None:
+		if self.print_messages:
+			print(message.to_dict()):
+		self.message_sent.append(messages)
+
+	async def wait_for_download_request(
+		self, count: int, timeout: float = 10.0, clear_messages: bool = True, error_on_timeout: bool = True
+	) -> None:
+		start = time.time()
+		while len(self.message_sent) < count:
+			if time.time() - start > timeout:
+				if error_on_timeout:
+					raise TimeoutError(f"Timeout waiting for {count} messages")
+				break
+			await asyncio.sleep(0.1)
+		if not clear_messages:
+			return self.messages_sent
+
+		#TODO
+		# add FileDownloadInformationMessage return
+		# then start Download process aka Data Stream
+
+		messages = self.message_sent.copy()
+		self.message_sent = []
 		return messages
