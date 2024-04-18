@@ -146,6 +146,14 @@ class FileDownload(FileTransfer):
 			back_channel=back_channel,
 		)
 
+		self.message = FileUploadResponseMessage(
+			sender=self._sender,
+			channel=self._response_channel,
+			file_id=self._file_id,
+			back_channel=self._back_channel,
+			path=str(self._file_path),
+		)
+
 	def __str__(self) -> str:
 		return f"{self.__class__.__name__}({self._file_request})"
 
@@ -180,13 +188,13 @@ class FileUpload(FileTransfer):
 			back_channel=back_channel,
 		)
 
-	message = FileUploadResponseMessage(
-		sender=self._sender,
-		channel=self._response_channel,
-		file_id=self._file_id,
-		back_channel=self._back_channel,
-		path=str(self._file_path),
-	)
+		self.message = FileUploadResponseMessage(
+			sender=self._sender,
+			channel=self._response_channel,
+			file_id=self._file_id,
+			back_channel=self._back_channel,
+			path=str(self._file_path),
+		)
 
 	async def start(self) -> None:
 		logger.notice("Received FileUploadRequestMessage %r", self)
@@ -205,7 +213,7 @@ class FileUpload(FileTransfer):
 			else:
 				raise ValueError("Invalid destination_dir")
 
-			self._file_path = (destination_path / self._file_upload_request.name).absolute()
+			self._file_path = Path(destination_path / self._file_upload_request.name).absolute()
 			if not self._file_path.is_relative_to(destination_path):
 				raise ValueError("Invalid name")
 
