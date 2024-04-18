@@ -19,6 +19,7 @@ from opsicommon.messagebus import CONNECTION_SESSION_CHANNEL, CONNECTION_USER_CH
 from opsicommon.messagebus.message import (
 	Error,
 	FileChunkMessage,
+	FileDownloadRequestMessage,
 	FileTransferErrorMessage,
 	FileTransferMessage,
 	FileUploadRequestMessage,
@@ -27,25 +28,28 @@ from opsicommon.messagebus.message import (
 	Message,
 )
 
-file_transfers: dict[str, FileUpload] = {}
+# file_uploads: dict[str, FileTransfer] = {}
+# file_uploads_lock = Lock()
+file_transfers: dict[str, FileTransfer] = {}
 file_transfers_lock = Lock()
+
 logger = get_logger()
 
 
-class FileUpload:
+class FileTransfer:
 	chunk_timeout = 300
 	default_destination: Path | None = None
 
 	def __init__(
 		self,
-		file_upload_request: FileUploadRequestMessage,
 		send_message: Callable,
+		file_request: FileUploadRequestMessage | FileDownloadRequestMessage,
 		sender: str = CONNECTION_USER_CHANNEL,
 		back_channel: str | None = None,
 	) -> None:
 		self._send_message: Callable = send_message
 		self._sender = sender
-		self._file_upload_request = file_upload_request
+		self._file_request = file_request
 		self._back_channel = back_channel or CONNECTION_SESSION_CHANNEL
 		self._loop = asyncio.get_event_loop()
 		self._chunk_number = 0
@@ -54,65 +58,13 @@ class FileUpload:
 		self._should_stop = False
 		self._completed = False
 
-	def __str__(self) -> str:
-		return f"{self.__class__.__name__}({self._file_upload_request})"
-
-	__repr__ = __str__
-
 	@property
 	def _file_id(self) -> str:
-		return self._file_upload_request.file_id
+		return self._file_request.file_id
 
 	@property
 	def _response_channel(self) -> str:
-		return self._file_upload_request.response_channel
-
-	async def start(self) -> None:
-		logger.notice("Received FileUploadRequestMessage %r", self)
-
-		try:
-			if not self._file_upload_request.name:
-				raise ValueError("Invalid name")
-			if not self._file_upload_request.content_type:
-				raise ValueError("Invalid content_type")
-
-			destination_path: Path | None = None
-			if self._file_upload_request.destination_dir:
-				destination_path = Path(self._file_upload_request.destination_dir)
-			elif self.default_destination:
-				destination_path = self.default_destination
-			else:
-				raise ValueError("Invalid destination_dir")
-
-			self._file_path = (destination_path / self._file_upload_request.name).absolute()
-			if not self._file_path.is_relative_to(destination_path):
-				raise ValueError("Invalid name")
-
-			orig_name = self._file_path.name
-			ext = 0
-			while self._file_path.exists():
-				ext += 1
-				self._file_path = self._file_path.with_name(f"{orig_name}.{ext}")
-			self._file_path.touch()
-			self._file_path.chmod(0o660)
-
-		except Exception as error:
-			logger.error(error, exc_info=True)
-			await self._error(str(error), message=self._file_upload_request)
-			return
-
-		message = FileUploadResponseMessage(
-			sender=self._sender,
-			channel=self._response_channel,
-			file_id=self._file_id,
-			back_channel=self._back_channel,
-			path=str(self._file_path),
-		)
-
-		await self._send_message(message)
-
-		self._manager_task = self._loop.create_task(self._manager())
-		logger.info("Started %r", self)
+		return self._file_request.response_channel
 
 	async def stop(self) -> None:
 		logger.info("Stopping %r (%r)", self)
@@ -177,6 +129,103 @@ class FileUpload:
 		)
 		await self._send_message(error_message)
 		self._should_stop = True
+
+
+class FileDownload(FileTransfer):
+	def __init__(
+		self,
+		file_request: FileUploadResultMessage,
+		send_message: Callable,
+		sender: str = CONNECTION_USER_CHANNEL,
+		back_channel: str | None = None,
+	) -> None:
+		super().__init__(
+			send_message=send_message,
+			file_request=file_request,
+			sender=sender,
+			back_channel=back_channel,
+		)
+
+	def __str__(self) -> str:
+		return f"{self.__class__.__name__}({self._file_request})"
+
+	__repr__ = __str__
+
+	async def start(self) -> None:
+		logger.notice("Received FileDownloadRequestMassage %r", self)
+
+		try:
+			if not self._file_request.origin_path:
+				raise ValueError("Invalid origin path")
+		except Exception as error:
+			logger.error(error, exc_info=True)
+			await self._error(str(error), message=self._file_request)
+			return
+		# TODO
+
+
+class FileUpload(FileTransfer):
+	def __init__(
+		self,
+		file_upload_request: FileUploadResultMessage,
+		send_message: Callable,
+		sender: str = CONNECTION_USER_CHANNEL,
+		back_channel: str | None = None,
+	) -> None:
+		self._file_upload_request = file_upload_request
+		super().__init__(
+			send_message=send_message,
+			file_request=file_upload_request,
+			sender=sender,
+			back_channel=back_channel,
+		)
+
+	message = FileUploadResponseMessage(
+		sender=self._sender,
+		channel=self._response_channel,
+		file_id=self._file_id,
+		back_channel=self._back_channel,
+		path=str(self._file_path),
+	)
+
+	async def start(self) -> None:
+		logger.notice("Received FileUploadRequestMessage %r", self)
+
+		try:
+			if not self._file_upload_request.name:
+				raise ValueError("Invalid name")
+			if not self._file_upload_request.content_type:
+				raise ValueError("Invalid content_type")
+
+			destination_path: Path | None = None
+			if self._file_upload_request.destination_dir:
+				destination_path = Path(self._file_upload_request.destination_dir)
+			elif self.default_destination:
+				destination_path = self.default_destination
+			else:
+				raise ValueError("Invalid destination_dir")
+
+			self._file_path = (destination_path / self._file_upload_request.name).absolute()
+			if not self._file_path.is_relative_to(destination_path):
+				raise ValueError("Invalid name")
+
+			orig_name = self._file_path.name
+			ext = 0
+			while self._file_path.exists():
+				ext += 1
+				self._file_path = self._file_path.with_name(f"{orig_name}.{ext}")
+			self._file_path.touch()
+			self._file_path.chmod(0o660)
+
+		except Exception as error:
+			logger.error(error, exc_info=True)
+			await self._error(str(error), message=self._file_upload_request)
+			return
+
+		await self._send_message(self.message)
+
+		self._manager_task = self._loop.create_task(self._manager())
+		logger.info("Started %r", self)
 
 
 async def process_messagebus_message(
