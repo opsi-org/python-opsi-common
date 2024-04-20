@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import locale
+import os
 import platform
 import re
 import subprocess
@@ -32,6 +33,7 @@ from opsicommon.messagebus.message import (
 	ProcessStopEventMessage,
 	ProcessStopRequestMessage,
 )
+from opsicommon.system.info import is_posix
 
 processes: dict[str, Process] = {}
 processes_lock = Lock()
@@ -84,6 +86,10 @@ class Process:
 		return self._process_start_request.command
 
 	@property
+	def _env(self) -> dict[str, str]:
+		return self._process_start_request.env
+
+	@property
 	def _process_id(self) -> str:
 		return self._process_start_request.process_id
 
@@ -128,10 +134,21 @@ class Process:
 		logger.notice("Received ProcessStartRequestMessage %r", self)
 		message: ProcessMessage
 		try:
-			if self._process_start_request.shell:
-				self._proc = await asyncio.create_subprocess_shell(" ".join(self._command), stdin=PIPE, stdout=PIPE, stderr=PIPE)
+			if is_posix():
+				from opsicommon.system.posix.subprocess import get_subprocess_environment
+
+				sp_env = get_subprocess_environment()
 			else:
-				self._proc = await asyncio.create_subprocess_exec(*self._command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+				sp_env = os.environ.copy()
+			sp_env.update(self._env or {})
+			sp_env["OPSI_PROCESS_ID"] = self._process_id
+
+			if self._process_start_request.shell:
+				self._proc = await asyncio.create_subprocess_shell(
+					" ".join(self._command), env=sp_env, stdin=PIPE, stdout=PIPE, stderr=PIPE
+				)
+			else:
+				self._proc = await asyncio.create_subprocess_exec(*self._command, env=sp_env, stdin=PIPE, stdout=PIPE, stderr=PIPE)
 		except Exception as error:
 			logger.error(error, exc_info=True)
 			message = ProcessErrorMessage(

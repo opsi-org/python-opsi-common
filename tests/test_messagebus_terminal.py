@@ -37,7 +37,7 @@ def test_start_pty_params(tmp_path: Path) -> None:
 	cols = 150
 	rows = 20
 
-	env = {"PATH": os.environ["PATH"], "TEST": "test"}
+	env = {"PATH": os.environ["PATH"], "OPSI_TEST": "foo"}
 	(
 		pty_pid,
 		pty_read,
@@ -63,13 +63,22 @@ def test_start_pty_params(tmp_path: Path) -> None:
 
 	command = "set" if is_windows() else "env"
 	pty_write(f"{command}\r\n".encode("utf-8"))
-	time.sleep(2)
-	data = pty_read(4096)
-	print("read:", data)
+	data = b""
+	for _ in range(10):
+		time.sleep(1)
+		dat = pty_read(8192)
+		print("read:", dat)
+		data += dat
+		if b"OPSI_TEST=foo" in data:
+			break
+
 	lines = [line.strip() for line in data.decode("utf-8").split("\n")]
+	import pprint
+
+	pprint.pprint(lines)
 	assert lines[0] == command
 	if is_posix():
-		assert "TEST=test" in lines
+		assert "OPSI_TEST=foo" in lines
 		assert "TERM=xterm-256color" in lines
 
 	if is_posix():

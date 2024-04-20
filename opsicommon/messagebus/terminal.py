@@ -8,6 +8,7 @@ This file is part of opsi - https://www.opsi.org
 
 from __future__ import annotations
 
+import os
 import shlex
 from asyncio import Task, get_running_loop, sleep, wait_for
 from contextlib import nullcontext
@@ -60,7 +61,10 @@ if is_windows():
 			# Therefore we do not import at toplevel
 			from winpty import PtyProcess  # type: ignore[import]
 
-			process = PtyProcess.spawn(shlex.split(shell), dimensions=(rows, cols), env=env, cwd=cwd)
+			sp_env = os.environ.copy()
+			sp_env.update(env or {})
+
+			process = PtyProcess.spawn(shlex.split(shell), dimensions=(rows, cols), env=sp_env, cwd=cwd)
 		except Exception as err:
 			raise RuntimeError(f"Failed to start pty with shell {shell!r}: {err}") from err
 
@@ -97,11 +101,12 @@ else:
 
 		from opsicommon.system.posix.subprocess import get_subprocess_environment
 
-		env = get_subprocess_environment(env)
-		if "TERM" not in env:
-			env["TERM"] = "xterm-256color"
+		sp_env = get_subprocess_environment()
+		sp_env.update(env or {})
+		if "TERM" not in sp_env:
+			sp_env["TERM"] = "xterm-256color"
 		try:
-			proc = PtyProcess.spawn(shlex.split(shell), dimensions=(rows, cols), env=env, cwd=cwd)
+			proc = PtyProcess.spawn(shlex.split(shell), dimensions=(rows, cols), env=sp_env, cwd=cwd)
 		except Exception as err:
 			raise RuntimeError(f"Failed to start pty with shell {shell!r}: {err}") from err
 		return (proc.pid, proc.read, proc.write, proc.setwinsize, proc.terminate)
@@ -174,7 +179,9 @@ class Terminal:
 		if not shell:
 			raise RuntimeError("No shell specified")
 		logger.debug("Calling start_pty with loop %s", self._loop)
-		future = self._loop.run_in_executor(None, start_pty, shell, self.rows, self.cols, self._cwd)
+		sp_env = self._terminal_open_request.env or {}
+		sp_env["OPSI_TERMINAL_ID"] = self.terminal_id
+		future = self._loop.run_in_executor(None, start_pty, shell, self.rows, self.cols, self._cwd, sp_env)
 		try:
 			(
 				self._pty_pid,

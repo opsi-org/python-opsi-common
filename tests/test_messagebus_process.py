@@ -28,8 +28,9 @@ async def test_execute_command() -> None:
 	channel = "test_channel"
 	message_sender = MessageSender()
 
+	env = {"LANG": "de_DE.UTF-8", "TEST": "test"}
 	command = ("echo hello",) if is_windows() else ("cat",)
-	process_start_request = ProcessStartRequestMessage(sender=sender, channel=channel, command=command, shell=True)
+	process_start_request = ProcessStartRequestMessage(sender=sender, channel=channel, command=command, shell=True, env=env)
 	await process_messagebus_message(process_start_request, send_message=message_sender.send_message)
 
 	messages = await message_sender.wait_for_messages(count=1)
