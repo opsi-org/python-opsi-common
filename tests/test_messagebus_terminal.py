@@ -92,6 +92,7 @@ def test_start_pty_params(tmp_path: Path) -> None:
 			if b"stty size" in data:
 				break
 		lines = [line.strip() for line in data.decode("utf-8").split("\n")]
+		print("lines:", lines)
 		assert "stty size" in lines
 		assert f"{rows} {cols}" in lines
 
