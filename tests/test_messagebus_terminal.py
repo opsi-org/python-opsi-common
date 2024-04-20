@@ -15,18 +15,17 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-from opsicommon.messagebus.message import (
-	Error,
-	TerminalCloseEventMessage,
-	TerminalCloseRequestMessage,
-	TerminalDataReadMessage,
-	TerminalDataWriteMessage,
-	TerminalErrorMessage,
-	TerminalOpenEventMessage,
-	TerminalOpenRequestMessage,
-)
-from opsicommon.messagebus.terminal import Terminal, process_messagebus_message, start_pty, stop_running_terminals, terminals
+from opsicommon.messagebus.message import (Error, TerminalCloseEventMessage,
+                                           TerminalCloseRequestMessage,
+                                           TerminalDataReadMessage,
+                                           TerminalDataWriteMessage,
+                                           TerminalErrorMessage,
+                                           TerminalOpenEventMessage,
+                                           TerminalOpenRequestMessage)
+from opsicommon.messagebus.terminal import (Terminal,
+                                            process_messagebus_message,
+                                            start_pty, stop_running_terminals,
+                                            terminals)
 from opsicommon.system.info import is_macos, is_posix, is_windows
 
 from .helpers import MessageSender
@@ -73,15 +72,12 @@ def test_start_pty_params(tmp_path: Path) -> None:
 			break
 
 	lines = [line.strip() for line in data.decode("utf-8").split("\n")]
-	import pprint
-
-	pprint.pprint(lines)
 	assert lines[0] == command
+	assert "OPSI_TEST=foo" in lines
+
 	if is_posix():
-		assert "OPSI_TEST=foo" in lines
 		assert "TERM=xterm-256color" in lines
 
-	if is_posix():
 		pty_write("stty size\r\n".encode("utf-8"))
 		time.sleep(2)
 		data = pty_read(4096)
