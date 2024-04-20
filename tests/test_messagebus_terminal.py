@@ -108,13 +108,14 @@ async def test_terminal_params() -> None:
 	terminal_id = str(uuid.uuid4())
 	sender = "service_worker:pytest:1"
 	shell = "/bin/bash" if not is_windows() else "cmd.exe"
+	env = {"LANG": "de", "OPSI_TEST": "foo"}
 
 	assert not terminals
 
 	message_sender = MessageSender()
 
 	terminal_open_request = TerminalOpenRequestMessage(
-		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, shell=shell, rows=rows, cols=cols
+		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, shell=shell, rows=rows, cols=cols, env=env
 	)
 	await process_messagebus_message(message=terminal_open_request, send_message=message_sender.send_message, sender=sender)
 
@@ -137,6 +138,22 @@ async def test_terminal_params() -> None:
 	assert messages[1].channel == "back_channel"
 	assert messages[1].terminal_id == terminal_id
 	assert messages[1].data
+
+	command = "set" if is_windows() else "env"
+	terminal_data_write_message = TerminalDataWriteMessage(
+		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, data=f"{command}\r\n".encode("utf-8")
+	)
+	await process_messagebus_message(message=terminal_data_write_message, send_message=message_sender.send_message, sender=sender)
+
+	messages = await message_sender.wait_for_messages(count=10, timeout=5, error_on_timeout=False)
+	data = b""
+	for message in messages:
+		assert isinstance(message, TerminalDataReadMessage)
+		data += message.data
+	lines = data.decode("utf-8").split("\r\n")
+	assert "OPSI_TEST=foo" in lines
+	assert "LANG=de" in lines
+	assert f"OPSI_TERMINAL_ID={terminal_id}" in lines
 
 	if is_posix():
 		terminal_data_write_message = TerminalDataWriteMessage(
