@@ -276,6 +276,7 @@ class TerminalOpenRequestMessage(TerminalMessage):
 	rows: int | None = None
 	cols: int | None = None
 	shell: str | None = None
+	env: dict[str, str] = Field(default_factory=dict)
 
 
 class TerminalOpenEventMessage(TerminalMessage):
@@ -387,6 +388,7 @@ class ProcessStartRequestMessage(ProcessMessage):
 	command: tuple[str, ...] = tuple()
 	timeout: int = 0
 	shell: bool = False
+	env: dict[str, str] = Field(default_factory=dict)
 
 
 class ProcessStartEventMessage(ProcessMessage):
