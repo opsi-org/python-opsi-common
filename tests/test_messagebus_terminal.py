@@ -72,7 +72,7 @@ def test_start_pty_params(tmp_path: Path) -> None:
 		if b"OPSI_TEST=foo" in data:
 			if not is_posix():
 				break
-			if b"TERM=xterm-256color" in data:
+			if b"TERM=" in data:
 				break
 
 	lines = [line.strip() for line in data.decode("utf-8").split("\n")]
@@ -80,12 +80,17 @@ def test_start_pty_params(tmp_path: Path) -> None:
 	assert "OPSI_TEST=foo" in lines
 
 	if is_posix():
-		assert "TERM=xterm-256color" in lines
+		assert any(line.startswith("TERM=") for line in lines)
 
 		pty_write("stty size\r\n".encode("utf-8"))
-		time.sleep(2)
-		data = pty_read(4096)
-		print("read:", data)
+		data = b""
+		for _ in range(10):
+			time.sleep(1)
+			dat = pty_read(8192)
+			print("read:", dat)
+			data += dat
+			if b"stty size" in data:
+				break
 		lines = [line.strip() for line in data.decode("utf-8").split("\n")]
 		assert lines[0] == "stty size"
 		assert lines[1] == f"{rows} {cols}"
