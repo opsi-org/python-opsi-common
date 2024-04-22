@@ -130,6 +130,11 @@ class Process:
 		self._proc.stdin.write(data)
 		await self._proc.stdin.drain()
 
+	async def close_stdin(self) -> None:
+		if not self._proc or not self._proc.stdin:
+			return
+		self._proc.stdin.close()
+
 	async def start(self) -> None:
 		logger.notice("Received ProcessStartRequestMessage %r", self)
 		message: ProcessMessage
@@ -180,10 +185,9 @@ class Process:
 		self._loop.create_task(self._wait_for_process())
 
 	async def stop(self) -> None:
-		logger.info("Stopping %r (%r)", self)
+		logger.info("Stopping %r", self)
 		if self._proc:
-			if self._proc.stdin:
-				self._proc.stdin.close()
+			await self.close_stdin()
 			for count in range(40):
 				if self._proc.returncode is not None:
 					break
@@ -243,7 +247,10 @@ async def process_messagebus_message(
 		if not process:
 			raise RuntimeError(f"Process {message.process_id} not found")
 		if isinstance(message, ProcessDataWriteMessage):
-			await process.write_stdin(message.stdin)
+			if not message.stdin:
+				await process.close_stdin()
+			else:
+				await process.write_stdin(message.stdin)
 			return
 		if isinstance(message, ProcessStopRequestMessage):
 			await process.stop()

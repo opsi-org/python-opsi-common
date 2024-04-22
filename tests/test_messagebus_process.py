@@ -7,6 +7,8 @@ messagebus.process tests
 """
 
 
+import pytest
+
 from opsicommon.messagebus import CONNECTION_USER_CHANNEL
 from opsicommon.messagebus.message import (
 	ProcessDataReadMessage,
@@ -23,7 +25,8 @@ from opsicommon.system.info import is_windows
 from .helpers import MessageSender
 
 
-async def test_execute_command() -> None:
+@pytest.mark.parametrize("close_stdin", [True, False])
+async def test_execute_command(close_stdin: bool) -> None:
 	sender = "test_sender"
 	channel = "test_channel"
 	message_sender = MessageSender()
@@ -48,12 +51,20 @@ async def test_execute_command() -> None:
 
 		messages = await message_sender.wait_for_messages(count=1, clear_messages=False)
 
-		process_stop_request_message = ProcessStopRequestMessage(
-			sender=sender, channel=channel, process_id=process_start_request.process_id
-		)
-		await process_messagebus_message(process_stop_request_message, send_message=message_sender.send_message)
+		if close_stdin:
+			# Write empty data to signal EOF and to close stdin
+			# cat process should exit
+			process_data_write_message = ProcessDataWriteMessage(
+				sender=sender, channel=channel, process_id=process_start_request.process_id, stdin=b""
+			)
+			await process_messagebus_message(process_data_write_message, send_message=message_sender.send_message)
+		else:
+			process_stop_request_message = ProcessStopRequestMessage(
+				sender=sender, channel=channel, process_id=process_start_request.process_id
+			)
+			await process_messagebus_message(process_stop_request_message, send_message=message_sender.send_message)
 
-	messages = await message_sender.wait_for_messages(count=1)
+	messages = await message_sender.wait_for_messages(count=2)
 
 	assert isinstance(messages[0], ProcessDataReadMessage)
 	assert messages[0].process_id == process_start_request.process_id
