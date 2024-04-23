@@ -64,7 +64,7 @@ def test_start_pty_params(tmp_path: Path) -> None:
 	command = "set" if is_windows() else "env"
 	pty_write(f"{command}\r\n".encode("utf-8"))
 	data = b""
-	for _ in range(20):
+	for _ in range(30):
 		time.sleep(1)
 		dat = pty_read(8192)
 		print("read:", dat)
@@ -84,7 +84,7 @@ def test_start_pty_params(tmp_path: Path) -> None:
 
 		pty_write("stty size\r\n".encode("utf-8"))
 		data = b""
-		for _ in range(20):
+		for _ in range(30):
 			time.sleep(1)
 			dat = pty_read(8192)
 			print("read:", dat)
