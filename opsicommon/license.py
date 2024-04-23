@@ -99,6 +99,7 @@ OPSI_OBSOLETE_MODULE_IDS = (
 	"dynamic_depot",
 	"treeview",
 	"vista",
+	"win-vhd",
 )
 
 OPSI_FREE_MODULE_IDS = (
