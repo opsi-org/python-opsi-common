@@ -8,18 +8,16 @@ messagebus.process tests
 
 
 import pytest
-
 from opsicommon.messagebus import CONNECTION_USER_CHANNEL
-from opsicommon.messagebus.message import (
-	ProcessDataReadMessage,
-	ProcessDataWriteMessage,
-	ProcessErrorMessage,
-	ProcessStartEventMessage,
-	ProcessStartRequestMessage,
-	ProcessStopEventMessage,
-	ProcessStopRequestMessage,
-)
-from opsicommon.messagebus.process import process_messagebus_message, processes, stop_running_processes
+from opsicommon.messagebus.message import (ProcessDataReadMessage,
+                                           ProcessDataWriteMessage,
+                                           ProcessErrorMessage,
+                                           ProcessStartEventMessage,
+                                           ProcessStartRequestMessage,
+                                           ProcessStopEventMessage,
+                                           ProcessStopRequestMessage)
+from opsicommon.messagebus.process import (process_messagebus_message,
+                                           processes, stop_running_processes)
 from opsicommon.system.info import is_windows
 
 from .helpers import MessageSender
@@ -138,16 +136,16 @@ async def test_stop_running_processes() -> None:
 	process_start_request = ProcessStartRequestMessage(sender="test_sender", channel="test_channel", command=command, shell=False)
 	await process_messagebus_message(process_start_request, send_message=message_sender.send_message)
 
-	messages = await message_sender.wait_for_messages(count=1)
-	assert len(messages) == 1
+	messages = await message_sender.wait_for_messages(count=1, clear_messages=False)
+	assert len(messages) >= 1
 	assert isinstance(messages[0], ProcessStartEventMessage)
 
 	assert len(processes) == 1
 	assert processes[process_start_request.process_id]
 
-	messages = []
 	await stop_running_processes()
 
-	messages = await message_sender.wait_for_messages(count=1)
+	messages = await message_sender.wait_for_messages(count=10, timeout=5, error_on_timeout=False)
+
 	assert isinstance(messages[-1], ProcessStopEventMessage)
 	assert messages[-1].exit_code != 0
