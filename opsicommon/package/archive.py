@@ -280,7 +280,13 @@ def compress_command(archive: Path, compression: str) -> str:
 
 # Warning: this is specific for linux!
 def create_archive_external(
-	archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False
+	archive: Path,
+	sources: list[Path],
+	base_dir: Path,
+	*,
+	compression: str | None = None,
+	dereference: bool = False,
+	progress_listener: ArchiveProgressListener | None = None,
 ) -> None:
 	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
 	if compression == "bz2":

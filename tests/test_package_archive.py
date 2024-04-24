@@ -71,6 +71,13 @@ def test_archive_external_hypothesis(filename: str, data: bytes, compression: Li
 			assert file.relative_to(source) in contents
 
 
+class ProgressListener(ArchiveProgressListener):
+	percent_competed_vals = []
+
+	def progress_changed(self, progress: ArchiveProgress) -> None:
+		self.percent_competed_vals.append(progress.percent_completed)
+
+
 @pytest.mark.linux
 @pytest.mark.parametrize(
 	"compression",
@@ -86,18 +93,11 @@ def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 			pass
 		archive = tmp_path / f"archive.tar.{compression}"
 
-		create_archive_external(archive, list(source.glob("*")), source, compression=compression)
+		progress_listener = ProgressListener()
+		create_archive_external(archive, list(source.glob("*")), source, compression=compression, progress_listener=progress_listener)
 
 		# Ownership of archive should be current user group
 		assert archive.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
-
-		class ProgressListener(ArchiveProgressListener):
-			percent_competed_vals = []
-
-			def progress_changed(self, progress: ArchiveProgress) -> None:
-				self.percent_competed_vals.append(progress.percent_completed)
-
-		progress_listener = ProgressListener()
 
 		try:
 			# Setting group ownership of source to adm group
@@ -105,6 +105,8 @@ def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 		except PermissionError:
 			pass
 		destination = tmp_path / "destination"
+
+		progress_listener = ProgressListener()
 		extract_archive_external(archive, destination, progress_listener=progress_listener)
 
 		assert len(progress_listener.percent_competed_vals) > 10
