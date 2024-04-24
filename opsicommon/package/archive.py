@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 import fnmatch
 import os
 import re
-import shlex
 import subprocess
 import tarfile
 from contextlib import contextmanager
@@ -61,7 +60,7 @@ class ArchiveProgress:
 	_notification_interval = 0.5
 
 	def set_completed(self, completed: int) -> None:
-		self.completed = completed
+		self.completed = min(self.total, completed)
 		percent_completed = self.percent_completed
 		self.percent_completed = round(self.completed * 100 / self.total if self.total > 0 else 1.0, 2)
 		if percent_completed == self.percent_completed:
@@ -278,6 +277,16 @@ def compress_command(archive: Path, compression: str) -> str:
 	raise RuntimeError(f"Unknown compression '{compression}'")
 
 
+def get_files(paths: list[Path], follow_symlinks: bool = False) -> Generator[tuple[Path,int], None, None]:
+	for path in paths:
+		if path.is_dir():
+			for root, dirnames, filenames in os.walk(path, followlinks=follow_symlinks):
+				for filename in filenames:
+					file = Path(root) / filename
+					yield file, file.stat().st_size
+		else:
+			yield path, path.stat().st_size
+
 # Warning: this is specific for linux!
 def create_archive_external(
 	archive: Path,
@@ -288,25 +297,75 @@ def create_archive_external(
 	dereference: bool = False,
 	progress_listener: ArchiveProgressListener | None = None,
 ) -> None:
+	if not is_linux():
+		raise RuntimeError("External archiving is only available on linux")
+	from fcntl import fcntl, F_GETFL, F_SETFL
 	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
 	if compression == "bz2":
 		logger.warning("Creating unsyncable package (no zsync or rsync support)")
 
 	if archive.exists():
 		archive.unlink()
-	source_string = " ".join((shlex.quote(f"{source.relative_to(base_dir)}") for source in sources))
-	dereference_string = "--dereference" if dereference else ""
-	# Use -- to signal that no options should be processed afterwards
+
+	file = "-" if compression else archive
+	cmd = f'{TAR_CREATE_COMMAND} {file} --files-from=- --checkpoint=100 --checkpoint-action="echo=|%u|"'
 	if compression:
-		cmd = f"{TAR_CREATE_COMMAND} - {dereference_string} -- {source_string} | {compress_command(archive, compression)}"
-	else:
-		cmd = f"{TAR_CREATE_COMMAND} {archive} {dereference_string} -- {source_string}"
+		cmd += f" | {compress_command(archive, compression)}"
+
+	files = list(get_files(sources, follow_symlinks=dereference))
+	total_size = sum(size for _, size in files)
+	progress: ArchiveProgress | None = None
+	if progress_listener:
+		progress = ArchiveProgress(total=total_size)
+		progress.register_progress_listener(progress_listener)
+
+	checkpoint_re = re.compile("\|(\d+)\|")
+	def read_checkpoint_number(proc: subprocess.Popen) -> None:
+		try:
+			data = proc.stderr.read()
+		except OSError:
+			return
+		if not data:
+			return
+		line = data.decode().strip().split("\n")[-1]
+		match = checkpoint_re.search(line)
+		if not match:
+			return
+		number = int(match.group(1))
+		progress.set_completed(number * 512 * 20)
+
 	with chdir(base_dir):
 		logger.debug("Executing %s at %s", cmd, base_dir)
-		proc = subprocess.run(cmd, shell=True, check=False, capture_output=True, text=True)
-		logger.debug("%s output: %s", cmd, proc.stdout + proc.stderr)
+		proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+		assert proc.stdin
+		assert proc.stdout
+		assert proc.stderr
+		fileno = proc.stderr.fileno()
+		flags = fcntl(fileno, F_GETFL)
+		fcntl(fileno, F_SETFL, flags | os.O_NONBLOCK)
+		for file in files:
+			file = file[0].relative_to(base_dir)
+			logger.trace("Adding file: '%s'", file)
+			proc.stdin.write(f"{file}\n".encode())
+			proc.stdin.flush()
+			if progress:
+				read_checkpoint_number(proc)
+		proc.stdin.close()
+		while proc.poll() is None:
+			if progress:
+				read_checkpoint_number(proc)
+			time.sleep(0.2)
+		proc.wait(timeout=7200)
+		if progress:
+			progress.set_completed(total_size)
+		try:
+			stderr = proc.stderr.read().decode(errors="ignore")
+		except Exception:
+			stderr = ""
+		out = proc.stdout.read().decode(errors="ignore") + stderr
+		logger.debug("%s output: %s", cmd, out)
 		if proc.returncode != 0:
-			raise RuntimeError(f"Command {cmd} failed: {proc.stdout + proc.stderr}")
+			raise RuntimeError(f"Command {cmd} failed: {out}")
 
 
 def create_archive_internal(

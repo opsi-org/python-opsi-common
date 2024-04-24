@@ -72,7 +72,8 @@ def test_archive_external_hypothesis(filename: str, data: bytes, compression: Li
 
 
 class ProgressListener(ArchiveProgressListener):
-	percent_competed_vals = []
+	def __init__(self) -> None:
+		self.percent_competed_vals = []
 
 	def progress_changed(self, progress: ArchiveProgress) -> None:
 		self.percent_competed_vals.append(progress.percent_completed)
@@ -96,6 +97,11 @@ def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 		progress_listener = ProgressListener()
 		create_archive_external(archive, list(source.glob("*")), source, compression=compression, progress_listener=progress_listener)
 
+		assert progress_listener.percent_competed_vals[-1] == 100
+		for idx, val in enumerate(progress_listener.percent_competed_vals):
+			if idx + 1 < len(progress_listener.percent_competed_vals):
+				assert val <= progress_listener.percent_competed_vals[idx + 1]
+
 		# Ownership of archive should be current user group
 		assert archive.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
 
@@ -109,8 +115,10 @@ def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 		progress_listener = ProgressListener()
 		extract_archive_external(archive, destination, progress_listener=progress_listener)
 
-		assert len(progress_listener.percent_competed_vals) > 10
 		assert progress_listener.percent_competed_vals[-1] == 100
+		for idx, val in enumerate(progress_listener.percent_competed_vals):
+			if idx + 1 < len(progress_listener.percent_competed_vals):
+				assert val <= progress_listener.percent_competed_vals[idx + 1]
 
 		# Ownership of archive should be current user group
 		assert destination.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
