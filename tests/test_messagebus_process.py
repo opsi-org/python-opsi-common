@@ -37,11 +37,14 @@ async def test_execute_command(close_stdin: bool) -> None:
 	await process_messagebus_message(process_start_request, send_message=message_sender.send_message)
 
 	messages = await message_sender.wait_for_messages(count=1)
-	assert len(messages) == 1
+	assert len(messages) >= 1
 
 	assert isinstance(messages[0], ProcessStartEventMessage)
 	assert messages[0].process_id == process_start_request.process_id
 	assert messages[0].os_process_id > 0
+
+	if len(messages) > 1:
+		message_sender.messages_sent = messages[1:]
 
 	if not is_windows():
 		process_data_write_message = ProcessDataWriteMessage(
