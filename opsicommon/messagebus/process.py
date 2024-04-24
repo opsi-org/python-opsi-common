@@ -207,10 +207,10 @@ class Process:
 				logger.error("Failed to terminate %r", self)
 
 	async def _wait_for_process(self) -> None:
-		await asyncio.sleep(0.001)
 		assert self._proc
 		exit_code = await self._proc.wait()
 		logger.info("%r finished with exit code %d", self, exit_code)
+		await asyncio.sleep(0.2)
 		try:
 			async with self._message_send_lock:
 				message = ProcessStopEventMessage(
