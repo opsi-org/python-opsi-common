@@ -182,7 +182,7 @@ class Process:
 				locale_encoding=locale_encoding,
 			)
 			await self._send_message(message)
-			await asyncio.sleep(0.01)
+			await asyncio.sleep(0.2)
 		logger.info("Started %r", self)
 
 		self._loop.create_task(self._stderr_reader())
