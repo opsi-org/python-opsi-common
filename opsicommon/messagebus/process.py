@@ -187,6 +187,7 @@ class Process:
 
 		self._loop.create_task(self._stderr_reader())
 		self._loop.create_task(self._stdout_reader())
+		await asyncio.sleep(0.4)
 		self._loop.create_task(self._wait_for_process())
 
 	async def stop(self) -> None:
@@ -210,7 +211,6 @@ class Process:
 		assert self._proc
 		exit_code = await self._proc.wait()
 		logger.info("%r finished with exit code %d", self, exit_code)
-		await asyncio.sleep(0.2)
 		try:
 			async with self._message_send_lock:
 				message = ProcessStopEventMessage(
