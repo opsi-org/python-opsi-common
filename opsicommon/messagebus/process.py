@@ -71,6 +71,7 @@ class Process:
 		self._process_start_request = process_start_request
 		self._back_channel = back_channel or CONNECTION_SESSION_CHANNEL
 		self._loop = asyncio.get_running_loop()
+		self._message_send_lock = asyncio.Lock()
 
 	def __repr__(self) -> str:
 		return f"Process(command={self._command}, id={self._process_id}, shell={self._process_start_request.shell})"
@@ -103,13 +104,14 @@ class Process:
 			data = await self._proc.stdout.read(self.max_data_size)
 			if not data:
 				break
-			message = ProcessDataReadMessage(
-				sender=self._sender,
-				channel=self._response_channel,
-				process_id=self._process_id,
-				stdout=data,
-			)
-			await self._send_message(message)
+			async with self._message_send_lock:
+				message = ProcessDataReadMessage(
+					sender=self._sender,
+					channel=self._response_channel,
+					process_id=self._process_id,
+					stdout=data,
+				)
+				await self._send_message(message)
 
 	async def _stderr_reader(self) -> None:
 		assert self._proc and self._proc.stderr
@@ -117,13 +119,14 @@ class Process:
 			data = await self._proc.stderr.read(self.max_data_size)
 			if not data:
 				break
-			message = ProcessDataReadMessage(
-				sender=self._sender,
-				channel=self._response_channel,
-				process_id=self._process_id,
-				stderr=data,
-			)
-			await self._send_message(message)
+			async with self._message_send_lock:
+				message = ProcessDataReadMessage(
+					sender=self._sender,
+					channel=self._response_channel,
+					process_id=self._process_id,
+					stderr=data,
+				)
+				await self._send_message(message)
 
 	async def write_stdin(self, data: bytes) -> None:
 		assert self._proc and self._proc.stdin
@@ -156,28 +159,30 @@ class Process:
 				self._proc = await asyncio.create_subprocess_exec(*self._command, env=sp_env, stdin=PIPE, stdout=PIPE, stderr=PIPE)
 		except Exception as error:
 			logger.error(error, exc_info=True)
-			message = ProcessErrorMessage(
-				sender=self._sender,
-				channel=self._response_channel,
-				ref_id=self._process_start_request.id,
-				process_id=self._process_id,
-				error=Error(message=str(error)),
-			)
-			await self._send_message(message)
+			async with self._message_send_lock:
+				message = ProcessErrorMessage(
+					sender=self._sender,
+					channel=self._response_channel,
+					ref_id=self._process_start_request.id,
+					process_id=self._process_id,
+					error=Error(message=str(error)),
+				)
+				await self._send_message(message)
 			await self._loop.run_in_executor(None, remove_process, self._process_id)
 			return
 
 		locale_encoding = await self._loop.run_in_executor(None, get_locale_encoding, self._process_start_request.shell)
-		message = ProcessStartEventMessage(
-			sender=self._sender,
-			channel=self._response_channel,
-			process_id=self._process_id,
-			back_channel=self._back_channel,
-			os_process_id=self._proc.pid,
-			locale_encoding=locale_encoding,
-		)
-
-		await self._send_message(message)
+		async with self._message_send_lock:
+			message = ProcessStartEventMessage(
+				sender=self._sender,
+				channel=self._response_channel,
+				process_id=self._process_id,
+				back_channel=self._back_channel,
+				os_process_id=self._proc.pid,
+				locale_encoding=locale_encoding,
+			)
+			await self._send_message(message)
+			await asyncio.sleep(0.001)
 		logger.info("Started %r", self)
 
 		self._loop.create_task(self._stderr_reader())
@@ -202,17 +207,19 @@ class Process:
 				logger.error("Failed to terminate %r", self)
 
 	async def _wait_for_process(self) -> None:
+		await asyncio.sleep(0.001)
 		assert self._proc
 		exit_code = await self._proc.wait()
 		logger.info("%r finished with exit code %d", self, exit_code)
 		try:
-			message = ProcessStopEventMessage(
-				sender=self._sender,
-				channel=self._response_channel,
-				process_id=self._process_id,
-				exit_code=exit_code,
-			)
-			await self._send_message(message)
+			async with self._message_send_lock:
+				message = ProcessStopEventMessage(
+					sender=self._sender,
+					channel=self._response_channel,
+					process_id=self._process_id,
+					exit_code=exit_code,
+				)
+				await self._send_message(message)
 		except Exception as err:
 			logger.error(err, exc_info=True)
 		finally:

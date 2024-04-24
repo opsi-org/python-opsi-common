@@ -75,6 +75,24 @@ async def test_execute_command(close_stdin: bool) -> None:
 	assert messages[1].exit_code == 0
 
 
+async def test_message_order() -> None:
+	sender = "test_sender"
+	channel = "test_channel"
+	message_sender = MessageSender()
+
+	command = ("echo", "test")
+	process_start_request = ProcessStartRequestMessage(sender=sender, channel=channel, command=command, shell=True)
+	await process_messagebus_message(process_start_request, send_message=message_sender.send_message)
+
+	messages = await message_sender.wait_for_messages(count=3, timeout=5)
+	assert len(messages) == 3
+
+	assert isinstance(messages[0], ProcessStartEventMessage)
+	assert isinstance(messages[1], ProcessDataReadMessage)
+	assert isinstance(messages[2], ProcessStopEventMessage)
+	assert messages[0].created < messages[1].created < messages[2].created
+
+
 async def test_execute_error() -> None:
 	sender = "test_sender"
 	channel = "test_channel"
