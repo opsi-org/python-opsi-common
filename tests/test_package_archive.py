@@ -28,6 +28,8 @@ from opsicommon.package.archive import (
 	create_archive_internal,
 	extract_archive_external,
 	extract_archive_internal,
+	ArchiveProgress,
+	ArchiveProgressListener,
 )
 from opsicommon.package.associated_files import create_package_zsync_file
 from opsicommon.testing.helpers import memory_usage_monitor
@@ -77,18 +79,36 @@ def test_archive_external_hypothesis(filename: str, data: bytes, compression: Li
 def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"]) -> None:
 	source = make_source_files(tmp_path)
 	with memory_usage_monitor(interval=0.01) as mem_monitor:
-		# Setting group ownership of source to adm group - assuming this is present on every linux
-		shutil.chown(source, None, "adm")
+		try:
+			# Setting group ownership of source to adm group
+			shutil.chown(source, None, "adm")
+		except PermissionError:
+			pass
 		archive = tmp_path / f"archive.tar.{compression}"
+
 		create_archive_external(archive, list(source.glob("*")), source, compression=compression)
 
 		# Ownership of archive should be current user group
 		assert archive.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
 
-		# Setting group ownership of archive to adm group - assuming this is present on every linux
-		shutil.chown(archive, None, "adm")
+		class ProgressListener(ArchiveProgressListener):
+			percent_competed_vals = []
+
+			def progress_changed(self, progress: ArchiveProgress) -> None:
+				self.percent_competed_vals.append(progress.percent_completed)
+
+		progress_listener = ProgressListener()
+
+		try:
+			# Setting group ownership of source to adm group
+			shutil.chown(archive, None, "adm")
+		except PermissionError:
+			pass
 		destination = tmp_path / "destination"
-		extract_archive_external(archive, destination)
+		extract_archive_external(archive, destination, progress_listener=progress_listener)
+
+		assert len(progress_listener.percent_competed_vals) > 10
+		assert progress_listener.percent_competed_vals[-1] == 100
 
 		# Ownership of archive should be current user group
 		assert destination.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid

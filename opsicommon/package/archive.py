@@ -5,7 +5,10 @@
 """
 handling of archives
 """
+from __future__ import annotations
 
+from abc import ABC
+from dataclasses import dataclass, field
 import fnmatch
 import os
 import re
@@ -15,6 +18,8 @@ import tarfile
 from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
+from threading import Lock
+import time
 from typing import Generator
 
 import packaging.version
@@ -43,6 +48,51 @@ TAR_EXTRACT_COMMAND = "tar --wildcards --no-same-owner --extract --file -"
 TAR_CREATE_COMMAND = "tar --owner=nobody --group=nogroup --create --file"
 EXCLUDE_DIRS_ON_PACK_REGEX = re.compile(r"(^\.svn$)|(^\.git$)")
 EXCLUDE_FILES_ON_PACK_REGEX = re.compile(r"(~$)|(^[Tt]humbs\.db$)|(^\.[Dd][Ss]_[Ss]tore$)")
+
+
+@dataclass
+class ArchiveProgress:
+	total: int = 100
+	completed: int = 0
+	percent_completed: float = 0.0
+	_listener: list[ArchiveProgressListener] = field(default_factory=list)
+	_listener_lock: Lock = field(default_factory=Lock)
+	_last_notification = 0
+	_notification_interval = 0.5
+
+	def set_completed(self, completed: int) -> None:
+		self.completed = completed
+		percent_completed = self.percent_completed
+		self.percent_completed = round(self.completed * 100 / self.total if self.total > 0 else 1.0, 2)
+		if percent_completed == self.percent_completed:
+			return
+		now = time.time()
+		if now - self._last_notification < self._notification_interval:
+			return
+		self._notification_interval = now
+		with self._listener_lock:
+			for listener in self._listener:
+				listener.progress_changed(self)
+
+	def advance(self, amount: int) -> None:
+		self.set_completed(self.completed + amount)
+
+	def register_progress_listener(self, listener: ArchiveProgressListener) -> None:
+		with self._listener_lock:
+			if listener not in self._listener:
+				self._listener.append(listener)
+
+	def unregister_progress_listener(self, listener: ArchiveProgressListener) -> None:
+		with self._listener_lock:
+			if listener in self._listener:
+				self._listener.remove(listener)
+
+
+class ArchiveProgressListener(ABC):
+	def progress_changed(self, progress: ArchiveProgress) -> None:
+		"""
+		Called when the progress state changes.
+		"""
 
 
 @lru_cache
@@ -101,16 +151,16 @@ def extract_command(archive: Path, file_pattern: str | None = None) -> str:
 def decompress_command(archive: Path) -> str:
 	if archive.suffix in (".gzip", ".gz"):
 		if use_pigz():
-			return f"pigz --stdout --quiet --decompress '{archive}'"
-		return f"zcat --stdout --quiet --decompress '{archive}'"
+			return "pigz --stdout --quiet --decompress"
+		return "gunzip --stdout --quiet --decompress"
 	if archive.suffix in (".bzip2", ".bz2"):
-		return f"bzcat --stdout --quiet --decompress '{archive}'"
+		return "bunzip2 --stdout --quiet --decompress"
 	if archive.suffix == ".zstd":
 		try:
 			subprocess.run(["zstdcat", "--version"], capture_output=True, check=True)
 		except (subprocess.CalledProcessError, FileNotFoundError) as error:
 			raise RuntimeError("Zstdcat not available.") from error
-		return f"zstdcat --stdout --quiet --decompress '{archive}'"
+		return "zstd --stdout --quiet --decompress"
 	raise RuntimeError(f"Unknown compression of file '{archive}'")
 
 
@@ -129,23 +179,48 @@ def untar(tar: tarfile.TarFile, destination: Path, file_pattern: str | None = No
 
 
 # Warning: this is specific for linux!
-def extract_archive_external(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
+def extract_archive_external(
+	archive: Path, destination: Path, *, file_pattern: str | None = None, progress_listener: ArchiveProgressListener | None = None
+) -> None:
 	logger.info("Extracting archive %s to destination %s", archive, destination)
 	destination.mkdir(parents=True, exist_ok=True)
+
+	cmd = ""
 	if archive.suffixes and archive.suffixes[-1] in (".zstd", ".gz", ".gzip", ".bz2", ".bzip2"):
-		create_input = decompress_command(archive.absolute())
-	else:
-		create_input = f"cat '{archive.absolute()}'"
-	process_archive = extract_command(archive.absolute(), file_pattern=file_pattern)
+		cmd = decompress_command(archive.absolute()) + " | "
+	cmd += extract_command(archive.absolute(), file_pattern=file_pattern)
+
+	chunk_size = 512 * 1024
+	progress: ArchiveProgress | None = None
+	if progress_listener:
+		progress = ArchiveProgress(total=archive.stat().st_size)
+		progress.register_progress_listener(progress_listener)
 	with chdir(destination):
-		cmd = f"{create_input} | {process_archive}"
-		proc = subprocess.run(cmd, shell=True, check=False, capture_output=True, text=True)
-		logger.debug("%s output: %s", cmd, proc.stdout + proc.stderr)
+		proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+		assert proc.stdin
+		assert proc.stdout
+		assert proc.stderr
+		with open(archive, "rb") as file:
+			while True:
+				data = file.read(chunk_size)
+				if data:
+					proc.stdin.write(data)
+					proc.stdin.flush()
+					if progress:
+						progress.advance(len(data))
+				else:
+					proc.stdin.close()
+					break
+		proc.wait(timeout=7200)
+		out = proc.stdout.read().decode(errors="ignore") + proc.stderr.read().decode(errors="ignore")
+		logger.debug("%s output: %s", cmd, out)
 		if proc.returncode != 0:
-			raise RuntimeError(f"Command {cmd} failed: {proc.stdout + proc.stderr}")
+			raise RuntimeError(f"Command {cmd} failed: {out}")
 
 
-def extract_archive_internal(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
+def extract_archive_internal(
+	archive: Path, destination: Path, *, file_pattern: str | None = None, progress_listener: ArchiveProgressListener | None = None
+) -> None:
 	logger.info("Extracting archive %s to destination %s", archive, destination)
 	destination.mkdir(parents=True, exist_ok=True)
 
@@ -165,7 +240,9 @@ def extract_archive_internal(archive: Path, destination: Path, file_pattern: str
 		untar(tar_object, destination, file_pattern)
 
 
-def extract_archive(archive: Path, destination: Path, file_pattern: str | None = None) -> None:
+def extract_archive(
+	archive: Path, destination: Path, *, file_pattern: str | None = None, progress_listener: ArchiveProgressListener | None = None
+) -> None:
 	use_commands = False
 	if is_linux():
 		file_type = get_file_type(archive)
@@ -174,8 +251,8 @@ def extract_archive(archive: Path, destination: Path, file_pattern: str | None =
 		elif (archive.suffixes and archive.suffixes[-1] in (".gz", ".gzip") or file_type == "gz") and use_pigz():
 			use_commands = True
 	if use_commands:
-		return extract_archive_external(archive, destination, file_pattern)
-	return extract_archive_internal(archive, destination, file_pattern)
+		return extract_archive_external(archive, destination, file_pattern=file_pattern, progress_listener=progress_listener)
+	return extract_archive_internal(archive, destination, file_pattern=file_pattern, progress_listener=progress_listener)
 
 
 def compress_command(archive: Path, compression: str) -> str:

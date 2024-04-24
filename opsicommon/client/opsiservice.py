@@ -9,6 +9,8 @@ This file is part of opsi - https://www.opsi.org
 
 from __future__ import annotations
 
+from abc import ABC
+
 import asyncio
 import gzip
 import locale
@@ -169,7 +171,7 @@ class CallbackThread(Thread):
 			logger.error("Error in %s: %s", self, err, exc_info=True)
 
 
-class ServiceConnectionListener:
+class ServiceConnectionListener(ABC):
 	def connection_open(self, service_client: ServiceClient) -> None:
 		"""
 		Called when the connection to the service is opened.
@@ -1375,7 +1377,7 @@ class ServiceClient:
 		self.stop()
 
 
-class MessagebusListener:
+class MessagebusListener(ABC):
 	def __init__(self, messagebus: Messagebus | None = None, message_types: Iterable[MessageType | str] | None = None) -> None:
 		"""
 		message_types:
