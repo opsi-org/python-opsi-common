@@ -18,7 +18,7 @@ from random import randbytes
 from typing import Literal
 
 import pytest
-from hypothesis import given, reproduce_failure
+from hypothesis import given
 from hypothesis.strategies import binary, from_regex, sampled_from
 from pyzsync import SOURCE_REMOTE, get_patch_instructions, read_zsync_file
 
