@@ -39,6 +39,15 @@ from opsicommon.testing.helpers import memory_usage_monitor
 FILENAME_REGEX = r"^[^/\\]{4,64}$"
 
 
+class ProgressListener(ArchiveProgressListener):
+	def __init__(self) -> None:
+		self.percent_competed_vals: list[float] = []
+
+	def progress_changed(self, progress: ArchiveProgress) -> None:
+		# print(f"{progress.percent_completed:0.1f} %")
+		self.percent_competed_vals.append(progress.percent_completed)
+
+
 def make_source_files(path: Path) -> Path:
 	source = path / "source"
 	source.mkdir()
@@ -46,6 +55,8 @@ def make_source_files(path: Path) -> Path:
 	(source / "#how^can°people`think,this´is'a good~idea#").write_bytes(randbytes(50_000_000))
 	(source / "test'dir").mkdir()
 	(source / "test'dir" / "testfileindir").write_bytes(randbytes(10_000_000))
+	(source / "Empty Dir").mkdir()
+	(source / "dir" / "in" / "dir").mkdir(parents=True)
 	if platform.system().lower() != "windows":  # windows does not like ?, < and > characters
 		(source / "test'dir" / 'test"file$in€dir<with>special?').write_bytes(randbytes(1000))
 	return source
@@ -71,14 +82,6 @@ def test_archive_external_hypothesis(filename: str, data: bytes, compression: Li
 			assert file.relative_to(source) in contents
 
 
-class ProgressListener(ArchiveProgressListener):
-	def __init__(self) -> None:
-		self.percent_competed_vals = []
-
-	def progress_changed(self, progress: ArchiveProgress) -> None:
-		self.percent_competed_vals.append(progress.percent_completed)
-
-
 @pytest.mark.linux
 @pytest.mark.parametrize(
 	"compression",
@@ -92,9 +95,10 @@ def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 			shutil.chown(source, None, "adm")
 		except PermissionError:
 			pass
-		archive = tmp_path / f"archive.tar.{compression}"
 
+		archive = tmp_path / f"archive.tar.{compression}"
 		progress_listener = ProgressListener()
+
 		create_archive_external(archive, list(source.glob("*")), source, compression=compression, progress_listener=progress_listener)
 
 		assert progress_listener.percent_competed_vals[-1] == 100
@@ -110,9 +114,10 @@ def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 			shutil.chown(archive, None, "adm")
 		except PermissionError:
 			pass
-		destination = tmp_path / "destination"
 
+		destination = tmp_path / "destination"
 		progress_listener = ProgressListener()
+
 		extract_archive_external(archive, destination, progress_listener=progress_listener)
 
 		assert progress_listener.percent_competed_vals[-1] == 100
@@ -140,10 +145,24 @@ def test_archive_internal(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 	source = make_source_files(tmp_path)
 	with memory_usage_monitor(interval=0.01) as mem_monitor:
 		archive = tmp_path / f"archive.tar.{compression}"
-		create_archive_internal(archive, list(source.glob("*")), source, compression=compression)
+		progress_listener = ProgressListener()
+
+		create_archive_internal(archive, list(source.glob("*")), source, compression=compression, progress_listener=progress_listener)
+
+		assert progress_listener.percent_competed_vals[-1] == 100
+		for idx, val in enumerate(progress_listener.percent_competed_vals):
+			if idx + 1 < len(progress_listener.percent_competed_vals):
+				assert val <= progress_listener.percent_competed_vals[idx + 1]
 
 		destination = tmp_path / "destination"
-		extract_archive_internal(archive, destination)
+		progress_listener = ProgressListener()
+
+		extract_archive_internal(archive, destination, progress_listener=progress_listener)
+
+		assert progress_listener.percent_competed_vals[-1] == 100
+		for idx, val in enumerate(progress_listener.percent_competed_vals):
+			if idx + 1 < len(progress_listener.percent_competed_vals):
+				assert val <= progress_listener.percent_competed_vals[idx + 1]
 
 		contents = [file.relative_to(destination) for file in destination.rglob("*")]
 		for file in source.rglob("*"):

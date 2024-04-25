@@ -5,6 +5,7 @@
 """
 handling of archives
 """
+
 from __future__ import annotations
 
 from abc import ABC
@@ -19,8 +20,8 @@ from functools import lru_cache
 from pathlib import Path
 from threading import Lock
 import time
-from typing import Generator
-
+from typing import Any, Generator
+from contextlib import nullcontext
 import packaging.version
 import zstandard
 
@@ -92,6 +93,50 @@ class ArchiveProgressListener(ABC):
 		"""
 		Called when the progress state changes.
 		"""
+
+
+class ProgressFileWrapper:
+	def __init__(self, filesize: int, fileobj: os.IO[bytes], progress: ArchiveProgress | None = None):
+		self._filesize = filesize
+		self._fileobj = fileobj
+		self._progress = progress
+		self._pos = 0
+		self._last_pos = 0
+
+	def _update_progress(self, data_size: int) -> None:
+		if not self._progress:
+			return
+		self._pos += data_size
+		diff = self._pos - self._last_pos
+		if diff > 1_000_000:
+			self._progress.advance(diff)
+			self._last_pos = self._pos
+
+	def read(self, size: int | None = None) -> bytes:
+		data = self._fileobj.read(size)
+		self._update_progress(len(data))
+		return data
+
+	def __getattr__(self, name: str) -> Any:
+		return getattr(self._fileobj, name)
+
+	def __del__(self) -> None:
+		if not self._progress:
+			return
+		self._progress.advance(self._filesize - self._last_pos)
+
+
+class ProgressTarFile(tarfile.TarFile):
+	def __init__(self, *args: Any, **kwargs: Any) -> None:
+		self._progress = kwargs.pop("progress", None)
+		if self._progress:
+			assert isinstance(self._progress, ArchiveProgress)
+		super().__init__(*args, **kwargs)
+
+	def addfile(self, tarinfo: tarfile.TarInfo, fileobj: os.IO[bytes] | None = None) -> None:
+		if fileobj and self._progress:
+			fileobj = ProgressFileWrapper(filesize=tarinfo.size, fileobj=fileobj, progress=self._progress)
+		return super().addfile(tarinfo, fileobj)
 
 
 @lru_cache
@@ -223,20 +268,22 @@ def extract_archive_internal(
 	logger.info("Extracting archive %s to destination %s", archive, destination)
 	destination.mkdir(parents=True, exist_ok=True)
 
-	if archive.suffixes and archive.suffixes[-1] == ".zstd":
-		decompressor = zstandard.ZstdDecompressor()
-		with open(archive, "rb") as file:
-			with decompressor.stream_reader(file) as zstd_reader:
-				with tarfile.open(fileobj=zstd_reader, mode="r:") as tar_object:  # compression can be None, gz, bz2 or xz
-					untar(tar_object, destination, file_pattern)
-		return
-
 	file_type = get_file_type(archive)
 	if archive.suffixes and ".cpio" in archive.suffixes[-2:] or file_type == "cpio":
 		raise RuntimeError("Extracting cpio archives is not available on this platform.")
 
-	with tarfile.open(name=str(archive), mode="r") as tar_object:  # compression can be None, gz, bz2 or xz
-		untar(tar_object, destination, file_pattern)
+	filesize = archive.stat().st_size
+	progress: ArchiveProgress | None = None
+	if progress_listener:
+		progress = ArchiveProgress(total=filesize)
+		progress.register_progress_listener(progress_listener)
+
+	is_zstd = archive.suffixes and archive.suffixes[-1] == ".zstd"
+	with open(archive, "rb") as file:
+		file = ProgressFileWrapper(filesize=filesize, fileobj=file, progress=progress)  # type: ignore[assignment]
+		with zstandard.ZstdDecompressor().stream_reader(file) if is_zstd else nullcontext(file) as fileobj:  # type: ignore[attr-defined]
+			with tarfile.open(fileobj=fileobj, mode="r:" if is_zstd else "r") as tar_object:  # compression can be None, gz, bz2 or xz
+				untar(tar_object, destination, file_pattern)
 
 
 def extract_archive(
@@ -277,15 +324,21 @@ def compress_command(archive: Path, compression: str) -> str:
 	raise RuntimeError(f"Unknown compression '{compression}'")
 
 
-def get_files(paths: list[Path], follow_symlinks: bool = False) -> Generator[tuple[Path,int], None, None]:
+def get_files(paths: list[Path], follow_symlinks: bool = False) -> Generator[tuple[Path, int], None, None]:
 	for path in paths:
 		if path.is_dir():
 			for root, dirnames, filenames in os.walk(path, followlinks=follow_symlinks):
+				if not filenames and not dirnames:
+					# Empty directory
+					yield Path(root), 0
+					continue
 				for filename in filenames:
 					file = Path(root) / filename
 					yield file, file.stat().st_size
+
 		else:
 			yield path, path.stat().st_size
+
 
 # Warning: this is specific for linux!
 def create_archive_external(
@@ -300,6 +353,7 @@ def create_archive_external(
 	if not is_linux():
 		raise RuntimeError("External archiving is only available on linux")
 	from fcntl import fcntl, F_GETFL, F_SETFL
+
 	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
 	if compression == "bz2":
 		logger.warning("Creating unsyncable package (no zsync or rsync support)")
@@ -320,7 +374,9 @@ def create_archive_external(
 		progress.register_progress_listener(progress_listener)
 
 	checkpoint_re = re.compile("\|(\d+)\|")
-	def read_checkpoint_number(proc: subprocess.Popen) -> None:
+
+	def read_checkpoint_number(proc: subprocess.Popen, progress: ArchiveProgress) -> None:
+		assert proc.stderr
 		try:
 			data = proc.stderr.read()
 		except OSError:
@@ -344,16 +400,16 @@ def create_archive_external(
 		flags = fcntl(fileno, F_GETFL)
 		fcntl(fileno, F_SETFL, flags | os.O_NONBLOCK)
 		for file in files:
-			file = file[0].relative_to(base_dir)
-			logger.trace("Adding file: '%s'", file)
-			proc.stdin.write(f"{file}\n".encode())
+			file_path = file[0].relative_to(base_dir)
+			logger.trace("Adding file: '%s'", file_path)
+			proc.stdin.write(f"{file_path}\n".encode())
 			proc.stdin.flush()
 			if progress:
-				read_checkpoint_number(proc)
+				read_checkpoint_number(proc, progress)
 		proc.stdin.close()
 		while proc.poll() is None:
 			if progress:
-				read_checkpoint_number(proc)
+				read_checkpoint_number(proc, progress)
 			time.sleep(0.2)
 		proc.wait(timeout=7200)
 		if progress:
@@ -369,7 +425,12 @@ def create_archive_external(
 
 
 def create_archive_internal(
-	archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False
+	archive: Path,
+	sources: list[Path],
+	base_dir: Path,
+	compression: str | None = None,
+	dereference: bool = False,
+	progress_listener: ArchiveProgressListener | None = None,
 ) -> None:
 	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
 	if compression == "bz2":
@@ -383,6 +444,13 @@ def create_archive_internal(
 	elif compression == "gz":
 		mode = "w|gz"
 
+	files = list(get_files(sources, follow_symlinks=dereference))
+	total_size = sum(size for _, size in files)
+	progress: ArchiveProgress | None = None
+	if progress_listener:
+		progress = ArchiveProgress(total=total_size)
+		progress.register_progress_listener(progress_listener)
+
 	def set_tarinfo(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo:
 		tarinfo.uid = 65534
 		tarinfo.uname = "nobody"
@@ -392,20 +460,39 @@ def create_archive_internal(
 
 	if compression == "zstd":
 		compressor = zstandard.ZstdCompressor()
-		with open(archive, "wb") as file:
-			with compressor.stream_writer(file) as zstd_writer:
-				with tarfile.open(fileobj=zstd_writer, dereference=dereference, mode="w:") as tar_object:
-					for source in sources:
-						tar_object.add(source, arcname=source.relative_to(base_dir), filter=set_tarinfo)
+		with open(archive, "wb") as archive_file:
+			with compressor.stream_writer(archive_file) as zstd_writer:
+				with ProgressTarFile.open(fileobj=zstd_writer, dereference=dereference, mode="w:") as tar_object:  # type: ignore[call-arg]
+					for file in files:
+						tar_object.add(file[0], arcname=file[0].relative_to(base_dir), filter=set_tarinfo)
+						if progress:
+							progress.advance(file[1])
+			if progress:
+				progress.set_completed(total_size)
 		return
 
-	# Remark: everything except gz can handle Path-like archive, gz requires str
-	with tarfile.open(name=str(archive), mode=mode, dereference=dereference) as tar_object:
-		for source in sources:
-			tar_object.add(source, arcname=source.relative_to(base_dir), filter=set_tarinfo)
+	with ProgressTarFile.open(name=str(archive), mode=mode, dereference=dereference, progress=progress) as tar_object:  # type: ignore[call-arg]
+		for file in files:
+			tar_object.add(file[0], arcname=file[0].relative_to(base_dir), filter=set_tarinfo)
+			if progress:
+				progress.advance(file[1])
+		if progress:
+			progress.set_completed(total_size)
 
 
-def create_archive(archive: Path, sources: list[Path], base_dir: Path, compression: str | None = None, dereference: bool = False) -> None:
+def create_archive(
+	archive: Path,
+	sources: list[Path],
+	base_dir: Path,
+	*,
+	compression: str | None = None,
+	dereference: bool = False,
+	progress_listener: ArchiveProgressListener | None = None,
+) -> None:
 	if compression == "gz" and is_linux() and use_pigz():
-		return create_archive_external(archive, sources, base_dir, compression, dereference)
-	return create_archive_internal(archive, sources, base_dir, compression, dereference)
+		return create_archive_external(
+			archive, sources, base_dir, compression=compression, dereference=dereference, progress_listener=progress_listener
+		)
+	return create_archive_internal(
+		archive, sources, base_dir, compression=compression, dereference=dereference, progress_listener=progress_listener
+	)
