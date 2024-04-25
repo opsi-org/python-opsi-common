@@ -367,8 +367,8 @@ def create_archive_external(
 	if archive.exists():
 		archive.unlink()
 
-	file = "-" if compression else f"'{archive}'"
-	cmd = f'{TAR_CREATE_COMMAND} {file} --files-from=- --checkpoint=100 --checkpoint-action="echo=|%u|"'
+	archive_file = "-" if compression else f"'{archive}'"
+	cmd = f'{TAR_CREATE_COMMAND} {archive_file} --files-from=- --checkpoint=100 --checkpoint-action="echo=|%u|"'
 	if compression:
 		cmd += f" | {compress_command(archive, compression)}"
 
