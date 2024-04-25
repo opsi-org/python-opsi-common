@@ -27,7 +27,7 @@ from opsicommon.package.control_file_handling import (
 	dictify_product_properties,
 )
 from opsicommon.package.legacy_control_file import LegacyControlFile
-from opsicommon.utils import make_temp_dir
+from opsicommon.utils import compare_versions, make_temp_dir
 
 EXCLUDE_DIRS_ON_PACK_REGEX = re.compile(r"(^\.svn$)|(^\.git$)")
 EXCLUDE_FILES_ON_PACK_REGEX = re.compile(r"(~$)|(^[Tt]humbs\.db$)|(^\.[Dd][Ss]_[Ss]tore$)")
@@ -108,6 +108,13 @@ class OpsiPackage:
 
 			self.find_and_parse_control_file(temp_dir)
 
+	def compare_with_legacy_control_file(self, control):
+		opsi_package = OpsiPackage()
+		opsi_package.parse_control_file_legacy(control)
+		if opsi_package.product.version is not None and self.product.version is not None:
+			if compare_versions(opsi_package.product.version, ">", self.product.version):
+				raise RuntimeError("Legacy control file is newer. Please update the control file.")
+
 	def find_and_parse_control_file(self, search_dir: Path) -> Path:
 		opsi_dirs = []
 		for _dir in search_dir.glob("OPSI*"):
@@ -117,18 +124,19 @@ class OpsiPackage:
 		# Sort custom first
 		for _dir in [search_dir] + sorted(opsi_dirs, reverse=True):
 			control_toml = _dir / "control.toml"
+			control = _dir / "control"
+
 			if control_toml.exists():
 				self.parse_control_file(control_toml)
+				if control.exists():
+					self.compare_with_legacy_control_file(control)
 				return control_toml
 
-		# Sort custom first
-		for _dir in [search_dir] + sorted(opsi_dirs, reverse=True):
-			control = _dir / "control"
 			if control.exists():
 				self.parse_control_file_legacy(control)
 				return control
 
-		raise RuntimeError("No control file found.")
+			raise RuntimeError("No control file found.")
 
 	def parse_control_file_legacy(self, control_file: Path) -> None:
 		legacy_control_file = LegacyControlFile(control_file)
