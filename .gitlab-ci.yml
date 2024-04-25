@@ -18,7 +18,6 @@ pytest-darwin:
     - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_darwin2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
     - poetry run opsi-dev-tool -l info --testreport-merge testreport_darwin1.xml testreport_darwin2.xml testreport_darwin.xml
     - mv .coverage coverage_darwin
-    - poetry run python perftest/packaging-benchmarking.py
   artifacts:
     name: 'python-opsi-common_test_darwin'
     paths:
@@ -43,7 +42,6 @@ pytest-windows:
     - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_windows2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests\\test_logging.py
     - poetry run .\opsi-dev-tool.exe -l info --testreport-merge testreport_windows1.xml testreport_windows2.xml testreport_windows.xml
     - Rename-Item -Path .coverage -NewName coverage_windows
-    - poetry run python perftest\packaging-benchmarking.py
   artifacts:
     name: 'python-opsi-common_test_windows'
     paths:
@@ -65,7 +63,6 @@ pytest-linux:
     - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_linux2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
     - poetry run opsi-dev-tool -l info --testreport-merge testreport_linux1.xml testreport_linux2.xml testreport_linux.xml
     - mv .coverage coverage_linux
-    - poetry run python perftest/packaging-benchmarking.py
   artifacts:
     name: 'python-opsi-common_test_linux'
     paths:
