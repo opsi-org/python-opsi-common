@@ -18,7 +18,7 @@ from random import randbytes
 from typing import Literal
 
 import pytest
-from hypothesis import given
+from hypothesis import given, reproduce_failure
 from hypothesis.strategies import binary, from_regex, sampled_from
 from pyzsync import SOURCE_REMOTE, get_patch_instructions, read_zsync_file
 
@@ -68,6 +68,8 @@ def make_source_files(path: Path) -> Path:
 def test_archive_hypothesis(filename: str, data: bytes, internal: bool, compression: Literal["zstd", "bz2", "gz"]) -> None:
 	with tempfile.TemporaryDirectory() as tempdir:
 		filename = filename.replace("\x00", "").replace("\n", "")
+		if filename.startswith("-"):
+			filename = filename[1:]
 		tmp_path = Path(tempdir)
 		source = tmp_path / "source"
 		source.mkdir()

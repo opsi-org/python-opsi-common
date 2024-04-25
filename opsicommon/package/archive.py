@@ -367,7 +367,7 @@ def create_archive_external(
 	if archive.exists():
 		archive.unlink()
 
-	file = "-" if compression else archive
+	file = "-" if compression else f"'{archive}'"
 	cmd = f'{TAR_CREATE_COMMAND} {file} --files-from=- --checkpoint=100 --checkpoint-action="echo=|%u|"'
 	if compression:
 		cmd += f" | {compress_command(archive, compression)}"
@@ -397,6 +397,7 @@ def create_archive_external(
 		progress.set_completed(number * 512 * 20)
 
 	with chdir(base_dir):
+		# Cannot get a reliable exit code on piped commands because dash does not support pipefail
 		logger.debug("Executing %s at %s", cmd, base_dir)
 		proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
 		assert proc.stdin
@@ -429,7 +430,7 @@ def create_archive_external(
 			stderr = ""
 		out = proc.stdout.read().decode(errors="ignore") + stderr
 		logger.debug("%s output: %s", cmd, out)
-		if proc.returncode != 0:
+		if proc.returncode != 0 or "Exiting with failure status" in out:
 			raise RuntimeError(f"Command {cmd} failed: {out}")
 
 
