@@ -20,7 +20,7 @@ from functools import lru_cache
 from pathlib import Path
 from threading import Lock
 import time
-from typing import Any, Generator
+from typing import IO, Any, Generator
 from contextlib import nullcontext
 import packaging.version
 import zstandard
@@ -96,7 +96,7 @@ class ArchiveProgressListener(ABC):
 
 
 class ProgressFileWrapper:
-	def __init__(self, filesize: int, fileobj: os.IO[bytes], progress: ArchiveProgress | None = None):
+	def __init__(self, filesize: int, fileobj: IO[bytes], progress: ArchiveProgress | None = None):
 		self._filesize = filesize
 		self._fileobj = fileobj
 		self._progress = progress
@@ -112,7 +112,7 @@ class ProgressFileWrapper:
 			self._progress.advance(diff)
 			self._last_pos = self._pos
 
-	def read(self, size: int | None = None) -> bytes:
+	def read(self, size: int = -1) -> bytes:
 		data = self._fileobj.read(size)
 		self._update_progress(len(data))
 		return data
@@ -133,9 +133,9 @@ class ProgressTarFile(tarfile.TarFile):
 			assert isinstance(self._progress, ArchiveProgress)
 		super().__init__(*args, **kwargs)
 
-	def addfile(self, tarinfo: tarfile.TarInfo, fileobj: os.IO[bytes] | None = None) -> None:
+	def addfile(self, tarinfo: tarfile.TarInfo, fileobj: IO[bytes] | None = None) -> None:
 		if fileobj and self._progress:
-			fileobj = ProgressFileWrapper(filesize=tarinfo.size, fileobj=fileobj, progress=self._progress)
+			fileobj = ProgressFileWrapper(filesize=tarinfo.size, fileobj=fileobj, progress=self._progress)  # type: ignore[assignment]
 		return super().addfile(tarinfo, fileobj)
 
 
