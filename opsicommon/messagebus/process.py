@@ -233,50 +233,51 @@ async def process_messagebus_message(
 	sender: str = CONNECTION_USER_CHANNEL,
 	back_channel: str | None = None,
 ) -> None:
+	logger.trace("Processing message: %s", message)
+
 	with processes_lock:
 		process = processes.get(message.process_id)
 
 	try:
 		if isinstance(message, ProcessStartRequestMessage):
 			if not process:
+				logger.debug("Creating new Process")
+				process = Process(
+					process_start_request=message,
+					send_message=send_message,
+					sender=sender,
+					back_channel=back_channel,
+				)
 				with processes_lock:
-					process = Process(
-						process_start_request=message,
-						send_message=send_message,
-						sender=sender,
-						back_channel=back_channel,
-					)
 					processes[message.process_id] = process
+				logger.debug("Starting new Process")
 				await process.start()
 			else:
 				raise RuntimeError(f"Process already open: {process!r}")
-			return
-		if not process:
-			raise RuntimeError(f"Process {message.process_id} not found")
-		if isinstance(message, ProcessDataWriteMessage):
-			if not message.stdin:
-				await process.close_stdin()
+		elif process:
+			if isinstance(message, ProcessDataWriteMessage):
+				if not message.stdin:
+					await process.close_stdin()
+				else:
+					await process.write_stdin(message.stdin)
+			elif isinstance(message, ProcessStopRequestMessage):
+				await process.stop()
 			else:
-				await process.write_stdin(message.stdin)
-			return
-		if isinstance(message, ProcessStopRequestMessage):
-			await process.stop()
-			return
-		raise RuntimeError("Invalid process id")
+				raise ValueError(f"Invalid message type {type(message)} received")
+		else:
+			raise RuntimeError(f"Process {message.process_id} not found")
 	except Exception as err:
 		logger.warning(err, exc_info=True)
+		msg = ProcessErrorMessage(
+			sender=sender,
+			channel=message.response_channel,
+			ref_id=message.id,
+			process_id=message.process_id,
+			error=Error(message=str(err)),
+		)
+		await send_message(msg)
 		if process:
 			await process.stop()
-		else:
-			msg = ProcessErrorMessage(
-				sender=sender,
-				channel=message.response_channel,
-				ref_id=message.id,
-				process_id=message.process_id,
-				error=Error(message=str(err)),
-			)
-			await send_message(msg)
-			await asyncio.get_event_loop().run_in_executor(None, remove_process, message.process_id)
 
 
 def remove_process(process_id: str) -> None:

@@ -336,14 +336,16 @@ async def process_messagebus_message(
 	sender: str = CONNECTION_USER_CHANNEL,
 	back_channel: str | None = None,
 ) -> None:
-	logger.debug("Received terminal id %r, active terminals: %r", message.terminal_id, terminals)
+	logger.trace("Processing message: %s", message)
+
 	with terminals_lock:
 		terminal = terminals.get(message.terminal_id)
+
 	create_new = not terminal
 	try:
 		if isinstance(message, TerminalOpenRequestMessage):
 			if create_new:
-				logger.debug("Creating new terminal")
+				logger.debug("Creating new Terminal")
 				terminal = Terminal(
 					terminal_open_request=message,
 					send_message=send_message,
@@ -352,10 +354,10 @@ async def process_messagebus_message(
 				)
 				with terminals_lock:
 					terminals[message.terminal_id] = terminal
-				logger.debug("Starting new terminal")
+				logger.debug("Starting new Terminal")
 				await terminal.start()
 			else:
-				logger.debug("Reusing terminal")
+				logger.debug("Reusing Terminal")
 				assert isinstance(terminal, Terminal)
 				await terminal.reuse(message)
 		elif terminal:
@@ -364,7 +366,7 @@ async def process_messagebus_message(
 			else:
 				raise ValueError(f"Invalid message type {type(message)} received")
 		else:
-			raise RuntimeError("Invalid terminal id")
+			raise RuntimeError(f"Terminal {message.terminal_id} not found")
 	except Exception as err:
 		logger.warning(err, exc_info=True)
 		terminal_error = TerminalErrorMessage(
@@ -376,8 +378,6 @@ async def process_messagebus_message(
 		)
 		await send_message(terminal_error)
 		if terminal:
-			# Sending close event for backwards compatibility
-			# TerminalErrorMessage was introduced in 2024-01
 			await terminal.close()
 
 
