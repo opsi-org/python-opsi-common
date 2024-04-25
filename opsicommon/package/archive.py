@@ -226,6 +226,8 @@ def untar(tar: tarfile.TarFile, destination: Path, file_pattern: str | None = No
 def extract_archive_external(
 	archive: Path, destination: Path, *, file_pattern: str | None = None, progress_listener: ArchiveProgressListener | None = None
 ) -> None:
+	archive = archive.absolute()
+
 	logger.info("Extracting archive %s to destination %s", archive, destination)
 	destination.mkdir(parents=True, exist_ok=True)
 
@@ -239,6 +241,7 @@ def extract_archive_external(
 	if progress_listener:
 		progress = ArchiveProgress(total=archive.stat().st_size)
 		progress.register_progress_listener(progress_listener)
+
 	with chdir(destination):
 		proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
 		assert proc.stdin
@@ -265,6 +268,8 @@ def extract_archive_external(
 def extract_archive_internal(
 	archive: Path, destination: Path, *, file_pattern: str | None = None, progress_listener: ArchiveProgressListener | None = None
 ) -> None:
+	archive = archive.absolute()
+
 	logger.info("Extracting archive %s to destination %s", archive, destination)
 	destination.mkdir(parents=True, exist_ok=True)
 
@@ -354,6 +359,7 @@ def create_archive_external(
 		raise RuntimeError("External archiving is only available on linux")
 	from fcntl import fcntl, F_GETFL, F_SETFL
 
+	archive = archive.absolute()
 	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
 	if compression == "bz2":
 		logger.warning("Creating unsyncable package (no zsync or rsync support)")
@@ -373,7 +379,7 @@ def create_archive_external(
 		progress = ArchiveProgress(total=total_size)
 		progress.register_progress_listener(progress_listener)
 
-	checkpoint_re = re.compile("\|(\d+)\|")
+	checkpoint_re = re.compile(r"\|(\d+)\|")
 
 	def read_checkpoint_number(proc: subprocess.Popen, progress: ArchiveProgress) -> None:
 		assert proc.stderr
@@ -432,6 +438,8 @@ def create_archive_internal(
 	dereference: bool = False,
 	progress_listener: ArchiveProgressListener | None = None,
 ) -> None:
+	archive = archive.absolute()
+
 	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
 	if compression == "bz2":
 		logger.warning("Creating unsyncable package (no zsync or rsync support)")
