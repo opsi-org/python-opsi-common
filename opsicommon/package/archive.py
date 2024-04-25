@@ -408,7 +408,10 @@ def create_archive_external(
 		for file in files:
 			file_path = file[0].relative_to(base_dir)
 			logger.trace("Adding file: '%s'", file_path)
-			proc.stdin.write(f"{file_path}\n".encode())
+			file_str = str(file_path)
+			if "\n" in file_str:
+				raise ValueError(f"Invalid filename '{file_str}'")
+			proc.stdin.write(f"{file_str}\n".encode())
 			proc.stdin.flush()
 			if progress:
 				read_checkpoint_number(proc, progress)

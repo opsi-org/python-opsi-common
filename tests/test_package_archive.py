@@ -64,22 +64,28 @@ def make_source_files(path: Path) -> Path:
 
 # Cannot use function scoped fixtures with hypothesis
 @pytest.mark.linux
-@given(from_regex(FILENAME_REGEX), binary(max_size=4096), sampled_from(("zstd", "bz2", "gz")))
-def test_archive_external_hypothesis(filename: str, data: bytes, compression: Literal["zstd", "bz2", "gz"]) -> None:
+@given(from_regex(FILENAME_REGEX), binary(max_size=4096), sampled_from((True, False)), sampled_from(("zstd", "bz2", "gz")))
+def test_archive_hypothesis(filename: str, data: bytes, internal: bool, compression: Literal["zstd", "bz2", "gz"]) -> None:
 	with tempfile.TemporaryDirectory() as tempdir:
-		filename = filename.replace("\x00", "")
+		filename = filename.replace("\x00", "").replace("\n", "")
 		tmp_path = Path(tempdir)
 		source = tmp_path / "source"
 		source.mkdir()
 		file_path = source / filename
 		file_path.write_bytes(data)
 		archive = tmp_path / f"archive.tar.{compression}"
-		create_archive_external(archive, list(source.glob("*")), source, compression=compression)
+		create_archive = create_archive_internal if internal else create_archive_external
+		create_archive(archive, list(source.glob("*")), source, compression=compression)
 		destination = tmp_path / "destination"
-		extract_archive_external(archive, destination)
-		contents = [file.relative_to(destination) for file in destination.rglob("*")]
-		for file in source.rglob("*"):
-			assert file.relative_to(source) in contents
+		extract_archive = extract_archive_internal if internal else extract_archive_external
+		extract_archive(archive, destination)
+		src_contents = [file.relative_to(source) for file in source.rglob("*")]
+		dst_contents = [file.relative_to(destination) for file in destination.rglob("*")]
+		src_contents.sort()
+		dst_contents.sort()
+		# print("src:", src_contents)
+		# print("dst:", dst_contents)
+		assert dst_contents == src_contents
 
 
 @pytest.mark.linux
