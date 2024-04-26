@@ -16,7 +16,7 @@ import tomlkit
 
 from opsicommon.logging import get_logger
 from opsicommon.objects import Product, ProductDependency, ProductProperty
-from opsicommon.package.archive import create_archive, extract_archive
+from opsicommon.package.archive import ArchiveProgressListener, create_archive, extract_archive
 from opsicommon.package.control_file_handling import (
 	create_package_dependencies,
 	create_product,
@@ -224,6 +224,7 @@ class OpsiPackage:
 		destination: Path | None = None,
 		dereference: bool = False,
 		use_dirs: list[Path] | None = None,
+		progress_listener: ArchiveProgressListener | None = None,
 	) -> Path:
 		archives = []
 		dirs = use_dirs or [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
@@ -261,7 +262,14 @@ class OpsiPackage:
 
 				filename = temp_dir / f"{_dir.name}.tar.{compression}"
 				logger.info("Creating archive %s", filename)
-				create_archive(filename, file_list, base_dir=_dir, compression=compression, dereference=dereference)
+				create_archive(
+					filename,
+					file_list,
+					base_dir=_dir,
+					compression=compression,
+					dereference=dereference,
+					progress_listener=progress_listener,
+				)
 				# TODO: progress tracking
 				archives.append(filename)
 
