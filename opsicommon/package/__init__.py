@@ -124,19 +124,21 @@ class OpsiPackage:
 		# Sort custom first
 		for _dir in [search_dir] + sorted(opsi_dirs, reverse=True):
 			control_toml = _dir / "control.toml"
-			control = _dir / "control"
-
 			if control_toml.exists():
 				self.parse_control_file(control_toml)
+				control = _dir / "control"
 				if control.exists():
 					self.compare_with_legacy_control_file(control)
 				return control_toml
 
+		# Sort custom first
+		for _dir in [search_dir] + sorted(opsi_dirs, reverse=True):
+			control = _dir / "control"
 			if control.exists():
 				self.parse_control_file_legacy(control)
 				return control
 
-			raise RuntimeError("No control file found.")
+		raise RuntimeError("No control file found.")
 
 	def parse_control_file_legacy(self, control_file: Path) -> None:
 		legacy_control_file = LegacyControlFile(control_file)
