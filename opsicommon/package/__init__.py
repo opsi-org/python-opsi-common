@@ -227,6 +227,7 @@ class OpsiPackage:
 		dereference: bool = False,
 		use_dirs: list[Path] | None = None,
 		progress_listener: ArchiveProgressListener | None = None,
+		overwrite: bool = True,
 	) -> Path:
 		archives = []
 		dirs = use_dirs or [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
@@ -270,13 +271,19 @@ class OpsiPackage:
 					base_dir=_dir,
 					compression=compression,
 					dereference=dereference,
-					progress_listener=progress_listener,
 				)
 				# TODO: progress tracking
 				archives.append(filename)
 
 			destination = (destination or Path()).absolute()
 			package_archive = destination / self.package_archive_name()
+			if not overwrite and package_archive.exists():
+				raise FileExistsError(f"Package archive '{package_archive}' already exists.")
 			logger.info("Creating archive %s", package_archive.absolute())
-			create_archive(package_archive, archives, temp_dir)
+			create_archive(
+				package_archive,
+				archives,
+				temp_dir,
+				progress_listener=progress_listener,
+			)
 		return package_archive
