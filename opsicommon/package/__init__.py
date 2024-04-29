@@ -108,12 +108,17 @@ class OpsiPackage:
 
 			self.find_and_parse_control_file(temp_dir)
 
-	def compare_with_legacy_control_file(self, control):
+	def compare_version_with_control_file(self, control_file: Path, condition: Literal["==", "=", "<", "<=", ">", ">="]) -> bool:
 		opsi_package = OpsiPackage()
-		opsi_package.parse_control_file_legacy(control)
-		if opsi_package.product.version is not None and self.product.version is not None:
-			if compare_versions(opsi_package.product.version, ">", self.product.version):
-				raise RuntimeError("Legacy control file is newer. Please update the control file.")
+		if control_file.suffix == ".toml":
+			opsi_package.parse_control_file(control_file)
+		else:
+			opsi_package.parse_control_file_legacy(control_file)
+
+		if not opsi_package.product.version or not self.product.version:
+			return False
+
+		return compare_versions(opsi_package.product.version, condition, self.product.version)
 
 	def find_and_parse_control_file(self, search_dir: Path) -> Path:
 		opsi_dirs = []
@@ -124,11 +129,11 @@ class OpsiPackage:
 		# Sort custom first
 		for _dir in [search_dir] + sorted(opsi_dirs, reverse=True):
 			control_toml = _dir / "control.toml"
+			control = _dir / "control"
 			if control_toml.exists():
 				self.parse_control_file(control_toml)
-				control = _dir / "control"
-				if control.exists():
-					self.compare_with_legacy_control_file(control)
+				if control.exists() and self.compare_version_with_control_file(control, ">"):
+					raise RuntimeError("Control file is newer. Please update the control.toml file.")
 				return control_toml
 
 		# Sort custom first
