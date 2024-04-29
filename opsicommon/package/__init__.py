@@ -120,6 +120,38 @@ class OpsiPackage:
 
 		return compare_versions(opsi_package.product.version, condition, self.product.version)
 
+	# def handle_control_toml(self, control_toml: Path, control: Path) -> Path:
+	# 	self.parse_control_file(control_toml)
+	# 	if control.exists() and self.compare_version_with_control_file(control, ">"):
+	# 		raise RuntimeError("Control file is newer. Please update the control.toml file.")
+	# 	elif not control.exists():
+	# 		self.generate_control_file_legacy(control)
+	# 	return control_toml
+
+	# def handle_control(self, control: Path, control_toml: Path) -> Path:
+	# 	self.parse_control_file_legacy(control)
+	# 	if not control_toml.exists():
+	# 		self.generate_control_file(control_toml)
+	# 	return control
+
+	# def find_and_parse_control_file(self, search_dir: Path) -> Path:
+	# 	opsi_dirs = []
+	# 	for _dir in search_dir.glob("OPSI*"):
+	# 		if _dir.is_dir() and (_dir.name == "OPSI" or _dir.name.startswith("OPSI.")):
+	# 			opsi_dirs.append(_dir)
+
+	# 	for _dir in [search_dir] + sorted(opsi_dirs, reverse=True):
+	# 		control_toml = _dir / "control.toml"
+	# 		control = _dir / "control"
+
+	# 		if control_toml.exists():
+	# 			return self.handle_control_toml(control_toml, control)
+
+	# 		elif control.exists():
+	# 			return self.handle_control(control, control_toml)
+
+	# 	raise RuntimeError("No control file found.")
+
 	def find_and_parse_control_file(self, search_dir: Path) -> Path:
 		opsi_dirs = []
 		for _dir in search_dir.glob("OPSI*"):
