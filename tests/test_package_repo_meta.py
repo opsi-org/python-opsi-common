@@ -7,8 +7,8 @@ tests for opsicommon.package.repo_meta
 
 import shutil
 from dataclasses import asdict
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 import zstandard
@@ -61,6 +61,24 @@ def test_repo_meta_package_compatibility() -> None:
 	for string in ("linux-invalid", "invalid-all", "linux", "all", "linux-amd64"):
 		with pytest.raises(ValueError):
 			comp = RepoMetaPackageCompatibility.from_string(string)
+
+
+def test_repo_meta_from_dict_with_unkown_arguments() -> None:
+	RepoMetaPackage.from_dict(
+		{
+			"url": "https://some.url/",
+			"size": 12098322,
+			"md5_hash": "15329eb8cd987f46024b593f200b5295",
+			"sha256_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"product_id": "localboot_new",
+			"name": "localboot new",
+			"priority": 10,
+			"product_version": "42.0",
+			"package_version": "1337",
+			"future_attribute": "new",
+			"legacy_attribute": 27237,
+		}
+	)
 
 
 def test_repo_meta_product_dependency() -> None:

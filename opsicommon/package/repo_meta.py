@@ -154,12 +154,12 @@ class RepoMetaPackage:
 	@classmethod
 	def from_dict(cls, data: dict[str, Any]) -> RepoMetaPackage:
 		data = data.copy()
-		if data["compatibility"]:
+		if data.get("compatibility"):
 			data["compatibility"] = [RepoMetaPackageCompatibility.from_dict(d) for d in data["compatibility"]]
 		else:
 			data["compatibility"] = None
-		data["product_dependencies"] = [RepoMetaProductDependency.from_dict(d) for d in data["product_dependencies"]]
-		data["package_dependencies"] = [RepoMetaPackageDependency.from_dict(d) for d in data["package_dependencies"]]
+		data["product_dependencies"] = [RepoMetaProductDependency.from_dict(d) for d in data.get("product_dependencies") or []]
+		data["package_dependencies"] = [RepoMetaPackageDependency.from_dict(d) for d in data.get("package_dependencies") or []]
 		release_date = data.get("release_date")
 		if release_date and not isinstance(release_date, datetime):
 			data["release_date"] = datetime.fromisoformat(release_date)
