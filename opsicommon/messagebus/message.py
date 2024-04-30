@@ -517,6 +517,7 @@ class FileDownloadRequestMessage(FileTransferMessage):
 	type: str = MessageType.FILE_DOWNLOAD_REQUEST
 	path: str | None = None
 	terminal_id: str | None = None
+	chunk_size: int | None = None
 
 
 class FileDownloadInformationMessage(FileTransferMessage):
@@ -524,9 +525,9 @@ class FileDownloadInformationMessage(FileTransferMessage):
 	Message with information like file exists, size, etc.
 	"""
 
-	type: str = MessageType.FILE_DOWNLOAD_REQUEST
-	exists: bool = False
+	type: str = MessageType.FILE_DOWNLOAD_INFORMATION
 	size: int | None = None
+	no_of_chunks: int | None = None
 
 
 class FileChunkMessage(FileTransferMessage):
