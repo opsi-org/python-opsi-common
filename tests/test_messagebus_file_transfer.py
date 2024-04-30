@@ -15,6 +15,7 @@ from opsicommon.messagebus import CONNECTION_USER_CHANNEL
 from opsicommon.messagebus.file_transfer import process_messagebus_message, stop_running_file_transfers
 from opsicommon.messagebus.message import (
 	FileChunkMessage,
+	FileDownloadInformationMessage,
 	FileDownloadRequestMessage,
 	FileTransferErrorMessage,
 	FileUploadRequestMessage,
@@ -98,19 +99,6 @@ async def test_file_upload(tmp_path: Path) -> None:
 	assert isinstance(messages[0], FileUploadResultMessage)
 
 
-async def test_file_download(tmp_path: Path) -> None:
-	sender = "test_sender"
-	channel = "test_channel"
-	message_server = MessageServer()
-
-	file_download_request = FileDownloadRequestMessage(
-		sender=sender,
-		channel=channel,
-		path=message_server.path,
-	)
-	# TODO
-
-
 async def test_upload_chunk_timeout(tmp_path: Path) -> None:
 	sender = "test_sender"
 	channel = "test_channel"
@@ -188,3 +176,48 @@ async def test_stop_running_transfers(tmp_path: Path) -> None:
 		assert isinstance(messages[0], FileTransferErrorMessage)
 		assert messages[0].file_id == file_upload_request.file_id
 		assert "File transfer stopped before completion" in messages[0].error.message
+
+
+# Download Tests
+async def test_file_download(tmp_path: Path) -> None:
+	sender = "test_sender"
+	channel = "test_channel"
+	chunk_size = 1000
+	message_server = MessageServer()  # might rename to MessageSender for similarity to upload
+
+	test_file = tmp_path / "test_file.txt"
+	file_download_request = FileDownloadRequestMessage(
+		sender=sender,
+		channel=channel,
+		chunk_size=chunk_size,
+		path=test_file,
+	)
+	await process_messagebus_message(file_download_request, send_message=message_server.send_messages)
+
+	messages = await message_server.wait_for_messages(count=1)
+	assert len(messages) == 1
+	assert isinstance(messages[0], FileNotFoundError)
+	assert messages[0].sender == CONNECTION_USER_CHANNEL
+	assert not messages[0].back_channel
+	assert messages[0].channel == "test_channel"  # ?? upload_test has test_sender
+
+	# create file and repeat
+	message_server.gen_test_file(file_path=file_download_request.path)
+	await process_messagebus_message(file_download_request, send_message=message_server.send_messages)
+
+	messages = await message_server.wait_for_messages(count=1)
+	assert len(messages) == 1
+	assert isinstance(messages[0], FileDownloadInformationMessage)
+	assert messages[0].sender == CONNECTION_USER_CHANNEL
+	assert not messages[0].back_channel
+	assert messages[0].channel == "test_channel"  # ?? upload_test has test_sender
+	assert messages[0].type == "text/plain"
+	assert not messages[0].size
+	assert messages[0].chunk_size == chunk_size
+
+	_chunks = -(-messages[0].size // messages[0].chunk_size)  # round up
+	chunks = await message_server.wait_for_messages(chunks=_chunks)
+
+	with test_file.open("r") as file:
+		for chunk in chunks:
+			assert chunk == file.read(chunk_size)
