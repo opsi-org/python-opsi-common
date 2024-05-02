@@ -116,7 +116,7 @@ class OpsiPackage:
 			opsi_package.parse_control_file_legacy(control_file)
 
 		if not opsi_package.product.version or not self.product.version:
-			return False
+			raise ValueError("Version information for comparison is missing")
 
 		return compare_versions(opsi_package.product.version, condition, self.product.version)
 
