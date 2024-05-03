@@ -182,6 +182,18 @@ def test_generate_control(source: str, destination: str) -> None:
 	assert package.product_properties == regenerated_package.product_properties
 
 
+@pytest.mark.parametrize("control_file_name, expected_control_file", [("control", "control.toml"), ("control.toml", "control")])
+def test_check_and_generate_control_file(control_file_name: str, expected_control_file: str) -> None:
+	control_file = TEST_DATA / control_file_name
+	test_package = OpsiPackage()
+	test_package.parse_control_file(control_file)
+	with make_temp_dir() as temp_dir:
+		copy(control_file, temp_dir / control_file_name)
+		test_package.check_and_generate_control_file(control_file)
+		expected_file = control_file.parent / expected_control_file
+		assert expected_file.exists()
+
+
 def test_control_multiline_description() -> None:
 	package = OpsiPackage()
 	package.parse_control_file(TEST_DATA / "control.toml")
