@@ -32,6 +32,14 @@ def print_info(package: OpsiPackage) -> None:
 	print(package.package_dependencies)
 
 
+def test_compare_version_with_control_file() -> None:
+	control = TEST_DATA / "control"
+	control_toml = TEST_DATA / "control.toml"
+	test_package = OpsiPackage()
+	test_package.parse_control_file(control_toml)
+	assert test_package.compare_version_with_control_file(control, "=") is True
+
+
 def test_find_and_parse_control_file() -> None:
 	control = TEST_DATA / "control"
 	control_toml = TEST_DATA / "control.toml"
