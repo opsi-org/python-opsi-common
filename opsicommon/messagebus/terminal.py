@@ -9,7 +9,8 @@ This file is part of opsi - https://www.opsi.org
 from __future__ import annotations
 
 import shlex
-from asyncio import Task, get_running_loop, wait_for
+from asyncio import Task, get_running_loop, sleep, wait_for
+from contextlib import nullcontext
 from pathlib import Path
 from threading import Lock
 from time import time
@@ -113,7 +114,6 @@ class Terminal:
 	max_rows = 100
 	max_cols = 300
 	idle_timeout = 8 * 3600
-	read_timeout = 5
 
 	def __init__(
 		self,
@@ -139,6 +139,8 @@ class Terminal:
 		self._pty_set_size: Callable | None = None
 		self._pty_stop: Callable | None = None
 		self._closing = False
+		self._close_event_send = False
+		self._manager_task: Task | None = None
 		self._pty_reader_task: Task | None = None
 		self._set_size(terminal_open_request.rows, terminal_open_request.cols)
 
@@ -146,27 +148,60 @@ class Terminal:
 	def terminal_id(self) -> str:
 		return self._terminal_open_request.terminal_id
 
+	async def _send_open_event(self) -> None:
+		open_event = TerminalOpenEventMessage(
+			sender=self._sender,
+			channel=self._response_channel,
+			ref_id=self._terminal_open_request.id,
+			terminal_id=self.terminal_id,
+			back_channel=self._back_channel,
+			rows=self.rows,
+			cols=self.cols,
+		)
+		await self._send_message(open_event)
+
+	async def reuse(self, terminal_open_request: TerminalOpenRequestMessage) -> None:
+		self._terminal_open_request = terminal_open_request
+		# Resize to redraw screen
+		if terminal_open_request.rows == self.rows and terminal_open_request.cols == self.cols:
+			await self.set_size(terminal_open_request.rows - 1, terminal_open_request.cols)
+		await self.set_size(terminal_open_request.rows, terminal_open_request.cols)
+		self._last_usage = time()
+		await self._send_open_event()
+
 	async def start(self) -> None:
 		shell = self._terminal_open_request.shell or self._default_shell
 		if not shell:
 			raise RuntimeError("No shell specified")
-		(
-			self._pty_pid,
-			self._pty_read,
-			self._pty_write,
-			self._pty_set_size,
-			self._pty_stop,
-		) = await self._loop.run_in_executor(
-			None,
-			start_pty,
-			shell,
-			self.rows,
-			self.cols,
-			self._cwd,
-		)
+		logger.debug("Calling start_pty with loop %s", self._loop)
+		future = self._loop.run_in_executor(None, start_pty, shell, self.rows, self.cols, self._cwd)
+		try:
+			(
+				self._pty_pid,
+				self._pty_read,
+				self._pty_write,
+				self._pty_set_size,
+				self._pty_stop,
+			) = await wait_for(future, 10.0)
+		except TimeoutError as err:
+			raise RuntimeError("Failed to start pty: timed out") from err
 		logger.debug("pty started")
+		await self._start_manager()
+		await self._send_open_event()
+		await self._start_reader()
 
-	async def start_reader(self) -> None:
+	async def _manager(self) -> None:
+		while not self._closing:
+			if time() - self._last_usage > self.idle_timeout:
+				logger.info("Terminal idle timeout")
+				await self.close()
+				break
+			await sleep(1)
+
+	async def _start_manager(self) -> None:
+		self._manager_task = self._loop.create_task(self._manager())
+
+	async def _start_reader(self) -> None:
 		self._pty_reader_task = self._loop.create_task(self._pty_reader())
 
 	@property
@@ -201,17 +236,15 @@ class Terminal:
 
 	async def _pty_reader(self) -> None:
 		pty_reader_block_size = self.pty_reader_block_size
-		read_timeout = self.read_timeout
 		try:
 			while self._pty_read and not self._closing:
 				logger.trace("Read from pty")
-				future = self._loop.run_in_executor(None, self._pty_read, pty_reader_block_size)
 				try:
-					data = await wait_for(future, read_timeout)
-				except TimeoutError:
-					if time() - self._last_usage > self.idle_timeout:
-						raise
-					continue
+					data = await self._loop.run_in_executor(None, self._pty_read, pty_reader_block_size)
+				except RuntimeError:
+					if self._closing:
+						break
+					raise
 				if not data:
 					raise EOFError("EOF (no data)")
 				logger.trace(data)
@@ -222,16 +255,21 @@ class Terminal:
 					sender=self._sender, channel=self._response_channel, terminal_id=self.terminal_id, data=data
 				)
 				await self._send_message(message)
-		except TimeoutError:
-			logger.info("Terminal timed out")
-			await self.close()
-		except (IOError, EOFError):
-			await self.close()
+		except TimeoutError as err:
+			logger.info("Terminal timed out: %s", err)
+		except (IOError, EOFError) as err:
+			logger.debug("Terminal IO error: %s", err)
+			if not self._closing:
+				await self.close()
 		except Exception as err:
-			logger.error(err, exc_info=True)
+			logger.debug("Terminal error: %s", err)
+			if not self._closing:
+				logger.error(err, exc_info=True)
+		if not self._closing:
 			await self.close()
 
 	async def process_message(self, message: TerminalDataWriteMessage | TerminalResizeRequestMessage | TerminalCloseRequestMessage) -> None:
+		self._last_usage = time()
 		if isinstance(message, TerminalDataWriteMessage):
 			if not self._closing and self._pty_write:
 				# Do not wait for completion to minimize rtt
@@ -248,17 +286,18 @@ class Terminal:
 			)
 			await self._send_message(res_message)
 		elif isinstance(message, TerminalCloseRequestMessage):
-			await self.close()
+			await self.close(message=message)
 		else:
 			logger.warning("Received invalid message type %r", message.type)
 
-	async def close(self, message: TerminalCloseRequestMessage | None = None, send_close_event: bool = True) -> None:
+	async def close(self, message: TerminalCloseRequestMessage | None = None, use_terminals_lock: bool = True) -> None:
 		if self._closing:
 			return
 		logger.info("Close terminal")
 		self._closing = True
 		try:
-			if send_close_event:
+			if not self._close_event_send:
+				self._close_event_send = True
 				res_message = TerminalCloseEventMessage(
 					sender=self._sender,
 					channel=self._response_channel,
@@ -266,8 +305,9 @@ class Terminal:
 					terminal_id=self.terminal_id,
 				)
 				await self._send_message(res_message)
-			if self.terminal_id in terminals:
-				del terminals[self.terminal_id]
+			with terminals_lock if use_terminals_lock else nullcontext():  # type: ignore[attr-defined]
+				if self.terminal_id in terminals:
+					del terminals[self.terminal_id]
 			if self._pty_stop:
 				await self._loop.run_in_executor(None, self._pty_stop)
 			if self._pty_reader_task:
@@ -289,45 +329,28 @@ async def process_messagebus_message(
 	sender: str = CONNECTION_USER_CHANNEL,
 	back_channel: str | None = None,
 ) -> None:
+	logger.debug("Received terminal id %r, active terminals: %r", message.terminal_id, terminals)
 	with terminals_lock:
 		terminal = terminals.get(message.terminal_id)
-
-	create_new = False
-
+	create_new = not terminal
 	try:
 		if isinstance(message, TerminalOpenRequestMessage):
-			create_new = not terminal
 			if create_new:
+				logger.debug("Creating new terminal")
 				terminal = Terminal(
 					terminal_open_request=message,
 					send_message=send_message,
 					sender=sender,
 					back_channel=back_channel,
 				)
-				terminals[message.terminal_id] = terminal
-			else:
-				assert isinstance(terminal, Terminal)
-				# Resize to redraw screen
-				if message.rows == terminal.rows and message.cols == terminal.cols:
-					await terminal.set_size(message.rows - 1, message.cols)
-				await terminal.set_size(message.rows, message.cols)
-
-			if create_new:
+				with terminals_lock:
+					terminals[message.terminal_id] = terminal
+				logger.debug("Starting new terminal")
 				await terminal.start()
-
-			open_event = TerminalOpenEventMessage(
-				sender=sender,
-				channel=message.response_channel,
-				ref_id=message.id,
-				terminal_id=message.terminal_id,
-				back_channel=back_channel,
-				rows=terminal.rows,
-				cols=terminal.cols,
-			)
-			await send_message(open_event)
-
-			if create_new:
-				await terminal.start_reader()
+			else:
+				logger.debug("Reusing terminal")
+				assert isinstance(terminal, Terminal)
+				await terminal.reuse(message)
 		elif terminal:
 			if isinstance(message, (TerminalDataWriteMessage, TerminalResizeRequestMessage, TerminalCloseRequestMessage)):
 				await terminal.process_message(message)
@@ -348,7 +371,7 @@ async def process_messagebus_message(
 		if terminal:
 			# Sending close event for backwards compatibility
 			# TerminalErrorMessage was introduced in 2024-01
-			await terminal.close(send_close_event=True)
+			await terminal.close()
 
 
 def remove_terminal(terminal_id: str) -> None:
@@ -362,4 +385,4 @@ def remove_terminal(terminal_id: str) -> None:
 async def stop_running_terminals() -> None:
 	with terminals_lock:
 		for terminal in list(terminals.values()):
-			await terminal.close()
+			await terminal.close(use_terminals_lock=False)

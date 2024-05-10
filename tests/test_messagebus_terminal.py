@@ -200,7 +200,7 @@ async def test_terminal_timeout() -> None:
 	terminal_open_request = TerminalOpenRequestMessage(
 		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id
 	)
-	with patch("opsicommon.messagebus.terminal.Terminal.read_timeout", 1), patch("opsicommon.messagebus.terminal.Terminal.idle_timeout", 3):
+	with patch("opsicommon.messagebus.terminal.Terminal.idle_timeout", 3):
 		await process_messagebus_message(message=terminal_open_request, send_message=message_sender.send_message, sender=sender)
 		await message_sender.wait_for_messages(count=2)
 		await asyncio.sleep(4)
@@ -259,6 +259,41 @@ async def test_terminal_fail() -> None:
 	else:
 		assert data == b"exit_1\r\n"
 	assert isinstance(messages[-1], TerminalCloseEventMessage)
+
+
+async def test_multiple_terminals() -> None:
+	terminal1_id = str(uuid.uuid4())
+	terminal2_id = str(uuid.uuid4())
+	terminal3_id = str(uuid.uuid4())
+	sender = "service_worker:pytest:1"
+
+	assert not terminals
+
+	message_sender = MessageSender()
+
+	for terminal_id in (terminal1_id, terminal2_id, terminal3_id):
+		terminal_open_request = TerminalOpenRequestMessage(sender="client", channel="channel", terminal_id=terminal_id)
+		await process_messagebus_message(message=terminal_open_request, send_message=message_sender.send_message, sender=sender)
+
+	await asyncio.sleep(1)
+
+	for terminal_id in (terminal1_id, terminal2_id, terminal3_id):
+		terminal_data_write_message = TerminalDataWriteMessage(
+			sender="client", channel="channel", terminal_id=terminal_id, data="echo test\r\n".encode("utf-8")
+		)
+		await process_messagebus_message(message=terminal_data_write_message, send_message=message_sender.send_message, sender=sender)
+
+	await asyncio.sleep(1)
+
+	for terminal_id in (terminal1_id, terminal2_id, terminal3_id):
+		terminal_close_request = TerminalCloseRequestMessage(sender="client", channel="channel", terminal_id=terminal_id)
+		await process_messagebus_message(message=terminal_close_request, send_message=message_sender.send_message, sender=sender)
+
+	messages = await message_sender.wait_for_messages(count=100, timeout=5, error_on_timeout=False)
+	for terminal_id in (terminal1_id, terminal2_id, terminal3_id):
+		assert any(isinstance(m, TerminalOpenEventMessage) and m.terminal_id == terminal_id for m in messages)
+		assert any(isinstance(m, TerminalDataReadMessage) and m.terminal_id == terminal_id for m in messages)
+		assert any(isinstance(m, TerminalCloseEventMessage) and m.terminal_id == terminal_id for m in messages)
 
 
 async def test_stop_running_terminals() -> None:
