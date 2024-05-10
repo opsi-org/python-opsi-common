@@ -92,7 +92,7 @@ class FileTransfer:
 				channel=self._response_channel,
 				file_id=self._file_id,
 				back_channel=self._back_channel,
-				path=str(self._file_path),
+				Path=str(self._file_path),
 			)
 			await self._send_message(upload_result)
 			self._should_stop = True
@@ -147,14 +147,6 @@ class FileUpload(FileTransfer):
 			sender=sender,
 			back_channel=back_channel,
 		)
-
-		# self.message = FileUploadResponseMessage(
-		# sender=self._sender,
-		# channel=self._response_channel,
-		# file_id=self._file_id,
-		# back_channel=self._back_channel,
-		# path=str(self._file_path),
-		# )
 
 	async def start(self) -> None:
 		logger.notice("Received FileUploadRequestMessage %r", self)
@@ -218,13 +210,14 @@ class FileDownload(FileTransfer):
 			sender=sender,
 			back_channel=back_channel,
 		)
+		self._file_download_request = file_download_request
 		self.size: int | None = None
 		self.no_of_chunks: int | None = None
 
-	def __str__(self) -> str:
-		return f"{self.__class__.__name__}({self._file_request})"
-
-	__repr__ = __str__
+	# def __str__(self) -> str:
+	# return f"{self.__class__.__name__}({self._file_request})"
+	#
+	# __repr__ = __str__
 
 	async def start(self) -> None:
 		logger.notice("Received FileDownloadRequestMassage %r", self)
@@ -283,6 +276,9 @@ async def process_messagebus_message(
 	with file_transfers_lock:
 		file_transfer = file_transfers.get(message.file_id)
 
+	print("here")
+	print(type(message.file_id))
+	print(message.file_id)
 	try:
 		if isinstance(message, FileUploadRequestMessage):
 			if not file_transfer:
@@ -307,7 +303,7 @@ async def process_messagebus_message(
 						sender=sender,
 						back_channel=back_channel,
 					)
-					file_transfer[message.file_id] = file_transfer
+					file_transfers[message.file_id] = file_transfer
 				await file_transfer.start()
 			else:
 				raise RuntimeError(f"File download already running: {file_transfer!r}")
