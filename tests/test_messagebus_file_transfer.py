@@ -218,10 +218,11 @@ async def test_file_download(tmp_path: Path) -> None:
 	assert isinstance(messages[0], FileDownloadInformationMessage)
 	assert messages[0].sender == "test_res_sender"
 	assert messages[0].back_channel == "test_res_channel"
-	assert messages[0].type == "text/plain"
+	assert messages[0].type == ""
 	assert messages[0].size == test_file_size
 	assert messages[0].no_of_chunks == calc_no_of_chunks(file_size=test_file_size, chunk_size=chunk_size)
 
 	with test_file.open("r") as file:
-		for chunk in await message_sender.wait_for_messages(chunks=messages[0].no_of_chunks):
+		for chunk_message in await message_sender.wait_for_messages(chunks=messages[0].no_of_chunks):
+			assert chunk_message
 			assert chunk == file.read(chunk_size)

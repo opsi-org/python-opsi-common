@@ -52,7 +52,7 @@ class FileTransfer:
 		self._sender = sender
 		self._file_request = file_request
 		self._back_channel = back_channel or CONNECTION_SESSION_CHANNEL
-		self._loop = asyncio.get_event_loop()
+		self._loop = asyncio.get_event_loop()  # depreached; change to get_running_loop()
 		self._chunk_number = 0
 		self._last_chunk_time = time()
 		self._file_path: Path | None = None
@@ -132,64 +132,6 @@ class FileTransfer:
 		self._should_stop = True
 
 
-class FileDownload(FileTransfer):
-	def __init__(
-		self,
-		file_request: FileUploadResultMessage,
-		send_message: Callable,
-		sender: str = CONNECTION_USER_CHANNEL,
-		back_channel: str | None = None,
-	) -> None:
-		super().__init__(
-			send_message=send_message,
-			file_request=file_request,
-			sender=sender,
-			back_channel=back_channel,
-		)
-
-		# self.message = FileDownloadInformationMessage(
-		# sender=self._sender,
-		# channel=self._response_channel,
-		# back_channel=self._back_channel,
-		# size=,
-		# no_of_chunks=,
-		# )
-
-	def __str__(self) -> str:
-		return f"{self.__class__.__name__}({self._file_request})"
-
-	__repr__ = __str__
-
-	async def start(self) -> None:
-		logger.notice("Received FileDownloadRequestMassage %r", self)
-
-		try:
-			if not self._file_request.path:
-				raise ValueError("File does not exist")
-			if not self._file_request.chunk_size:
-				raise ValueError("Missing Chunk Size")
-		except Exception as error:
-			logger.error(error, exc_info=True)
-			await self._error(str(error), message=self._file_request)
-			return
-
-		self.size = self._file_request.path.stat().st_size
-		self.no_of_chunks = -(-(self.size) // self._file_request.chunk_size)
-		message = FileDownloadInformationMessage(
-			sender=self._sender,
-			channel=self._response_channel,
-			file_id=self._file_id,
-			back_channel=self._back_channel,
-			size=self.size,
-			no_of_chunks=self.no_of_chunks,
-		)
-
-		await self._send_message(message)
-
-		self._manager_task = self._loop.create_task(self._manager())
-		logger.info("Started %r")
-
-
 class FileUpload(FileTransfer):
 	def __init__(
 		self,
@@ -262,6 +204,75 @@ class FileUpload(FileTransfer):
 		logger.info("Started %r", self)
 
 
+class FileDownload(FileTransfer):
+	def __init__(
+		self,
+		file_download_request: FileDownloadRequestMessage,
+		send_message: Callable,
+		sender: str = CONNECTION_USER_CHANNEL,
+		back_channel: str | None = None,
+	) -> None:
+		super().__init__(
+			send_message=send_message,
+			file_request=file_download_request,
+			sender=sender,
+			back_channel=back_channel,
+		)
+		self.size: int | None = None
+		self.no_of_chunks: int | None = None
+
+	def __str__(self) -> str:
+		return f"{self.__class__.__name__}({self._file_request})"
+
+	__repr__ = __str__
+
+	async def start(self) -> None:
+		logger.notice("Received FileDownloadRequestMassage %r", self)
+
+		try:
+			if not self._file_request.path:
+				raise ValueError("File does not exist")
+			if not self._file_request.chunk_size:
+				raise ValueError("Missing Chunk Size")
+			if not Path(self._file_request.path).is_file():
+				raise FileNotFoundError(f"File '{self._file_request.path}' is missing or file path is incorrect")
+		except Exception as error:
+			logger.error(error, exc_info=True)
+			await self._error(str(error), message=self._file_request)
+			return
+
+		self.size = self._file_request.path.stat().st_size
+		self.no_of_chunks = calc_no_of_chunks(self.size, self._file_request.chunk_size)
+		message = FileDownloadInformationMessage(
+			sender=self._sender,
+			channel=self._response_channel,
+			file_id=self._file_id,
+			back_channel=self._back_channel,
+			size=self.size,
+			no_of_chunks=self.no_of_chunks,
+		)
+
+		await self._send_message(message)
+
+		await self.send_data()
+
+		self._manager_task = self._loop.create_task(self._manager())
+		logger.info("Started %r")
+
+	async def send_data(self) -> None:
+		with self._file_request.path.open("r") as file:
+			number = 0
+			while data := file.read(self._file_request.chunk_size):
+				chunk_message = FileChunkMessage(
+					size=self._file_request.chunk_size,
+					number=number,
+					last=False if number < self._file_request.path else True,
+					data=data,
+				)
+				await self._send_message(chunk_message)
+				number += 1
+
+
 async def process_messagebus_message(
 	message: FileTransferMessage,
 	send_message: Callable,
@@ -291,7 +302,10 @@ async def process_messagebus_message(
 			if not file_transfer:
 				with file_transfers_lock:
 					file_transfer = FileDownload(
-						# TODO
+						file_download_request=message,
+						send_message=send_message,
+						sender=sender,
+						back_channel=back_channel,
 					)
 					file_transfer[message.file_id] = file_transfer
 				await file_transfer.start()
