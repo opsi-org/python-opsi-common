@@ -19,6 +19,7 @@ from opsicommon.messagebus import CONNECTION_SESSION_CHANNEL, CONNECTION_USER_CH
 from opsicommon.messagebus.message import (
 	Error,
 	FileChunkMessage,
+	FileDownloadInformationMessage,
 	FileDownloadRequestMessage,
 	FileTransferErrorMessage,
 	FileTransferMessage,
@@ -146,13 +147,13 @@ class FileDownload(FileTransfer):
 			back_channel=back_channel,
 		)
 
-		self.message = FileUploadResponseMessage(
-			sender=self._sender,
-			channel=self._response_channel,
-			file_id=self._file_id,
-			back_channel=self._back_channel,
-			path=str(self._file_path),
-		)
+		# self.message = FileDownloadInformationMessage(
+		# sender=self._sender,
+		# channel=self._response_channel,
+		# back_channel=self._back_channel,
+		# size=,
+		# no_of_chunks=,
+		# )
 
 	def __str__(self) -> str:
 		return f"{self.__class__.__name__}({self._file_request})"
@@ -163,13 +164,30 @@ class FileDownload(FileTransfer):
 		logger.notice("Received FileDownloadRequestMassage %r", self)
 
 		try:
-			if not self._file_request.origin_path:
-				raise ValueError("Invalid origin path")
+			if not self._file_request.path:
+				raise ValueError("File does not exist")
+			if not self._file_request.chunk_size:
+				raise ValueError("Missing Chunk Size")
 		except Exception as error:
 			logger.error(error, exc_info=True)
 			await self._error(str(error), message=self._file_request)
 			return
-		# TODO
+
+		self.size = self._file_request.path.stat().st_size
+		self.no_of_chunks = -(-(self.size) // self._file_request.chunk_size)
+		message = FileDownloadInformationMessage(
+			sender=self._sender,
+			channel=self._response_channel,
+			file_id=self._file_id,
+			back_channel=self._back_channel,
+			size=self.size,
+			no_of_chunks=self.no_of_chunks,
+		)
+
+		await self._send_message(message)
+
+		self._manager_task = self._loop.create_task(self._manager())
+		logger.info("Started %r")
 
 
 class FileUpload(FileTransfer):
@@ -314,3 +332,7 @@ async def stop_running_file_transfers() -> None:
 	with file_transfers_lock:
 		for file_transfer in list(file_transfers.values()):
 			await file_transfer.stop()
+
+
+def calc_no_of_chunks(file_size: str, chunk_size: int) -> int:
+	return -(-file_size // chunk_size)  # round up

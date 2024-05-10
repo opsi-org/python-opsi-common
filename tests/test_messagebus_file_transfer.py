@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from opsicommon.logging import LOG_TRACE, use_logging_config
 from opsicommon.messagebus import CONNECTION_USER_CHANNEL
-from opsicommon.messagebus.file_transfer import process_messagebus_message, stop_running_file_transfers
+from opsicommon.messagebus.file_transfer import calc_no_of_chunks, process_messagebus_message, stop_running_file_transfers
 from opsicommon.messagebus.message import (
 	FileChunkMessage,
 	FileDownloadInformationMessage,
@@ -23,7 +23,7 @@ from opsicommon.messagebus.message import (
 	FileUploadResultMessage,
 )
 
-from .helpers import MessageSender, MessageServer
+from .helpers import MessageSender, gen_test_file
 
 
 async def test_file_upload(tmp_path: Path) -> None:
@@ -183,18 +183,18 @@ async def test_file_download(tmp_path: Path) -> None:
 	sender = "test_sender"
 	channel = "test_channel"
 	chunk_size = 1000
-	message_server = MessageServer()  # might rename to MessageSender for similarity to upload
-
+	message_sender = MessageSender()
 	test_file = tmp_path / "test_file.txt"
+
 	file_download_request = FileDownloadRequestMessage(
 		sender=sender,
 		channel=channel,
 		chunk_size=chunk_size,
 		path=test_file,
 	)
-	await process_messagebus_message(file_download_request, send_message=message_server.send_messages)
+	await process_messagebus_message(file_download_request, send_message=message_sender.send_messages)
 
-	messages = await message_server.wait_for_messages(count=1)
+	messages = await message_sender.wait_for_messages(count=1)
 	assert len(messages) == 1
 	assert isinstance(messages[0], FileNotFoundError)
 	assert messages[0].sender == CONNECTION_USER_CHANNEL
@@ -202,22 +202,26 @@ async def test_file_download(tmp_path: Path) -> None:
 	assert messages[0].channel == "test_channel"  # ?? upload_test has test_sender
 
 	# create file and repeat
-	message_server.gen_test_file(file_path=file_download_request.path)
-	await process_messagebus_message(file_download_request, send_message=message_server.send_messages)
+	test_file_size = gen_test_file(file_path=test_file)
+	file_download_request = FileDownloadRequestMessage(
+		sender="test_res_sender",
+		channel="test_res_channel",
+		chunk_size=chunk_size,
+		path=test_file,
+	)
+	await process_messagebus_message(
+		file_download_request, send_message=message_sender.send_messages, sender="test_res_sender", back_channel="test_res_channel"
+	)
 
-	messages = await message_server.wait_for_messages(count=1)
+	messages = await message_sender.wait_for_messages(count=1)
 	assert len(messages) == 1
 	assert isinstance(messages[0], FileDownloadInformationMessage)
-	assert messages[0].sender == CONNECTION_USER_CHANNEL
-	assert not messages[0].back_channel
-	assert messages[0].channel == "test_channel"  # ?? upload_test has test_sender
+	assert messages[0].sender == "test_res_sender"
+	assert messages[0].back_channel == "test_res_channel"
 	assert messages[0].type == "text/plain"
-	assert not messages[0].size
-	assert messages[0].chunk_size == chunk_size
-
-	_chunks = -(-messages[0].size // messages[0].chunk_size)  # round up
-	chunks = await message_server.wait_for_messages(chunks=_chunks)
+	assert messages[0].size == test_file_size
+	assert messages[0].no_of_chunks == calc_no_of_chunks(file_size=test_file_size, chunk_size=chunk_size)
 
 	with test_file.open("r") as file:
-		for chunk in chunks:
+		for chunk in await message_sender.wait_for_messages(chunks=messages[0].no_of_chunks):
 			assert chunk == file.read(chunk_size)
