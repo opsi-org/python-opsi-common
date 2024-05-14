@@ -65,6 +65,7 @@ class MessageSender:
 					raise TimeoutError(f"Timeout waiting for {count} messages")
 				break
 			await asyncio.sleep(0.1)
+
 		if not clear_messages:
 			if not true_count:
 				return self.messages_sent

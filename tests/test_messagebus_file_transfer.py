@@ -203,34 +203,40 @@ async def test_file_download(tmp_path: Path) -> None:
 	assert messages[0].file_id == file_download_request.file_id
 
 	# create file and repeat
+
+	res_sender = "test_res_sender"
+	res_channel = "test_res_channel"
+	res_back_channel = "test_res_back_channel"
+
 	test_file_size = gen_test_file(file=test_file, chunk_size=chunk_size)
 	file_download_request = FileDownloadRequestMessage(
-		sender="test_res_sender",
-		channel="test_res_channel",
-		back_channel="test_res_back_channel",
+		sender=res_sender,
+		channel=res_channel,
+		back_channel=res_back_channel,
 		chunk_size=chunk_size,
 		path=test_file,
 	)
 	await process_messagebus_message(
-		file_download_request, send_message=message_sender.send_message, sender="test_res_sender", back_channel="test_res_channel"
+		file_download_request, send_message=message_sender.send_message, sender=res_sender, back_channel=res_channel
 	)
 
 	no_of_chunks = calc_no_of_chunks(file_size=test_file_size, chunk_size=chunk_size)
-	messages = await message_sender.wait_for_messages(count=1 + no_of_chunks)
+
+	messages = await message_sender.wait_for_messages(count=1, true_count=True)
+	assert isinstance(messages[0], FileDownloadInformationMessage)
+	assert messages[0].sender == res_sender
+	assert messages[0].back_channel == res_channel
+	assert messages[0].size == test_file_size
+	assert messages[0].no_of_chunks == no_of_chunks
+	# assert messages[0].data_channel == res_channel + "_data"
+
+	data_messages = await message_sender.wait_for_messages(count=no_of_chunks)
 
 	with Path(test_file).open("rb") as file:
-		for no in range(no_of_chunks):
-			if no == 0:
-				# assert len(messages) == 1 # Redundant???
-				assert isinstance(messages[0], FileDownloadInformationMessage)
-				assert messages[no].sender == "test_res_sender"
-				assert messages[no].back_channel == "test_res_channel"
-				assert messages[0].type == "file_download_information"
-				assert messages[no].size == test_file_size
-				assert messages[no].no_of_chunks == no_of_chunks
-			else:
-				# while no < messages[0].no_of_chunks:
-				print(messages[no].type)
-				assert messages[no].number == no - 1
-				assert messages[no].last is False if no < no_of_chunks - 2 else True
-				assert messages[no].data == file.read(chunk_size)
+		num = 0
+		for data_messag in data_messages:
+			assert data_messag.channel == res_back_channel
+			assert data_messag.number == num
+			assert data_messag.last is False if 1 < no_of_chunks - 2 else True
+			assert data_messag.data == file.read(chunk_size)
+			num += 1
