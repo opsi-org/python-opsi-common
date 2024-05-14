@@ -277,20 +277,24 @@ async def process_messagebus_message(
 	sender: str = CONNECTION_USER_CHANNEL,
 	back_channel: str | None = None,
 ) -> None:
+	logger.trace("Processing message: %s", message)
+
 	with file_transfers_lock:
 		file_transfer = file_transfers.get(message.file_id)
 
 	try:
 		if isinstance(message, FileUploadRequestMessage):
 			if not file_transfer:
+				logger.debug("Creating new FileUpload")
+				file_transfer = FileUpload(
+					file_upload_request=message,
+					send_message=send_message,
+					sender=sender,
+					back_channel=back_channel,
+				)
 				with file_transfers_lock:
-					file_transfer = FileUpload(
-						file_upload_request=message,
-						send_message=send_message,
-						sender=sender,
-						back_channel=back_channel,
-					)
 					file_transfers[message.file_id] = file_transfer
+				logger.debug("Starting new FileUpload")
 				await file_transfer.start()
 			else:
 				raise RuntimeError(f"File upload already running: {file_transfer!r}")
@@ -309,26 +313,25 @@ async def process_messagebus_message(
 			else:
 				raise RuntimeError(f"File download already running: {file_transfer!r}")
 			return
-		if not file_transfer:
-			raise RuntimeError(f"File transfer {message.file_id} not found")
-		if isinstance(message, FileChunkMessage):
-			await file_transfer.process_file_chunk(message)
-			return
-		raise RuntimeError("Invalid file id")
+		elif file_transfer:
+			if isinstance(message, FileChunkMessage):
+				await file_transfer.process_file_chunk(message)
+			else:
+				raise ValueError(f"Invalid message type {type(message)} received")
+		else:
+			raise RuntimeError(f"FileTransfer {message.file_id} not found")
 	except Exception as err:
 		logger.warning(err, exc_info=True)
+		msg = FileTransferErrorMessage(
+			sender=sender,
+			channel=message.response_channel,
+			ref_id=message.id,
+			file_id=message.file_id,
+			error=Error(message=str(err)),
+		)
+		await send_message(msg)
 		if file_transfer:
 			await file_transfer.stop()
-		else:
-			msg = FileTransferErrorMessage(
-				sender=sender,
-				channel=message.response_channel,
-				ref_id=message.id,
-				file_id=message.file_id,
-				error=Error(message=str(err)),
-			)
-			await send_message(msg)
-			await asyncio.get_event_loop().run_in_executor(None, remove_file_transfer, message.file_id)
 
 
 def remove_file_transfer(file_id: str) -> None:

@@ -19,6 +19,7 @@ import ssl
 import sys
 import time
 import warnings
+from abc import ABC
 from base64 import b64encode
 from contextlib import contextmanager
 from contextvars import copy_context
@@ -169,7 +170,7 @@ class CallbackThread(Thread):
 			logger.error("Error in %s: %s", self, err, exc_info=True)
 
 
-class ServiceConnectionListener:
+class ServiceConnectionListener(ABC):
 	def connection_open(self, service_client: ServiceClient) -> None:
 		"""
 		Called when the connection to the service is opened.
@@ -1015,8 +1016,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
-	) -> Response:
-		...
+	) -> Response: ...
 
 	@overload
 	def request(
@@ -1030,8 +1030,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
-	) -> RequestsResponse:
-		...
+	) -> RequestsResponse: ...
 
 	@overload
 	def request(
@@ -1045,8 +1044,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
-	) -> RequestsResponse | Response:
-		...
+	) -> RequestsResponse | Response: ...
 
 	def request(
 		self,
@@ -1084,8 +1082,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
-	) -> Response:
-		...
+	) -> Response: ...
 
 	@overload
 	def get(
@@ -1097,8 +1094,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
-	) -> RequestsResponse:
-		...
+	) -> RequestsResponse: ...
 
 	@overload
 	def get(
@@ -1110,8 +1106,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
-	) -> RequestsResponse | Response:
-		...
+	) -> RequestsResponse | Response: ...
 
 	def get(
 		self,
@@ -1144,8 +1139,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
-	) -> Response:
-		...
+	) -> Response: ...
 
 	@overload
 	def post(
@@ -1158,8 +1152,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
-	) -> RequestsResponse:
-		...
+	) -> RequestsResponse: ...
 
 	@overload
 	def post(
@@ -1172,8 +1165,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
-	) -> RequestsResponse | Response:
-		...
+	) -> RequestsResponse | Response: ...
 
 	def post(
 		self,
@@ -1201,9 +1193,11 @@ class ServiceClient:
 		self,
 		method: str,
 		params: tuple[Any, ...] | list[Any] | dict[str, Any] | None = None,
+		*,
 		connect_timeout: float | None = None,
 		read_timeout: float | None = None,
 		return_result_only: bool = True,
+		create_objects: bool | None = None,
 	) -> Any:
 		params = params or []
 		if isinstance(params, tuple):
@@ -1330,7 +1324,10 @@ class ServiceClient:
 		if error_cls:
 			raise error_cls(error_msg)
 
-		if self.jsonrpc_create_objects and not method.endswith(("_hash", "_listOfHashes", "_getHashes")):
+		if create_objects is None:
+			create_objects = self.jsonrpc_create_objects and not method.endswith(("_hash", "_listOfHashes", "_getHashes"))
+
+		if create_objects:
 			return deserialize(rpc.get("result"))
 
 		return rpc.get("result")
@@ -1375,7 +1372,7 @@ class ServiceClient:
 		self.stop()
 
 
-class MessagebusListener:
+class MessagebusListener(ABC):
 	def __init__(self, messagebus: Messagebus | None = None, message_types: Iterable[MessageType | str] | None = None) -> None:
 		"""
 		message_types:

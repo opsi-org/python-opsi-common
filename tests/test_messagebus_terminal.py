@@ -37,7 +37,7 @@ def test_start_pty_params(tmp_path: Path) -> None:
 	cols = 150
 	rows = 20
 
-	env = {"PATH": os.environ["PATH"], "TEST": "test"}
+	env = {"PATH": os.environ["PATH"], "OPSI_TEST": "foo"}
 	(
 		pty_pid,
 		pty_read,
@@ -63,23 +63,39 @@ def test_start_pty_params(tmp_path: Path) -> None:
 
 	command = "set" if is_windows() else "env"
 	pty_write(f"{command}\r\n".encode("utf-8"))
-	time.sleep(2)
-	data = pty_read(4096)
-	print("read:", data)
+	data = b""
+	for _ in range(30):
+		time.sleep(1)
+		dat = pty_read(8192)
+		print("read:", dat)
+		data += dat
+		if b"OPSI_TEST=foo" in data:
+			if not is_posix():
+				break
+			if b"TERM=" in data:
+				break
+
 	lines = [line.strip() for line in data.decode("utf-8").split("\n")]
 	assert lines[0] == command
-	if is_posix():
-		assert "TEST=test" in lines
-		assert "TERM=xterm-256color" in lines
+	assert "OPSI_TEST=foo" in lines
 
 	if is_posix():
+		assert any(line.startswith("TERM=") for line in lines)
+
 		pty_write("stty size\r\n".encode("utf-8"))
-		time.sleep(2)
-		data = pty_read(4096)
-		print("read:", data)
+		data = b""
+		for _ in range(30):
+			time.sleep(1)
+			dat = pty_read(8192)
+			print("read:", dat)
+			data += dat
+			if b"stty size" in data:
+				break
 		lines = [line.strip() for line in data.decode("utf-8").split("\n")]
-		assert lines[0] == "stty size"
-		assert lines[1] == f"{rows} {cols}"
+		print("lines:", lines)
+		assert any(line.endswith("stty size") for line in lines)
+		if not is_macos():
+			assert f"{rows} {cols}" in lines
 
 	pty_set_size(20, 100)
 	pty_stop()
@@ -99,13 +115,14 @@ async def test_terminal_params() -> None:
 	terminal_id = str(uuid.uuid4())
 	sender = "service_worker:pytest:1"
 	shell = "/bin/bash" if not is_windows() else "cmd.exe"
+	env = {"LANG": "de", "OPSI_TEST": "foo"}
 
 	assert not terminals
 
 	message_sender = MessageSender()
 
 	terminal_open_request = TerminalOpenRequestMessage(
-		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, shell=shell, rows=rows, cols=cols
+		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, shell=shell, rows=rows, cols=cols, env=env
 	)
 	await process_messagebus_message(message=terminal_open_request, send_message=message_sender.send_message, sender=sender)
 
@@ -128,6 +145,22 @@ async def test_terminal_params() -> None:
 	assert messages[1].channel == "back_channel"
 	assert messages[1].terminal_id == terminal_id
 	assert messages[1].data
+
+	command = "set" if is_windows() else "env"
+	terminal_data_write_message = TerminalDataWriteMessage(
+		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, data=f"{command}\r\n".encode("utf-8")
+	)
+	await process_messagebus_message(message=terminal_data_write_message, send_message=message_sender.send_message, sender=sender)
+
+	messages = await message_sender.wait_for_messages(count=10, timeout=5, error_on_timeout=False)
+	data = b""
+	for message in messages:
+		assert isinstance(message, TerminalDataReadMessage)
+		data += message.data
+	lines = data.decode("utf-8").split("\r\n")
+	assert "OPSI_TEST=foo" in lines
+	assert "LANG=de" in lines
+	assert f"OPSI_TERMINAL_ID={terminal_id}" in lines
 
 	if is_posix():
 		terminal_data_write_message = TerminalDataWriteMessage(

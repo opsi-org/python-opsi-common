@@ -7,6 +7,7 @@ tests for opsicommon.package.repo_meta
 
 import shutil
 from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -60,6 +61,24 @@ def test_repo_meta_package_compatibility() -> None:
 	for string in ("linux-invalid", "invalid-all", "linux", "all", "linux-amd64"):
 		with pytest.raises(ValueError):
 			comp = RepoMetaPackageCompatibility.from_string(string)
+
+
+def test_repo_meta_from_dict_with_unkown_arguments() -> None:
+	RepoMetaPackage.from_dict(
+		{
+			"url": "https://some.url/",
+			"size": 12098322,
+			"md5_hash": "15329eb8cd987f46024b593f200b5295",
+			"sha256_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"product_id": "localboot_new",
+			"name": "localboot new",
+			"priority": 10,
+			"product_version": "42.0",
+			"package_version": "1337",
+			"future_attribute": "new",
+			"legacy_attribute": 27237,
+		}
+	)
 
 
 def test_repo_meta_product_dependency() -> None:
@@ -252,20 +271,36 @@ def test_repo_meta_package_collection_add_package(tmp_path: Path) -> None:
 	package_collection.add_package(
 		repository_dir, repository_dir / "localboot_new_1.0-1.opsi", num_allowed_versions=1, add_callback=add_callback
 	)
+	utc_now = datetime.now(tz=timezone.utc)
 	assert len(package_collection.packages["localboot_new"]) == 1
 	print(package_collection.packages["localboot_new"])
 	assert package_collection.packages["localboot_new"]["1.0-1"].url == "localboot_new_1.0-1.opsi"
 	assert package_collection.packages["localboot_new"]["1.0-1"].compatibility == compatibility
 	assert package_collection.packages["localboot_new"]["1.0-1"].priority == 0
 	assert package_collection.packages["localboot_new"]["1.0-1"].name == "localboot_new"
+	assert package_collection.packages["localboot_new"]["1.0-1"].release_date
+	assert abs((package_collection.packages["localboot_new"]["1.0-1"].release_date - utc_now).total_seconds()) <= 2
 
 	# Check if update adds new package and keeps others with --num-allowed-versions
 	package_collection.add_package(repository_dir, repository_dir / "localboot_new_2.0-1.opsi", num_allowed_versions=2, url="my/url.opsi")
+	utc_now = datetime.now(tz=timezone.utc)
 	assert len(package_collection.packages["localboot_new"]) == 2
 	assert package_collection.packages["localboot_new"]["1.0-1"].url == "localboot_new_1.0-1.opsi"
 	assert package_collection.packages["localboot_new"]["1.0-1"].compatibility == compatibility
 	assert package_collection.packages["localboot_new"]["2.0-1"].url == "my/url.opsi"
 	assert not package_collection.packages["localboot_new"]["2.0-1"].compatibility
+	assert package_collection.packages["localboot_new"]["2.0-1"].release_date
+	assert abs((package_collection.packages["localboot_new"]["2.0-1"].release_date - utc_now).total_seconds()) <= 2
+
+	for suffix in ["json", "json.zstd", "msgpack", "msgpack.zstd"]:
+		package_collection.write_metafile(tmp_path / f"packages.{suffix}")
+
+		package_collection_read = RepoMetaPackageCollection()
+		package_collection_read.read_metafile(tmp_path / f"packages.{suffix}")
+		assert (
+			package_collection_read.packages["localboot_new"]["2.0-1"].release_date
+			== package_collection.packages["localboot_new"]["2.0-1"].release_date
+		)
 
 
 def test_repo_meta_package_collection_remove_package(tmp_path: Path) -> None:

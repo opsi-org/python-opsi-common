@@ -1471,9 +1471,17 @@ def test_jsonrpc_objects(tmp_path: Path) -> None:
 			server.response_body = json.dumps({"jsonrpc": "2.0", "result": obj}).encode("utf-8")
 			res = client.jsonrpc(method="host_getObjects")
 			assert res == obj
+
 			client.jsonrpc_create_objects = True
 			res = client.jsonrpc(method="host_getObjects")
-			assert res == OpsiClient.fromHash(obj)
+			assert res == OpsiClient.fromHash(obj.copy())
+
+			res = client.jsonrpc(method="host_getObjects", create_objects=False)
+			assert res == obj
+
+			client.jsonrpc_create_objects = False
+			res = client.jsonrpc(method="host_getObjects", create_objects=True)
+			assert res == OpsiClient.fromHash(obj.copy())
 
 
 def test_jsonrpc_error_handling() -> None:

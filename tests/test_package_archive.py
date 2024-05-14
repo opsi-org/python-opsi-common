@@ -28,6 +28,8 @@ from opsicommon.package.archive import (
 	create_archive_internal,
 	extract_archive_external,
 	extract_archive_internal,
+	ArchiveProgress,
+	ArchiveProgressListener,
 )
 from opsicommon.package.associated_files import create_package_zsync_file
 from opsicommon.testing.helpers import memory_usage_monitor
@@ -37,6 +39,15 @@ from opsicommon.testing.helpers import memory_usage_monitor
 FILENAME_REGEX = r"^[^/\\]{4,64}$"
 
 
+class ProgressListener(ArchiveProgressListener):
+	def __init__(self) -> None:
+		self.percent_competed_vals: list[float] = []
+
+	def progress_changed(self, progress: ArchiveProgress) -> None:
+		# print(f"{progress.percent_completed:0.1f} %")
+		self.percent_competed_vals.append(progress.percent_completed)
+
+
 def make_source_files(path: Path) -> Path:
 	source = path / "source"
 	source.mkdir()
@@ -44,6 +55,8 @@ def make_source_files(path: Path) -> Path:
 	(source / "#how^can°people`think,this´is'a good~idea#").write_bytes(randbytes(50_000_000))
 	(source / "test'dir").mkdir()
 	(source / "test'dir" / "testfileindir").write_bytes(randbytes(10_000_000))
+	(source / "Empty Dir").mkdir()
+	(source / "dir" / "in" / "dir").mkdir(parents=True)
 	if platform.system().lower() != "windows":  # windows does not like ?, < and > characters
 		(source / "test'dir" / 'test"file$in€dir<with>special?').write_bytes(randbytes(1000))
 	return source
@@ -51,22 +64,30 @@ def make_source_files(path: Path) -> Path:
 
 # Cannot use function scoped fixtures with hypothesis
 @pytest.mark.linux
-@given(from_regex(FILENAME_REGEX), binary(max_size=4096), sampled_from(("zstd", "bz2", "gz")))
-def test_archive_external_hypothesis(filename: str, data: bytes, compression: Literal["zstd", "bz2", "gz"]) -> None:
+@given(from_regex(FILENAME_REGEX), binary(max_size=4096), sampled_from((True, False)), sampled_from(("zstd", "bz2", "gz")))
+def test_archive_hypothesis(filename: str, data: bytes, internal: bool, compression: Literal["zstd", "bz2", "gz"]) -> None:
 	with tempfile.TemporaryDirectory() as tempdir:
-		filename = filename.replace("\x00", "")
+		filename = filename.replace("\x00", "").replace("\n", "")
+		if filename.startswith("-"):
+			filename = filename[1:]
 		tmp_path = Path(tempdir)
 		source = tmp_path / "source"
 		source.mkdir()
 		file_path = source / filename
 		file_path.write_bytes(data)
 		archive = tmp_path / f"archive.tar.{compression}"
-		create_archive_external(archive, list(source.glob("*")), source, compression=compression)
+		create_archive = create_archive_internal if internal else create_archive_external
+		create_archive(archive, list(source.glob("*")), source, compression=compression)
 		destination = tmp_path / "destination"
-		extract_archive_external(archive, destination)
-		contents = [file.relative_to(destination) for file in destination.rglob("*")]
-		for file in source.rglob("*"):
-			assert file.relative_to(source) in contents
+		extract_archive = extract_archive_internal if internal else extract_archive_external
+		extract_archive(archive, destination)
+		src_contents = [file.relative_to(source) for file in source.rglob("*")]
+		dst_contents = [file.relative_to(destination) for file in destination.rglob("*")]
+		src_contents.sort()
+		dst_contents.sort()
+		# print("src:", src_contents)
+		# print("dst:", dst_contents)
+		assert dst_contents == src_contents
 
 
 @pytest.mark.linux
@@ -77,18 +98,40 @@ def test_archive_external_hypothesis(filename: str, data: bytes, compression: Li
 def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"]) -> None:
 	source = make_source_files(tmp_path)
 	with memory_usage_monitor(interval=0.01) as mem_monitor:
-		# Setting group ownership of source to adm group - assuming this is present on every linux
-		shutil.chown(source, None, "adm")
+		try:
+			# Setting group ownership of source to adm group
+			shutil.chown(source, None, "adm")
+		except PermissionError:
+			pass
+
 		archive = tmp_path / f"archive.tar.{compression}"
-		create_archive_external(archive, list(source.glob("*")), source, compression=compression)
+		progress_listener = ProgressListener()
+
+		create_archive_external(archive, list(source.glob("*")), source, compression=compression, progress_listener=progress_listener)
+
+		assert progress_listener.percent_competed_vals[-1] == 100
+		for idx, val in enumerate(progress_listener.percent_competed_vals):
+			if idx + 1 < len(progress_listener.percent_competed_vals):
+				assert val <= progress_listener.percent_competed_vals[idx + 1]
 
 		# Ownership of archive should be current user group
 		assert archive.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
 
-		# Setting group ownership of archive to adm group - assuming this is present on every linux
-		shutil.chown(archive, None, "adm")
+		try:
+			# Setting group ownership of source to adm group
+			shutil.chown(archive, None, "adm")
+		except PermissionError:
+			pass
+
 		destination = tmp_path / "destination"
-		extract_archive_external(archive, destination)
+		progress_listener = ProgressListener()
+
+		extract_archive_external(archive, destination, progress_listener=progress_listener)
+
+		assert progress_listener.percent_competed_vals[-1] == 100
+		for idx, val in enumerate(progress_listener.percent_competed_vals):
+			if idx + 1 < len(progress_listener.percent_competed_vals):
+				assert val <= progress_listener.percent_competed_vals[idx + 1]
 
 		# Ownership of archive should be current user group
 		assert destination.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
@@ -110,10 +153,24 @@ def test_archive_internal(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 	source = make_source_files(tmp_path)
 	with memory_usage_monitor(interval=0.01) as mem_monitor:
 		archive = tmp_path / f"archive.tar.{compression}"
-		create_archive_internal(archive, list(source.glob("*")), source, compression=compression)
+		progress_listener = ProgressListener()
+
+		create_archive_internal(archive, list(source.glob("*")), source, compression=compression, progress_listener=progress_listener)
+
+		assert progress_listener.percent_competed_vals[-1] == 100
+		for idx, val in enumerate(progress_listener.percent_competed_vals):
+			if idx + 1 < len(progress_listener.percent_competed_vals):
+				assert val <= progress_listener.percent_competed_vals[idx + 1]
 
 		destination = tmp_path / "destination"
-		extract_archive_internal(archive, destination)
+		progress_listener = ProgressListener()
+
+		extract_archive_internal(archive, destination, progress_listener=progress_listener)
+
+		assert progress_listener.percent_competed_vals[-1] == 100
+		for idx, val in enumerate(progress_listener.percent_competed_vals):
+			if idx + 1 < len(progress_listener.percent_competed_vals):
+				assert val <= progress_listener.percent_competed_vals[idx + 1]
 
 		contents = [file.relative_to(destination) for file in destination.rglob("*")]
 		for file in source.rglob("*"):

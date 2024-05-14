@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import asdict, dataclass, field, fields
+from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Callable, Generator
@@ -118,6 +119,7 @@ class RepoMetaPackage:
 	release_notes_url: str | None = None
 	icon_url: str | None = None
 	zsync_url: str | None | list[str | None] = None
+	release_date: datetime | None = None
 
 	@property
 	def version(self) -> str:
@@ -152,12 +154,19 @@ class RepoMetaPackage:
 	@classmethod
 	def from_dict(cls, data: dict[str, Any]) -> RepoMetaPackage:
 		data = data.copy()
-		if data["compatibility"]:
+		if data.get("compatibility"):
 			data["compatibility"] = [RepoMetaPackageCompatibility.from_dict(d) for d in data["compatibility"]]
 		else:
 			data["compatibility"] = None
-		data["product_dependencies"] = [RepoMetaProductDependency.from_dict(d) for d in data["product_dependencies"]]
-		data["package_dependencies"] = [RepoMetaPackageDependency.from_dict(d) for d in data["package_dependencies"]]
+		data["product_dependencies"] = [RepoMetaProductDependency.from_dict(d) for d in data.get("product_dependencies") or []]
+		data["package_dependencies"] = [RepoMetaPackageDependency.from_dict(d) for d in data.get("package_dependencies") or []]
+		release_date = data.get("release_date")
+		if release_date and not isinstance(release_date, datetime):
+			data["release_date"] = datetime.fromisoformat(release_date)
+		attributes = [field.name for field in fields(RepoMetaPackage)]
+		for key in list(data):
+			if key not in attributes:
+				del data[key]
 		return RepoMetaPackage(**data)
 
 	def merge(self, other: RepoMetaPackage) -> None:
@@ -223,6 +232,7 @@ class RepoMetaPackageCollection:
 			raise ValueError("add_callback must be callable")
 
 		package = RepoMetaPackage.from_package_file(package_file=package_file, url=url)
+		package.release_date = datetime.now(tz=timezone.utc)
 		package.compatibility = compatibility or None
 		if add_callback:
 			add_callback(package)
