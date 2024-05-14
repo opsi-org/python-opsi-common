@@ -215,20 +215,22 @@ async def test_file_download(tmp_path: Path) -> None:
 		file_download_request, send_message=message_sender.send_message, sender="test_res_sender", back_channel="test_res_channel"
 	)
 
-	messages = await message_sender.wait_for_messages(count=1)
-	# assert len(messages) == 1 # Redundant???
-	assert isinstance(messages[0], FileDownloadInformationMessage)
-	assert messages[0].sender == "test_res_sender"
-	assert messages[0].back_channel == "test_res_channel"
-	# assert messages[0].type == ""  # TODO
-	assert messages[0].size == test_file_size
 	no_of_chunks = calc_no_of_chunks(file_size=test_file_size, chunk_size=chunk_size)
-	assert messages[0].no_of_chunks == no_of_chunks
+	messages = await message_sender.wait_for_messages(count=1 + no_of_chunks)
 
-	number = 1
 	with Path(test_file).open("rb") as file:
-		while number < messages[0].no_of_chunks:
-			assert messages[number].number == number - 1
-			assert messages[number].last is False if number < no_of_chunks - 2 else True
-			assert messages[number].data == file.read(chunk_size)
-			number += 1
+		for no in range(no_of_chunks):
+			if no == 0:
+				# assert len(messages) == 1 # Redundant???
+				assert isinstance(messages[0], FileDownloadInformationMessage)
+				assert messages[no].sender == "test_res_sender"
+				assert messages[no].back_channel == "test_res_channel"
+				assert messages[0].type == "file_download_information"
+				assert messages[no].size == test_file_size
+				assert messages[no].no_of_chunks == no_of_chunks
+			else:
+				# while no < messages[0].no_of_chunks:
+				print(messages[no].type)
+				assert messages[no].number == no - 1
+				assert messages[no].last is False if no < no_of_chunks - 2 else True
+				assert messages[no].data == file.read(chunk_size)
