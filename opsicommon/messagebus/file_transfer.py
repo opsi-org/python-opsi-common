@@ -228,7 +228,7 @@ class FileDownload(FileTransfer):
 				raise ValueError("File does not exist")
 			if not self._file_request.chunk_size:
 				raise ValueError("Missing Chunk Size")
-			if not self._file_request.path.is_file():
+			if not Path(self._file_request.path).is_file():
 				raise FileNotFoundError(f"File '{self._file_request.path}' is missing or file path is incorrect")
 		except Exception as error:
 			logger.error(error, exc_info=True)
@@ -260,6 +260,7 @@ class FileDownload(FileTransfer):
 				chunk_message = FileChunkMessage(
 					sender=self._sender,
 					channel=self._response_channel,
+					back_channel=self._back_channel,
 					size=self._file_request.chunk_size,
 					number=number,
 					last=False if number < self.no_of_chunks else True,
