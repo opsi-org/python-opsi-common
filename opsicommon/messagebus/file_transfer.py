@@ -92,7 +92,7 @@ class FileTransfer:
 				channel=self._response_channel,
 				file_id=self._file_id,
 				back_channel=self._back_channel,
-				Path=str(self._file_path),
+				path=str(self._file_path),
 			)
 			await self._send_message(upload_result)
 			self._should_stop = True
@@ -213,11 +213,12 @@ class FileDownload(FileTransfer):
 		self._file_download_request = file_download_request
 		self.size: int | None = None
 		self.no_of_chunks: int | None = None
+		self._file_request.path = Path(self._file_request.path)
 
-	# def __str__(self) -> str:
-	# return f"{self.__class__.__name__}({self._file_request})"
-	#
-	# __repr__ = __str__
+	def __str__(self) -> str:
+		return f"{self.__class__.__name__}({self._file_request})"
+
+	__repr__ = __str__
 
 	async def start(self) -> None:
 		logger.notice("Received FileDownloadRequestMassage %r", self)
@@ -227,7 +228,7 @@ class FileDownload(FileTransfer):
 				raise ValueError("File does not exist")
 			if not self._file_request.chunk_size:
 				raise ValueError("Missing Chunk Size")
-			if not Path(self._file_request.path).is_file():
+			if not self._file_request.path.is_file():
 				raise FileNotFoundError(f"File '{self._file_request.path}' is missing or file path is incorrect")
 		except Exception as error:
 			logger.error(error, exc_info=True)
@@ -253,13 +254,15 @@ class FileDownload(FileTransfer):
 		logger.info("Started %r")
 
 	async def send_data(self) -> None:
-		with self._file_request.path.open("r") as file:
+		with self._file_request.path.open("rb") as file:
 			number = 0
 			while data := file.read(self._file_request.chunk_size):
 				chunk_message = FileChunkMessage(
+					sender=self._sender,
+					channel=self._response_channel,
 					size=self._file_request.chunk_size,
 					number=number,
-					last=False if number < self._file_request.path else True,
+					last=False if number < self.no_of_chunks else True,
 					data=data,
 				)
 				await self._send_message(chunk_message)
@@ -276,9 +279,6 @@ async def process_messagebus_message(
 	with file_transfers_lock:
 		file_transfer = file_transfers.get(message.file_id)
 
-	print("here")
-	print(type(message.file_id))
-	print(message.file_id)
 	try:
 		if isinstance(message, FileUploadRequestMessage):
 			if not file_transfer:

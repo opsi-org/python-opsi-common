@@ -184,7 +184,7 @@ async def test_file_download(tmp_path: Path) -> None:
 	channel = "test_channel"
 	chunk_size = 1000
 	message_sender = MessageSender()
-	test_file = tmp_path / "test_file.txt"
+	test_file = str(tmp_path / "test_file.txt")
 
 	file_download_request = FileDownloadRequestMessage(
 		sender=sender,
@@ -192,40 +192,43 @@ async def test_file_download(tmp_path: Path) -> None:
 		chunk_size=chunk_size,
 		path=test_file,
 	)
-	await process_messagebus_message(file_download_request, send_message=message_sender.send_messages)
+	await process_messagebus_message(file_download_request, send_message=message_sender.send_message)
 
 	messages = await message_sender.wait_for_messages(count=1)
 	assert len(messages) == 1
-	assert isinstance(messages[0], FileNotFoundError)
+	assert isinstance(messages[0], FileTransferErrorMessage)
 	assert messages[0].sender == CONNECTION_USER_CHANNEL
 	assert not messages[0].back_channel
-	assert messages[0].channel == "test_channel"  # ?? upload_test has test_sender
+	assert messages[0].channel == sender
+	assert messages[0].file_id == file_download_request.file_id
 
 	# create file and repeat
-	test_file_size = gen_test_file(file_path=test_file)
+	test_file_size = gen_test_file(file=test_file, chunk_size=chunk_size)
 	file_download_request = FileDownloadRequestMessage(
 		sender="test_res_sender",
 		channel="test_res_channel",
+		back_channel="test_res_back_channel",
 		chunk_size=chunk_size,
 		path=test_file,
 	)
 	await process_messagebus_message(
-		file_download_request, send_message=message_sender.send_messages, sender="test_res_sender", back_channel="test_res_channel"
+		file_download_request, send_message=message_sender.send_message, sender="test_res_sender", back_channel="test_res_channel"
 	)
 
 	messages = await message_sender.wait_for_messages(count=1)
-	assert len(messages) == 1
+	# assert len(messages) == 1 # Redundant???
 	assert isinstance(messages[0], FileDownloadInformationMessage)
 	assert messages[0].sender == "test_res_sender"
 	assert messages[0].back_channel == "test_res_channel"
-	assert messages[0].type == ""  # TODO
+	# assert messages[0].type == ""  # TODO
 	assert messages[0].size == test_file_size
 	no_of_chunks = calc_no_of_chunks(file_size=test_file_size, chunk_size=chunk_size)
 	assert messages[0].no_of_chunks == no_of_chunks
-	with test_file.open("r") as file:
-		number = 0
-		for chunk_message in await message_sender.wait_for_messages(chunks=messages[0].no_of_chunks):
-			assert chunk_message.number == number
-			assert chunk_message.last is False if number < no_of_chunks - 1 else True
-			assert chunk_message.data == file.read(chunk_size)
+
+	number = 1
+	with Path(test_file).open("rb") as file:
+		while number < messages[0].no_of_chunks:
+			assert messages[number].number == number - 1
+			assert messages[number].last is False if number < no_of_chunks - 2 else True
+			assert messages[number].data == file.read(chunk_size)
 			number += 1

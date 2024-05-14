@@ -522,7 +522,7 @@ class FileDownloadRequestMessage(FileTransferMessage):
 
 class FileDownloadInformationMessage(FileTransferMessage):
 	"""
-	Message with information like file exists, size, etc.
+	Message with information like file size, type, number of chunks.
 	"""
 
 	type: str = MessageType.FILE_DOWNLOAD_INFORMATION

@@ -9,7 +9,8 @@ import io
 import os
 import time
 from contextlib import contextmanager
-from typing import Generator, Path, TextIOWrapper
+from pathlib import Path
+from typing import Generator
 
 from opsicommon.logging import use_logging_config
 from opsicommon.messagebus.message import Message
@@ -32,10 +33,11 @@ def environment(**env_vars: str) -> Generator[None, None, None]:
 	finally:
 		os.environ = env_bak  # type: ignore[assignment]
 
-def read_in_chunks(file: TextIOWrapper , chunk_size: int) {
-	while True:
-		data = file
-}
+
+# def read_in_chunks(file: TextIOWrapper, chunk_size: int):
+# while True:
+# data = file
+
 
 class MessageSender:
 	def __init__(self, print_messages: bool = False) -> None:
@@ -64,13 +66,16 @@ class MessageSender:
 		self.messages_sent = []
 		return messages
 
+
 class MessageSenderDownload(MessageSender):
 	def __init__(self, print_messages: bool = False) -> None:
 		super().__init__(print_messages)
-		#self.size: int | None = None
+		# self.size: int | None = None
 
-def gen_test_file(file: Path, chunk_size: int, error_if_file_exists: bool = False) -> int:
+
+def gen_test_file(file: Path | str, chunk_size: int, error_if_file_exists: bool = False) -> int:
 	chunk_size = chunk_size
+	file = Path(file)
 	file_data = ""
 	word = "opsi"
 	for letter in word:
@@ -82,61 +87,61 @@ def gen_test_file(file: Path, chunk_size: int, error_if_file_exists: bool = Fals
 		else:
 			print(f"File {str(file)} alredy exists")
 		return
-	file.write_text(file_data , encoding="ascii")
+	file.write_text(file_data, encoding="ascii")
 	file_size = file.stat().st_size
 	assert file_size == len(word) * chunk_size
 	return file_size
 
 
-#class MessageServer:
-#	def __init__(self, print_messages: bool = False) -> None:
-#		self.size: int | None = None
-#		self.print_messages = print_messages
-#		self.message_sent: list[Message] = []
-#		self.chunk_size: int | None = None
+# class MessageServer:
+# def __init__(self, print_messages: bool = False) -> None:
+# self.size: int | None = None
+# self.print_messages = print_messages
+# self.message_sent: list[Message] = []
+# self.chunk_size: int | None = None
 #
-#	def gen_test_file(self, file_path: str, error_if_file_exists: bool = False) -> None:
-#		chunk_size = 1000
-#		test_file = Path(file_path)
-#		if test_file.is_file():
-#			if error_if_file_exists:
-#				raise FileExistsError(f"File {str(test_file)} alredy exists")
-#			else:
-#				print(f"File {str(test_file)} alredy exists")
-#			return
-#		test_file.write_text("opsi" * chunk_size, encoding="ascii")
-#		file_size = test_file.stat().st_size
-#		assert file_size == chunk_size * 4
-#		self.size = file_size
+# def gen_test_file(self, file_path: str, error_if_file_exists: bool = False) -> None:
+# chunk_size = 1000
+# test_file = Path(file_path)
+# if test_file.is_file():
+# if error_if_file_exists:
+# raise FileExistsError(f"File {str(test_file)} alredy exists")
+# else:
+# print(f"File {str(test_file)} alredy exists")
+# return
+# test_file.write_text("opsi" * chunk_size, encoding="ascii")
+# file_size = test_file.stat().st_size
+# assert file_size == chunk_size * 4
+# self.size = file_size
 #
-#	async def send_request(self, message: Message) -> None:
-#		if self.print_messages:
-#			print(message.to_dict())
-#		self.message_sent.append(message)
+# async def send_request(self, message: Message) -> None:
+# if self.print_messages:
+# print(message.to_dict())
+# self.message_sent.append(message)
 #
-#	async def wait_for_messages(
-#		self, count: int, timeout: float = 10.0, clear_messages: bool = True, error_on_timeout: bool = True
-#	) -> list[Message]:
-#		start = time.time()
-#		while len(self.message_sent) < count:
-#			if time.time() - start > timeout:
-#				if error_on_timeout:
-#					raise TimeoutError(f"Timeout waiting for {count} messages")
-#				break
-#			await asyncio.sleep(0.1)
-#		if not clear_messages:
-#			return self.messages_sent
+# async def wait_for_messages(
+# self, count: int, timeout: float = 10.0, clear_messages: bool = True, error_on_timeout: bool = True
+# ) -> list[Message]:
+# start = time.time()
+# while len(self.message_sent) < count:
+# if time.time() - start > timeout:
+# if error_on_timeout:
+# raise TimeoutError(f"Timeout waiting for {count} messages")
+# break
+# await asyncio.sleep(0.1)
+# if not clear_messages:
+# return self.messages_sent
 #
-#		messages = self.message_sent.copy()
-#		self.message_sent = []
-#		return messages
+# messages = self.message_sent.copy()
+# self.message_sent = []
+# return messages
 #
-#		# TODO??
-#		# add FileDownloadInformationMessage return
+# # TODO??
+# # add FileDownloadInformationMessage return
 #
-#		# then start Download process aka Data Stream
+# # then start Download process aka Data Stream
 #
-#		# redundant
-#		# messages = self.message_sent.copy()
-#		# self.message_sent = []
-#		# return messages
+# # redundant
+# # messages = self.message_sent.copy()
+# # self.message_sent = []
+# # return messages
