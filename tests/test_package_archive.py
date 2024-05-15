@@ -5,6 +5,7 @@ tests for opsicommon.package.archive
 """
 
 import getpass
+import os
 
 try:
 	import grp
@@ -59,6 +60,10 @@ def make_source_files(path: Path) -> Path:
 	(source / "dir" / "in" / "dir").mkdir(parents=True)
 	if platform.system().lower() != "windows":  # windows does not like ?, < and > characters
 		(source / "test'dir" / 'test"file$in€dir<with>special?').write_bytes(randbytes(1000))
+	(source / "some_dir").mkdir()
+	os.symlink(source / "some_dir", source / "link_to_some_dir")
+	(source / "some_file").write_bytes(randbytes(100))
+	os.symlink(source / "some_file", source / "link_to_some_file")
 	return source
 
 
@@ -92,10 +97,10 @@ def test_archive_hypothesis(filename: str, data: bytes, internal: bool, compress
 
 @pytest.mark.linux
 @pytest.mark.parametrize(
-	"compression",
-	("zstd", "bz2", "gz"),
+	"compression, dereference",
+	(("zstd", False), ("zstd", True), ("bz2", False), ("gz", False)),
 )
-def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"]) -> None:
+def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"], dereference: bool) -> None:
 	source = make_source_files(tmp_path)
 	with memory_usage_monitor(interval=0.01) as mem_monitor:
 		try:
@@ -107,7 +112,9 @@ def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 		archive = tmp_path / f"archive.tar.{compression}"
 		progress_listener = ProgressListener()
 
-		create_archive_external(archive, list(source.glob("*")), source, compression=compression, progress_listener=progress_listener)
+		create_archive_external(
+			archive, list(source.glob("*")), source, compression=compression, dereference=dereference, progress_listener=progress_listener
+		)
 
 		assert progress_listener.percent_competed_vals[-1] == 100
 		for idx, val in enumerate(progress_listener.percent_competed_vals):
@@ -136,9 +143,13 @@ def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 		# Ownership of archive should be current user group
 		assert destination.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
 
-		contents = [file.relative_to(destination) for file in destination.rglob("*")]
 		for file in source.rglob("*"):
-			assert file.relative_to(source) in contents
+			destination_file = destination / file.relative_to(source)
+			assert destination_file.exists()
+			if dereference:
+				assert not destination_file.is_symlink()
+			else:
+				assert file.is_symlink() == destination_file.is_symlink()
 
 		mem_monitor.stop()
 		mem_monitor.print_stats()
@@ -146,16 +157,18 @@ def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 
 
 @pytest.mark.parametrize(
-	"compression",
-	("zstd", "bz2", "gz"),
+	"compression, dereference",
+	(("zstd", False), ("zstd", True), ("bz2", False), ("gz", False)),
 )
-def test_archive_internal(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"]) -> None:
+def test_archive_internal(tmp_path: Path, compression: Literal["zstd", "bz2", "gz"], dereference: bool) -> None:
 	source = make_source_files(tmp_path)
 	with memory_usage_monitor(interval=0.01) as mem_monitor:
 		archive = tmp_path / f"archive.tar.{compression}"
 		progress_listener = ProgressListener()
 
-		create_archive_internal(archive, list(source.glob("*")), source, compression=compression, progress_listener=progress_listener)
+		create_archive_internal(
+			archive, list(source.glob("*")), source, compression=compression, dereference=dereference, progress_listener=progress_listener
+		)
 
 		assert progress_listener.percent_competed_vals[-1] == 100
 		for idx, val in enumerate(progress_listener.percent_competed_vals):
@@ -172,9 +185,13 @@ def test_archive_internal(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 			if idx + 1 < len(progress_listener.percent_competed_vals):
 				assert val <= progress_listener.percent_competed_vals[idx + 1]
 
-		contents = [file.relative_to(destination) for file in destination.rglob("*")]
 		for file in source.rglob("*"):
-			assert file.relative_to(source) in contents
+			destination_file = destination / file.relative_to(source)
+			assert destination_file.exists()
+			if dereference:
+				assert not destination_file.is_symlink()
+			else:
+				assert file.is_symlink() == destination_file.is_symlink()
 
 		mem_monitor.stop()
 		mem_monitor.print_stats()
