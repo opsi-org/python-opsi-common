@@ -376,7 +376,10 @@ def create_archive_external(
 		cmd += f" | {compress_command(archive, compression)}"
 
 	files = list(get_files(sources, follow_symlinks=dereference))
+	logger.trace("Files: %r", files)
 	total_size = sum(size for _, size in files)
+	logger.info("Adding %d files with a total size of %d", len(files), total_size)
+
 	progress: ArchiveProgress | None = None
 	if progress_listener:
 		progress = ArchiveProgress(total=total_size)
@@ -384,20 +387,24 @@ def create_archive_external(
 
 	checkpoint_re = re.compile(r"\|(\d+)\|")
 
-	def read_checkpoint_number(proc: subprocess.Popen, progress: ArchiveProgress) -> None:
+	def read_checkpoint_number(proc: subprocess.Popen, progress: ArchiveProgress | None) -> str:
 		assert proc.stderr
 		try:
-			data = proc.stderr.read()
+			raw_data = proc.stderr.read()
 		except OSError:
-			return
-		if not data:
-			return
-		line = data.decode().strip().split("\n")[-1]
+			return ""
+		if not raw_data:
+			return ""
+		data = raw_data.decode(errors="ignore")
+		line = data.strip().split("\n")[-1]
 		match = checkpoint_re.search(line)
 		if not match:
-			return
+			return data
 		number = int(match.group(1))
-		progress.set_completed(number * 512 * 20)
+		logger.trace("Read checkpoint number %d", number)
+		if progress:
+			progress.set_completed(number * 512 * 20)
+		return data
 
 	with chdir(base_dir):
 		# Cannot get a reliable exit code on piped commands because dash does not support pipefail
@@ -409,28 +416,32 @@ def create_archive_external(
 		fileno = proc.stderr.fileno()
 		flags = fcntl(fileno, F_GETFL)
 		fcntl(fileno, F_SETFL, flags | os.O_NONBLOCK)
+		stderr = ""
 		for file in files:
 			file_path = file[0].relative_to(base_dir)
-			logger.trace("Adding file: '%s'", file_path)
 			file_str = str(file_path)
+			logger.trace("Adding file: '%s'", file_str)
 			if "\n" in file_str:
 				raise ValueError(f"Invalid filename '{file_str}'")
 			proc.stdin.write(f"{file_str}\n".encode())
 			proc.stdin.flush()
-			if progress:
-				read_checkpoint_number(proc, progress)
+			if data := read_checkpoint_number(proc, progress):
+				stderr += data
+
+		logger.debug("All filenames sent, closing stdin")
 		proc.stdin.close()
 		while proc.poll() is None:
-			if progress:
-				read_checkpoint_number(proc, progress)
-			time.sleep(0.2)
-		proc.wait(timeout=7200)
+			if data := read_checkpoint_number(proc, progress):
+				stderr += data
+			time.sleep(0.5)
+
+		logger.debug("Process ended with exit code %r", proc.returncode)
 		if progress:
 			progress.set_completed(total_size)
 		try:
-			stderr = proc.stderr.read().decode(errors="ignore")
+			stderr += proc.stderr.read().decode(errors="ignore")
 		except Exception:
-			stderr = ""
+			pass
 		out = proc.stdout.read().decode(errors="ignore") + stderr
 		logger.debug("%s output: %s", cmd, out)
 		if proc.returncode != 0 or "Exiting with failure status" in out:
@@ -460,7 +471,10 @@ def create_archive_internal(
 		mode = "w|gz"
 
 	files = list(get_files(sources, follow_symlinks=dereference))
+	logger.trace("Files: %r", files)
 	total_size = sum(size for _, size in files)
+	logger.info("Adding %d files with a total size of %d", len(files), total_size)
+
 	progress: ArchiveProgress | None = None
 	if progress_listener:
 		progress = ArchiveProgress(total=total_size)
