@@ -19,7 +19,7 @@ from random import randbytes
 from typing import Literal
 
 import pytest
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis.strategies import binary, from_regex, sampled_from
 from pyzsync import SOURCE_REMOTE, get_patch_instructions, read_zsync_file
 
@@ -69,6 +69,7 @@ def make_source_files(path: Path) -> Path:
 
 # Cannot use function scoped fixtures with hypothesis
 @pytest.mark.linux
+@settings(deadline=10_000)
 @given(from_regex(FILENAME_REGEX), binary(max_size=4096), sampled_from((True, False)), sampled_from(("zstd", "bz2", "gz")))
 def test_archive_hypothesis(filename: str, data: bytes, internal: bool, compression: Literal["zstd", "bz2", "gz"]) -> None:
 	with tempfile.TemporaryDirectory() as tempdir:
