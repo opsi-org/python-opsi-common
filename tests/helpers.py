@@ -34,11 +34,6 @@ def environment(**env_vars: str) -> Generator[None, None, None]:
 		os.environ = env_bak  # type: ignore[assignment]
 
 
-# def read_in_chunks(file: TextIOWrapper, chunk_size: int):
-# while True:
-# data = file
-
-
 class MessageSender:
 	def __init__(self, print_messages: bool = False) -> None:
 		self.print_messages = print_messages
@@ -83,7 +78,6 @@ class MessageSender:
 class MessageSenderDownload(MessageSender):
 	def __init__(self, print_messages: bool = False) -> None:
 		super().__init__(print_messages)
-		# self.size: int | None = None
 
 
 def gen_test_file(file: Path | str, chunk_size: int, error_if_file_exists: bool = False) -> int:

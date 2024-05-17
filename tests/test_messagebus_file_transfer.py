@@ -228,16 +228,15 @@ async def test_file_download(tmp_path: Path) -> None:
 	assert messages[0].back_channel == res_channel
 	assert messages[0].size == test_file_size
 	assert messages[0].no_of_chunks == no_of_chunks
-	# assert messages[0].data_channel == res_channel + "_data"
 
 	data_messages = await message_sender.wait_for_messages(count=no_of_chunks)
 
 	with Path(test_file).open("rb") as file:
 		num = 0
-		for data_messag in data_messages:
-			assert isinstance(data_messag, FileChunkMessage)
-			assert data_messag.channel == res_back_channel
-			assert data_messag.number == num
-			assert data_messag.last is False if 1 < no_of_chunks - 2 else True
-			assert data_messag.data == file.read(chunk_size)
+		for data_message in data_messages:
+			assert isinstance(data_message, FileChunkMessage)
+			assert data_message.channel == res_back_channel
+			assert data_message.number == num
+			assert data_message.last is False if 1 < no_of_chunks - 2 else True
+			assert data_message.data == file.read(chunk_size)
 			num += 1

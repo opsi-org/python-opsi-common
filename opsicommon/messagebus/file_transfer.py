@@ -29,8 +29,6 @@ from opsicommon.messagebus.message import (
 	Message,
 )
 
-# file_uploads: dict[str, FileTransfer] = {}
-# file_uploads_lock = Lock()
 file_transfers: dict[str, FileTransfer] = {}
 file_transfers_lock = Lock()
 
@@ -264,7 +262,6 @@ class FileDownload(FileTransfer):
 					sender=self._sender,
 					channel=self._response_channel,
 					back_channel=self._back_channel,
-					# size=self._file_request.chunk_size,
 					number=number,
 					last=False if number < self.no_of_chunks else True,
 					data=data,
