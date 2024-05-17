@@ -235,6 +235,7 @@ async def test_file_download(tmp_path: Path) -> None:
 	with Path(test_file).open("rb") as file:
 		num = 0
 		for data_messag in data_messages:
+			assert isinstance(data_messag, FileChunkMessage)
 			assert data_messag.channel == res_back_channel
 			assert data_messag.number == num
 			assert data_messag.last is False if 1 < no_of_chunks - 2 else True

@@ -44,7 +44,7 @@ class FileTransfer:
 	def __init__(
 		self,
 		send_message: Callable,
-		file_request: FileUploadRequestMessage | FileDownloadRequestMessage,
+		file_request: FileDownloadRequestMessage | FileUploadRequestMessage,
 		sender: str = CONNECTION_USER_CHANNEL,
 		back_channel: str | None = None,
 	) -> None:
@@ -135,7 +135,7 @@ class FileTransfer:
 class FileUpload(FileTransfer):
 	def __init__(
 		self,
-		file_upload_request: FileUploadResultMessage,
+		file_upload_request: FileUploadRequestMessage,
 		send_message: Callable,
 		sender: str = CONNECTION_USER_CHANNEL,
 		back_channel: str | None = None,
@@ -213,7 +213,6 @@ class FileDownload(FileTransfer):
 		self._file_download_request = file_download_request
 		self.size: int | None = None
 		self.no_of_chunks: int | None = None
-		self._file_request.path = Path(self._file_request.path)
 
 	def __str__(self) -> str:
 		return f"{self.__class__.__name__}({self._file_request})"
@@ -221,13 +220,14 @@ class FileDownload(FileTransfer):
 	__repr__ = __str__
 
 	async def start(self) -> None:
+		assert isinstance(self._file_request, FileDownloadRequestMessage)
 		logger.notice("Received FileDownloadRequestMassage %r", self)
 
 		try:
 			if not self._file_request.path:
-				raise ValueError("File does not exist")
+				raise ValueError("File path missing")
 			if not self._file_request.chunk_size:
-				raise ValueError("Missing Chunk Size")
+				raise ValueError("Chunk size missing")
 			if not Path(self._file_request.path).is_file():
 				raise FileNotFoundError(f"File '{self._file_request.path}' is missing or file path is incorrect")
 		except Exception as error:
@@ -235,7 +235,7 @@ class FileDownload(FileTransfer):
 			await self._error(str(error), message=self._file_request)
 			return
 
-		self.size = self._file_request.path.stat().st_size
+		self.size = Path(self._file_request.path).stat().st_size
 		self.no_of_chunks = calc_no_of_chunks(self.size, self._file_request.chunk_size)
 		message = FileDownloadInformationMessage(
 			sender=self._sender,
@@ -254,14 +254,17 @@ class FileDownload(FileTransfer):
 		logger.info("Started %r")
 
 	async def send_data(self) -> None:
-		with self._file_request.path.open("rb") as file:
+		assert isinstance(self._file_request, FileDownloadRequestMessage)
+		assert isinstance(self._file_request.path, str)
+		assert self.no_of_chunks
+		with open(self._file_request.path, "rb") as file:
 			number = 0
 			while data := file.read(self._file_request.chunk_size):
 				chunk_message = FileChunkMessage(
 					sender=self._sender,
 					channel=self._response_channel,
 					back_channel=self._back_channel,
-					size=self._file_request.chunk_size,
+					# size=self._file_request.chunk_size,
 					number=number,
 					last=False if number < self.no_of_chunks else True,
 					data=data,
@@ -348,5 +351,5 @@ async def stop_running_file_transfers() -> None:
 			await file_transfer.stop()
 
 
-def calc_no_of_chunks(file_size: str, chunk_size: int) -> int:
+def calc_no_of_chunks(file_size: int, chunk_size: int) -> int:
 	return -(-file_size // chunk_size)  # round up

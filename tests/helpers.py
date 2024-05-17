@@ -99,7 +99,7 @@ def gen_test_file(file: Path | str, chunk_size: int, error_if_file_exists: bool 
 			raise FileExistsError(f"File {str(file)} alredy exists")
 		else:
 			print(f"File {str(file)} alredy exists")
-		return
+		return file.stat().st_size
 	file.write_text(file_data, encoding="ascii")
 	file_size = file.stat().st_size
 	assert file_size == len(word) * chunk_size
