@@ -10,7 +10,7 @@ import json
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal
+from typing import List, Literal
 
 import tomlkit
 
@@ -231,6 +231,18 @@ class OpsiPackage:
 			generate_func = self.generate_control_file_legacy if control_file_name == "control" else self.generate_control_file
 			generate_func(control_file_path)
 
+	def get_dirs(self, base_dir: Path, custom_name: str | None, custom_only: bool) -> List[Path]:
+		dirs = [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
+		if custom_name:
+			custom_dirs = [base_dir / f"{_dir.name}.{custom_name}" for _dir in dirs]
+			if not any(dir.exists() for dir in custom_dirs):
+				raise RuntimeError(f"No directories matching '{custom_name}' found.")
+			if custom_only:
+				dirs = custom_dirs
+			else:
+				dirs.extend(custom_dirs)
+		return dirs
+
 	# compression zstd, gz or bz2
 	def create_package_archive(
 		self,
@@ -238,12 +250,13 @@ class OpsiPackage:
 		compression: Literal["zstd", "bz2", "gz"] = "zstd",
 		destination: Path | None = None,
 		dereference: bool = False,
-		use_dirs: list[Path] | None = None,
+		custom_name: str | None = None,
+		custom_only: bool = False,
 		progress_listener: ArchiveProgressListener | None = None,
 		overwrite: bool = True,
 	) -> Path:
 		archives = []
-		dirs = use_dirs or [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
+		dirs = self.get_dirs(base_dir, custom_name, custom_only)
 
 		# Prefer OPSI.<custom>
 		opsi_dirs = [d for d in sorted(dirs, reverse=True) if d.name.startswith("OPSI")]
