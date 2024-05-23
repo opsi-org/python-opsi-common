@@ -358,9 +358,7 @@ def test_create_package_custom(custom_only: bool) -> None:
 		(client_dir_custom / "testfile2").write_text("CUSTOM2", encoding="utf-8")
 		(client_dir_custom / "testfile4").write_text("CUSTOM4", encoding="utf-8")
 
-		if custom_only:
-			dirs = [opsi_dir_custom, client_dir_custom]
-		package_archive = package.create_package_archive(temp_dir, destination=temp_dir, use_dirs=dirs)
+		package_archive = package.create_package_archive(temp_dir, destination=temp_dir, custom_name="custom", custom_only=custom_only)
 
 		with make_temp_dir() as result_dir:
 			# Test from_package_archive()
