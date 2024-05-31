@@ -66,7 +66,13 @@ class OpsiPackage:
 		return json.dumps([asdict(pdep) for pdep in self.package_dependencies])
 
 	def extract_package_archive(
-		self, package_archive: Path, destination: Path, *, new_product_id: str | None = None, custom_separated: bool = False
+		self,
+		package_archive: Path,
+		destination: Path,
+		*,
+		new_product_id: str | None = None,
+		custom_separated: bool = False,
+		progress_listener: ArchiveProgressListener | None = None,
 	) -> None:
 		"""
 		Extact `package_archive` to `destination`.
@@ -87,7 +93,11 @@ class OpsiPackage:
 				else:
 					# Same folder for CLIENT_DATA and CLIENT_DATA.<custom>
 					folder_name = archive.name.split(".", 1)[0]
-				extract_archive(archive, destination / folder_name)
+				extract_archive(
+					archive,
+					destination / folder_name,
+					progress_listener=progress_listener,
+				)
 
 		control_file = self.find_and_parse_control_file(destination)
 		if new_product_id:
