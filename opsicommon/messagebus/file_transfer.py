@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+from threading import Lock
 from time import time
 from typing import Callable
 
@@ -27,6 +28,9 @@ from opsicommon.messagebus.message import (
 	FileUploadResultMessage,
 	Message,
 )
+
+file_transfers: dict[str, FileTransfer] = {}
+file_transfers_lock = Lock()
 
 logger = get_logger()
 
