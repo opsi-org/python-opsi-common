@@ -219,7 +219,7 @@ class FileDownload(FileTransfer):
 
 	async def start(self) -> None:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
-		logger.notice("Received FileDownloadRequestMassage %r", self)
+		logger.notice("Received FileDownloadRequestMessage %r", self)
 
 		try:
 			if not self._file_request.path:
