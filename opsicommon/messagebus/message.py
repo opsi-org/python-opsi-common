@@ -522,7 +522,7 @@ class FileDownloadRequestMessage(FileTransferMessage):
 	chunk_size: int | None = None
 
 
-class FileDownloadInformationMessage(FileTransferMessage):
+class FileDownloadResponseMessage(FileTransferMessage):
 	"""
 	Message with information like file size, type, number of chunks.
 	"""
@@ -578,6 +578,6 @@ MESSAGE_TYPE_TO_CLASS = {
 	MessageType.FILE_UPLOAD_RESPONSE.value: FileUploadResponseMessage,
 	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
 	MessageType.FILE_DOWNLOAD_REQUEST.value: FileDownloadRequestMessage,
-	MessageType.FILE_DOWNLOAD_INFORMATION.value: FileDownloadInformationMessage,
+	MessageType.FILE_DOWNLOAD_INFORMATION.value: FileDownloadResponseMessage,
 	MessageType.FILE_CHUNK.value: FileChunkMessage,
 }

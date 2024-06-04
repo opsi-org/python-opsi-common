@@ -15,8 +15,8 @@ from opsicommon.messagebus import CONNECTION_USER_CHANNEL
 from opsicommon.messagebus.file_transfer import calc_no_of_chunks, process_messagebus_message, stop_running_file_transfers
 from opsicommon.messagebus.message import (
 	FileChunkMessage,
-	FileDownloadInformationMessage,
 	FileDownloadRequestMessage,
+	FileDownloadResponseMessage,
 	FileTransferErrorMessage,
 	FileUploadRequestMessage,
 	FileUploadResponseMessage,
@@ -223,7 +223,7 @@ async def test_file_download(tmp_path: Path) -> None:
 	no_of_chunks = calc_no_of_chunks(file_size=test_file_size, chunk_size=chunk_size)
 
 	messages = await message_sender.wait_for_messages(count=1, true_count=True)
-	assert isinstance(messages[0], FileDownloadInformationMessage)
+	assert isinstance(messages[0], FileDownloadResponseMessage)
 	assert messages[0].sender == res_sender
 	assert messages[0].back_channel == res_channel
 	assert messages[0].size == test_file_size

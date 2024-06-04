@@ -19,8 +19,8 @@ from opsicommon.messagebus import CONNECTION_SESSION_CHANNEL, CONNECTION_USER_CH
 from opsicommon.messagebus.message import (
 	Error,
 	FileChunkMessage,
-	FileDownloadInformationMessage,
 	FileDownloadRequestMessage,
+	FileDownloadResponseMessage,
 	FileTransferErrorMessage,
 	FileTransferMessage,
 	FileUploadRequestMessage,
@@ -235,7 +235,7 @@ class FileDownload(FileTransfer):
 
 		self.size = Path(self._file_request.path).stat().st_size
 		self.no_of_chunks = calc_no_of_chunks(self.size, self._file_request.chunk_size)
-		message = FileDownloadInformationMessage(
+		message = FileDownloadResponseMessage(
 			sender=self._sender,
 			channel=self._response_channel,
 			file_id=self._file_id,
