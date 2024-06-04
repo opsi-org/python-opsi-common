@@ -57,6 +57,11 @@ class FileTransfer:
 		self._should_stop = False
 		self._completed = False
 
+	def __str__(self) -> str:
+		return f"{self.__class__.__name__}({self._file_request})"
+
+	__repr__ = __str__
+
 	@property
 	def _file_id(self) -> str:
 		return self._file_request.file_id
@@ -211,11 +216,6 @@ class FileDownload(FileTransfer):
 		self._file_download_request = file_download_request
 		self.size: int | None = None
 		self.no_of_chunks: int | None = None
-
-	def __str__(self) -> str:
-		return f"{self.__class__.__name__}({self._file_request})"
-
-	__repr__ = __str__
 
 	async def start(self) -> None:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
