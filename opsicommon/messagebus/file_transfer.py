@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from threading import Lock
 from time import time
 from typing import Callable
 
@@ -28,9 +27,6 @@ from opsicommon.messagebus.message import (
 	FileUploadResultMessage,
 	Message,
 )
-
-file_transfers: dict[str, FileTransfer] = {}
-file_transfers_lock = Lock()
 
 logger = get_logger()
 
@@ -50,7 +46,7 @@ class FileTransfer:
 		self._sender = sender
 		self._file_request = file_request
 		self._back_channel = back_channel or CONNECTION_SESSION_CHANNEL
-		self._loop = asyncio.get_event_loop()  # depreached; change to get_running_loop()
+		self._loop = asyncio.get_running_loop()
 		self._chunk_number = 0
 		self._last_chunk_time = time()
 		self._file_path: Path | None = None
