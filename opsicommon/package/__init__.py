@@ -10,13 +10,13 @@ import json
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal
+from typing import List, Literal
 
 import tomlkit
 
 from opsicommon.logging import get_logger
 from opsicommon.objects import Product, ProductDependency, ProductProperty
-from opsicommon.package.archive import create_archive, extract_archive
+from opsicommon.package.archive import ArchiveProgressListener, create_archive, extract_archive
 from opsicommon.package.control_file_handling import (
 	create_package_dependencies,
 	create_product,
@@ -27,7 +27,7 @@ from opsicommon.package.control_file_handling import (
 	dictify_product_properties,
 )
 from opsicommon.package.legacy_control_file import LegacyControlFile
-from opsicommon.utils import make_temp_dir
+from opsicommon.utils import compare_versions, make_temp_dir
 
 EXCLUDE_DIRS_ON_PACK_REGEX = re.compile(r"(^\.svn$)|(^\.git$)")
 EXCLUDE_FILES_ON_PACK_REGEX = re.compile(r"(~$)|(^[Tt]humbs\.db$)|(^\.[Dd][Ss]_[Ss]tore$)")
@@ -66,7 +66,13 @@ class OpsiPackage:
 		return json.dumps([asdict(pdep) for pdep in self.package_dependencies])
 
 	def extract_package_archive(
-		self, package_archive: Path, destination: Path, *, new_product_id: str | None = None, custom_separated: bool = False
+		self,
+		package_archive: Path,
+		destination: Path,
+		*,
+		new_product_id: str | None = None,
+		custom_separated: bool = False,
+		progress_listener: ArchiveProgressListener | None = None,
 	) -> None:
 		"""
 		Extact `package_archive` to `destination`.
@@ -87,7 +93,11 @@ class OpsiPackage:
 				else:
 					# Same folder for CLIENT_DATA and CLIENT_DATA.<custom>
 					folder_name = archive.name.split(".", 1)[0]
-				extract_archive(archive, destination / folder_name)
+				extract_archive(
+					archive,
+					destination / folder_name,
+					progress_listener=progress_listener,
+				)
 
 		control_file = self.find_and_parse_control_file(destination)
 		if new_product_id:
@@ -108,6 +118,18 @@ class OpsiPackage:
 
 			self.find_and_parse_control_file(temp_dir)
 
+	def compare_version_with_control_file(self, control_file: Path, condition: Literal["==", "=", "<", "<=", ">", ">="]) -> bool:
+		opsi_package = OpsiPackage()
+		if control_file.suffix == ".toml":
+			opsi_package.parse_control_file(control_file)
+		else:
+			opsi_package.parse_control_file_legacy(control_file)
+
+		if not opsi_package.product.version or not self.product.version:
+			raise ValueError("Version information for comparison is missing")
+
+		return compare_versions(opsi_package.product.version, condition, self.product.version)
+
 	def find_and_parse_control_file(self, search_dir: Path) -> Path:
 		opsi_dirs = []
 		for _dir in search_dir.glob("OPSI*"):
@@ -117,8 +139,11 @@ class OpsiPackage:
 		# Sort custom first
 		for _dir in [search_dir] + sorted(opsi_dirs, reverse=True):
 			control_toml = _dir / "control.toml"
+			control = _dir / "control"
 			if control_toml.exists():
 				self.parse_control_file(control_toml)
+				if control.exists() and self.compare_version_with_control_file(control, ">"):
+					raise RuntimeError("Control file is newer. Please update the control.toml file.")
 				return control_toml
 
 		# Sort custom first
@@ -208,6 +233,26 @@ class OpsiPackage:
 			(control_file.parent / "changelog.txt").write_text(self.changelog.strip(), encoding="utf-8")
 		control_file.write_text(tomlkit.dumps(data_dict))
 
+	def check_and_generate_control_file(self, control_file: Path) -> None:
+		control_file_name = "control" if control_file.suffix == ".toml" else "control.toml"
+		control_file_path = control_file.parent / control_file_name
+
+		if not control_file_path.exists():
+			generate_func = self.generate_control_file_legacy if control_file_name == "control" else self.generate_control_file
+			generate_func(control_file_path)
+
+	def get_dirs(self, base_dir: Path, custom_name: str | None, custom_only: bool) -> List[Path]:
+		dirs = [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
+		if custom_name:
+			custom_dirs = [base_dir / f"{_dir.name}.{custom_name}" for _dir in dirs]
+			if not any(dir.exists() for dir in custom_dirs):
+				raise RuntimeError(f"No directories matching '{custom_name}' found.")
+			if custom_only:
+				dirs = custom_dirs
+			else:
+				dirs.extend(custom_dirs)
+		return dirs
+
 	# compression zstd, gz or bz2
 	def create_package_archive(
 		self,
@@ -215,10 +260,13 @@ class OpsiPackage:
 		compression: Literal["zstd", "bz2", "gz"] = "zstd",
 		destination: Path | None = None,
 		dereference: bool = False,
-		use_dirs: list[Path] | None = None,
+		custom_name: str | None = None,
+		custom_only: bool = False,
+		progress_listener: ArchiveProgressListener | None = None,
+		overwrite: bool = True,
 	) -> Path:
 		archives = []
-		dirs = use_dirs or [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
+		dirs = self.get_dirs(base_dir, custom_name, custom_only)
 
 		# Prefer OPSI.<custom>
 		opsi_dirs = [d for d in sorted(dirs, reverse=True) if d.name.startswith("OPSI")]
@@ -229,7 +277,7 @@ class OpsiPackage:
 		if not opsi_dir.exists():
 			raise FileNotFoundError(f"Did not find OPSI directory '{opsi_dir}'")
 
-		self.find_and_parse_control_file(opsi_dir)
+		control_file = self.find_and_parse_control_file(opsi_dir)
 
 		with make_temp_dir(self.temp_dir) as temp_dir:
 			for _dir in dirs:
@@ -253,12 +301,26 @@ class OpsiPackage:
 
 				filename = temp_dir / f"{_dir.name}.tar.{compression}"
 				logger.info("Creating archive %s", filename)
-				create_archive(filename, file_list, base_dir=_dir, compression=compression, dereference=dereference)
+				create_archive(
+					filename,
+					file_list,
+					base_dir=_dir,
+					compression=compression,
+					dereference=dereference,
+				)
 				# TODO: progress tracking
 				archives.append(filename)
 
 			destination = (destination or Path()).absolute()
 			package_archive = destination / self.package_archive_name()
+			if not overwrite and package_archive.exists():
+				raise FileExistsError(f"Package archive '{package_archive}' already exists.")
 			logger.info("Creating archive %s", package_archive.absolute())
-			create_archive(package_archive, archives, temp_dir)
+			create_archive(
+				package_archive,
+				archives,
+				temp_dir,
+				progress_listener=progress_listener,
+			)
+			self.check_and_generate_control_file(control_file)
 		return package_archive

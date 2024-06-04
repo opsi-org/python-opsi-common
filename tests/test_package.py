@@ -32,6 +32,14 @@ def print_info(package: OpsiPackage) -> None:
 	print(package.package_dependencies)
 
 
+def test_compare_version_with_control_file() -> None:
+	control = TEST_DATA / "control"
+	control_toml = TEST_DATA / "control.toml"
+	test_package = OpsiPackage()
+	test_package.parse_control_file(control_toml)
+	assert test_package.compare_version_with_control_file(control, "=") is True
+
+
 def test_find_and_parse_control_file() -> None:
 	control = TEST_DATA / "control"
 	control_toml = TEST_DATA / "control.toml"
@@ -172,6 +180,18 @@ def test_generate_control(source: str, destination: str) -> None:
 	assert package.package_dependencies == regenerated_package.package_dependencies
 	assert package.product_dependencies == regenerated_package.product_dependencies
 	assert package.product_properties == regenerated_package.product_properties
+
+
+@pytest.mark.parametrize("control_file_name, expected_control_file", [("control", "control.toml"), ("control.toml", "control")])
+def test_check_and_generate_control_file(control_file_name: str, expected_control_file: str) -> None:
+	control_file = TEST_DATA / control_file_name
+	test_package = OpsiPackage()
+	test_package.parse_control_file(control_file)
+	with make_temp_dir() as temp_dir:
+		copy(control_file, temp_dir / control_file_name)
+		test_package.check_and_generate_control_file(control_file)
+		expected_file = control_file.parent / expected_control_file
+		assert expected_file.exists()
 
 
 def test_control_multiline_description() -> None:
@@ -338,9 +358,7 @@ def test_create_package_custom(custom_only: bool) -> None:
 		(client_dir_custom / "testfile2").write_text("CUSTOM2", encoding="utf-8")
 		(client_dir_custom / "testfile4").write_text("CUSTOM4", encoding="utf-8")
 
-		if custom_only:
-			dirs = [opsi_dir_custom, client_dir_custom]
-		package_archive = package.create_package_archive(temp_dir, destination=temp_dir, use_dirs=dirs)
+		package_archive = package.create_package_archive(temp_dir, destination=temp_dir, custom_name="custom", custom_only=custom_only)
 
 		with make_temp_dir() as result_dir:
 			# Test from_package_archive()
