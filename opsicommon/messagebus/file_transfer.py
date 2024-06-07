@@ -243,11 +243,11 @@ class FileDownload(FileTransfer):
 
 		await self._send_message(message)
 
-		self._manager_task = self._loop.create_task(self._upload_manager())
+		self._manager_task = self._loop.create_task(self._download_manager())
 
 		logger.info("Started %r")
 
-	async def _upload_manager(self) -> None:
+	async def _download_manager(self) -> None:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
 		assert isinstance(self._file_request.path, str)
 
