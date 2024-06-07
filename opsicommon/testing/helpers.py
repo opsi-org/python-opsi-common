@@ -237,7 +237,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			request = msgspec.msgpack.decode(request)
 
 		log_request = b64encode(request).decode("ascii") if isinstance(request, bytes) else request
-		request = {
+		request_info = {
 			"method": "POST",
 			"client_address": self.client_address,
 			"path": self.path,
@@ -245,7 +245,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			"request": log_request,
 		}
 
-		self._log(request)
+		self._log(request_info)
 		response = None
 		if self.server.response_body:
 			response = self.server.response_body
@@ -265,17 +265,17 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			response = response[: self.server.send_max_bytes]
 		self.wfile.write(response)
 		if self.server.request_callback:
-			self.server.request_callback(self.server.test_server, request)
+			self.server.request_callback(self.server.test_server, request_info)
 
 	def do_GET(self) -> None:
-		request = {"method": "GET", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)}
-		self._log(request)
+		request_info = {"method": "GET", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)}
+		self._log(request_info)
 		if self.headers.get("Upgrade") == "websocket":
 			if self.server.response_status:
 				self.send_response(self.server.response_status[0], self.server.response_status[1])
 				self.end_headers()
 				if self.server.request_callback:
-					self.server.request_callback(self.server.test_server, request)
+					self.server.request_callback(self.server.test_server, request_info)
 				return None
 
 			self._ws_handshake()
@@ -318,7 +318,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 				finally:
 					file.close()
 			if self.server.request_callback:
-				self.server.request_callback(self.server.test_server, request)
+				self.server.request_callback(self.server.test_server, request_info)
 			return None
 
 		if self.headers["X-Response-Status"]:
@@ -340,13 +340,13 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			response = response[: self.server.send_max_bytes]
 		self.wfile.write(response)
 		if self.server.request_callback:
-			self.server.request_callback(self.server.test_server, request)
+			self.server.request_callback(self.server.test_server, request_info)
 		return None
 
 	def do_PUT(self) -> None:
 		"""Serve a PUT request."""
-		request = {"method": "PUT", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)}
-		self._log(request)
+		request_info = {"method": "PUT", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)}
+		self._log(request_info)
 		if self.server.serve_directory:
 			path = self.translate_path(self.path)
 			length = int(self.headers["Content-Length"])
@@ -361,12 +361,12 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self.send_response(500, "Not implemented")
 			self.end_headers()
 		if self.server.request_callback:
-			self.server.request_callback(self.server.test_server, request)
+			self.server.request_callback(self.server.test_server, request_info)
 
 	def do_MKCOL(self) -> None:
 		"""Serve a MKCOL request."""
-		request = {"method": "MKCOL", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)}
-		self._log(request)
+		request_info = {"method": "MKCOL", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)}
+		self._log(request_info)
 		if self.server.serve_directory:
 			path = self.translate_path(self.path)
 			os.makedirs(path)
@@ -376,12 +376,12 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self.send_response(500, "Not implemented")
 			self.end_headers()
 		if self.server.request_callback:
-			self.server.request_callback(self.server.test_server, request)
+			self.server.request_callback(self.server.test_server, request_info)
 
 	def do_DELETE(self) -> None:
 		"""Serve a DELETE request."""
-		request = {"method": "DELETE", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)}
-		self._log(request)
+		request_info = {"method": "DELETE", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)}
+		self._log(request_info)
 		if self.server.serve_directory:
 			path = self.translate_path(self.path)
 			if os.path.exists(path):
@@ -397,19 +397,19 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			self.send_response(500, "Not implemented")
 			self.end_headers()
 		if self.server.request_callback:
-			self.server.request_callback(self.server.test_server, request)
+			self.server.request_callback(self.server.test_server, request_info)
 
 	def do_HEAD(self) -> None:
 		"""Serve a HEAD request."""
-		request = {"method": "HEAD", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)}
-		self._log(request)
+		request_info = {"method": "HEAD", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)}
+		self._log(request_info)
 		if self.server.serve_directory:
 			super().do_HEAD()
 		else:
 			self.send_response(200, "OK")
 			self.end_headers()
 		if self.server.request_callback:
-			self.server.request_callback(self.server.test_server, request)
+			self.server.request_callback(self.server.test_server, request_info)
 
 	def do_CONNECT(self) -> None:
 		"""
@@ -419,12 +419,12 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		The server then proceeds to make the connection on behalf of the client.
 		Once the connection has been established by the server, the Proxy server continues to proxy the TCP stream to and from the client.
 		"""
-		request = {"method": "CONNECT", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)}
-		self._log(request)
+		request_info = {"method": "CONNECT", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)}
+		self._log(request_info)
 		self.send_response(501, "I am not a proxy")
 		self.end_headers()
 		if self.server.request_callback:
-			self.server.request_callback(self.server.test_server, request)
+			self.server.request_callback(self.server.test_server, request_info)
 
 	def on_ws_message(self, message: bytes) -> None:
 		# print("Websocket message", message)
