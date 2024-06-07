@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from opsicommon.logging import LOG_TRACE, use_logging_config
 from opsicommon.messagebus import CONNECTION_USER_CHANNEL
-from opsicommon.messagebus.file_transfer import calc_no_of_chunks, process_messagebus_message, stop_running_file_transfers
+from opsicommon.messagebus.file_transfer import process_messagebus_message, stop_running_file_transfers
 from opsicommon.messagebus.message import (
 	FileChunkMessage,
 	FileDownloadRequestMessage,
@@ -220,16 +220,14 @@ async def test_file_download(tmp_path: Path) -> None:
 		file_download_request, send_message=message_sender.send_message, sender=res_sender, back_channel=res_channel
 	)
 
-	no_of_chunks = calc_no_of_chunks(file_size=test_file_size, chunk_size=chunk_size)
-
 	messages = await message_sender.wait_for_messages(count=1, true_count=True)
 	assert isinstance(messages[0], FileDownloadResponseMessage)
 	assert messages[0].sender == res_sender
 	assert messages[0].back_channel == res_channel
 	assert messages[0].size == test_file_size
-	assert messages[0].no_of_chunks == no_of_chunks
 
-	data_messages = await message_sender.wait_for_messages(count=no_of_chunks)
+	no_of_chunk = -(-test_file_size // chunk_size)
+	data_messages = await message_sender.wait_for_messages(count=no_of_chunk)
 
 	with Path(test_file).open("rb") as file:
 		num = 0
@@ -237,6 +235,6 @@ async def test_file_download(tmp_path: Path) -> None:
 			assert isinstance(data_message, FileChunkMessage)
 			assert data_message.channel == res_back_channel
 			assert data_message.number == num
-			assert data_message.last is False if 1 < no_of_chunks - 2 else True
+			assert data_message.last == (num == no_of_chunk - 1)
 			assert data_message.data == file.read(chunk_size)
 			num += 1
