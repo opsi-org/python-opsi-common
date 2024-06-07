@@ -270,6 +270,22 @@ class FileDownload(FileTransfer):
 				number += 1
 
 
+class FileTail(FileTransfer):
+	def __init__(
+		self,
+		file_tail_request: FileTailRequestMessage,
+		send_message: Callable,
+		sender: str = CONNECTION_USER_CHANNEL,
+		back_channel: str | None = None,
+	) -> None:
+		super().__init__(
+			send_message=send_message,
+			file_request=file_tail_request,
+			sender=sender,
+			back_channel=back_channel,
+		)
+
+
 async def process_messagebus_message(
 	message: FileTransferMessage,
 	send_message: Callable,
