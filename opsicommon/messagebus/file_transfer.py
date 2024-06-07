@@ -76,6 +76,32 @@ class FileTransfer:
 		with open(self._file_path, mode="ab") as file:
 			file.write(data)
 
+	async def process_file_chunk(self, message: FileChunkMessage) -> None:
+		if not isinstance(message, FileChunkMessage):
+			raise ValueError(f"Received invalid message type {message.type}")
+
+		self._last_chunk_time = time()
+		if message.number != self._chunk_number + 1:
+			await self._error(f"Expected chunk number {self._chunk_number + 1}", message)
+			return
+
+		self._chunk_number = message.number
+
+		await self._loop.run_in_executor(None, self._append_to_file, message.data)
+
+		if message.last:
+			logger.debug("Last chunk received")
+			self._completed = True
+			upload_result = FileUploadResultMessage(
+				sender=self._sender,
+				channel=self._response_channel,
+				file_id=self._file_id,
+				back_channel=self._back_channel,
+				path=str(self._file_path),
+			)
+			await self._send_message(upload_result)
+			self._should_stop = True
+
 	async def _error(self, error: str, message: Message | None = None) -> None:
 		logger.error(error)
 		error_message = FileTransferErrorMessage(
@@ -172,32 +198,6 @@ class FileUpload(FileTransfer):
 			await asyncio.sleep(1)
 		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
 
-	async def process_file_chunk(self, message: FileChunkMessage) -> None:
-		if not isinstance(message, FileChunkMessage):
-			raise ValueError(f"Received invalid message type {message.type}")
-
-		self._last_chunk_time = time()
-		if message.number != self._chunk_number + 1:
-			await self._error(f"Expected chunk number {self._chunk_number + 1}", message)
-			return
-
-		self._chunk_number = message.number
-
-		await self._loop.run_in_executor(None, self._append_to_file, message.data)
-
-		if message.last:
-			logger.debug("Last chunk received")
-			self._completed = True
-			upload_result = FileUploadResultMessage(
-				sender=self._sender,
-				channel=self._response_channel,
-				file_id=self._file_id,
-				back_channel=self._back_channel,
-				path=str(self._file_path),
-			)
-			await self._send_message(upload_result)
-			self._should_stop = True
-
 
 class FileDownload(FileTransfer):
 	def __init__(
@@ -250,6 +250,8 @@ class FileDownload(FileTransfer):
 	async def _download_manager(self) -> None:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
 		assert isinstance(self._file_request.path, str)
+		assert isinstance(self._file_request.chunk_size, int)
+		assert isinstance(self.size, int)
 
 		number = 0
 		with open(self._file_request.path, "rb") as file:
