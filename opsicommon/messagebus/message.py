@@ -520,6 +520,7 @@ class FileDownloadRequestMessage(FileTransferMessage):
 	path: str | None = None
 	terminal_id: str | None = None
 	chunk_size: int | None = None
+	follow: bool = False
 
 
 class FileDownloadResponseMessage(FileTransferMessage):

@@ -232,7 +232,10 @@ class FileDownload(FileTransfer):
 			await self._error(str(error), message=self._file_request)
 			return
 
-		self.size = Path(self._file_request.path).stat().st_size
+		if not self._file_request.follow:
+			self.size = Path(self._file_request.path).stat().st_size
+		else:
+			self.size = None
 		message = FileDownloadResponseMessage(
 			sender=self._sender,
 			channel=self._response_channel,
