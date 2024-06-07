@@ -12,7 +12,7 @@ import asyncio
 from pathlib import Path
 from threading import Lock
 from time import time
-from typing import Callable
+from typing import Any, Callable
 
 from opsicommon.logging import get_logger
 from opsicommon.messagebus import CONNECTION_SESSION_CHANNEL, CONNECTION_USER_CHANNEL
@@ -215,7 +215,7 @@ class FileDownload(FileTransfer):
 		)
 		self._file_download_request = file_download_request
 		self.size: int | None = None
-		self.no_of_chunks: int | None = None
+		# self.no_of_chunks: int | None = None
 
 	async def start(self) -> None:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
@@ -234,7 +234,7 @@ class FileDownload(FileTransfer):
 			return
 
 		self.size = Path(self._file_request.path).stat().st_size
-		self.no_of_chunks = calc_no_of_chunks(self.size, self._file_request.chunk_size)
+		# self.no_of_chunks = calc_no_of_chunks(self.size, self._file_request.chunk_size)
 		message = FileDownloadResponseMessage(
 			sender=self._sender,
 			channel=self._response_channel,
@@ -246,28 +246,40 @@ class FileDownload(FileTransfer):
 
 		await self._send_message(message)
 
-		await self.send_data()
+		self._manager_task = self._loop.create_task(self._upload_manager())
 
-		self._manager_task = self._loop.create_task(self._manager())
 		logger.info("Started %r")
 
-	async def send_data(self) -> None:
+	async def _upload_manager(self) -> None:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
 		assert isinstance(self._file_request.path, str)
-		assert self.no_of_chunks
+
+		number = 0
 		with open(self._file_request.path, "rb") as file:
-			number = 0
-			while data := file.read(self._file_request.chunk_size):
+			while data := await self.send_data(file):
+				if self._should_stop:
+					if not self._completed:
+						await self._error("File transfer stopped before completion")
+					break
+				last = not self._file_request.chunk_size * (number + 1) < self.size
 				chunk_message = FileChunkMessage(
 					sender=self._sender,
 					channel=self._response_channel,
 					back_channel=self._back_channel,
 					number=number,
-					last=False if number < self.no_of_chunks else True,
+					last=last,
 					data=data,
 				)
 				await self._send_message(chunk_message)
 				number += 1
+		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
+
+	async def read_file(self, file_obj) -> Any:
+		while True:
+			data = file_obj.read(self._file_request.chunk_size)
+			if not data:
+				break
+			yield data
 
 
 async def process_messagebus_message(

@@ -529,8 +529,6 @@ class FileDownloadResponseMessage(FileTransferMessage):
 
 	type: str = MessageType.FILE_DOWNLOAD_INFORMATION
 	size: int | None = None
-	no_of_chunks: int | None = None
-	# data_channel: str
 
 
 class FileChunkMessage(FileTransferMessage):
