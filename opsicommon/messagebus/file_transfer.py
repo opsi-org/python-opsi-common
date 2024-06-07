@@ -36,9 +36,6 @@ logger = get_logger()
 
 
 class FileTransfer:
-	chunk_timeout = 300
-	default_destination: Path | None = None
-
 	def __init__(
 		self,
 		send_message: Callable,
@@ -52,7 +49,6 @@ class FileTransfer:
 		self._back_channel = back_channel or CONNECTION_SESSION_CHANNEL
 		self._loop = asyncio.get_running_loop()
 		self._chunk_number = 0
-		self._last_chunk_time = time()
 		self._file_path: Path | None = None
 		self._should_stop = False
 		self._completed = False
@@ -74,49 +70,11 @@ class FileTransfer:
 		logger.info("Stopping %r (%r)", self)
 		self._should_stop = True
 
-	async def process_file_chunk(self, message: FileChunkMessage) -> None:
-		if not isinstance(message, FileChunkMessage):
-			raise ValueError(f"Received invalid message type {message.type}")
-
-		self._last_chunk_time = time()
-		if message.number != self._chunk_number + 1:
-			await self._error(f"Expected chunk number {self._chunk_number + 1}", message)
-			return
-
-		self._chunk_number = message.number
-
-		await self._loop.run_in_executor(None, self._append_to_file, message.data)
-
-		if message.last:
-			logger.debug("Last chunk received")
-			self._completed = True
-			upload_result = FileUploadResultMessage(
-				sender=self._sender,
-				channel=self._response_channel,
-				file_id=self._file_id,
-				back_channel=self._back_channel,
-				path=str(self._file_path),
-			)
-			await self._send_message(upload_result)
-			self._should_stop = True
-
 	def _append_to_file(self, data: bytes) -> None:
 		if not self._file_path:
 			raise RuntimeError("File path not set")
 		with open(self._file_path, mode="ab") as file:
 			file.write(data)
-
-	async def _manager(self) -> None:
-		while True:
-			if self._should_stop:
-				if not self._completed:
-					await self._error("File transfer stopped before completion")
-				break
-			if time() > self._last_chunk_time + self.chunk_timeout:
-				await self._error("File transfer timed out while waiting for next chunk")
-				break
-			await asyncio.sleep(1)
-		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
 
 	async def _error(self, error: str, message: Message | None = None) -> None:
 		logger.error(error)
@@ -136,6 +94,9 @@ class FileTransfer:
 
 
 class FileUpload(FileTransfer):
+	chunk_timeout = 300
+	default_destination: Path | None = None
+
 	def __init__(
 		self,
 		file_upload_request: FileUploadRequestMessage,
@@ -144,6 +105,7 @@ class FileUpload(FileTransfer):
 		back_channel: str | None = None,
 	) -> None:
 		self._file_upload_request = file_upload_request
+		self._last_chunk_time = time()
 		super().__init__(
 			send_message=send_message,
 			file_request=file_upload_request,
@@ -197,6 +159,44 @@ class FileUpload(FileTransfer):
 
 		self._manager_task = self._loop.create_task(self._manager())
 		logger.info("Started %r", self)
+
+	async def _manager(self) -> None:
+		while True:
+			if self._should_stop:
+				if not self._completed:
+					await self._error("File transfer stopped before completion")
+				break
+			if time() > self._last_chunk_time + self.chunk_timeout:
+				await self._error("File transfer timed out while waiting for next chunk")
+				break
+			await asyncio.sleep(1)
+		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
+
+	async def process_file_chunk(self, message: FileChunkMessage) -> None:
+		if not isinstance(message, FileChunkMessage):
+			raise ValueError(f"Received invalid message type {message.type}")
+
+		self._last_chunk_time = time()
+		if message.number != self._chunk_number + 1:
+			await self._error(f"Expected chunk number {self._chunk_number + 1}", message)
+			return
+
+		self._chunk_number = message.number
+
+		await self._loop.run_in_executor(None, self._append_to_file, message.data)
+
+		if message.last:
+			logger.debug("Last chunk received")
+			self._completed = True
+			upload_result = FileUploadResultMessage(
+				sender=self._sender,
+				channel=self._response_channel,
+				file_id=self._file_id,
+				back_channel=self._back_channel,
+				path=str(self._file_path),
+			)
+			await self._send_message(upload_result)
+			self._should_stop = True
 
 
 class FileDownload(FileTransfer):
