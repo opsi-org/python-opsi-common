@@ -12,7 +12,7 @@ import asyncio
 from pathlib import Path
 from threading import Lock
 from time import time
-from typing import Any, Callable
+from typing import Callable
 
 from opsicommon.logging import get_logger
 from opsicommon.messagebus import CONNECTION_SESSION_CHANNEL, CONNECTION_USER_CHANNEL
@@ -215,7 +215,6 @@ class FileDownload(FileTransfer):
 		)
 		self._file_download_request = file_download_request
 		self.size: int | None = None
-		# self.no_of_chunks: int | None = None
 
 	async def start(self) -> None:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
@@ -234,14 +233,12 @@ class FileDownload(FileTransfer):
 			return
 
 		self.size = Path(self._file_request.path).stat().st_size
-		# self.no_of_chunks = calc_no_of_chunks(self.size, self._file_request.chunk_size)
 		message = FileDownloadResponseMessage(
 			sender=self._sender,
 			channel=self._response_channel,
 			file_id=self._file_id,
 			back_channel=self._back_channel,
 			size=self.size,
-			no_of_chunks=self.no_of_chunks,
 		)
 
 		await self._send_message(message)
@@ -256,7 +253,7 @@ class FileDownload(FileTransfer):
 
 		number = 0
 		with open(self._file_request.path, "rb") as file:
-			while data := await self.send_data(file):
+			while data := file.read(self._file_request.chunk_size):
 				if self._should_stop:
 					if not self._completed:
 						await self._error("File transfer stopped before completion")
@@ -273,13 +270,6 @@ class FileDownload(FileTransfer):
 				await self._send_message(chunk_message)
 				number += 1
 		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
-
-	async def read_file(self, file_obj) -> Any:
-		while True:
-			data = file_obj.read(self._file_request.chunk_size)
-			if not data:
-				break
-			yield data
 
 
 async def process_messagebus_message(
@@ -358,7 +348,3 @@ async def stop_running_file_transfers() -> None:
 	with file_transfers_lock:
 		for file_transfer in list(file_transfers.values()):
 			await file_transfer.stop()
-
-
-def calc_no_of_chunks(file_size: int, chunk_size: int) -> int:
-	return -(-file_size // chunk_size)  # round up

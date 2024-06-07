@@ -56,7 +56,7 @@ class MessageSender:
 		while len(self.messages_sent) < count:
 			if time.time() - start > timeout:
 				if error_on_timeout:
-					raise TimeoutError(f"Timeout waiting for {count} messages")
+					raise TimeoutError(f"Timeout waiting for {count} messages, got {len(self.messages_sent)}")
 				break
 			await asyncio.sleep(0.1)
 
