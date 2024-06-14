@@ -124,7 +124,7 @@ class FileUpload(FileTransfer):
 			else:
 				raise ValueError("Invalid destination_dir")
 
-			self._file_path = destination_path / self._file_upload_request.name.absolute()
+			self._file_path = (destination_path / self._file_upload_request.name).absolute()
 			if not self._file_path.is_relative_to(destination_path):
 				raise ValueError("Invalid name")
 
