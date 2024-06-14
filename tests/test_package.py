@@ -492,10 +492,22 @@ def test_create_package_md5_file(progress: bool) -> None:
 
 
 @pytest.mark.linux
-def test_create_package_zsync_file() -> None:
+@pytest.mark.parametrize(
+	"progress",
+	(True, False),
+)
+def test_create_package_zsync_file(progress: bool) -> None:
+	progress_callbacks = []
+
+	def progress_callback(position: int, total: int) -> None:
+		nonlocal progress_callbacks
+		progress_callbacks.append((position, total))
+
 	with make_temp_dir() as temp_dir:
 		zsync_file = temp_dir / "localboot_new_42.0-1337.opsi.zsync"
-		create_package_zsync_file(TEST_DATA / "localboot_new_42.0-1337.opsi", filename=zsync_file)
+		create_package_zsync_file(
+			TEST_DATA / "localboot_new_42.0-1337.opsi", filename=zsync_file, progress_callback=progress_callback if progress else None
+		)
 		result = zsync_file.read_bytes()
 		for entry in (
 			b"zsync: 0.6.2",
@@ -508,6 +520,9 @@ def test_create_package_zsync_file() -> None:
 			b"\x84\xae\x8c/\xb2\x99",
 		):
 			assert entry in result
+
+	if progress:
+		assert progress_callbacks == [(0, 1), (1, 1)]
 
 
 def test_extract_package_tar_zstd() -> None:

@@ -75,8 +75,8 @@ def create_package_md5_file(package_path: Path, filename: Path | None = None, pr
 	return filename
 
 
-def create_package_zsync_file(package_path: Path, filename: Path | None = None) -> Path:
+def create_package_zsync_file(package_path: Path, filename: Path | None = None, progress_callback: Callable | None = None) -> Path:
 	if not filename:
 		filename = Path(f"{package_path}.zsync")
-	create_zsync_file(file=package_path, zsync_file=filename, legacy_mode=True)
+	create_zsync_file(file=package_path, zsync_file=filename, legacy_mode=True, progress_callback=progress_callback)
 	return filename
