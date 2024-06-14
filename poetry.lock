@@ -1978,19 +1978,18 @@ reference = "uibpypi"
 
 [[package]]
 name = "pyzsync"
-version = "1.2.6"
+version = "1.3.0"
 description = ""
 optional = false
 python-versions = "*"
 files = [
-    {file = "pyzsync-1.2.6-cp310-cp310-manylinux_2_24_x86_64.whl", hash = "sha256:57dcc56d24cf8f56f906d9d9425ab9d5be741719560c7603a29f791bcc476fbb"},
-    {file = "pyzsync-1.2.6-cp311-cp311-macosx_10_7_x86_64.whl", hash = "sha256:1579f2df8bae55205beb511f16a3a8c7e2a05fb74c71cce9deb3056882cea4ba"},
-    {file = "pyzsync-1.2.6-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c4bfbcf020bcb6db359ad7fa99de4ad31502e695c7ba7744b5bb56ce0ab7b591"},
-    {file = "pyzsync-1.2.6-cp311-cp311-manylinux_2_24_x86_64.whl", hash = "sha256:745f71d1c8d4492d96b1ec1b791a60140a25ca058adbff805a269b82f643ebab"},
-    {file = "pyzsync-1.2.6-cp311-none-win32.whl", hash = "sha256:256390091265c8b1cba1d514769c60b886baed4db2a49e7a1331809fd10b1c23"},
-    {file = "pyzsync-1.2.6-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d9adbafa8da01c21c6a3d41b02d5255d57181f4a2dfe9599a29fd57faac70364"},
-    {file = "pyzsync-1.2.6-cp312-cp312-manylinux_2_24_x86_64.whl", hash = "sha256:dd3890f9bd5f4a2b74b467791f09a5a42de59763d0b78cef57f9cf56bb52345e"},
-    {file = "pyzsync-1.2.6.tar.gz", hash = "sha256:3fec5fa5e92c3ab39da31ce13ea9ccbe47e48fc110f82cf77410544714914b2f"},
+    {file = "pyzsync-1.3.0-cp310-cp310-manylinux_2_24_x86_64.whl", hash = "sha256:60c1b3275719977d4e38c9da0aab2473061d7a61897330f15824d42d0fed81ea"},
+    {file = "pyzsync-1.3.0-cp311-cp311-macosx_10_7_x86_64.whl", hash = "sha256:6fa5286d05af0dee66895deab0bd885f0c286ee772643809cfd83f4455f46206"},
+    {file = "pyzsync-1.3.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:bc9339d222a41d6e49470eb637fb00bb833d7fc8af47c6f38707c314bd07efdd"},
+    {file = "pyzsync-1.3.0-cp311-cp311-manylinux_2_24_x86_64.whl", hash = "sha256:ea37c393f2c47cd26f62494a028728d1a6b11ed37f08841e3d3df32511b2a5d6"},
+    {file = "pyzsync-1.3.0-cp311-none-win32.whl", hash = "sha256:234337f252925c23fa72c533d2812d6b1662acea86b7b18491388d4dca9be20b"},
+    {file = "pyzsync-1.3.0-cp312-cp312-manylinux_2_24_x86_64.whl", hash = "sha256:4d3653ea5090ed0ce56c784d623ae5cb6034505f77e99c4115e3734bf1335cfd"},
+    {file = "pyzsync-1.3.0.tar.gz", hash = "sha256:64d392f0b2859b460d8892e56d6f9bd6516c435d8ed9e6bc94ffeb6244790261"},
 ]
 
 [package.source]
