@@ -98,33 +98,32 @@ class FileUpload(FileTransfer):
 		sender: str = CONNECTION_USER_CHANNEL,
 		back_channel: str | None = None,
 	) -> None:
-		self._file_upload_request = file_upload_request
-		self._last_chunk_time = time()
 		super().__init__(
 			send_message=send_message,
 			file_request=file_upload_request,
 			sender=sender,
 			back_channel=back_channel,
 		)
+		self._last_chunk_time = time()
 
 	async def start(self) -> None:
 		logger.notice("Received FileUploadRequestMessage %r", self)
 
 		try:
-			if not self._file_upload_request.name:
+			if not self._file_request.name:
 				raise ValueError("Invalid name")
-			if not self._file_upload_request.content_type:
+			if not self._file_request.content_type:
 				raise ValueError("Invalid content_type")
 
 			destination_path: Path | None = None
-			if self._file_upload_request.destination_dir:
-				destination_path = Path(self._file_upload_request.destination_dir)
+			if self._file_request.destination_dir:
+				destination_path = Path(self._file_request.destination_dir)
 			elif self.default_destination:
 				destination_path = self.default_destination
 			else:
 				raise ValueError("Invalid destination_dir")
 
-			self._file_path = (destination_path / self._file_upload_request.name).absolute()
+			self._file_path = (destination_path / self._file_request.name).absolute()
 			if not self._file_path.is_relative_to(destination_path):
 				raise ValueError("Invalid name")
 
@@ -138,7 +137,7 @@ class FileUpload(FileTransfer):
 
 		except Exception as error:
 			logger.error(error, exc_info=True)
-			await self._error(str(error), message=self._file_upload_request)
+			await self._error(str(error), message=self._file_request)
 			return
 
 		message = FileUploadResponseMessage(
@@ -213,7 +212,6 @@ class FileDownload(FileTransfer):
 			sender=sender,
 			back_channel=back_channel,
 		)
-		self._file_download_request = file_download_request
 		self.size: int | None = None
 
 	async def start(self) -> None:
