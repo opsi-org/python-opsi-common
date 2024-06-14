@@ -16,6 +16,7 @@ import requests
 import websocket  # type: ignore[import]
 
 from opsicommon.testing.helpers import (  # type: ignore[import]
+	HTTPTestServer,
 	environment,
 	http_test_server,
 )
@@ -200,3 +201,23 @@ def test_http_server_websocket(tmp_path: Path) -> None:
 	assert reqs[1]["path"] == "/websocket/test"
 	assert reqs[1]["headers"]["Host"].startswith("127.0.0.1:")
 	assert b64decode(reqs[1]["request"]) == b"test"
+
+
+def test_http_server_request_callback() -> None:
+	reqs = []
+
+	def request_callback(server: HTTPTestServer, request: dict) -> None:
+		nonlocal reqs
+		reqs.append(request)
+
+	with http_test_server(request_callback=request_callback, response_status=(200, "OK")) as server:
+		requests.head(f"http://127.0.0.1:{server.port}/", timeout=10)
+		requests.get(f"http://127.0.0.1:{server.port}/", timeout=10)
+		requests.post(f"http://127.0.0.1:{server.port}/", timeout=10)
+		requests.put(f"http://127.0.0.1:{server.port}/", timeout=10)
+
+	assert len(reqs) == 4
+	assert reqs[0]["method"] == "HEAD"
+	assert reqs[1]["method"] == "GET"
+	assert reqs[2]["method"] == "POST"
+	assert reqs[3]["method"] == "PUT"
