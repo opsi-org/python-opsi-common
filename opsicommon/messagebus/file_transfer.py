@@ -107,6 +107,7 @@ class FileUpload(FileTransfer):
 		self._last_chunk_time = time()
 
 	async def start(self) -> None:
+		assert isinstance(self._file_request, FileUploadRequestMessage)
 		logger.notice("Received FileUploadRequestMessage %r", self)
 
 		try:
@@ -316,7 +317,7 @@ async def process_messagebus_message(
 				raise RuntimeError(f"File download already running: {file_transfer!r}")
 			return
 		elif file_transfer:
-			if isinstance(message, FileChunkMessage):
+			if isinstance(message, FileChunkMessage) and isinstance(file_transfer, FileUpload):
 				await file_transfer.process_file_chunk(message)
 			else:
 				raise ValueError(f"Invalid message type {type(message)} received")
