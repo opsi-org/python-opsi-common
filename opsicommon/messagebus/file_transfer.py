@@ -12,7 +12,7 @@ import asyncio
 from pathlib import Path
 from threading import Lock
 from time import time
-from typing import Callable
+from typing import Any, Callable
 
 from opsicommon.logging import get_logger
 from opsicommon.messagebus import CONNECTION_SESSION_CHANNEL, CONNECTION_USER_CHANNEL
@@ -215,6 +215,7 @@ class FileDownload(FileTransfer):
 		)
 		self._file_download_request = file_download_request
 		self.size: int | None = None
+		self.new_lines = []
 
 	async def start(self) -> None:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
@@ -233,6 +234,7 @@ class FileDownload(FileTransfer):
 			return
 
 		if not self._file_request.follow:
+			print(f"follow {self._file_request.follow}")
 			self.size = Path(self._file_request.path).stat().st_size
 		else:
 			self.size = None
@@ -256,25 +258,53 @@ class FileDownload(FileTransfer):
 		assert isinstance(self._file_request.chunk_size, int)
 		assert isinstance(self.size, int)
 
+		self.wait_event = asyncio.Event()
+		self.kill = False
+
 		number = 0
-		with open(self._file_request.path, "rb") as file:
-			while data := file.read(self._file_request.chunk_size):
-				if self._should_stop:
-					if not self._completed:
-						await self._error("File transfer stopped before completion")
-					break
-				last = not self._file_request.chunk_size * (number + 1) < self.size
-				chunk_message = FileChunkMessage(
-					sender=self._sender,
-					channel=self._response_channel,
-					back_channel=self._back_channel,
-					number=number,
-					last=last,
-					data=data,
-				)
-				await self._send_message(chunk_message)
-				number += 1
+		# start read
+		file = self.read_file()
+		while True:
+			print("started loop")
+			data = await anext(file)
+
+			if self._should_stop:
+				if not self._completed:
+					await self._error("File transfer stopped before completion")
+				break
+			print(f"number {number}")
+			print(f"chunk_size {self._file_request.chunk_size}")
+			print(f"size {self.size}")
+			if not self._file_request.chunk_size * (number + 1) < self.size:
+				print("end")
+				last = True
+				self._should_stop = True
+			chunk_message = FileChunkMessage(
+				sender=self._sender,
+				channel=self._response_channel,
+				back_channel=self._back_channel,
+				number=number,
+				last=last,
+				data=data,
+			)
+			await self._send_message(chunk_message)
+			number += 1
+			self.wait_event.set()
+		print("here")
 		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
+
+	async def read_file(self) -> Any:
+		print("started read")
+		with open(self._file_request.path, "rb") as file:
+			while (not self._should_stop) or self.kill:
+				tmp = file.read(self._file_request.chunk_size)
+				if tmp:
+					print(tmp)
+					yield tmp
+					await self.wait_event.wait()
+					print("go on")
+				else:
+					asyncio.sleep(1)
 
 
 async def process_messagebus_message(
