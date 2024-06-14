@@ -469,11 +469,26 @@ def test_create_package_content_file() -> None:
 		assert entry in result
 
 
-def test_create_package_md5_file() -> None:
+@pytest.mark.parametrize(
+	"progress",
+	(True, False),
+)
+def test_create_package_md5_file(progress: bool) -> None:
+	progress_callbacks = []
+
+	def progress_callback(position: int, total: int) -> None:
+		nonlocal progress_callbacks
+		progress_callbacks.append((position, total))
+
 	with make_temp_dir() as temp_dir:
 		result = temp_dir / "localboot_new_42.0-1337.opsi.md5"
-		create_package_md5_file(TEST_DATA / "localboot_new_42.0-1337.opsi", filename=result)
+		create_package_md5_file(
+			TEST_DATA / "localboot_new_42.0-1337.opsi", filename=result, progress_callback=progress_callback if progress else None
+		)
 		assert result.read_text(encoding="utf-8") == "d99057288026298443f4b9ce8b490d7e"
+
+	if progress:
+		assert progress_callbacks == [(0, 2048), (2048, 2048)]
 
 
 @pytest.mark.linux

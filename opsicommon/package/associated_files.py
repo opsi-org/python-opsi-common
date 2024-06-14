@@ -5,9 +5,11 @@
 """
 handling of package content, hash files and more
 """
+
 import os
 from hashlib import md5
 from pathlib import Path
+from typing import Callable
 
 from pyzsync import create_zsync_file  # type: ignore[import]
 
@@ -16,11 +18,20 @@ from opsicommon.logging import get_logger
 logger = get_logger("opsicommon.package")
 
 
-def md5sum(path: Path) -> str:
+def md5sum(path: Path, progress_callback: Callable | None = None) -> str:
 	md5object = md5()
+	file_size = path.stat().st_size
+	position = 0
+	if progress_callback:
+		progress_callback(position, file_size)
+
+	block_size = 524288
 	with open(path, "rb") as file_to_hash:
-		for data in iter(lambda: file_to_hash.read(524288), b""):
+		for data in iter(lambda: file_to_hash.read(block_size), b""):
 			md5object.update(data)
+			if progress_callback:
+				position += len(data)
+				progress_callback(position, file_size)
 	return md5object.hexdigest()
 
 
@@ -57,10 +68,10 @@ def create_package_content_file(base_dir: Path) -> Path:
 	return package_content_file
 
 
-def create_package_md5_file(package_path: Path, filename: Path | None = None) -> Path:
+def create_package_md5_file(package_path: Path, filename: Path | None = None, progress_callback: Callable | None = None) -> Path:
 	if not filename:
 		filename = Path(f"{package_path}.md5")
-	filename.write_text(md5sum(package_path), encoding="utf-8")
+	filename.write_text(md5sum(package_path, progress_callback), encoding="utf-8")
 	return filename
 
 
