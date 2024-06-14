@@ -15,13 +15,15 @@ from opsicommon.messagebus import CONNECTION_USER_CHANNEL
 from opsicommon.messagebus.file_transfer import process_messagebus_message, stop_running_file_transfers
 from opsicommon.messagebus.message import (
 	FileChunkMessage,
+	FileDownloadRequestMessage,
+	FileDownloadResponseMessage,
 	FileTransferErrorMessage,
 	FileUploadRequestMessage,
 	FileUploadResponseMessage,
 	FileUploadResultMessage,
 )
 
-from .helpers import MessageSender
+from .helpers import MessageSender, gen_test_file
 
 
 async def test_file_upload(tmp_path: Path) -> None:
@@ -73,6 +75,7 @@ async def test_file_upload(tmp_path: Path) -> None:
 	assert messages[0].sender == "test_res_sender"
 	assert messages[0].back_channel == "test_res_channel"
 	assert messages[0].file_id == file_upload_request.file_id
+	print(messages[0].path)
 	assert messages[0].path == str(upload_path / test_file.name)
 
 	with test_file.open("rb") as file:
@@ -173,3 +176,65 @@ async def test_stop_running_transfers(tmp_path: Path) -> None:
 		assert isinstance(messages[0], FileTransferErrorMessage)
 		assert messages[0].file_id == file_upload_request.file_id
 		assert "File transfer stopped before completion" in messages[0].error.message
+
+
+# Download Tests
+async def test_file_download(tmp_path: Path) -> None:
+	sender = "test_sender"
+	channel = "test_channel"
+	chunk_size = 1000
+	message_sender = MessageSender()
+	test_file = str(tmp_path / "test_file.txt")
+
+	file_download_request = FileDownloadRequestMessage(
+		sender=sender,
+		channel=channel,
+		chunk_size=chunk_size,
+		path=test_file,
+	)
+	await process_messagebus_message(file_download_request, send_message=message_sender.send_message)
+
+	messages = await message_sender.wait_for_messages(count=1)
+	assert len(messages) == 1
+	assert isinstance(messages[0], FileTransferErrorMessage)
+	assert messages[0].sender == CONNECTION_USER_CHANNEL
+	assert not messages[0].back_channel
+	assert messages[0].channel == sender
+	assert messages[0].file_id == file_download_request.file_id
+
+	# create file and repeat
+
+	res_sender = "test_res_sender"
+	res_channel = "test_res_channel"
+	res_back_channel = "test_res_back_channel"
+
+	test_file_size = gen_test_file(file=test_file, chunk_size=chunk_size)
+	file_download_request = FileDownloadRequestMessage(
+		sender=res_sender,
+		channel=res_channel,
+		back_channel=res_back_channel,
+		chunk_size=chunk_size,
+		path=test_file,
+	)
+	await process_messagebus_message(
+		file_download_request, send_message=message_sender.send_message, sender=res_sender, back_channel=res_channel
+	)
+
+	messages = await message_sender.wait_for_messages(count=1, true_count=True)
+	assert isinstance(messages[0], FileDownloadResponseMessage)
+	assert messages[0].sender == res_sender
+	assert messages[0].back_channel == res_channel
+	assert messages[0].size == test_file_size
+
+	no_of_chunk = -(-test_file_size // chunk_size)
+	data_messages = await message_sender.wait_for_messages(count=no_of_chunk)
+
+	with Path(test_file).open("rb") as file:
+		num = 0
+		for data_message in data_messages:
+			assert isinstance(data_message, FileChunkMessage)
+			assert data_message.channel == res_back_channel
+			assert data_message.number == num
+			assert data_message.last == (num == no_of_chunk - 1)
+			assert data_message.data == file.read(chunk_size)
+			num += 1
