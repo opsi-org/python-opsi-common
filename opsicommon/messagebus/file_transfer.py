@@ -125,8 +125,8 @@ class FileUpload(FileTransfer):
 
 	def __init__(
 		self,
-		file_upload_request: FileUploadRequestMessage,
 		send_message: Callable,
+		file_upload_request: FileUploadRequestMessage,
 		sender: str = CONNECTION_USER_CHANNEL,
 		back_channel: str | None = None,
 	) -> None:
@@ -202,8 +202,8 @@ class FileUpload(FileTransfer):
 class FileDownload(FileTransfer):
 	def __init__(
 		self,
-		file_download_request: FileDownloadRequestMessage,
 		send_message: Callable,
+		file_download_request: FileDownloadRequestMessage,
 		sender: str = CONNECTION_USER_CHANNEL,
 		back_channel: str | None = None,
 	) -> None:
