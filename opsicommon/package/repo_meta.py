@@ -246,8 +246,11 @@ class RepoMetaPackageCollection:
 			# if only one version is allowed, always delete previous versions, if any is different (allow downgrade)
 			self.packages[package.product_id] = {}
 		if self.packages[package.product_id].get(package.version):
-			self.packages[package.product_id][package.version].merge(package)
+			logger.debug("Merging %s / %s: %s", package.product_id, package.version, package)
+			package.merge(self.packages[package.product_id][package.version])
+			self.packages[package.product_id][package.version] = package
 		else:
+			logger.debug("Adding %s / %s: %s", package.product_id, package.version, package)
 			self.packages[package.product_id][package.version] = package
 		# num_allowed_versions = 0 means unlimited
 		if num_allowed_versions and len(self.packages[package.product_id]) > num_allowed_versions:
