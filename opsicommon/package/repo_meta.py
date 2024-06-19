@@ -174,17 +174,21 @@ class RepoMetaPackage:
 			raise ValueError("Cannot merge RepoMetaPackages for different products or versions")
 		if self.md5_hash != other.md5_hash or self.sha256_hash != other.sha256_hash:
 			raise ValueError("Cannot merge RepoMetaPackages if hashes differ")
-		other_urls = other.url if isinstance(other.url, list) else [other.url]
-		other_zsync_urls = other.zsync_url if isinstance(other.zsync_url, list) else [other.zsync_url]
-		self_urls = self.url if isinstance(self.url, list) else [self.url]
-		# No set operations to keep order!
-		self.url = self_urls
-		if not isinstance(self.zsync_url, list):
-			self.zsync_url = [self.zsync_url]
-		for other_url, other_zsync_url in zip(other_urls, other_zsync_urls):
-			if other_url not in self.url:
-				self.url.append(other_url)
-				self.zsync_url.append(other_zsync_url)
+
+		for attribute, value in asdict(other).items():
+			if isinstance(value, list) or attribute in ("zsync_url", "url"):
+				# keep None in list to not change indices
+				cur_value = getattr(self, attribute) or []
+				if not isinstance(cur_value, list):
+					cur_value = [cur_value]
+				if not isinstance(value, list):
+					value = [value]
+				for val in value:
+					if val not in cur_value:
+						cur_value.append(val)
+				setattr(self, attribute, cur_value)
+			elif value is not None:
+				setattr(self, attribute, value)
 
 
 @dataclass
@@ -247,8 +251,7 @@ class RepoMetaPackageCollection:
 			self.packages[package.product_id] = {}
 		if self.packages[package.product_id].get(package.version):
 			logger.debug("Merging %s / %s: %s", package.product_id, package.version, package)
-			package.merge(self.packages[package.product_id][package.version])
-			self.packages[package.product_id][package.version] = package
+			self.packages[package.product_id][package.version].merge(package)
 		else:
 			logger.debug("Adding %s / %s: %s", package.product_id, package.version, package)
 			self.packages[package.product_id][package.version] = package

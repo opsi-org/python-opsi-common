@@ -162,9 +162,11 @@ def test_repo_meta_package_merge(tmp_path: Path) -> None:
 	url = "path/to/localboot_new_42.0-1337.opsi"
 	repo_meta_package = RepoMetaPackage.from_package_file(tmp_path / "localboot_new_42.0-1337.opsi", url=url)
 
+	new_release_date = datetime.now(tz=timezone.utc)
 	other_repo_meta_package = RepoMetaPackage.from_package_file(tmp_path / "localboot_new_42.0-1337.opsi", url=url)
 	other_repo_meta_package.url = "otherpath/to/localboot_new_42.0-1337.opsi"
 	other_repo_meta_package.zsync_url = "otherpath/to/localboot_new_42.0-1337.opsi.zsync"
+	other_repo_meta_package.release_date = new_release_date
 	repo_meta_package.merge(other_repo_meta_package)
 
 	yet_another_repo_meta_package = RepoMetaPackage.from_package_file(tmp_path / "localboot_new_42.0-1337.opsi", url=url)
@@ -179,6 +181,7 @@ def test_repo_meta_package_merge(tmp_path: Path) -> None:
 	assert repo_meta_package.zsync_url[0] == "path/to/localboot_new_42.0-1337.opsi.zsync"
 	assert repo_meta_package.zsync_url[1] == "otherpath/to/localboot_new_42.0-1337.opsi.zsync"
 	assert repo_meta_package.zsync_url[2] is None  # keep None to not change indices
+	assert repo_meta_package.release_date == new_release_date
 
 
 def test_repo_meta_package_url_list_merge(tmp_path: Path) -> None:
