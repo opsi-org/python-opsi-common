@@ -1,4 +1,4 @@
-image: docker.uib.gmbh/opsi/dev/pybuilder:deb9-py3.11
+image: docker.uib.gmbh/opsi/dev/pybuilder:deb9-py3.12
 
 stages:
   - test
@@ -9,7 +9,7 @@ pytest-darwin:
   #when: manual
   stage: test
   tags:
-    - catalina-py311-x64
+    - catalina-py312-x64
   script:
     - poetry cache clear --all --quiet uibpypi
     - poetry lock --no-update
@@ -30,7 +30,7 @@ pytest-windows:
   #when: manual
   stage: test
   tags:
-    - win10-py311-x86
+    - win10-py312-x86
   script:
     - Invoke-WebRequest -UseBasicParsing -Uri "$OPSIDEVTOOLS_URL_WINDOWS_X86" -OutFile opsi-dev-tools.zip
     - Expand-Archive opsi-dev-tools.zip -DestinationPath .
