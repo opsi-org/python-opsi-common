@@ -11,7 +11,7 @@ pytest-darwin:
   tags:
     - catalina-py312-x64
   script:
-    - python3.12 -m poetry env use 3.12
+    - poetry env use 3.12
     - poetry cache clear --all --quiet uibpypi
     - poetry lock --no-update
     - poetry install
@@ -58,7 +58,7 @@ pytest-linux:
   script:
     - apt update
     - apt --yes install zstd  # need zstd for packaging tests
-    - python3.12 -m poetry env use 3.12
+    - poetry env use 3.12
     - poetry cache clear --all --quiet uibpypi
     - poetry lock --no-update
     - poetry install
@@ -89,7 +89,7 @@ pylint-pytest:
     - apt-get update
     - apt-get --yes --allow-downgrades install libsqlite3-0=3.16.2-5+deb9u1
     - apt-get --yes install sqlite3
-    - python3.12 -m poetry env use 3.12
+    - poetry env use 3.12
     - poetry lock --no-update
     - poetry install
     - poetry run ruff opsicommon tests
@@ -123,7 +123,7 @@ apidoc:
     - eval $(ssh-agent -s)
     - ssh-add <(echo "$BLOG_PUBLISH_PRIVATE_KEY")
   script:
-    - python3.12 -m poetry env use 3.12
+    - poetry env use 3.12
     - poetry lock --no-update
     - poetry install
     - poetry run poetry run opsi-dev-cli apidoc makehtml --output python-opsi-common
@@ -134,7 +134,7 @@ apidoc:
 uibpypi:
   stage: publish
   script:
-    - python3.12 -m poetry env use 3.12
+    - poetry env use 3.12
     - poetry lock --no-update
     - poetry install
     - poetry run opsi-dev-tool -l info --uib-pypi-publish
