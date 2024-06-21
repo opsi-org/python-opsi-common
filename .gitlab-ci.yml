@@ -36,7 +36,7 @@ pytest-windows:
     - Invoke-WebRequest -UseBasicParsing -Uri "$OPSIDEVTOOLS_URL_WINDOWS_X86" -OutFile opsi-dev-tools.zip
     - Expand-Archive opsi-dev-tools.zip -DestinationPath .
     - .\opsi-dev-tool.exe --self-install
-    - $pythonPath = py -3.12 -c "import sys; import os; print(os.path.dirname(sys.executable))"
+    - $pythonPath = py -3.12 -c "import sys; print(sys.executable)"
     - poetry env use $pythonPath
     - poetry cache clear --all --quiet uibpypi
     - poetry lock --no-update
