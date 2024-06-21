@@ -11,12 +11,13 @@ pytest-darwin:
   tags:
     - catalina-py312-x64
   script:
-    - python3.12 -m cache clear --all --quiet uibpypi
-    - python3.12 -m lock --no-update
-    - python3.12 -m install
-    - python3.12 -m run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_darwin1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
-    - python3.12 -m run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_darwin2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
-    - python3.12 -m run opsi-dev-tool -l info --testreport-merge testreport_darwin1.xml testreport_darwin2.xml testreport_darwin.xml
+    - python3.12 -m poetry env use 3.12
+    - poetry cache clear --all --quiet uibpypi
+    - poetry lock --no-update
+    - poetry install
+    - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_darwin1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
+    - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_darwin2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
+    - poetry run opsi-dev-tool -l info --testreport-merge testreport_darwin1.xml testreport_darwin2.xml testreport_darwin.xml
     - mv .coverage coverage_darwin
   artifacts:
     name: 'python-opsi-common_test_darwin'
@@ -35,12 +36,13 @@ pytest-windows:
     - Invoke-WebRequest -UseBasicParsing -Uri "$OPSIDEVTOOLS_URL_WINDOWS_X86" -OutFile opsi-dev-tools.zip
     - Expand-Archive opsi-dev-tools.zip -DestinationPath .
     - .\opsi-dev-tool.exe --self-install
-    - py -3.12 -m poetry cache clear --all --quiet uibpypi
-    - py -3.12 -m poetry lock --no-update
-    - py -3.12 -m poetry install
-    - py -3.12 -m poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_windows1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests\\test_logging.py tests
-    - py -3.12 -m poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_windows2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests\\test_logging.py
-    - py -3.12 -m poetry run .\opsi-dev-tool.exe -l info --testreport-merge testreport_windows1.xml testreport_windows2.xml testreport_windows.xml
+    - py -3.12 -m poetry env use 3.12
+    - poetry cache clear --all --quiet uibpypi
+    - poetry lock --no-update
+    - poetry install
+    - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_windows1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests\\test_logging.py tests
+    - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_windows2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests\\test_logging.py
+    - poetry run .\opsi-dev-tool.exe -l info --testreport-merge testreport_windows1.xml testreport_windows2.xml testreport_windows.xml
     - Rename-Item -Path .coverage -NewName coverage_windows
   artifacts:
     name: 'python-opsi-common_test_windows'
@@ -56,12 +58,13 @@ pytest-linux:
   script:
     - apt update
     - apt --yes install zstd  # need zstd for packaging tests
-    - python3.12 -m poetry cache clear --all --quiet uibpypi
-    - python3.12 -m poetry lock --no-update
-    - python3.12 -m poetry install
-    - python3.12 -m poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_linux1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
-    - python3.12 -m poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_linux2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
-    - python3.12 -m poetry run opsi-dev-tool -l info --testreport-merge testreport_linux1.xml testreport_linux2.xml testreport_linux.xml
+    - python3.12 -m poetry env use 3.12
+    - poetry cache clear --all --quiet uibpypi
+    - poetry lock --no-update
+    - poetry install
+    - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_linux1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
+    - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_linux2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
+    - poetry run opsi-dev-tool -l info --testreport-merge testreport_linux1.xml testreport_linux2.xml testreport_linux.xml
     - mv .coverage coverage_linux
   artifacts:
     name: 'python-opsi-common_test_linux'
@@ -86,16 +89,17 @@ pylint-pytest:
     - apt-get update
     - apt-get --yes --allow-downgrades install libsqlite3-0=3.16.2-5+deb9u1
     - apt-get --yes install sqlite3
-    - python3.12 -m lock --no-update
-    - python3.12 -m install
-    - python3.12 -m run ruff opsicommon tests
-    - python3.12 -m run mypy opsicommon tests
+    - python3.12 -m poetry env use 3.12
+    - poetry lock --no-update
+    - poetry install
+    - poetry run ruff opsicommon tests
+    - poetry run mypy opsicommon tests
     - for db in coverage_*; do sqlite3 $db 'update file set path=replace(substr(path,instr(path,"opsicommon")),"\","/");'; done
     - echo -e '[run]\nrelative_files = True\n' > .coveragerc
-    - python3.12 -m run coverage combine coverage_*
-    - python3.12 -m run coverage xml
-    - python3.12 -m run coverage report
-    - python3.12 -m run opsi-dev-tool -l info --testreport-merge testreport_*.xml testreport.xml
+    - poetry run coverage combine coverage_*
+    - poetry run coverage xml
+    - poetry run coverage report
+    - poetry run opsi-dev-tool -l info --testreport-merge testreport_*.xml testreport.xml
   coverage: '/TOTAL\s+\d+\s+\d+\s+(\d+)%/'
   artifacts:
     name: 'python-opsi-common_test'
@@ -119,9 +123,10 @@ apidoc:
     - eval $(ssh-agent -s)
     - ssh-add <(echo "$BLOG_PUBLISH_PRIVATE_KEY")
   script:
-    - python3.12 -m lock --no-update
-    - python3.12 -m install
-    - python3.12 -m run poetry run opsi-dev-cli apidoc makehtml --output python-opsi-common
+    - python3.12 -m poetry env use 3.12
+    - poetry lock --no-update
+    - poetry install
+    - poetry run poetry run opsi-dev-cli apidoc makehtml --output python-opsi-common
     - ssh -o StrictHostKeyChecking=no "root@docker1.ext.uib.gmbh" "mkdir -p /var/lib/docker/volumes/docs_nginx_data/_data/python-docs"
     - rsync -e "ssh -o StrictHostKeyChecking=no" --delete -azv python-opsi-common "root@docker1.ext.uib.gmbh:/var/lib/docker/volumes/docs_nginx_data/_data/python-docs/"
 
@@ -129,8 +134,9 @@ apidoc:
 uibpypi:
   stage: publish
   script:
-    - python3.12 -m lock --no-update
-    - python3.12 -m install
-    - python3.12 -m run opsi-dev-tool -l info --uib-pypi-publish
+    - python3.12 -m poetry env use 3.12
+    - poetry lock --no-update
+    - poetry install
+    - poetry run opsi-dev-tool -l info --uib-pypi-publish
   only:
     - tags
