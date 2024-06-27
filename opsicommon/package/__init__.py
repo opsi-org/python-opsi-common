@@ -307,12 +307,26 @@ class OpsiPackage:
 
 		class ProgressAdapter(ArchiveProgressListener):
 			def __init__(self, progress_listener: ArchiveProgressListener) -> None:
-				self.overall_progress = ArchiveProgress()
 				self.progress_listener = progress_listener
+				self.progresses: dict[int, ArchiveProgress] = {}
+				self.overall_progress = ArchiveProgress()
+				self.total: int | None = None
+
+			def _update_overall_progress(self) -> None:
+				self.overall_progress.total = self.total if self.total is not None else sum(p.total for p in self.progresses.values())
+				self.overall_progress.set_completed(sum(p.completed for p in self.progresses.values()))
+				self.progress_listener.progress_changed(self.overall_progress)
+
+			def set_total(self, total: int | None, fire_event: bool = True) -> None:
+				self.total = total
+				if fire_event:
+					self._update_overall_progress()
 
 			def progress_changed(self, progress: ArchiveProgress) -> None:
-				self.overall_progress.advance(progress.completed)
-				self.progress_listener.progress_changed(self.overall_progress)
+				progress_id = id(progress)
+				if progress_id not in self.progresses:
+					self.progresses[progress_id] = progress
+				self._update_overall_progress()
 
 		archives = []
 		files_by_archive_name: dict[str, list[ArchiveFile]] = {}
@@ -325,11 +339,10 @@ class OpsiPackage:
 			files_by_archive_name[_dir.name] = archive_files
 
 		progress_adapter: ProgressAdapter | None = None
-		total_size = 0
 		if progress_listener:
 			progress_adapter = ProgressAdapter(progress_listener)
 			total_size = sum(f.size for fs in files_by_archive_name.values() for f in fs)
-			progress_adapter.overall_progress.total = total_size * 2  # Estimated
+			progress_adapter.set_total(total_size * 2)  # Estimated
 
 		with make_temp_dir(self.temp_dir) as temp_dir:
 			for dir_name, files in files_by_archive_name.items():
@@ -345,9 +358,8 @@ class OpsiPackage:
 				archives.append(ArchiveFile(path=archive, size=archive.stat().st_size, archive_path=Path("/") / archive.name))
 
 			logger.info("Creating archive '%s'", package_archive.absolute())
-			total_archive_size = sum(a.size for a in archives)
 			if progress_adapter:
-				progress_adapter.overall_progress.total = total_size + total_archive_size
+				progress_adapter.set_total(None, False)
 			create_archive(package_archive, archives, progress_listener=progress_adapter)
 
 		return package_archive
