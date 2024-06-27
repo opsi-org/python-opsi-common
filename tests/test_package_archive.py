@@ -86,7 +86,7 @@ def test_get_archive_files(tmp_path: Path, test_defect_link: bool, follow_symlin
 	(tmp_path / ".git").mkdir()
 	(tmp_path / ".git" / "index").touch()
 	(tmp_path / "dir1").mkdir()
-	(tmp_path / "dir1" / "Thumbs.db").touch()
+	(tmp_path / "dir1" / "thumbs.db").touch()
 	(tmp_path / "dir2").mkdir()
 	(tmp_path / "dir2" / "empty_dir").mkdir()
 	(tmp_path / "dir2" / "file3.txt").touch()
@@ -96,7 +96,7 @@ def test_get_archive_files(tmp_path: Path, test_defect_link: bool, follow_symlin
 		os.symlink(tmp_path / "non_existing_file", tmp_path / "link_to_non_existing_file")
 
 	exclude_dirs = ["/.git"] if test_excludes else []
-	exclude_files = ["thumbs.db", "*.txt"] if test_excludes else []
+	exclude_files = ["[Tt]humbs.db", "*.txt"] if test_excludes else []
 	if test_defect_link and follow_symlinks:
 		with pytest.raises(FileNotFoundError):
 			list(get_archive_files(tmp_path, follow_symlinks=follow_symlinks, exclude_dirs=exclude_dirs, exclude_files=exclude_files))
@@ -123,14 +123,15 @@ def test_get_archive_files(tmp_path: Path, test_defect_link: bool, follow_symlin
 	else:
 		assert file in files
 
-	assert (
-		ArchiveFile(
-			path=tmp_path / "Thumbs.db",
-			size=0,
-			archive_path=Path("Thumbs.db"),
-		)
-		in files
+	file = ArchiveFile(
+		path=tmp_path / "Thumbs.db",
+		size=0,
+		archive_path=Path("Thumbs.db"),
 	)
+	if test_excludes:
+		assert file not in files
+	else:
+		assert file in files
 
 	file = ArchiveFile(
 		path=tmp_path / ".git/index",
@@ -142,14 +143,15 @@ def test_get_archive_files(tmp_path: Path, test_defect_link: bool, follow_symlin
 	else:
 		assert file in files
 
-	assert (
-		ArchiveFile(
-			path=tmp_path / "dir1/Thumbs.db",
-			size=0,
-			archive_path=Path("dir1/Thumbs.db"),
-		)
-		in files
+	file = ArchiveFile(
+		path=tmp_path / "dir1/thumbs.db",
+		size=0,
+		archive_path=Path("dir1/thumbs.db"),
 	)
+	if test_excludes:
+		assert file not in files
+	else:
+		assert file in files
 
 	assert (
 		ArchiveFile(
@@ -171,14 +173,15 @@ def test_get_archive_files(tmp_path: Path, test_defect_link: bool, follow_symlin
 		assert file in files
 
 	if follow_symlinks:
-		assert (
-			ArchiveFile(
-				path=tmp_path / "dir2/link_to_dir1/Thumbs.db",
-				size=0,
-				archive_path=Path("dir2/link_to_dir1/Thumbs.db"),
-			)
-			in files
+		file = ArchiveFile(
+			path=tmp_path / "dir2/link_to_dir1/thumbs.db",
+			size=0,
+			archive_path=Path("dir2/link_to_dir1/thumbs.db"),
 		)
+		if test_excludes:
+			assert file not in files
+		else:
+			assert file in files
 	else:
 		assert (
 			ArchiveFile(

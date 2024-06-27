@@ -17,7 +17,7 @@ import subprocess
 import tarfile
 from contextlib import contextmanager
 from functools import lru_cache
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from threading import Lock
 import time
 from typing import IO, Any, Generator
@@ -331,13 +331,14 @@ def compress_command(archive: Path, compression: str) -> str:
 class ArchiveFile:
 	path: Path
 	size: int
-	archive_path: Path
+	archive_path: PurePosixPath
 
 	def __post_init__(self) -> None:
 		if not self.path.is_absolute():
 			self.path = self.path.absolute()
+		self.archive_path = PurePosixPath(self.archive_path.as_posix())
 		if not self.archive_path.is_absolute():
-			self.archive_path = Path("/") / self.archive_path
+			self.archive_path = PurePosixPath("/") / self.archive_path
 
 
 def get_archive_files(
@@ -355,14 +356,15 @@ def get_archive_files(
 	if exclude_dirs is None:
 		exclude_dirs = ["/.svn", "/.git"]
 	if exclude_files is None:
-		exclude_files = ["*~", "Thumbs.db", ".DS_Store"]
+		exclude_files = ["*~", "[Tt]humbs.db", ".[Dd][Ss]_[Ss]tore"]
 
 	for root, dirnames, filenames in os.walk(base_dir, followlinks=follow_symlinks, topdown=True):
+		print(root, filenames)
 		root_path = Path(root)
 		if exclude_dirs:
 			for dirname in list(dirnames):
 				archive_path = Path("/") / (root_path / dirname).relative_to(base_dir)
-				if any(fnmatch.fnmatch(archive_path, pat) for pat in exclude_dirs):
+				if any(archive_path.match(pat) for pat in exclude_dirs):
 					logger.debug("Directory '%s' is excluded", archive_path)
 					dirnames.remove(dirname)
 
@@ -376,7 +378,7 @@ def get_archive_files(
 				archive_path = abs_path.relative_to(base_dir)
 				if abs_path.is_symlink():
 					if exclude_dirs:
-						if any(fnmatch.fnmatch(archive_path, pat) for pat in exclude_dirs):
+						if any(archive_path.match(pat) for pat in exclude_dirs):
 							logger.debug("Symlink to directory '%s' is excluded", abs_path)
 							continue
 					yield ArchiveFile(path=abs_path, archive_path=archive_path, size=0)
@@ -384,7 +386,7 @@ def get_archive_files(
 			abs_path = root_path / filename
 			archive_path = abs_path.relative_to(base_dir)
 			if exclude_files:
-				if any(fnmatch.fnmatch(archive_path, pat) for pat in exclude_files):
+				if any(archive_path.match(pat) for pat in exclude_files):
 					logger.debug("File '%s' is excluded", abs_path)
 					continue
 			size = 0 if abs_path.is_symlink() and not follow_symlinks else abs_path.stat().st_size
