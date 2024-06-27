@@ -359,7 +359,6 @@ def get_archive_files(
 		exclude_files = ["*~", "[Tt]humbs.db", ".[Dd][Ss]_[Ss]tore"]
 
 	for root, dirnames, filenames in os.walk(base_dir, followlinks=follow_symlinks, topdown=True):
-		print(root, filenames)
 		root_path = Path(root)
 		if exclude_dirs:
 			for dirname in list(dirnames):
