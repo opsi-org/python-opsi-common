@@ -331,7 +331,7 @@ def compress_command(archive: Path, compression: str) -> str:
 class ArchiveFile:
 	path: Path
 	size: int
-	archive_path: PurePosixPath
+	archive_path: Path | PurePosixPath
 
 	def __post_init__(self) -> None:
 		if not self.path.is_absolute():
@@ -415,6 +415,8 @@ def create_archive_external(
 		if base_dir and base_dir != file_base_dir:
 			raise ValueError(f"Files must be in the same base directory, found: {base_dir} and {file_base_dir}")
 		base_dir = file_base_dir
+	if not base_dir:
+		raise ValueError("No files to archive")
 
 	if compression == "bz2":
 		logger.warning("Creating unsyncable package (no zsync or rsync support)")

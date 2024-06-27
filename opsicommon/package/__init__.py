@@ -7,7 +7,6 @@ opsi package class and associated methods
 """
 
 import json
-import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import List, Literal
@@ -316,24 +315,24 @@ class OpsiPackage:
 				self.progress_listener.progress_changed(self.overall_progress)
 
 		archives = []
-		files: dict[str, list[ArchiveFile]] = {}
+		files_by_archive_name: dict[str, list[ArchiveFile]] = {}
 		for _dir in dirs:
 			dir_type = _dir.name.split(".", 1)[0]
 			archive_files = list(get_archive_files(_dir, follow_symlinks=not dereference))
 			if not archive_files and dir_type in ("CLIENT_DATA", "SERVER_DATA"):
 				logger.debug("Skipping empty dir '%s'", _dir)
 				continue
-			files[_dir.name] = archive_files
+			files_by_archive_name[_dir.name] = archive_files
 
 		progress_adapter: ProgressAdapter | None = None
 		total_size = 0
 		if progress_listener:
 			progress_adapter = ProgressAdapter(progress_listener)
-			total_size = sum(f.size for fs in files.values() for f in fs)
+			total_size = sum(f.size for fs in files_by_archive_name.values() for f in fs)
 			progress_adapter.overall_progress.total = total_size * 2  # Estimated
 
 		with make_temp_dir(self.temp_dir) as temp_dir:
-			for dir_name, files in files.items():
+			for dir_name, files in files_by_archive_name.items():
 				archive = temp_dir / f"{dir_name}.tar.{compression}"
 				logger.info("Creating archive '%s'", archive)
 				create_archive(
