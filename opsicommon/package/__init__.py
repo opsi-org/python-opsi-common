@@ -16,7 +16,14 @@ import tomlkit
 
 from opsicommon.logging import get_logger
 from opsicommon.objects import Product, ProductDependency, ProductProperty
-from opsicommon.package.archive import ArchiveProgressListener, create_archive, extract_archive
+from opsicommon.package.archive import (
+	ArchiveFile,
+	ArchiveProgress,
+	ArchiveProgressListener,
+	create_archive,
+	extract_archive,
+	get_archive_files,
+)
 from opsicommon.package.control_file_handling import (
 	create_package_dependencies,
 	create_product,
@@ -29,8 +36,7 @@ from opsicommon.package.control_file_handling import (
 from opsicommon.package.legacy_control_file import LegacyControlFile
 from opsicommon.utils import compare_versions, make_temp_dir
 
-EXCLUDE_DIRS_ON_PACK_REGEX = re.compile(r"(^\.svn$)|(^\.git$)")
-EXCLUDE_FILES_ON_PACK_REGEX = re.compile(r"(~$)|(^[Tt]humbs\.db$)|(^\.[Dd][Ss]_[Ss]tore$)")
+
 logger = get_logger("opsicommon.package")
 
 
@@ -233,14 +239,6 @@ class OpsiPackage:
 			(control_file.parent / "changelog.txt").write_text(self.changelog.strip(), encoding="utf-8")
 		control_file.write_text(tomlkit.dumps(data_dict))
 
-	def check_and_generate_control_file(self, control_file: Path) -> None:
-		control_file_name = "control" if control_file.suffix == ".toml" else "control.toml"
-		control_file_path = control_file.parent / control_file_name
-
-		if not control_file_path.exists():
-			generate_func = self.generate_control_file_legacy if control_file_name == "control" else self.generate_control_file
-			generate_func(control_file_path)
-
 	def get_dirs(self, base_dir: Path, custom_name: str | None, custom_only: bool) -> List[Path]:
 		dirs = [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
 		if custom_name:
@@ -257,6 +255,7 @@ class OpsiPackage:
 	def create_package_archive(
 		self,
 		base_dir: Path,
+		*,
 		compression: Literal["zstd", "bz2", "gz"] = "zstd",
 		destination: Path | None = None,
 		dereference: bool = False,
@@ -264,9 +263,21 @@ class OpsiPackage:
 		custom_only: bool = False,
 		progress_listener: ArchiveProgressListener | None = None,
 		overwrite: bool = True,
+		create_missing_legacy_control_file: bool = True,
+		create_missing_toml_control_file: bool = False,
 	) -> Path:
-		archives = []
-		dirs = self.get_dirs(base_dir, custom_name, custom_only)
+		dirs: list[Path] = []
+		for _dir in self.get_dirs(base_dir, custom_name, custom_only):
+			dir_type = _dir.name.split(".", 1)[0]
+			if dir_type not in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
+				logger.warning("Skipping invalid directory '%s'", _dir)
+				continue
+
+			if not _dir.exists():
+				logger.info("Directory '%s' does not exist", _dir)
+				continue
+
+			dirs.append(_dir)
 
 		# Prefer OPSI.<custom>
 		opsi_dirs = [d for d in sorted(dirs, reverse=True) if d.name.startswith("OPSI")]
@@ -277,50 +288,67 @@ class OpsiPackage:
 		if not opsi_dir.exists():
 			raise FileNotFoundError(f"Did not find OPSI directory '{opsi_dir}'")
 
-		control_file = self.find_and_parse_control_file(opsi_dir)
+		primary_control_file = self.find_and_parse_control_file(opsi_dir)
+
+		destination = (destination or Path()).absolute()
+		package_archive = destination / self.package_archive_name()
+		if not overwrite and package_archive.exists():
+			raise FileExistsError(f"Package archive '{package_archive}' already exists.")
+
+		primary_is_toml = primary_control_file.suffix == ".toml"
+		secondary_control_file = primary_control_file.parent / ("control" if primary_is_toml else "control.toml")
+		if (
+			secondary_control_file.exists()  # Update existing control file
+			or (primary_is_toml and create_missing_legacy_control_file)  # Create missing legacy control file
+			or (not primary_is_toml and create_missing_toml_control_file)  # Create missing toml control file
+		):
+			logger.info("Creating '%s'", secondary_control_file)
+			generate_func = self.generate_control_file_legacy if primary_is_toml else self.generate_control_file
+			generate_func(secondary_control_file)
+
+		class ProgressAdapter(ArchiveProgressListener):
+			def __init__(self, progress_listener: ArchiveProgressListener) -> None:
+				self.overall_progress = ArchiveProgress()
+				self.progress_listener = progress_listener
+
+			def progress_changed(self, progress: ArchiveProgress) -> None:
+				self.overall_progress.advance(progress.completed)
+				self.progress_listener.progress_changed(self.overall_progress)
+
+		archives = []
+		files: dict[str, list[ArchiveFile]] = {}
+		for _dir in dirs:
+			dir_type = _dir.name.split(".", 1)[0]
+			archive_files = list(get_archive_files(_dir, follow_symlinks=not dereference))
+			if not archive_files and dir_type in ("CLIENT_DATA", "SERVER_DATA"):
+				logger.debug("Skipping empty dir '%s'", _dir)
+				continue
+			files[_dir.name] = archive_files
+
+		progress_adapter: ProgressAdapter | None = None
+		total_size = 0
+		if progress_listener:
+			progress_adapter = ProgressAdapter(progress_listener)
+			total_size = sum(f.size for fs in files.values() for f in fs)
+			progress_adapter.overall_progress.total = total_size * 2  # Estimated
 
 		with make_temp_dir(self.temp_dir) as temp_dir:
-			for _dir in dirs:
-				dir_type = _dir.name.split(".", 1)[0]
-				if dir_type not in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
-					logger.warning("Skipping invalid directory '%s'", _dir)
-
-				if not _dir.exists():
-					logger.info("Directory '%s' does not exist", _dir)
-					continue
-
-				file_list = [
-					file
-					for file in _dir.iterdir()
-					if not EXCLUDE_DIRS_ON_PACK_REGEX.match(file.name) and not EXCLUDE_FILES_ON_PACK_REGEX.match(file.name)
-				]
-
-				if not file_list and dir_type in ("CLIENT_DATA", "SERVER_DATA"):
-					logger.debug("Skipping empty dir '%s'", _dir)
-					continue
-
-				filename = temp_dir / f"{_dir.name}.tar.{compression}"
-				logger.info("Creating archive %s", filename)
+			for dir_name, files in files.items():
+				archive = temp_dir / f"{dir_name}.tar.{compression}"
+				logger.info("Creating archive '%s'", archive)
 				create_archive(
-					filename,
-					file_list,
-					base_dir=_dir,
+					archive,
+					files,
 					compression=compression,
 					dereference=dereference,
+					progress_listener=progress_adapter,
 				)
-				# TODO: progress tracking
-				archives.append(filename)
+				archives.append(ArchiveFile(path=archive, size=archive.stat().st_size, archive_path=Path("/") / archive.name))
 
-			destination = (destination or Path()).absolute()
-			package_archive = destination / self.package_archive_name()
-			if not overwrite and package_archive.exists():
-				raise FileExistsError(f"Package archive '{package_archive}' already exists.")
-			logger.info("Creating archive %s", package_archive.absolute())
-			create_archive(
-				package_archive,
-				archives,
-				temp_dir,
-				progress_listener=progress_listener,
-			)
-			self.check_and_generate_control_file(control_file)
+			logger.info("Creating archive '%s'", package_archive.absolute())
+			total_archive_size = sum(a.size for a in archives)
+			if progress_adapter:
+				progress_adapter.overall_progress.total = total_size + total_archive_size
+			create_archive(package_archive, archives, progress_listener=progress_adapter)
+
 		return package_archive

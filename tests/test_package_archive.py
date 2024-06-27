@@ -24,11 +24,13 @@ from hypothesis.strategies import binary, from_regex, sampled_from
 from pyzsync import SOURCE_REMOTE, get_patch_instructions, read_zsync_file
 
 from opsicommon.package.archive import (
+	get_archive_files,
 	create_archive,
 	create_archive_external,
 	create_archive_internal,
 	extract_archive_external,
 	extract_archive_internal,
+	ArchiveFile,
 	ArchiveProgress,
 	ArchiveProgressListener,
 )
@@ -42,11 +44,11 @@ FILENAME_REGEX = r"^[^/\\]{4,64}$"
 
 class ProgressListener(ArchiveProgressListener):
 	def __init__(self) -> None:
-		self.percent_competed_vals: list[float] = []
+		self.percent_completed_vals: list[float] = []
 
 	def progress_changed(self, progress: ArchiveProgress) -> None:
 		# print(f"{progress.percent_completed:0.1f} %")
-		self.percent_competed_vals.append(progress.percent_completed)
+		self.percent_completed_vals.append(progress.percent_completed)
 
 
 def make_source_files(path: Path) -> Path:
@@ -67,6 +69,147 @@ def make_source_files(path: Path) -> Path:
 	return source
 
 
+@pytest.mark.parametrize(
+	"test_defect_link, follow_symlinks, test_excludes",
+	(
+		(False, True, False),
+		(False, False, False),
+		(True, True, False),
+		(True, False, False),
+		(False, False, True),
+	),
+)
+def test_get_archive_files(tmp_path: Path, test_defect_link: bool, follow_symlinks: bool, test_excludes: bool) -> None:
+	(tmp_path / "file1.dat").write_bytes(b"1234")
+	(tmp_path / "file2.txt").write_bytes(b"12345678")
+	(tmp_path / "Thumbs.db").touch()
+	(tmp_path / ".git").mkdir()
+	(tmp_path / ".git" / "index").touch()
+	(tmp_path / "dir1").mkdir()
+	(tmp_path / "dir1" / "Thumbs.db").touch()
+	(tmp_path / "dir2").mkdir()
+	(tmp_path / "dir2" / "empty_dir").mkdir()
+	(tmp_path / "dir2" / "file3.txt").touch()
+	os.symlink(tmp_path / "dir1", tmp_path / "dir2" / "link_to_dir1")
+	os.symlink(tmp_path / "file2.txt", tmp_path / "link_to_file2.txt")
+	if test_defect_link:
+		os.symlink(tmp_path / "non_existing_file", tmp_path / "link_to_non_existing_file")
+
+	exclude_dirs = ["/.git"] if test_excludes else []
+	exclude_files = ["thumbs.db", "*.txt"] if test_excludes else []
+	if test_defect_link and follow_symlinks:
+		with pytest.raises(FileNotFoundError):
+			list(get_archive_files(tmp_path, follow_symlinks=follow_symlinks, exclude_dirs=exclude_dirs, exclude_files=exclude_files))
+		return
+
+	files = list(get_archive_files(tmp_path, follow_symlinks=follow_symlinks, exclude_dirs=exclude_dirs, exclude_files=exclude_files))
+
+	assert (
+		ArchiveFile(
+			path=tmp_path / "file1.dat",
+			size=4,
+			archive_path=Path("file1.dat"),
+		)
+		in files
+	)
+
+	file = ArchiveFile(
+		path=tmp_path / "file2.txt",
+		size=8,
+		archive_path=Path("file2.txt"),
+	)
+	if test_excludes:
+		assert file not in files
+	else:
+		assert file in files
+
+	assert (
+		ArchiveFile(
+			path=tmp_path / "Thumbs.db",
+			size=0,
+			archive_path=Path("Thumbs.db"),
+		)
+		in files
+	)
+
+	file = ArchiveFile(
+		path=tmp_path / ".git/index",
+		size=0,
+		archive_path=Path(".git/index"),
+	)
+	if test_excludes:
+		assert file not in files
+	else:
+		assert file in files
+
+	assert (
+		ArchiveFile(
+			path=tmp_path / "dir1/Thumbs.db",
+			size=0,
+			archive_path=Path("dir1/Thumbs.db"),
+		)
+		in files
+	)
+
+	assert (
+		ArchiveFile(
+			path=tmp_path / "dir2/empty_dir",
+			size=0,
+			archive_path=Path("dir2/empty_dir"),
+		)
+		in files
+	)
+
+	file = ArchiveFile(
+		path=tmp_path / "dir2/file3.txt",
+		size=0,
+		archive_path=Path("dir2/file3.txt"),
+	)
+	if test_excludes:
+		assert file not in files
+	else:
+		assert file in files
+
+	if follow_symlinks:
+		assert (
+			ArchiveFile(
+				path=tmp_path / "dir2/link_to_dir1/Thumbs.db",
+				size=0,
+				archive_path=Path("dir2/link_to_dir1/Thumbs.db"),
+			)
+			in files
+		)
+	else:
+		assert (
+			ArchiveFile(
+				path=tmp_path / "dir2/link_to_dir1",
+				size=0,
+				archive_path=Path("dir2/link_to_dir1"),
+			)
+			in files
+		)
+
+	file = ArchiveFile(
+		path=tmp_path / "link_to_file2.txt",
+		size=8 if follow_symlinks else 0,
+		archive_path=Path("link_to_file2.txt"),
+	)
+	if test_excludes:
+		assert file not in files
+	else:
+		assert file in files
+
+	if test_defect_link:
+		assert (
+			ArchiveFile(
+				path=tmp_path / "link_to_non_existing_file",
+				size=0,
+				archive_path=Path("link_to_non_existing_file"),
+			)
+			in files
+		)
+
+
 # Cannot use function scoped fixtures with hypothesis
 @pytest.mark.linux
 @settings(deadline=10_000)
@@ -83,7 +226,8 @@ def test_archive_hypothesis(filename: str, data: bytes, internal: bool, compress
 		file_path.write_bytes(data)
 		archive = tmp_path / f"archive.tar.{compression}"
 		create_archive = create_archive_internal if internal else create_archive_external
-		create_archive(archive, list(source.glob("*")), source, compression=compression)
+		files = list(get_archive_files(source))
+		create_archive(archive, files, compression=compression)
 		destination = tmp_path / "destination"
 		extract_archive = extract_archive_internal if internal else extract_archive_external
 		extract_archive(archive, destination)
@@ -113,14 +257,13 @@ def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 		archive = tmp_path / f"archive.tar.{compression}"
 		progress_listener = ProgressListener()
 
-		create_archive_external(
-			archive, list(source.glob("*")), source, compression=compression, dereference=dereference, progress_listener=progress_listener
-		)
+		files = list(get_archive_files(source, follow_symlinks=dereference))
+		create_archive_external(archive, files, compression=compression, dereference=dereference, progress_listener=progress_listener)
 
-		assert progress_listener.percent_competed_vals[-1] == 100
-		for idx, val in enumerate(progress_listener.percent_competed_vals):
-			if idx + 1 < len(progress_listener.percent_competed_vals):
-				assert val <= progress_listener.percent_competed_vals[idx + 1]
+		assert progress_listener.percent_completed_vals[-1] == 100
+		for idx, val in enumerate(progress_listener.percent_completed_vals):
+			if idx + 1 < len(progress_listener.percent_completed_vals):
+				assert val <= progress_listener.percent_completed_vals[idx + 1]
 
 		# Ownership of archive should be current user group
 		assert archive.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
@@ -136,10 +279,10 @@ def test_archive_external(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 
 		extract_archive_external(archive, destination, progress_listener=progress_listener)
 
-		assert progress_listener.percent_competed_vals[-1] == 100
-		for idx, val in enumerate(progress_listener.percent_competed_vals):
-			if idx + 1 < len(progress_listener.percent_competed_vals):
-				assert val <= progress_listener.percent_competed_vals[idx + 1]
+		assert progress_listener.percent_completed_vals[-1] == 100
+		for idx, val in enumerate(progress_listener.percent_completed_vals):
+			if idx + 1 < len(progress_listener.percent_completed_vals):
+				assert val <= progress_listener.percent_completed_vals[idx + 1]
 
 		# Ownership of archive should be current user group
 		assert destination.stat().st_gid == grp.getgrnam(getpass.getuser()).gr_gid
@@ -167,24 +310,23 @@ def test_archive_internal(tmp_path: Path, compression: Literal["zstd", "bz2", "g
 		archive = tmp_path / f"archive.tar.{compression}"
 		progress_listener = ProgressListener()
 
-		create_archive_internal(
-			archive, list(source.glob("*")), source, compression=compression, dereference=dereference, progress_listener=progress_listener
-		)
+		files = list(get_archive_files(source, follow_symlinks=dereference))
+		create_archive_internal(archive, files, compression=compression, dereference=dereference, progress_listener=progress_listener)
 
-		assert progress_listener.percent_competed_vals[-1] == 100
-		for idx, val in enumerate(progress_listener.percent_competed_vals):
-			if idx + 1 < len(progress_listener.percent_competed_vals):
-				assert val <= progress_listener.percent_competed_vals[idx + 1]
+		assert progress_listener.percent_completed_vals[-1] == 100
+		for idx, val in enumerate(progress_listener.percent_completed_vals):
+			if idx + 1 < len(progress_listener.percent_completed_vals):
+				assert val <= progress_listener.percent_completed_vals[idx + 1]
 
 		destination = tmp_path / "destination"
 		progress_listener = ProgressListener()
 
 		extract_archive_internal(archive, destination, progress_listener=progress_listener)
 
-		assert progress_listener.percent_competed_vals[-1] == 100
-		for idx, val in enumerate(progress_listener.percent_competed_vals):
-			if idx + 1 < len(progress_listener.percent_competed_vals):
-				assert val <= progress_listener.percent_competed_vals[idx + 1]
+		assert progress_listener.percent_completed_vals[-1] == 100
+		for idx, val in enumerate(progress_listener.percent_completed_vals):
+			if idx + 1 < len(progress_listener.percent_completed_vals):
+				assert val <= progress_listener.percent_completed_vals[idx + 1]
 
 		for file in source.rglob("*"):
 			destination_file = destination / file.relative_to(source)
@@ -235,13 +377,13 @@ def test_syncable(
 	(source / "file1.dat").write_bytes(randbytes(100_000))
 	(source / "file2.dat").write_bytes(randbytes(10_000))
 	archive_old = tmp_path / f"archive-old.tar.{compression}"
-	create_archive_func(archive_old, list(source.glob("*")), source, compression=compression)
+	create_archive_func(archive_old, list(get_archive_files(source)), compression=compression)
 
 	# Keep file1.dat, change file2.dat
 	(source / "file2.dat").write_bytes(randbytes(10_000))
 	archive_new = tmp_path / f"archive-new.tar.{compression}"
 	zsync_new = tmp_path / f"archive-new.tar.{compression}.zsync"
-	create_archive_func(archive_new, list(source.glob("*")), source, compression=compression)
+	create_archive_func(archive_new, list(get_archive_files(source)), compression=compression)
 	create_package_zsync_file(archive_new, zsync_new)
 
 	zsync_info = read_zsync_file(zsync_new)

@@ -13,6 +13,7 @@ import pytest
 
 from opsicommon.objects import NetbootProduct
 from opsicommon.package import OpsiPackage, PackageDependency
+from opsicommon.package.archive import ArchiveProgress, ArchiveProgressListener
 from opsicommon.package.associated_files import create_package_content_file, create_package_md5_file, create_package_zsync_file
 from opsicommon.package.control_file_handling import create_product_dependencies
 from opsicommon.utils import make_temp_dir
@@ -182,18 +183,6 @@ def test_generate_control(source: str, destination: str) -> None:
 	assert package.product_properties == regenerated_package.product_properties
 
 
-@pytest.mark.parametrize("control_file_name, expected_control_file", [("control", "control.toml"), ("control.toml", "control")])
-def test_check_and_generate_control_file(control_file_name: str, expected_control_file: str) -> None:
-	control_file = TEST_DATA / control_file_name
-	test_package = OpsiPackage()
-	test_package.parse_control_file(control_file)
-	with make_temp_dir() as temp_dir:
-		copy(control_file, temp_dir / control_file_name)
-		test_package.check_and_generate_control_file(control_file)
-		expected_file = control_file.parent / expected_control_file
-		assert expected_file.exists()
-
-
 def test_control_multiline_description() -> None:
 	package = OpsiPackage()
 	package.parse_control_file(TEST_DATA / "control.toml")
@@ -316,25 +305,51 @@ def test_extract_package_memtest() -> None:
 		]
 
 
+class ProgressListener(ArchiveProgressListener):
+	def __init__(self) -> None:
+		self.percent_completed_vals: list[float] = []
+
+	def progress_changed(self, progress: ArchiveProgress) -> None:
+		# print(f"{progress.completed}/{progress.total}: {progress.percent_completed:0.1f} %")
+		self.percent_completed_vals.append(progress.percent_completed)
+
+
 @pytest.mark.parametrize(
-	"compression",
-	("zstd", "bz2", "gz"),
+	"compression, create_missing_legacy_control_file, progress",
+	(("zstd", True, True), ("bz2", False, False), ("gz", True, True)),
 )
-def test_create_package(compression: Literal["zstd", "bz2", "gz"]) -> None:
+def test_create_package(compression: Literal["zstd", "bz2", "gz"], create_missing_legacy_control_file: bool, progress: bool) -> None:
 	package = OpsiPackage()
-	test_data = TEST_DATA / "control.toml"
+	progress_listener: ProgressListener | None = None
+	if progress:
+		progress_listener = ProgressListener()
+
 	with make_temp_dir() as temp_dir:
 		for _dir in (temp_dir / "OPSI", temp_dir / "CLIENT_DATA", temp_dir / "SERVER_DATA"):
 			_dir.mkdir()
-			copy(test_data, _dir)
-		package_archive = package.create_package_archive(temp_dir, compression=compression, destination=temp_dir)
+		(temp_dir / "CLIENT_DATA" / "client_data").write_text("client_data", encoding="utf-8")
+		(temp_dir / "SERVER_DATA" / "server_data").write_text("server_data", encoding="utf-8")
+		copy(TEST_DATA / "control.toml", temp_dir / "OPSI")
+		package_archive = package.create_package_archive(
+			temp_dir,
+			compression=compression,
+			destination=temp_dir,
+			progress_listener=progress_listener,
+			create_missing_legacy_control_file=create_missing_legacy_control_file,
+		)
 		with make_temp_dir() as result_dir:
 			OpsiPackage().extract_package_archive(package_archive, result_dir)
-			result_contents = list((_dir.relative_to(result_dir) for _dir in result_dir.rglob("*")))
-			print(result_contents)
-			for part in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
-				assert (temp_dir / part).relative_to(temp_dir) in result_contents
-				assert (temp_dir / part / "control.toml").relative_to(temp_dir) in result_contents
+			print(list(result_dir.glob("**/*")))
+			assert (result_dir / "OPSI" / "control.toml").exists()
+			assert (result_dir / "CLIENT_DATA" / "client_data").exists()
+			assert (result_dir / "SERVER_DATA" / "server_data").exists()
+			assert (result_dir / "OPSI" / "control").exists() == create_missing_legacy_control_file
+
+		if progress_listener:
+			assert progress_listener.percent_completed_vals[-1] == 100
+			for idx, val in enumerate(progress_listener.percent_completed_vals):
+				if idx + 1 < len(progress_listener.percent_completed_vals):
+					assert val <= progress_listener.percent_completed_vals[idx + 1]
 
 
 @pytest.mark.parametrize("custom_only", (True, False))
@@ -395,7 +410,7 @@ def test_create_package_custom(custom_only: bool) -> None:
 			assert (result_dir / "CLIENT_DATA.custom" / "testfile4").read_text(encoding="utf-8") == "CUSTOM4"
 
 			files = [f.name for f in (result_dir / "OPSI.custom").iterdir()]
-			assert sorted(files) == ["control.toml"]
+			assert sorted(files) == ["control", "control.toml"]
 			assert "priority = 20" in (result_dir / "OPSI.custom" / "control.toml").read_text(encoding="utf-8")
 
 			if not custom_only:
