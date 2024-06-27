@@ -17,7 +17,7 @@ import subprocess
 import tarfile
 from contextlib import contextmanager
 from functools import lru_cache
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from threading import Lock
 import time
 from typing import IO, Any, Generator
@@ -46,8 +46,6 @@ def chdir(new_dir: Path) -> Generator[None, None, None]:
 CPIO_EXTRACT_COMMAND = "cpio --unconditional --extract --make-directories --quiet --no-preserve-owner --no-absolute-filenames"
 TAR_EXTRACT_COMMAND = "tar --wildcards --no-same-owner --extract --file -"
 TAR_CREATE_COMMAND = "tar --owner=nobody --group=nogroup --create --file"
-EXCLUDE_DIRS_ON_PACK_REGEX = re.compile(r"(^\.svn$)|(^\.git$)")
-EXCLUDE_FILES_ON_PACK_REGEX = re.compile(r"(~$)|(^[Tt]humbs\.db$)|(^\.[Dd][Ss]_[Ss]tore$)")
 
 
 @dataclass
@@ -329,27 +327,76 @@ def compress_command(archive: Path, compression: str) -> str:
 	raise RuntimeError(f"Unknown compression '{compression}'")
 
 
-def get_files(paths: list[Path], follow_symlinks: bool = False) -> Generator[tuple[Path, int], None, None]:
-	for path in paths:
-		if path.is_dir():
-			for root, dirnames, filenames in os.walk(path, followlinks=follow_symlinks):
-				if not filenames and not dirnames:
-					# Empty directory
-					yield Path(root), 0
-					continue
-				for filename in filenames:
-					file = Path(root) / filename
-					yield file, file.stat().st_size
+@dataclass
+class ArchiveFile:
+	path: Path
+	size: int
+	archive_path: Path | PurePosixPath
 
-		else:
-			yield path, path.stat().st_size
+	def __post_init__(self) -> None:
+		if not self.path.is_absolute():
+			self.path = self.path.absolute()
+		self.archive_path = PurePosixPath(self.archive_path.as_posix())
+		if not self.archive_path.is_absolute():
+			self.archive_path = PurePosixPath("/") / self.archive_path
+
+
+def get_archive_files(
+	base_dir: Path, follow_symlinks: bool = False, exclude_dirs: list[str] | None = None, exclude_files: list[str] | None = None
+) -> Generator[ArchiveFile, None, None]:
+	"""
+	Search files in base_dir and return a list of ArchiveFile objects.
+	Links and empty directories are also included.
+
+	:param base_dir: The base directory to search in.
+	:param follow_symlinks: Follow symlinks?
+	:param exclude_dirs: List of directory globs to exclude.
+	:param exclude_files: List of file globs to exclude.
+	"""
+	if exclude_dirs is None:
+		exclude_dirs = ["/.svn", "/.git"]
+	if exclude_files is None:
+		exclude_files = ["*~", "[Tt]humbs.db", ".[Dd][Ss]_[Ss]tore"]
+
+	for root, dirnames, filenames in os.walk(base_dir, followlinks=follow_symlinks, topdown=True):
+		print(root, filenames)
+		root_path = Path(root)
+		if exclude_dirs:
+			for dirname in list(dirnames):
+				archive_path = Path("/") / (root_path / dirname).relative_to(base_dir)
+				if any(archive_path.match(pat) for pat in exclude_dirs):
+					logger.debug("Directory '%s' is excluded", archive_path)
+					dirnames.remove(dirname)
+
+		if not filenames and not dirnames:
+			# Empty directory
+			yield ArchiveFile(path=root_path, archive_path=root_path.relative_to(base_dir), size=0)
+			continue
+		if not follow_symlinks:
+			for dirname in dirnames:
+				abs_path = root_path / dirname
+				archive_path = abs_path.relative_to(base_dir)
+				if abs_path.is_symlink():
+					if exclude_dirs:
+						if any(archive_path.match(pat) for pat in exclude_dirs):
+							logger.debug("Symlink to directory '%s' is excluded", abs_path)
+							continue
+					yield ArchiveFile(path=abs_path, archive_path=archive_path, size=0)
+		for filename in filenames:
+			abs_path = root_path / filename
+			archive_path = abs_path.relative_to(base_dir)
+			if exclude_files:
+				if any(archive_path.match(pat) for pat in exclude_files):
+					logger.debug("File '%s' is excluded", abs_path)
+					continue
+			size = 0 if abs_path.is_symlink() and not follow_symlinks else abs_path.stat().st_size
+			yield ArchiveFile(path=abs_path, archive_path=archive_path, size=size)
 
 
 # Warning: this is specific for linux!
 def create_archive_external(
 	archive: Path,
-	sources: list[Path],
-	base_dir: Path,
+	files: list[ArchiveFile],
 	*,
 	compression: str | None = None,
 	dereference: bool = False,
@@ -360,7 +407,17 @@ def create_archive_external(
 	from fcntl import fcntl, F_GETFL, F_SETFL
 
 	archive = archive.absolute()
-	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
+	logger.info("Creating archive '%s'", archive)
+
+	base_dir = None
+	for file in files:
+		file_base_dir = Path(*(file.path.parts[: -1 * len(file.archive_path.parts) + 1]))
+		if base_dir and base_dir != file_base_dir:
+			raise ValueError(f"Files must be in the same base directory, found: {base_dir} and {file_base_dir}")
+		base_dir = file_base_dir
+	if not base_dir:
+		raise ValueError("No files to archive")
+
 	if compression == "bz2":
 		logger.warning("Creating unsyncable package (no zsync or rsync support)")
 
@@ -375,9 +432,8 @@ def create_archive_external(
 	if compression:
 		cmd += f" | {compress_command(archive, compression)}"
 
-	files = list(get_files(sources, follow_symlinks=dereference))
 	logger.trace("Files: %r", files)
-	total_size = sum(size for _, size in files)
+	total_size = sum(f.size for f in files)
 	logger.info("Adding %d files with a total size of %d", len(files), total_size)
 
 	progress: ArchiveProgress | None = None
@@ -418,8 +474,7 @@ def create_archive_external(
 		fcntl(fileno, F_SETFL, flags | os.O_NONBLOCK)
 		stderr = ""
 		for file in files:
-			file_path = file[0].relative_to(base_dir)
-			file_str = str(file_path)
+			file_str = str(file.archive_path).lstrip("/")
 			logger.trace("Adding file: '%s'", file_str)
 			if "\n" in file_str:
 				raise ValueError(f"Invalid filename '{file_str}'")
@@ -450,15 +505,15 @@ def create_archive_external(
 
 def create_archive_internal(
 	archive: Path,
-	sources: list[Path],
-	base_dir: Path,
+	files: list[ArchiveFile],
+	*,
 	compression: str | None = None,
 	dereference: bool = False,
 	progress_listener: ArchiveProgressListener | None = None,
 ) -> None:
 	archive = archive.absolute()
+	logger.info("Creating archive '%s'", archive)
 
-	logger.info("Creating archive %s from base_dir %s", archive, base_dir)
 	if compression == "bz2":
 		logger.warning("Creating unsyncable package (no zsync or rsync support)")
 
@@ -470,9 +525,8 @@ def create_archive_internal(
 	elif compression == "gz":
 		mode = "w|gz"
 
-	files = list(get_files(sources, follow_symlinks=dereference))
 	logger.trace("Files: %r", files)
-	total_size = sum(size for _, size in files)
+	total_size = sum(f.size for f in files)
 	logger.info("Adding %d files with a total size of %d", len(files), total_size)
 
 	progress: ArchiveProgress | None = None
@@ -493,26 +547,25 @@ def create_archive_internal(
 			with compressor.stream_writer(archive_file) as zstd_writer:
 				with ProgressTarFile.open(fileobj=zstd_writer, dereference=dereference, mode="w:") as tar_object:  # type: ignore[call-arg]
 					for file in files:
-						tar_object.add(file[0], arcname=file[0].relative_to(base_dir), filter=set_tarinfo)
+						tar_object.add(file.path, arcname=file.archive_path, filter=set_tarinfo)
 						if progress:
-							progress.advance(file[1])
+							progress.advance(file.size)
 			if progress:
 				progress.set_completed(total_size)
 		return
 
 	with ProgressTarFile.open(name=str(archive), mode=mode, dereference=dereference, progress=progress) as tar_object:  # type: ignore[call-arg]
 		for file in files:
-			tar_object.add(file[0], arcname=file[0].relative_to(base_dir), filter=set_tarinfo)
+			tar_object.add(file.path, arcname=file.archive_path, filter=set_tarinfo)
 			if progress:
-				progress.advance(file[1])
+				progress.advance(file.size)
 		if progress:
 			progress.set_completed(total_size)
 
 
 def create_archive(
 	archive: Path,
-	sources: list[Path],
-	base_dir: Path,
+	files: list[ArchiveFile],
 	*,
 	compression: str | None = None,
 	dereference: bool = False,
@@ -520,8 +573,6 @@ def create_archive(
 ) -> None:
 	if compression == "gz" and is_linux() and use_pigz():
 		return create_archive_external(
-			archive, sources, base_dir, compression=compression, dereference=dereference, progress_listener=progress_listener
+			archive, files, compression=compression, dereference=dereference, progress_listener=progress_listener
 		)
-	return create_archive_internal(
-		archive, sources, base_dir, compression=compression, dereference=dereference, progress_listener=progress_listener
-	)
+	return create_archive_internal(archive, files, compression=compression, dereference=dereference, progress_listener=progress_listener)
