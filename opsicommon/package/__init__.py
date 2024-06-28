@@ -9,7 +9,7 @@ opsi package class and associated methods
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 import tomlkit
 
@@ -35,6 +35,7 @@ from opsicommon.package.control_file_handling import (
 from opsicommon.package.legacy_control_file import LegacyControlFile
 from opsicommon.utils import compare_versions, make_temp_dir
 
+PACKAGE_DIR_TYPES = Literal["OPSI", "CLIENT_DATA", "SERVER_DATA"]
 
 logger = get_logger("opsicommon.package")
 
@@ -238,9 +239,7 @@ class OpsiPackage:
 			(control_file.parent / "changelog.txt").write_text(self.changelog.strip(), encoding="utf-8")
 		control_file.write_text(tomlkit.dumps(data_dict))
 
-	def get_dirs(
-		self, base_dir: Path, custom_name: str | None, custom_only: bool
-	) -> dict[Literal["OPSI", "CLIENT_DATA", "SERVER_DATA"], list[Path]]:
+	def get_dirs(self, base_dir: Path, custom_name: str | None, custom_only: bool) -> dict[PACKAGE_DIR_TYPES, list[Path]]:
 		"""
 		Returning a dictionary containing directory types as keys and a list of directory paths as values.
 		The order of the paths matters, because custom dirs have precedence.
@@ -248,21 +247,22 @@ class OpsiPackage:
 		if custom_only and not custom_name:
 			raise ValueError("custom_only requires custom_name to be set.")
 
-		dirs = {}
+		dirs: dict[PACKAGE_DIR_TYPES, list[Path]] = {}
 		custom_dirs = 0
 		possible_control_dirs = []
 		dir_names_found = []
 		for extension in (f".{custom_name}", ""):
 			possible_control_dirs.append(f"OPSI{extension}")
-			for dir_type in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
-				dir_path = base_dir / f"{dir_type}{extension}"
+			for dir_type_str in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
+				dir_path = base_dir / f"{dir_type_str}{extension}"
 				if dir_path.is_dir():
+					dir_type = cast(PACKAGE_DIR_TYPES, dir_type_str)
 					dir_names_found.append(dir_path.name)
 					cur_dir_paths = dirs.get(dir_type, [])
 					if not extension and custom_only:
 						# With custom only the default CLIENT_DATA and SERVER_DATA directories are skipped
 						# The default OPSI directory must only be used if no custom directory is found
-						if cur_dir_paths or dir_type != "OPSI":
+						if cur_dir_paths or dir_type_str != "OPSI":
 							continue
 					dirs[dir_type] = cur_dir_paths + [dir_path]
 					if extension:
