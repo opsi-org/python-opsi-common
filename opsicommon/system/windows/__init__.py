@@ -71,5 +71,6 @@ def lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: fl
 	_lock_file(file=file, exclusive=exclusive, timeout=timeout)
 	try:
 		yield
+		file.flush()
 	finally:
 		_unlock_file(file=file)
