@@ -9,7 +9,7 @@ opsi package class and associated methods
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import List, Literal
+from typing import Literal
 
 import tomlkit
 
@@ -138,7 +138,7 @@ class OpsiPackage:
 	def find_and_parse_control_file(self, search_dir: Path) -> Path:
 		opsi_dirs = []
 		for _dir in search_dir.glob("OPSI*"):
-			if _dir.is_dir() and _dir.name == "OPSI" or _dir.name.startswith("OPSI."):
+			if _dir.is_dir() and (_dir.name == "OPSI" or _dir.name.startswith("OPSI.")):
 				opsi_dirs.append(_dir)
 
 		# Sort custom first
@@ -238,16 +238,45 @@ class OpsiPackage:
 			(control_file.parent / "changelog.txt").write_text(self.changelog.strip(), encoding="utf-8")
 		control_file.write_text(tomlkit.dumps(data_dict))
 
-	def get_dirs(self, base_dir: Path, custom_name: str | None, custom_only: bool) -> List[Path]:
-		dirs = [base_dir / "CLIENT_DATA", base_dir / "SERVER_DATA", base_dir / "OPSI"]
-		if custom_name:
-			custom_dirs = [base_dir / f"{_dir.name}.{custom_name}" for _dir in dirs]
-			if not any(dir.exists() for dir in custom_dirs):
-				raise RuntimeError(f"No directories matching '{custom_name}' found.")
-			if custom_only:
-				dirs = custom_dirs
-			else:
-				dirs.extend(custom_dirs)
+	def get_dirs(
+		self, base_dir: Path, custom_name: str | None, custom_only: bool
+	) -> dict[Literal["OPSI", "CLIENT_DATA", "SERVER_DATA"], list[Path]]:
+		"""
+		Returning a dictionary containing directory types as keys and a list of directory paths as values.
+		The order of the paths matters, because custom dirs have precedence.
+		"""
+		if custom_only and not custom_name:
+			raise ValueError("custom_only requires custom_name to be set.")
+
+		dirs = {}
+		custom_dirs = 0
+		possible_control_dirs = []
+		dir_names_found = []
+		for extension in (f".{custom_name}", ""):
+			possible_control_dirs.append(f"OPSI{extension}")
+			for dir_type in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
+				dir_path = base_dir / f"{dir_type}{extension}"
+				if dir_path.is_dir():
+					dir_names_found.append(dir_path.name)
+					cur_dir_paths = dirs.get(dir_type, [])
+					if not extension and custom_only:
+						# With custom only the default CLIENT_DATA and SERVER_DATA directories are skipped
+						# The default OPSI directory must only be used if no custom directory is found
+						if cur_dir_paths or dir_type != "OPSI":
+							continue
+					dirs[dir_type] = cur_dir_paths + [dir_path]
+					if extension:
+						custom_dirs += 1
+
+		if custom_name and not custom_dirs:
+			raise RuntimeError(
+				f"No directories matching custom name '{custom_name}' found in '{base_dir}', available directories: {dir_names_found}"
+			)
+
+		if not dirs.get("OPSI"):
+			custom_dir_text = " and ".join(possible_control_dirs)
+			raise RuntimeError(f"{custom_dir_text} directory not found in '{base_dir}', available directories: {dir_names_found}")
+
 		return dirs
 
 	# compression zstd, gz or bz2
@@ -265,28 +294,8 @@ class OpsiPackage:
 		create_missing_legacy_control_file: bool = True,
 		create_missing_toml_control_file: bool = False,
 	) -> Path:
-		dirs: list[Path] = []
-		for _dir in self.get_dirs(base_dir, custom_name, custom_only):
-			dir_type = _dir.name.split(".", 1)[0]
-			if dir_type not in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
-				logger.warning("Skipping invalid directory '%s'", _dir)
-				continue
-
-			if not _dir.exists():
-				logger.info("Directory '%s' does not exist", _dir)
-				continue
-
-			dirs.append(_dir)
-
-		# Prefer OPSI.<custom>
-		opsi_dirs = [d for d in sorted(dirs, reverse=True) if d.name.startswith("OPSI")]
-		if not opsi_dirs:
-			raise ValueError(f"No OPSI directory in '{[d.name for d in dirs]}'")
-		opsi_dir = opsi_dirs[0]
-
-		if not opsi_dir.exists():
-			raise FileNotFoundError(f"Did not find OPSI directory '{opsi_dir}'")
-
+		dirs = self.get_dirs(base_dir, custom_name, custom_only)
+		opsi_dir = dirs["OPSI"][0]
 		primary_control_file = self.find_and_parse_control_file(opsi_dir)
 
 		destination = (destination or Path()).absolute()
@@ -330,13 +339,13 @@ class OpsiPackage:
 
 		archives = []
 		files_by_archive_name: dict[str, list[ArchiveFile]] = {}
-		for _dir in dirs:
-			dir_type = _dir.name.split(".", 1)[0]
-			archive_files = list(get_archive_files(_dir, follow_symlinks=not dereference))
-			if not archive_files and dir_type in ("CLIENT_DATA", "SERVER_DATA"):
-				logger.debug("Skipping empty dir '%s'", _dir)
-				continue
-			files_by_archive_name[_dir.name] = archive_files
+		for dir_type, dir_paths in dirs.items():
+			for dir_path in dir_paths:
+				archive_files = list(get_archive_files(dir_path, follow_symlinks=not dereference))
+				if not archive_files and dir_type in ("CLIENT_DATA", "SERVER_DATA"):
+					logger.debug("Skipping empty dir '%s'", dir_path)
+					continue
+				files_by_archive_name[dir_path.name] = archive_files
 
 		progress_adapter: ProgressAdapter | None = None
 		if progress_listener:
