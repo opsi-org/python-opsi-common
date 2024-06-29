@@ -27,13 +27,9 @@ def lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: fl
 	"""
 	lock_flags = LOCK_NB | (LOCK_EX if exclusive else LOCK_SH)
 	start = time()
-	attempt = 0
 	while True:
-		attempt += 1
 		try:
 			flock(file, lock_flags)
-			if attempt > 1:
-				sleep(0.1)
 			break
 		except (IOError, BlockingIOError):
 			if time() >= start + timeout:
