@@ -8,29 +8,41 @@ system.posix.subprocess
 
 import os
 import sys
-
+from pathlib import Path
 from opsicommon.logging import get_logger
 
-LD_LIBRARY_EXCLUDE_LIST = ["/usr/lib/opsiclientd"]
+LD_LIBRARY_EXCLUDE_LIST = ["/usr/lib/opsiclientd", "/usr/lib/opsiconfd"]
 
 logger = get_logger()
+
+
+def _get_executable_path() -> Path:
+	return Path(sys.executable).resolve().parent
 
 
 def get_subprocess_environment(env: dict[str, str] | None = None) -> dict[str, str]:
 	if env is None:
 		env = os.environ.copy()
 
+	executable_path = _get_executable_path()
 	if getattr(sys, "frozen", False):
 		# Running in pyinstaller / frozen
-		lp_orig = env.get("LD_LIBRARY_PATH_ORIG")
-		if lp_orig is not None:
-			lp_orig = os.pathsep.join([entry for entry in lp_orig.split(os.pathsep) if entry not in LD_LIBRARY_EXCLUDE_LIST])
-			# Restore the original, unmodified value
-			logger.debug("Setting original LD_LIBRARY_PATH '%s' in env for subprocess", lp_orig)
-			env["LD_LIBRARY_PATH"] = lp_orig
+		ldlp = []
+		for entry in (env.get("LD_LIBRARY_PATH_ORIG") or env.get("LD_LIBRARY_PATH") or "").split(os.pathsep):
+			entry = entry.strip()
+			if not entry:
+				continue
+			if entry in LD_LIBRARY_EXCLUDE_LIST:
+				continue
+			entry_path = Path(entry)
+			if executable_path.is_relative_to(entry_path):
+				continue
+			ldlp.append(entry)
+		if ldlp:
+			ldlp_str = os.pathsep.join(ldlp)
+			logger.debug("Setting LD_LIBRARY_PATH to '%s' in env for subprocess", ldlp_str)
+			env["LD_LIBRARY_PATH"] = ldlp_str
 		else:
-			# This happens when LD_LIBRARY_PATH was not set.
-			# Remove the env var as a last resort
 			logger.debug("Removing LD_LIBRARY_PATH from env for subprocess")
 			env.pop("LD_LIBRARY_PATH", None)
 
