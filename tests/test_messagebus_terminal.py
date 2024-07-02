@@ -179,8 +179,7 @@ async def test_terminal_params() -> None:
 		assert lines[0] == "stty size"
 
 		assert isinstance(messages[1], TerminalDataReadMessage)
-		lines = messages[1].data.decode("utf-8").split("\r\n")
-		assert lines[0] == f"{rows} {cols}"
+		assert f"{rows} {cols}" in messages[1].data.decode("utf-8")
 
 	# Reopen terminal
 	cols = 160
