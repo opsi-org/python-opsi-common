@@ -39,9 +39,7 @@ from .helpers import environment
 		("", "/some/path:/usr/lib/opsiclientd:/usr/lib/opsiconfd", "/usr/lib/opsi_component/bin/executable", "/some/path"),
 	),
 )
-def test_ld_library_path(
-	ld_library_path_orig: str, ld_library_path: str, executable_path: str, expected_ld_library_path: str
-) -> None:
+def test_ld_library_path(ld_library_path_orig: str, ld_library_path: str, executable_path: str, expected_ld_library_path: str) -> None:
 	frozen = getattr(sys, "frozen", False)
 	setattr(sys, "frozen", True)
 	try:
