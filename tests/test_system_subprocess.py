@@ -45,7 +45,7 @@ def test_ld_library_path(ld_library_path_orig: str, ld_library_path: str, execut
 	try:
 		with pytest.deprecated_call():
 			monkeypatch_subprocess_for_frozen()
-		env_vars = {}
+		env_vars = {"_MEIPASS2": "/tmp/foobar"}
 		if ld_library_path_orig is not None:
 			env_vars["LD_LIBRARY_PATH_ORIG"] = ld_library_path_orig
 		if ld_library_path is not None:
@@ -58,9 +58,11 @@ def test_ld_library_path(ld_library_path_orig: str, ld_library_path: str, execut
 				proc_env = ps_proc.environ()
 				assert proc_env.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
 				assert proc_env.get("LD_LIBRARY_PATH") == expected_ld_library_path
+				assert proc_env.get("_MEIPASS2") is None
 				proc.wait()
 			assert os.environ.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
 			assert os.environ.get("LD_LIBRARY_PATH") == ld_library_path
+			assert os.environ.get("_MEIPASS2") == "/tmp/foobar"
 	finally:
 		setattr(sys, "frozen", frozen)
 
