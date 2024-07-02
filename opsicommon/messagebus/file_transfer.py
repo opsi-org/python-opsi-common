@@ -284,6 +284,7 @@ async def process_messagebus_message(
 
 	with file_transfers_lock:
 		file_transfer = file_transfers.get(message.file_id)
+	logger.trace("file_transfer: %s", file_transfer)
 
 	try:
 		if isinstance(message, FileUploadRequestMessage):

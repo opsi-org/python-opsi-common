@@ -340,6 +340,7 @@ async def process_messagebus_message(
 
 	with terminals_lock:
 		terminal = terminals.get(message.terminal_id)
+	logger.trace("terminal: %s", terminal)
 
 	create_new = not terminal
 	try:

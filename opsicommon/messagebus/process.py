@@ -237,6 +237,7 @@ async def process_messagebus_message(
 
 	with processes_lock:
 		process = processes.get(message.process_id)
+	logger.trace("process: %s", process)
 
 	try:
 		if isinstance(message, ProcessStartRequestMessage):
