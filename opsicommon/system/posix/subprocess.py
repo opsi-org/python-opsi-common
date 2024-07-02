@@ -45,5 +45,6 @@ def get_subprocess_environment(env: dict[str, str] | None = None) -> dict[str, s
 		else:
 			logger.debug("Removing LD_LIBRARY_PATH from env for subprocess")
 			env.pop("LD_LIBRARY_PATH", None)
+		env.pop("_MEIPASS2", None)
 
 	return env
