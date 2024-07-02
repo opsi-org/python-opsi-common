@@ -9,8 +9,9 @@ import subprocess
 import sys
 
 import psutil
+from pathlib import Path
 import pytest
-
+from unittest.mock import patch
 from opsicommon.system.subprocess import patch_popen
 from opsicommon.utils import monkeypatch_subprocess_for_frozen
 
@@ -44,18 +45,19 @@ def test_ld_library_path(ld_library_path_orig: str, ld_library_path: str, execut
 	try:
 		with pytest.deprecated_call():
 			monkeypatch_subprocess_for_frozen()
-		ld_library_path_orig = "/orig_path"
-		ld_library_path = "/path"
-		with environment(LD_LIBRARY_PATH_ORIG=ld_library_path_orig, LD_LIBRARY_PATH=ld_library_path):
+		env_vars = {}
+		if ld_library_path_orig is not None:
+			env_vars["LD_LIBRARY_PATH_ORIG"] = ld_library_path_orig
+		if ld_library_path is not None:
+			env_vars["LD_LIBRARY_PATH"] = ld_library_path
+		with patch("opsicommon.system.posix.subprocess._get_executable_path", lambda: Path(executable_path)), environment(**env_vars):
 			assert os.environ.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
 			assert os.environ.get("LD_LIBRARY_PATH") == ld_library_path
 			with subprocess.Popen(["sleep", "1"]) as proc:
 				ps_proc = psutil.Process(proc.pid)
 				proc_env = ps_proc.environ()
 				assert proc_env.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
-				assert proc_env.get("LD_LIBRARY_PATH") == ld_library_path_orig
-				assert os.environ.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
-				assert os.environ.get("LD_LIBRARY_PATH") == ld_library_path
+				assert proc_env.get("LD_LIBRARY_PATH") == expected_ld_library_path
 				proc.wait()
 			assert os.environ.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
 			assert os.environ.get("LD_LIBRARY_PATH") == ld_library_path
