@@ -152,7 +152,7 @@ def prepare_proxy_environment(
 ) -> Session:
 	"""
 	proxy_url can be:
-	* an explicid url like http://10.10.10.1:8080
+	* an explicid url like http://<address>:<port>
 	* the string "system" in which case the os environment determines proxy behaviour
 	* emptystring or None to disable proxy usage.
 	If session is given its proxy settings are adapted. Else a new session is created and returned.
