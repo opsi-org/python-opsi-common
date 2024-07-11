@@ -8,7 +8,6 @@ This file is part of opsi - https://www.opsi.org
 
 from __future__ import annotations
 
-import os
 import shlex
 from asyncio import Task, get_running_loop, sleep, wait_for
 from contextlib import nullcontext
@@ -35,6 +34,7 @@ from opsicommon.messagebus.message import (
 	TerminalResizeRequestMessage,
 )
 from opsicommon.system.info import is_windows
+from opsicommon.system.subprocess import get_subprocess_environment
 
 DEFAULT_ROWS = 30
 DEFAULT_COLUMNS = 120
@@ -61,7 +61,7 @@ if is_windows():
 			# Therefore we do not import at toplevel
 			from winpty import PtyProcess  # type: ignore[import]
 
-			sp_env = os.environ.copy()
+			sp_env = get_subprocess_environment()
 			sp_env.update(env or {})
 
 			process = PtyProcess.spawn(shlex.split(shell), dimensions=(rows, cols), env=sp_env, cwd=cwd)
@@ -98,8 +98,6 @@ else:
 		logger.info("Starting new pty with shell %r, rows %r, cols %r, cwd %r", shell, rows, cols, cwd)
 
 		from ptyprocess import PtyProcess  # type: ignore[import]
-
-		from opsicommon.system.posix.subprocess import get_subprocess_environment
 
 		sp_env = get_subprocess_environment()
 		sp_env.update(env or {})
