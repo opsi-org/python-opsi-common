@@ -7,11 +7,12 @@ test_system_network
 import os
 import subprocess
 import sys
+from pathlib import Path
+from unittest.mock import patch
 
 import psutil
-from pathlib import Path
 import pytest
-from unittest.mock import patch
+
 from opsicommon.system.subprocess import patch_popen
 from opsicommon.utils import monkeypatch_subprocess_for_frozen
 
@@ -50,7 +51,7 @@ def test_ld_library_path(ld_library_path_orig: str, ld_library_path: str, execut
 			env_vars["LD_LIBRARY_PATH_ORIG"] = ld_library_path_orig
 		if ld_library_path is not None:
 			env_vars["LD_LIBRARY_PATH"] = ld_library_path
-		with patch("opsicommon.system.posix.subprocess._get_executable_path", lambda: Path(executable_path)), environment(**env_vars):
+		with patch("opsicommon.system.subprocess._get_executable_path", lambda: Path(executable_path)), environment(**env_vars):
 			assert os.environ.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
 			assert os.environ.get("LD_LIBRARY_PATH") == ld_library_path
 			with subprocess.Popen(["sleep", "1"]) as proc:
