@@ -89,6 +89,7 @@ MIN_VERSION_MSGPACK = version.parse("4.2.0.171")
 MIN_VERSION_LZ4 = version.parse("4.2.0.171")
 MIN_VERSION_GZIP = version.parse("4.2.0.0")
 MIN_VERSION_SESSION_API = version.parse("4.2.0.285")
+MIN_VERSION_CA_CERTS = version.parse("4.3.18.15")
 
 RPC_TIMEOUTS = {
 	"depot_installPackage": 4 * 3600,
@@ -270,7 +271,7 @@ class ServiceClient:
 		        If ca_cert_file is present: Verify if accept_all is not set.
 		        After every successful connection: Fetch opsi ca from service and update ca_cert_file.
 		    replace_expired_ca:
-		        To use in combination with fetch_opsi_ca.
+		        To use in combination with fetch_ca_certs.
 		        If opsi_ca from ca_cert_file is expired => accept_all.
 		"""
 
@@ -596,22 +597,23 @@ class ServiceClient:
 
 			logger.info("CA cert file '%s' successfully updated (%d certificates total)", self._ca_cert_file, len(certs))
 
-	def fetch_opsi_ca(self, skip_verify: bool = False) -> None:
+	def fetch_ca_certs(self, skip_verify: bool = False) -> None:
 		if not self._ca_cert_file:
 			raise RuntimeError("CA cert file not set")
 
 		verify = False if skip_verify else self._session.verify
 		logger.info("Fetching opsi CA from service (verify=%s)", verify)
 
+		pem_name = "ca-certs.pem" if self.server_version >= MIN_VERSION_CA_CERTS else "opsi-ca-cert.pem"
 		try:
-			response = self._session.get(f"{self.base_url}/ssl/opsi-ca-cert.pem", timeout=(self._connect_timeout, 5), verify=verify)
+			response = self._session.get(f"{self.base_url}/ssl/{pem_name}", timeout=(self._connect_timeout, 5), verify=verify)
 			response.raise_for_status()
 		except Exception as err:
-			raise OpsiServiceError(f"Failed to fetch opsi-ca-cert.pem: {err}") from err
+			raise OpsiServiceError(f"Failed to fetch {pem_name}: {err}") from err
 
 		ca_certs = self.certs_from_pem(response.text)
 		if not ca_certs:
-			raise OpsiServiceError("Failed to fetch opsi-ca-cert.pem: No certificates in response")
+			raise OpsiServiceError(f"Failed to fetch {pem_name}: No certificates in response")
 
 		if ServiceVerificationFlags.UIB_OPSI_CA in self._verify:
 			ca_certs.extend(self.certs_from_pem(UIB_OPSI_CA))
@@ -854,7 +856,7 @@ class ServiceClient:
 
 			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file and not self.service_is_opsiclientd():
 				try:
-					self.fetch_opsi_ca(skip_verify=not verify)
+					self.fetch_ca_certs(skip_verify=not verify)
 				except Exception as err:
 					logger.error(err, exc_info=True)
 
