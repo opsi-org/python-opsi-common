@@ -213,7 +213,8 @@ class FileDownload(FileTransfer):
 			sender=sender,
 			back_channel=back_channel,
 		)
-		self._file_download_request = file_download_request
+		# redundant?
+		# self._file_download_request = file_download_request
 		self.size: int | None = None
 		self.new_lines = []
 
@@ -258,25 +259,20 @@ class FileDownload(FileTransfer):
 		assert isinstance(self._file_request.chunk_size, int)
 		assert isinstance(self.size, int)
 
-		self.wait_event = asyncio.Event()
-		self.kill = False
-
 		number = 0
 		# start read
-		file = self.read_file()
+		file_data_stream = self.follow_file()
 		while True:
-			print("started loop")
-			data = await anext(file)
-
+			try:
+				data = await anext(file_data_stream)
+			except StopAsyncIteration:
+				self._error(StopAsyncIteration)
+				break
 			if self._should_stop:
 				if not self._completed:
 					await self._error("File transfer stopped before completion")
 				break
-			print(f"number {number}")
-			print(f"chunk_size {self._file_request.chunk_size}")
-			print(f"size {self.size}")
 			if not self._file_request.chunk_size * (number + 1) < self.size:
-				print("end")
 				last = True
 				self._should_stop = True
 			chunk_message = FileChunkMessage(
@@ -289,22 +285,22 @@ class FileDownload(FileTransfer):
 			)
 			await self._send_message(chunk_message)
 			number += 1
-			self.wait_event.set()
-		print("here")
 		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
 
 	async def read_file(self) -> Any:
-		print("started read")
-		with open(self._file_request.path, "rb") as file:
-			while (not self._should_stop) or self.kill:
-				tmp = file.read(self._file_request.chunk_size)
-				if tmp:
-					print(tmp)
-					yield tmp
-					await self.wait_event.wait()
-					print("go on")
-				else:
-					asyncio.sleep(1)
+		# todo
+		# check if neccesary
+
+	async def follow_file(self) -> Any:
+		print("started tailing file")
+		try:
+			with open(self._file_request.path, "rb") as file:
+				while True:
+					tmp = file.read(self._file_request.chunk_size)
+					if tmp != b"":
+						yield tmp
+		except IOError:
+			self._error(IOError)
 
 
 async def process_messagebus_message(
