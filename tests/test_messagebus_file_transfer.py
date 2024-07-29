@@ -238,3 +238,57 @@ async def test_file_download(tmp_path: Path) -> None:
 			assert data_message.last == (num == no_of_chunk - 1)
 			assert data_message.data == file.read(chunk_size)
 			num += 1
+
+
+# Follow Tests
+async def test_file_follow(tmp_path: Path) -> None:
+	sender = "test_sender"
+	channel = "test_channel"
+	back_channel = "test_back_channel"
+	chunk_size = 1000
+	message_sender = MessageSender()
+	test_file = str(tmp_path / "test_file.txt")
+
+	# size of followed file should be 'none'
+	# test_file_size = gen_test_file(file=test_file, chunk_size=chunk_size)
+
+	file_follow_request = FileDownloadRequestMessage(
+		sender=sender,
+		channel=channel,
+		back_channel=back_channel,
+		chunk_size=chunk_size,
+		path=test_file,
+		follow=True,
+	)
+	await process_messagebus_message(
+		file_follow_request, send_message=message_sender.send_message, sender=sender, back_channel=back_channel
+	)
+
+	messages = await message_sender.wait_for_messages(count=1, true_count=True)
+	assert isinstance(messages[0], FileDownloadResponseMessage)
+	assert messages[0].sender == sender
+	assert messages[0].back_channel == channel
+	assert messages[0].size == None
+
+	data_messages = await message_sender.wait_for_messages(count=no_of_chunk)
+
+	with Path(test_file).open("rb") as file:
+		num = 0
+		last_chunk = file.read(chunk_size)
+		transmission_finished = False
+		while not transmission_finished:
+			# todo
+			# remove for loop
+			# should use anext or smt simmilar
+			for data_message in data_messages:
+				if last_chunk == b"":
+					transmission_finished = True
+					break
+				current_chunk = file.read(chunk_size)
+				assert isinstance(data_message, FileChunkMessage)
+				assert data_message.channel == back_channel
+				assert data_message.number == num
+				assert data_message.last is False
+				assert data_message.data == current_chunk
+				last_chunk = current_chunk
+				num += 1
