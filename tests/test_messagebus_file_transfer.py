@@ -270,8 +270,8 @@ async def test_file_follow(tmp_path: Path) -> None:
 
 	data_messages = await message_sender.wait_for_messages(count=no_of_chunks)
 
+	num = 0
 	with Path(test_file).open("rb") as file:
-		num = 0
 		for data_message in data_messages:
 			assert isinstance(data_message, FileChunkMessage)
 			assert data_message.channel == back_channel
@@ -279,3 +279,15 @@ async def test_file_follow(tmp_path: Path) -> None:
 			assert data_message.last is False
 			assert data_message.data == file.read(chunk_size)
 			num += 1
+
+	test_text = "moin moin"
+
+	with Path(test_file).open("a+") as file:
+		file.write(test_text)
+
+	new_data_message = await message_sender.wait_for_messages(count=1)
+	assert isinstance(new_data_message[0], FileChunkMessage)
+	assert new_data_message[0].channel == back_channel
+	assert new_data_message[0].number == num
+	assert new_data_message[0].last is False
+	assert new_data_message[0].data == bytes(test_text, encoding="UTF-8")
