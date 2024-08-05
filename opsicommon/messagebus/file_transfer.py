@@ -14,6 +14,8 @@ from threading import Lock
 from time import time
 from typing import Any, AsyncGenerator, Callable
 
+import aiofiles
+
 from opsicommon.logging import get_logger
 from opsicommon.messagebus import CONNECTION_SESSION_CHANNEL, CONNECTION_USER_CHANNEL
 from opsicommon.messagebus.message import (
@@ -296,10 +298,10 @@ class FileDownload(FileTransfer):
 		assert isinstance(self._file_request.chunk_size, int)
 		logger.notice("started reading file")
 		try:
-			with open(self._file_request.path, "rb") as file:
-				last_tmp = file.read(self._file_request.chunk_size)
+			async with aiofiles.open(self._file_request.path, "rb") as file:
+				last_tmp = await file.read(self._file_request.chunk_size)
 				while True:
-					tmp = file.read(self._file_request.chunk_size)
+					tmp = await file.read(self._file_request.chunk_size)
 					if tmp == b"":
 						yield last_tmp, True
 						break
@@ -314,9 +316,9 @@ class FileDownload(FileTransfer):
 		assert isinstance(self._file_request.chunk_size, int)
 		logger.notice("started tailing file")
 		try:
-			with open(self._file_request.path, "rb") as file:
+			async with aiofiles.open(self._file_request.path, "rb") as file:
 				while True:
-					tmp = file.read(self._file_request.chunk_size)
+					tmp = await file.read(self._file_request.chunk_size)
 					if tmp != b"":
 						yield tmp, False
 		except IOError:
