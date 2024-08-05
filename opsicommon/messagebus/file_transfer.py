@@ -234,10 +234,10 @@ class FileDownload(FileTransfer):
 			await self._error(str(error), message=self._file_request)
 			return
 
-		if not self._file_request.follow:
-			self.size = Path(self._file_request.path).stat().st_size
-		else:
+		if self._file_request.follow:
 			self.size = None
+		else:
+			self.size = Path(self._file_request.path).stat().st_size
 		message = FileDownloadResponseMessage(
 			sender=self._sender,
 			channel=self._response_channel,
@@ -256,7 +256,7 @@ class FileDownload(FileTransfer):
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
 		assert isinstance(self._file_request.path, str)
 		assert isinstance(self._file_request.chunk_size, int)
-		assert isinstance(self.size, int)
+		assert isinstance(self.size, int | None)
 
 		number = 0
 		# start read
@@ -270,16 +270,13 @@ class FileDownload(FileTransfer):
 			try:
 				data, last = await anext(file_data_stream)
 			except StopAsyncIteration:
-				logger.notice("file interaction stoped")
+				logger.notice("file interaction stopped")
 				break
 			else:
 				if self._should_stop:
 					if not self._completed:
 						await self._error("File transfer stopped before completion")
 					break
-				if self._should_stop:
-					if not self._file_request.chunk_size * (number + 1) < self.size:
-						self._should_stop = True
 				chunk_message = FileChunkMessage(
 					sender=self._sender,
 					channel=self._response_channel,
@@ -309,7 +306,7 @@ class FileDownload(FileTransfer):
 					yield last_tmp, False
 					last_tmp = tmp
 		except IOError:
-			await self._error(f"unexpected IOError {str(IOError)}")
+			await self._error(f"unexpected IOError: {str(IOError)}")
 
 	async def follow_file(self) -> AsyncGenerator[tuple[bytes, bool], None]:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
@@ -323,7 +320,7 @@ class FileDownload(FileTransfer):
 					if tmp != b"":
 						yield tmp, False
 		except IOError:
-			await self._error(f"unexpected IOError {str(IOError)}")
+			await self._error(f"unexpected IOError: {str(IOError)}")
 
 
 async def process_messagebus_message(
