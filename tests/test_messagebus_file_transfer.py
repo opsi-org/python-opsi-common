@@ -184,7 +184,7 @@ async def test_file_download(tmp_path: Path) -> None:
 	channel = "test_channel"
 	chunk_size = 1000
 	message_sender = MessageSender()
-	test_file = str(tmp_path / "test_file.txt")
+	test_file = str(tmp_path / "test_file_download.txt")
 
 	file_download_request = FileDownloadRequestMessage(
 		sender=sender,
@@ -226,8 +226,8 @@ async def test_file_download(tmp_path: Path) -> None:
 	assert messages[0].back_channel == res_channel
 	assert messages[0].size == test_file_size
 
-	no_of_chunk = -(-test_file_size // chunk_size)
-	data_messages = await message_sender.wait_for_messages(count=no_of_chunk)
+	no_of_chunks = -(-test_file_size // chunk_size)
+	data_messages = await message_sender.wait_for_messages(count=no_of_chunks)
 
 	with Path(test_file).open("rb") as file:
 		num = 0
@@ -235,7 +235,7 @@ async def test_file_download(tmp_path: Path) -> None:
 			assert isinstance(data_message, FileChunkMessage)
 			assert data_message.channel == res_back_channel
 			assert data_message.number == num
-			assert data_message.last == (num == no_of_chunk - 1)
+			assert data_message.last == (num == no_of_chunks - 1)
 			assert data_message.data == file.read(chunk_size)
 			num += 1
 
@@ -247,10 +247,10 @@ async def test_file_follow(tmp_path: Path) -> None:
 	back_channel = "test_back_channel"
 	chunk_size = 1000
 	message_sender = MessageSender()
-	test_file = str(tmp_path / "test_file.txt")
+	test_file = str(tmp_path / "test_file_follow.txt")
 
-	# size of followed file should be 'none'
-	# test_file_size = gen_test_file(file=test_file, chunk_size=chunk_size)
+	test_file_size = gen_test_file(file=test_file, chunk_size=chunk_size)
+	no_of_chunks = -(-test_file_size // chunk_size)
 
 	file_follow_request = FileDownloadRequestMessage(
 		sender=sender,
@@ -260,35 +260,22 @@ async def test_file_follow(tmp_path: Path) -> None:
 		path=test_file,
 		follow=True,
 	)
-	await process_messagebus_message(
-		file_follow_request, send_message=message_sender.send_message, sender=sender, back_channel=back_channel
-	)
+	await process_messagebus_message(file_follow_request, send_message=message_sender.send_message, sender=sender, back_channel=channel)
 
 	messages = await message_sender.wait_for_messages(count=1, true_count=True)
 	assert isinstance(messages[0], FileDownloadResponseMessage)
 	assert messages[0].sender == sender
 	assert messages[0].back_channel == channel
-	assert messages[0].size == None
+	assert messages[0].size is None
 
-	data_messages = await message_sender.wait_for_messages(count=no_of_chunk)
+	data_messages = await message_sender.wait_for_messages(count=no_of_chunks)
 
 	with Path(test_file).open("rb") as file:
 		num = 0
-		last_chunk = file.read(chunk_size)
-		transmission_finished = False
-		while not transmission_finished:
-			# todo
-			# remove for loop
-			# should use anext or smt simmilar
-			for data_message in data_messages:
-				if last_chunk == b"":
-					transmission_finished = True
-					break
-				current_chunk = file.read(chunk_size)
-				assert isinstance(data_message, FileChunkMessage)
-				assert data_message.channel == back_channel
-				assert data_message.number == num
-				assert data_message.last is False
-				assert data_message.data == current_chunk
-				last_chunk = current_chunk
-				num += 1
+		for data_message in data_messages:
+			assert isinstance(data_message, FileChunkMessage)
+			assert data_message.channel == back_channel
+			assert data_message.number == num
+			assert data_message.last is False
+			assert data_message.data == file.read(chunk_size)
+			num += 1
