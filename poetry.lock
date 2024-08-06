@@ -659,13 +659,13 @@ reference = "uibpypi"
 
 [[package]]
 name = "hypothesis"
-version = "6.108.8"
+version = "6.108.9"
 description = "A library for property-based testing"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "hypothesis-6.108.8-py3-none-any.whl", hash = "sha256:33e8bbc25c2f40d931327b210e9de5639eb954743c97984bcc19bdc7ef21a625"},
-    {file = "hypothesis-6.108.8.tar.gz", hash = "sha256:310eb6ce1ae7cbb34195ec76b054572c182d008564a42069883920f4ab3c80ac"},
+    {file = "hypothesis-6.108.9-py3-none-any.whl", hash = "sha256:52fc4617ed9dde4c24a0b7a120b8f0bbbc8987397134694786499239b3e54766"},
+    {file = "hypothesis-6.108.9.tar.gz", hash = "sha256:5b1eef70b2f1c3682935fd8fa4bc535d824b15fe3612bb0043dfdc9e370c640b"},
 ]
 
 [package.dependencies]
@@ -2620,6 +2620,22 @@ url = "http://pypi.uib.gmbh:8080/simple"
 reference = "uibpypi"
 
 [[package]]
+name = "types-aiofiles"
+version = "24.1.0.20240626"
+description = "Typing stubs for aiofiles"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-aiofiles-24.1.0.20240626.tar.gz", hash = "sha256:48604663e24bc2d5038eac05ccc33e75799b0779e93e13d6a8f711ddc306ac08"},
+    {file = "types_aiofiles-24.1.0.20240626-py3-none-any.whl", hash = "sha256:7939eca4a8b4f9c6491b6e8ef160caee9a21d32e18534a57d5ed90aee47c66b4"},
+]
+
+[package.source]
+type = "legacy"
+url = "http://pypi.uib.gmbh:8080/simple"
+reference = "uibpypi"
+
+[[package]]
 name = "types-orjson"
 version = "3.6.2"
 description = "Typing stubs for orjson"
@@ -2913,4 +2929,4 @@ reference = "uibpypi"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "936377dfdd4e9a38beaf1dca2b0f93440dbf34d35ab4ac9ece2c99cf9b8a8964"
+content-hash = "074c045b3022f94d97fbdba17f3281687c715fb14d1a98b91035bd20d1e0e28d"
