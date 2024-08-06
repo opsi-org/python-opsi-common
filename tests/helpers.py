@@ -75,6 +75,9 @@ class MessageSender:
 			self.messages_sent = []
 		return messages
 
+	async def no_messages(self) -> bool:
+		return len(self.messages_sent) == 0
+
 
 class MessageSenderDownload(MessageSender):
 	def __init__(self, print_messages: bool = False) -> None:

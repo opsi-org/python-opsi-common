@@ -291,3 +291,5 @@ async def test_file_follow(tmp_path: Path) -> None:
 	assert new_data_message[0].number == num
 	assert new_data_message[0].last is False
 	assert new_data_message[0].data == bytes(test_text, encoding="UTF-8")
+
+	assert await message_sender.no_messages()
