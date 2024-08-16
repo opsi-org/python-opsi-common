@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 import locale
-import os
 import platform
 import re
 import subprocess
@@ -33,7 +32,7 @@ from opsicommon.messagebus.message import (
 	ProcessStopEventMessage,
 	ProcessStopRequestMessage,
 )
-from opsicommon.system.info import is_posix
+from opsicommon.system.subprocess import get_subprocess_environment
 
 processes: dict[str, Process] = {}
 processes_lock = Lock()
@@ -142,12 +141,7 @@ class Process:
 		logger.notice("Received ProcessStartRequestMessage %r", self)
 		message: ProcessMessage
 		try:
-			if is_posix():
-				from opsicommon.system.posix.subprocess import get_subprocess_environment
-
-				sp_env = get_subprocess_environment()
-			else:
-				sp_env = os.environ.copy()
+			sp_env = get_subprocess_environment()
 			sp_env.update(self._env or {})
 			sp_env["OPSI_PROCESS_ID"] = self._process_id
 
@@ -237,6 +231,7 @@ async def process_messagebus_message(
 
 	with processes_lock:
 		process = processes.get(message.process_id)
+	logger.trace("process: %s", process)
 
 	try:
 		if isinstance(message, ProcessStartRequestMessage):

@@ -8,9 +8,12 @@ system.subprocess
 
 import os
 import subprocess
+import sys
 from os import PathLike, pathsep
+from pathlib import Path
 from typing import IO, Any, Callable, Collection, Iterable, Mapping, Sequence
 
+from opsicommon.logging import get_logger
 from opsicommon.system.info import SYSTEM, is_posix, is_windows
 
 if is_windows():
@@ -18,8 +21,48 @@ if is_windows():
 
 	from opsicommon.system.windows.subprocess import get_process, get_process_user_token, patch_create_process
 
-if is_posix():
-	from opsicommon.system.posix.subprocess import get_subprocess_environment
+
+LD_LIBRARY_EXCLUDE_LIST = ["/usr/lib/opsiclientd", "/usr/lib/opsiconfd"]
+
+logger = get_logger()
+
+
+def _get_executable_path() -> Path:
+	return Path(sys.executable).resolve().parent
+
+
+def get_subprocess_environment(env: Mapping[str, str] | None = None) -> dict[str, str]:
+	if env is None:
+		env = os.environ.copy()
+	else:
+		env = dict(env)
+
+	executable_path = _get_executable_path()
+	if getattr(sys, "frozen", False):
+		# Running in pyinstaller / frozen
+		env.pop("_MEIPASS2", None)
+		if is_posix():
+			ldlp = []
+			for entry in (env.get("LD_LIBRARY_PATH_ORIG") or env.get("LD_LIBRARY_PATH") or "").split(os.pathsep):
+				entry = entry.strip()
+				if not entry:
+					continue
+				if entry in LD_LIBRARY_EXCLUDE_LIST:
+					continue
+				entry_path = Path(entry)
+				if executable_path.is_relative_to(entry_path):
+					continue
+				ldlp.append(entry)
+			if ldlp:
+				ldlp_str = os.pathsep.join(ldlp)
+				logger.debug("Setting LD_LIBRARY_PATH to '%s' in env for subprocess", ldlp_str)
+				env["LD_LIBRARY_PATH"] = ldlp_str
+			else:
+				logger.debug("Removing LD_LIBRARY_PATH from env for subprocess")
+				env.pop("LD_LIBRARY_PATH", None)
+	env.pop("OPENSSL_MODULES", None)
+	return env
+
 
 PopenOrig = subprocess.Popen
 
@@ -78,9 +121,7 @@ class Popen(PopenOrig):
 				senv.update(env)
 			env = senv
 
-		env = dict(env or os.environ.copy())
-		if is_posix():
-			env = get_subprocess_environment(env)
+		env = get_subprocess_environment(env)
 
 		for key in list(env.keys()):
 			if key.startswith("_opsi_popen_"):

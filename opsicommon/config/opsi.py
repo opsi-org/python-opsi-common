@@ -164,7 +164,7 @@ class OpsiConfig(metaclass=Singleton):
 		},
 		"depot_user": {"username": DEFAULT_DEPOT_USER, "home": DEFAULT_DEPOT_USER_HOME},
 		"packages": {"use_pigz": True},
-		"ldap_auth": {"ldap_url": "", "bind_user": ""},
+		"ldap_auth": {"ldap_url": "", "bind_user": "", "group_filter": "", "use_member_of_rdn": False},
 	}
 
 	def __init__(self, upgrade_config: bool = True) -> None:

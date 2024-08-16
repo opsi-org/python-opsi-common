@@ -79,6 +79,30 @@ from opsicommon.ssl import as_pem, create_ca, create_server_cert
 from opsicommon.system.info import is_macos, is_windows
 from opsicommon.testing.helpers import HTTPTestServerRequestHandler, environment, http_test_server, opsi_config  # type: ignore[import]
 
+GLOBALSIGN_ROOT_CA = """
+-----BEGIN CERTIFICATE-----
+MIIDdTCCAl2gAwIBAgILBAAAAAABFUtaw5QwDQYJKoZIhvcNAQEFBQAwVzELMAkG
+A1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExEDAOBgNVBAsTB1Jv
+b3QgQ0ExGzAZBgNVBAMTEkdsb2JhbFNpZ24gUm9vdCBDQTAeFw05ODA5MDExMjAw
+MDBaFw0yODAxMjgxMjAwMDBaMFcxCzAJBgNVBAYTAkJFMRkwFwYDVQQKExBHbG9i
+YWxTaWduIG52LXNhMRAwDgYDVQQLEwdSb290IENBMRswGQYDVQQDExJHbG9iYWxT
+aWduIFJvb3QgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDaDuaZ
+jc6j40+Kfvvxi4Mla+pIH/EqsLmVEQS98GPR4mdmzxzdzxtIK+6NiY6arymAZavp
+xy0Sy6scTHAHoT0KMM0VjU/43dSMUBUc71DuxC73/OlS8pF94G3VNTCOXkNz8kHp
+1Wrjsok6Vjk4bwY8iGlbKk3Fp1S4bInMm/k8yuX9ifUSPJJ4ltbcdG6TRGHRjcdG
+snUOhugZitVtbNV4FpWi6cgKOOvyJBNPc1STE4U6G7weNLWLBYy5d4ux2x8gkasJ
+U26Qzns3dLlwR5EiUWMWea6xrkEmCMgZK9FGqkjWZCrXgzT/LCrBbBlDSgeF59N8
+9iFo7+ryUp9/k5DPAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMBAf8E
+BTADAQH/MB0GA1UdDgQWBBRge2YaRQ2XyolQL30EzTSo//z9SzANBgkqhkiG9w0B
+AQUFAAOCAQEA1nPnfE920I2/7LqivjTFKDK1fPxsnCwrvQmeU79rXqoRSLblCKOz
+yj1hTdNGCbM+w6DjY1Ub8rrvrTnhQ7k4o+YviiY776BQVvnGCv04zcQLcFGUl5gE
+38NflNUVyRRBnMRddWQVDf9VMOyGj/8N7yy5Y0b2qvzfvGn9LhJIZJrglfCm7ymP
+AbEVtQwdpf5pLGkkeB6zpxxxYu7KyJesF12KwvhHhm4qxFYxldBniYUr+WymXUad
+DKqC5JlR3XC321Y9YeRq4VzW9v493kHMB65jUr9TU/Qr6cf9tveCX4XSQRjbgbME
+HMUfpIBvFSDJ3gyICh3WZlXi/EjJKSZp4A==
+-----END CERTIFICATE-----
+"""
+
 
 class MyConnectionListener(ServiceConnectionListener):
 	def __init__(self) -> None:
@@ -374,7 +398,14 @@ def test_get_opsi_ca_state(tmpdir: Path) -> None:
 	assert service_client.get_opsi_ca_state() == OpsiCaState.EXPIRED
 
 
-def test_verify(tmpdir: Path) -> None:
+@pytest.mark.parametrize(
+	"server_version, pem_name",
+	(
+		("4.2.1.1", "opsi-ca-cert.pem"),
+		("4.3.18.15", "ca-certs.pem"),
+	),
+)
+def test_verify(tmpdir: Path, server_version: str, pem_name: str) -> None:
 	other_ca_cert, _ = create_ca(subject={"CN": "python-opsi-common test other ca"}, valid_days=3)
 
 	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3)
@@ -395,6 +426,7 @@ def test_verify(tmpdir: Path) -> None:
 	server_cert_file = tmpdir / "server_cert.pem"
 	server_key_file.write_text(as_pem(server_key), encoding="utf-8")
 	server_cert_file.write_text(as_pem(server_cert), encoding="utf-8")
+	server_log_file = Path(tmpdir) / "server.log"
 
 	opsi_ca_file_on_client = tmpdir / "opsi_ca_file_on_client.pem"
 
@@ -405,10 +437,11 @@ def test_verify(tmpdir: Path) -> None:
 	with (
 		opsi_config({"host.server-role": ""}),
 		http_test_server(
+			log_file=server_log_file,
 			server_key=server_key_file,
 			server_cert=server_cert_file,
-			response_body=as_pem(ca_cert).encode("utf-8"),
-			response_headers={"server": "opsiconfd 4.2.1.1 (uvicorn)"},
+			response_body=(as_pem(ca_cert) + "\n" + GLOBALSIGN_ROOT_CA).encode("utf-8"),
+			response_headers={"server": f"opsiconfd {server_version} (uvicorn)"},
 		) as server,
 	):
 		# strict_check
@@ -444,18 +477,23 @@ def test_verify(tmpdir: Path) -> None:
 		assert not opsi_ca_file_on_client.exists()
 
 		# accept_all | opsi_ca
+		server_log_file.write_bytes(b"")
 		with ServiceClient(
 			f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify=("accept_all", "opsi_ca")
 		) as client:
 			client.connect()
 
 		assert opsi_ca_file_on_client.exists()
-		assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert)
+		assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert).strip() + "\n" + GLOBALSIGN_ROOT_CA.strip() + "\n"
+		requests = [json.loads(line) for line in server_log_file.read_text(encoding="utf-8").splitlines()]
+		assert len(requests) >= 2
+		assert requests[1]["method"] == "GET"
+		assert requests[1]["path"] == f"/ssl/{pem_name}"
 
 		# opsi_ca
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="opsi_ca") as client:
 			client.connect()
-		assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert)
+		assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert).strip() + "\n" + GLOBALSIGN_ROOT_CA.strip() + "\n"
 
 		opsi_ca_file_on_client.write_text(as_pem(other_ca_cert), encoding="utf-8")
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="opsi_ca") as client:
@@ -465,28 +503,37 @@ def test_verify(tmpdir: Path) -> None:
 			opsi_ca_file_on_client.write_text("", encoding="utf-8")
 			client.connect()
 
-			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert)
+			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert).strip() + "\n" + GLOBALSIGN_ROOT_CA.strip() + "\n"
 			assert client.get("/")[0] == 200
 
 		# uib_opsi_ca (means uib_opsi_ca + opsi_ca)
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="uib_opsi_ca") as client:
 			client.connect()
-			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + UIB_OPSI_CA + "\n"
+			assert (
+				opsi_ca_file_on_client.read_text(encoding="utf-8")
+				== as_pem(ca_cert).strip() + "\n" + GLOBALSIGN_ROOT_CA.strip() + "\n" + UIB_OPSI_CA.strip() + "\n"
+			)
 
 		# Empty client ca file => accept once
 		opsi_ca_file_on_client.write_text("", encoding="utf-8")
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="uib_opsi_ca") as client:
 			client.connect()
-			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + UIB_OPSI_CA + "\n"
+			assert (
+				opsi_ca_file_on_client.read_text(encoding="utf-8")
+				== as_pem(ca_cert).strip() + "\n" + GLOBALSIGN_ROOT_CA.strip() + "\n" + UIB_OPSI_CA.strip() + "\n"
+			)
 
 		# Only uib opsi ca in ca file => accept once
 		opsi_ca_file_on_client.write_text(UIB_OPSI_CA, encoding="utf-8")
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="uib_opsi_ca") as client:
 			client.connect()
-			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert) + UIB_OPSI_CA + "\n"
+			assert (
+				opsi_ca_file_on_client.read_text(encoding="utf-8")
+				== as_pem(ca_cert).strip() + "\n" + GLOBALSIGN_ROOT_CA.strip() + "\n" + UIB_OPSI_CA.strip() + "\n"
+			)
 
 		# expired
-		orig_ca_cert_as_pem = as_pem(ca_cert)
+		orig_ca_cert_as_pem = as_pem(ca_cert).strip() + "\n" + GLOBALSIGN_ROOT_CA.strip() + "\n"
 
 		class MockCertificateBuilder(x509.CertificateBuilder):
 			def __init__(self, **kwargs: Any) -> None:

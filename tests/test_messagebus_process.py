@@ -9,15 +9,16 @@ messagebus.process tests
 
 import pytest
 from opsicommon.messagebus import CONNECTION_USER_CHANNEL
-from opsicommon.messagebus.message import (ProcessDataReadMessage,
-                                           ProcessDataWriteMessage,
-                                           ProcessErrorMessage,
-                                           ProcessStartEventMessage,
-                                           ProcessStartRequestMessage,
-                                           ProcessStopEventMessage,
-                                           ProcessStopRequestMessage)
-from opsicommon.messagebus.process import (process_messagebus_message,
-                                           processes, stop_running_processes)
+from opsicommon.messagebus.message import (
+	ProcessDataReadMessage,
+	ProcessDataWriteMessage,
+	ProcessErrorMessage,
+	ProcessStartEventMessage,
+	ProcessStartRequestMessage,
+	ProcessStopEventMessage,
+	ProcessStopRequestMessage,
+)
+from opsicommon.messagebus.process import process_messagebus_message, processes, stop_running_processes
 from opsicommon.system.info import is_windows
 
 from .helpers import MessageSender

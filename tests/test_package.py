@@ -4,6 +4,7 @@
 tests for opsicommon.package
 """
 
+from contextlib import nullcontext
 from os import symlink
 from pathlib import Path
 from shutil import copy
@@ -11,8 +12,12 @@ from typing import Literal
 
 import pytest
 
+from hypothesis import given, settings
+from hypothesis.strategies import sampled_from
+
 from opsicommon.objects import NetbootProduct
 from opsicommon.package import OpsiPackage, PackageDependency
+from opsicommon.package.archive import ArchiveProgress, ArchiveProgressListener
 from opsicommon.package.associated_files import create_package_content_file, create_package_md5_file, create_package_zsync_file
 from opsicommon.package.control_file_handling import create_product_dependencies
 from opsicommon.utils import make_temp_dir
@@ -182,18 +187,6 @@ def test_generate_control(source: str, destination: str) -> None:
 	assert package.product_properties == regenerated_package.product_properties
 
 
-@pytest.mark.parametrize("control_file_name, expected_control_file", [("control", "control.toml"), ("control.toml", "control")])
-def test_check_and_generate_control_file(control_file_name: str, expected_control_file: str) -> None:
-	control_file = TEST_DATA / control_file_name
-	test_package = OpsiPackage()
-	test_package.parse_control_file(control_file)
-	with make_temp_dir() as temp_dir:
-		copy(control_file, temp_dir / control_file_name)
-		test_package.check_and_generate_control_file(control_file)
-		expected_file = control_file.parent / expected_control_file
-		assert expected_file.exists()
-
-
 def test_control_multiline_description() -> None:
 	package = OpsiPackage()
 	package.parse_control_file(TEST_DATA / "control.toml")
@@ -316,98 +309,217 @@ def test_extract_package_memtest() -> None:
 		]
 
 
+class ProgressListener(ArchiveProgressListener):
+	def __init__(self) -> None:
+		self.percent_completed_vals: list[float] = []
+
+	def progress_changed(self, progress: ArchiveProgress) -> None:
+		# print(f"{progress.completed}/{progress.total}: {progress.percent_completed:0.1f} %")
+		self.percent_completed_vals.append(progress.percent_completed)
+
+
 @pytest.mark.parametrize(
-	"compression",
-	("zstd", "bz2", "gz"),
+	"compression, create_missing_legacy_control_file, progress",
+	(("zstd", True, True), ("bz2", False, False), ("gz", True, True)),
 )
-def test_create_package(compression: Literal["zstd", "bz2", "gz"]) -> None:
+def test_create_package(compression: Literal["zstd", "bz2", "gz"], create_missing_legacy_control_file: bool, progress: bool) -> None:
 	package = OpsiPackage()
-	test_data = TEST_DATA / "control.toml"
+	progress_listener: ProgressListener | None = None
+	if progress:
+		progress_listener = ProgressListener()
+
 	with make_temp_dir() as temp_dir:
 		for _dir in (temp_dir / "OPSI", temp_dir / "CLIENT_DATA", temp_dir / "SERVER_DATA"):
 			_dir.mkdir()
-			copy(test_data, _dir)
-		package_archive = package.create_package_archive(temp_dir, compression=compression, destination=temp_dir)
+		(temp_dir / "CLIENT_DATA" / "client_data").write_text("client_data", encoding="utf-8")
+		(temp_dir / "SERVER_DATA" / "server_data").write_text("server_data", encoding="utf-8")
+		copy(TEST_DATA / "control.toml", temp_dir / "OPSI")
+		package_archive = package.create_package_archive(
+			temp_dir,
+			compression=compression,
+			destination=temp_dir,
+			progress_listener=progress_listener,
+			create_missing_legacy_control_file=create_missing_legacy_control_file,
+		)
 		with make_temp_dir() as result_dir:
 			OpsiPackage().extract_package_archive(package_archive, result_dir)
-			result_contents = list((_dir.relative_to(result_dir) for _dir in result_dir.rglob("*")))
-			print(result_contents)
-			for part in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
-				assert (temp_dir / part).relative_to(temp_dir) in result_contents
-				assert (temp_dir / part / "control.toml").relative_to(temp_dir) in result_contents
+			print(list(result_dir.glob("**/*")))
+			assert (result_dir / "OPSI" / "control.toml").exists()
+			assert (result_dir / "CLIENT_DATA" / "client_data").exists()
+			assert (result_dir / "SERVER_DATA" / "server_data").exists()
+			assert (result_dir / "OPSI" / "control").exists() == create_missing_legacy_control_file
+
+		if progress_listener:
+			assert progress_listener.percent_completed_vals[-1] == 100
+			for idx, val in enumerate(progress_listener.percent_completed_vals):
+				if idx + 1 < len(progress_listener.percent_completed_vals):
+					assert val <= progress_listener.percent_completed_vals[idx + 1]
 
 
-@pytest.mark.parametrize("custom_only", (True, False))
-def test_create_package_custom(custom_only: bool) -> None:
+"""
+@pytest.mark.parametrize(
+	"default_control,default_client_data,custom_control,custom_client_data,custom_only,exception_expected",
+	(
+		(True, True, True, True, False, None),
+		(True, True, True, True, False, None),
+		# (True, True, True, None),
+		# (False, False, True, None),
+	),
+)
+"""
+
+
+@settings(report_multiple_bugs=False, deadline=10_000)
+@given(
+	sampled_from((True, False)),
+	sampled_from((True, False)),
+	sampled_from((True, False)),
+	sampled_from((True, False)),
+	sampled_from((True, False)),
+)
+def test_create_package_custom(
+	default_control: bool,
+	default_client_data: bool,
+	custom_control: bool,
+	custom_client_data: bool,
+	custom_only: bool,
+) -> None:
 	package = OpsiPackage()
 	control = TEST_DATA / "control.toml"
 	with make_temp_dir() as temp_dir:
+		print(
+			"default_control:",
+			default_control,
+			"| default_client_data:",
+			default_client_data,
+			"| custom_control:",
+			custom_control,
+			"| custom_client_data:",
+			custom_client_data,
+			"| custom_only:",
+			custom_only,
+		)
 		opsi_dir = temp_dir / "OPSI"
 		opsi_dir_custom = temp_dir / "OPSI.custom"
 		client_dir = temp_dir / "CLIENT_DATA"
 		client_dir_custom = temp_dir / "CLIENT_DATA.custom"
-		dirs = [opsi_dir, opsi_dir_custom, client_dir, client_dir_custom]
-		for _dir in dirs:
-			_dir.mkdir()
-		data = control.read_text(encoding="utf-8")
-		(opsi_dir / "control.toml").write_text(data.replace("priority = 0", "priority = 10"), encoding="utf-8")
-		(opsi_dir_custom / "control.toml").write_text(data.replace("priority = 0", "priority = 20"), encoding="utf-8")
-		(client_dir / "testfile1").write_text("MAIN1", encoding="utf-8")
-		(client_dir / "testfile2").write_text("MAIN2", encoding="utf-8")
-		(client_dir / "testfile3").write_text("MAIN3", encoding="utf-8")
-		(client_dir_custom / "testfile2").write_text("CUSTOM2", encoding="utf-8")
-		(client_dir_custom / "testfile4").write_text("CUSTOM4", encoding="utf-8")
 
-		package_archive = package.create_package_archive(temp_dir, destination=temp_dir, custom_name="custom", custom_only=custom_only)
+		if default_control:
+			opsi_dir.mkdir()
+		if default_client_data:
+			client_dir.mkdir()
+		if custom_control:
+			opsi_dir_custom.mkdir()
+		if custom_client_data:
+			client_dir_custom.mkdir()
 
+		control_data = control.read_text(encoding="utf-8")
+		if default_control:
+			(opsi_dir / "control.toml").write_text(control_data.replace("priority = 0", "priority = 10"), encoding="utf-8")
+		if custom_control:
+			(opsi_dir_custom / "control.toml").write_text(control_data.replace("priority = 0", "priority = 20"), encoding="utf-8")
+		if default_client_data:
+			(client_dir / "testfile1").write_text("MAIN1", encoding="utf-8")
+			(client_dir / "testfile2").write_text("MAIN2", encoding="utf-8")
+			(client_dir / "testfile3").write_text("MAIN3", encoding="utf-8")
+		if custom_client_data:
+			(client_dir_custom / "testfile2").write_text("CUSTOM2", encoding="utf-8")
+			(client_dir_custom / "testfile4").write_text("CUSTOM4", encoding="utf-8")
+
+		expected_exception_type: type[Exception] | None = None
+		expected_exception_match: str | None = None
+		if not custom_control and not custom_client_data:
+			expected_exception_type = RuntimeError
+			expected_exception_match = "No directories matching custom name 'custom' found in"
+		elif not default_control and not custom_control:
+			expected_exception_type = RuntimeError
+			expected_exception_match = "OPSI.custom and OPSI directory not found in"
+
+		with pytest.raises(expected_exception_type, match=expected_exception_match) if expected_exception_type else nullcontext():
+			package_archive = package.create_package_archive(temp_dir, destination=temp_dir, custom_name="custom", custom_only=custom_only)
+		if expected_exception_type:
+			return
+
+		expected_priority = 20 if custom_control else 10
+		# Test from_package_archive()
+		pkg = OpsiPackage()
+		pkg.from_package_archive(package_archive)
+		assert pkg.product.priority == expected_priority
+
+		# Test extract_package_archive(custom_separated=False)
 		with make_temp_dir() as result_dir:
-			# Test from_package_archive()
-			pkg = OpsiPackage()
-			pkg.from_package_archive(package_archive)
-			# Test custom priority
-			assert pkg.product.priority == 20
-
-			# Test extract_package_archive(custom_separated=False)
 			pkg = OpsiPackage()
 			pkg.extract_package_archive(package_archive, result_dir, custom_separated=False)
 
-			# Test custom priority
-			assert pkg.product.priority == 20
-			if custom_only:
-				assert not (result_dir / "CLIENT_DATA" / "testfile1").exists()
-			else:
-				assert (result_dir / "CLIENT_DATA" / "testfile1").read_text(encoding="utf-8") == "MAIN1"
-			assert (result_dir / "CLIENT_DATA" / "testfile2").read_text(encoding="utf-8") == "CUSTOM2"
-			if custom_only:
-				assert not (result_dir / "CLIENT_DATA" / "testfile3").exists()
-			else:
-				assert (result_dir / "CLIENT_DATA" / "testfile3").read_text(encoding="utf-8") == "MAIN3"
-			assert (result_dir / "CLIENT_DATA" / "testfile4").read_text(encoding="utf-8") == "CUSTOM4"
+			# Check OPSI
+			files = [f.name for f in (result_dir / "OPSI").iterdir()]
+			assert sorted(files) == ["control", "control.toml"]
+			assert f"priority = {expected_priority}" in (result_dir / "OPSI" / "control.toml").read_text(encoding="utf-8")
+			assert f"priority: {expected_priority}" in (result_dir / "OPSI" / "control").read_text(encoding="utf-8")
 
+			# Check OPSI.custom
+			assert not (result_dir / "OPSI.custom").exists()
+
+			# Check CLIENT_DATA
+			if (custom_only and not custom_client_data) or (not default_client_data and not custom_client_data):
+				assert not (result_dir / "CLIENT_DATA").exists()
+			else:
+				files = [f.name for f in (result_dir / "CLIENT_DATA").iterdir()]
+				expected_files = {"testfile1", "testfile2", "testfile3"} if default_client_data else set()
+				if custom_client_data:
+					if custom_only:
+						expected_files = {"testfile2", "testfile4"}
+					else:
+						expected_files.update({"testfile2", "testfile4"})
+				assert sorted(files) == sorted(expected_files)
+
+				if custom_client_data:
+					assert (result_dir / "CLIENT_DATA" / "testfile2").read_text(encoding="utf-8") == "CUSTOM2"
+				elif default_client_data:
+					assert (result_dir / "CLIENT_DATA" / "testfile2").read_text(encoding="utf-8") == "MAIN2"
+
+			# Check CLIENT_DATA.custom
+			assert not (result_dir / "CLIENT_DATA.custom").exists()
+
+		# Test extract_package_archive(custom_separated=True)
 		with make_temp_dir() as result_dir:
-			# Test extract_package_archive(custom_separated=True)
 			pkg = OpsiPackage()
 			pkg.extract_package_archive(package_archive, result_dir, custom_separated=True)
 
-			files = [f.name for f in (result_dir / "CLIENT_DATA.custom").iterdir()]
-			assert sorted(files) == ["testfile2", "testfile4"]
-			assert (result_dir / "CLIENT_DATA.custom" / "testfile2").read_text(encoding="utf-8") == "CUSTOM2"
-			assert (result_dir / "CLIENT_DATA.custom" / "testfile4").read_text(encoding="utf-8") == "CUSTOM4"
+			# Check OPSI
+			if default_control and (not custom_only or not custom_control):
+				assert "priority = 10" in (result_dir / "OPSI" / "control.toml").read_text(encoding="utf-8")
+				if custom_control:
+					assert not (result_dir / "OPSI" / "control").exists()
+				else:
+					assert "priority: 10" in (result_dir / "OPSI" / "control").read_text(encoding="utf-8")
+			else:
+				assert not (result_dir / "OPSI").exists()
 
-			files = [f.name for f in (result_dir / "OPSI.custom").iterdir()]
-			assert sorted(files) == ["control.toml"]
-			assert "priority = 20" in (result_dir / "OPSI.custom" / "control.toml").read_text(encoding="utf-8")
+			# Check OPSI.custom
+			if custom_control:
+				files = [f.name for f in (result_dir / "OPSI.custom").iterdir()]
+				assert sorted(files) == ["control", "control.toml"]
+				assert "priority = 20" in (result_dir / "OPSI.custom" / "control.toml").read_text(encoding="utf-8")
+				assert "priority: 20" in (result_dir / "OPSI.custom" / "control").read_text(encoding="utf-8")
+			else:
+				assert not (result_dir / "OPSI.custom").exists()
 
-			if not custom_only:
+			# Check CLIENT_DATA
+			if default_client_data and not custom_only:
 				files = [f.name for f in (result_dir / "CLIENT_DATA").iterdir()]
 				assert sorted(files) == ["testfile1", "testfile2", "testfile3"]
-				assert (result_dir / "CLIENT_DATA" / "testfile1").read_text(encoding="utf-8") == "MAIN1"
 				assert (result_dir / "CLIENT_DATA" / "testfile2").read_text(encoding="utf-8") == "MAIN2"
-				assert (result_dir / "CLIENT_DATA" / "testfile3").read_text(encoding="utf-8") == "MAIN3"
+			else:
+				assert not (result_dir / "CLIENT_DATA").exists()
 
-				files = [f.name for f in (result_dir / "OPSI").iterdir()]
-				assert sorted(files) == ["control.toml"]
-				assert "priority = 10" in (result_dir / "OPSI" / "control.toml").read_text(encoding="utf-8")
+			# Check CLIENT_DATA.custom
+			if custom_client_data:
+				files = [f.name for f in (result_dir / "CLIENT_DATA.custom").iterdir()]
+				assert sorted(files) == ["testfile2", "testfile4"]
+				assert (result_dir / "CLIENT_DATA.custom" / "testfile2").read_text(encoding="utf-8") == "CUSTOM2"
+			else:
+				assert not (result_dir / "CLIENT_DATA.custom").exists()
 
 
 def test_create_package_empty() -> None:
@@ -469,18 +581,45 @@ def test_create_package_content_file() -> None:
 		assert entry in result
 
 
-def test_create_package_md5_file() -> None:
+@pytest.mark.parametrize(
+	"progress",
+	(True, False),
+)
+def test_create_package_md5_file(progress: bool) -> None:
+	progress_callbacks = []
+
+	def progress_callback(position: int, total: int) -> None:
+		nonlocal progress_callbacks
+		progress_callbacks.append((position, total))
+
 	with make_temp_dir() as temp_dir:
 		result = temp_dir / "localboot_new_42.0-1337.opsi.md5"
-		create_package_md5_file(TEST_DATA / "localboot_new_42.0-1337.opsi", filename=result)
+		create_package_md5_file(
+			TEST_DATA / "localboot_new_42.0-1337.opsi", filename=result, progress_callback=progress_callback if progress else None
+		)
 		assert result.read_text(encoding="utf-8") == "d99057288026298443f4b9ce8b490d7e"
+
+	if progress:
+		assert progress_callbacks == [(0, 2048), (2048, 2048)]
 
 
 @pytest.mark.linux
-def test_create_package_zsync_file() -> None:
+@pytest.mark.parametrize(
+	"progress",
+	(True, False),
+)
+def test_create_package_zsync_file(progress: bool) -> None:
+	progress_callbacks = []
+
+	def progress_callback(position: int, total: int) -> None:
+		nonlocal progress_callbacks
+		progress_callbacks.append((position, total))
+
 	with make_temp_dir() as temp_dir:
 		zsync_file = temp_dir / "localboot_new_42.0-1337.opsi.zsync"
-		create_package_zsync_file(TEST_DATA / "localboot_new_42.0-1337.opsi", filename=zsync_file)
+		create_package_zsync_file(
+			TEST_DATA / "localboot_new_42.0-1337.opsi", filename=zsync_file, progress_callback=progress_callback if progress else None
+		)
 		result = zsync_file.read_bytes()
 		for entry in (
 			b"zsync: 0.6.2",
@@ -493,6 +632,9 @@ def test_create_package_zsync_file() -> None:
 			b"\x84\xae\x8c/\xb2\x99",
 		):
 			assert entry in result
+
+	if progress:
+		assert progress_callbacks == [(0, 1), (1, 1)]
 
 
 def test_extract_package_tar_zstd() -> None:

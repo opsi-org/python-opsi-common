@@ -137,11 +137,13 @@ def test_read_config_file(tmp_path: Path) -> None:
 	data = """
 	[ldap_auth]
 	ldap_url = "ldaps://test"
+	use_member_of_rdn = false
 	"""
 	config_file.write_text(dedent(data), encoding="utf-8")
 	config = OpsiConfig()
 	assert config._config_file_mtime == 0.0
 	assert config.get("ldap_auth", "ldap_url") == "ldaps://test"
+	assert config.get("ldap_auth", "use_member_of_rdn") is False
 	mtime = config._config_file_mtime
 	assert mtime != 0.0
 
@@ -150,9 +152,11 @@ def test_read_config_file(tmp_path: Path) -> None:
 	data = """
 	[ldap_auth]
 	ldap_url = "ldaps://test2"
+	use_member_of_rdn = true
 	"""
 	config_file.write_text(dedent(data), encoding="utf-8")
 	assert config.get("ldap_auth", "ldap_url") == "ldaps://test2"
+	assert config.get("ldap_auth", "use_member_of_rdn") is True
 
 
 def test_get_config(tmp_path: Path) -> None:

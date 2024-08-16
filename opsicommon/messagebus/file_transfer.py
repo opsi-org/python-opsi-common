@@ -104,6 +104,7 @@ class FileTransfer:
 			await self._send_message(upload_result)
 			self._should_stop = True
 
+
 	async def _error(self, error: str, message: Message | None = None) -> None:
 		logger.error(error)
 		error_message = FileTransferErrorMessage(
@@ -127,38 +128,38 @@ class FileUpload(FileTransfer):
 
 	def __init__(
 		self,
-		file_upload_request: FileUploadRequestMessage,
 		send_message: Callable,
+		file_upload_request: FileUploadRequestMessage,
 		sender: str = CONNECTION_USER_CHANNEL,
 		back_channel: str | None = None,
 	) -> None:
-		self._file_upload_request = file_upload_request
-		self._last_chunk_time = time()
 		super().__init__(
 			send_message=send_message,
 			file_request=file_upload_request,
 			sender=sender,
 			back_channel=back_channel,
 		)
+		self._last_chunk_time = time()
 
 	async def start(self) -> None:
+		assert isinstance(self._file_request, FileUploadRequestMessage)
 		logger.notice("Received FileUploadRequestMessage %r", self)
 
 		try:
-			if not self._file_upload_request.name:
+			if not self._file_request.name:
 				raise ValueError("Invalid name")
-			if not self._file_upload_request.content_type:
+			if not self._file_request.content_type:
 				raise ValueError("Invalid content_type")
 
 			destination_path: Path | None = None
-			if self._file_upload_request.destination_dir:
-				destination_path = Path(self._file_upload_request.destination_dir)
+			if self._file_request.destination_dir:
+				destination_path = Path(self._file_request.destination_dir)
 			elif self.default_destination:
 				destination_path = self.default_destination
 			else:
 				raise ValueError("Invalid destination_dir")
 
-			self._file_path = Path(destination_path / self._file_upload_request.name).absolute()
+			self._file_path = (destination_path / self._file_request.name).absolute()
 			if not self._file_path.is_relative_to(destination_path):
 				raise ValueError("Invalid name")
 
@@ -172,7 +173,7 @@ class FileUpload(FileTransfer):
 
 		except Exception as error:
 			logger.error(error, exc_info=True)
-			await self._error(str(error), message=self._file_upload_request)
+			await self._error(str(error), message=self._file_request)
 			return
 
 		message = FileUploadResponseMessage(
@@ -200,12 +201,44 @@ class FileUpload(FileTransfer):
 			await asyncio.sleep(1)
 		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
 
+	def _append_to_file(self, data: bytes) -> None:
+		if not self._file_path:
+			raise RuntimeError("File path not set")
+		with open(self._file_path, mode="ab") as file:
+			file.write(data)
+
+	async def process_file_chunk(self, message: FileChunkMessage) -> None:
+		if not isinstance(message, FileChunkMessage):
+			raise ValueError(f"Received invalid message type {message.type}")
+
+		self._last_chunk_time = time()
+		if message.number != self._chunk_number + 1:
+			await self._error(f"Expected chunk number {self._chunk_number + 1}", message)
+			return
+
+		self._chunk_number = message.number
+
+		await self._loop.run_in_executor(None, self._append_to_file, message.data)
+
+		if message.last:
+			logger.debug("Last chunk received")
+			self._completed = True
+			upload_result = FileUploadResultMessage(
+				sender=self._sender,
+				channel=self._response_channel,
+				file_id=self._file_id,
+				back_channel=self._back_channel,
+				path=str(self._file_path),
+			)
+			await self._send_message(upload_result)
+			self._should_stop = True
+
 
 class FileDownload(FileTransfer):
 	def __init__(
 		self,
-		file_download_request: FileDownloadRequestMessage,
 		send_message: Callable,
+		file_download_request: FileDownloadRequestMessage,
 		sender: str = CONNECTION_USER_CHANNEL,
 		back_channel: str | None = None,
 	) -> None:
@@ -215,8 +248,6 @@ class FileDownload(FileTransfer):
 			sender=sender,
 			back_channel=back_channel,
 		)
-		# redundant?
-		# self._file_download_request = file_download_request
 		self.size: int | None = None
 		# self.new_lines = []
 
@@ -336,6 +367,7 @@ async def process_messagebus_message(
 
 	with file_transfers_lock:
 		file_transfer = file_transfers.get(message.file_id)
+	logger.trace("file_transfer: %s", file_transfer)
 
 	try:
 		if isinstance(message, FileUploadRequestMessage):
@@ -369,7 +401,7 @@ async def process_messagebus_message(
 				raise RuntimeError(f"File download already running: {file_transfer!r}")
 			return
 		elif file_transfer:
-			if isinstance(message, FileChunkMessage):
+			if isinstance(message, FileChunkMessage) and isinstance(file_transfer, FileUpload):
 				await file_transfer.process_file_chunk(message)
 			else:
 				raise ValueError(f"Invalid message type {type(message)} received")
