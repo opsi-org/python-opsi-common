@@ -115,7 +115,11 @@ def load_cas(subject_name: str) -> Generator[x509.Certificate, None, None]:
 	with _open_cert_store(store_name, force_close=False) as store:
 		for certificate in store.CertEnumCertificatesInStore():
 			# logger.trace("checking certificate %s", certificate.SerialNumber)	# ASN1 encoded integer
-			ca_cert = x509.load_der_x509_certificate(data=certificate.CertEncoded)
+			try:
+				ca_cert = x509.load_der_x509_certificate(data=certificate.CertEncoded)
+			except ValueError as err:
+				logger.warning("Failed to load certificate because of illegal values: %s", err)
+				continue
 			try:
 				common_name = ca_cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
 			except IndexError:
