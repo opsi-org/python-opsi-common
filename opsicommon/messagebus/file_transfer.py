@@ -12,7 +12,7 @@ import asyncio
 from pathlib import Path
 from threading import Lock
 from time import time
-from typing import Any, AsyncGenerator, Callable
+from typing import AsyncGenerator, Callable
 
 import aiofiles
 
@@ -103,7 +103,6 @@ class FileTransfer:
 			)
 			await self._send_message(upload_result)
 			self._should_stop = True
-
 
 	async def _error(self, error: str, message: Message | None = None) -> None:
 		logger.error(error)
@@ -292,6 +291,7 @@ class FileDownload(FileTransfer):
 		assert isinstance(self.size, int | None)
 
 		number = 0
+		self.last = False
 		# start read
 		if self._file_request.follow:
 			file_data_gen = self.follow_file
@@ -301,7 +301,7 @@ class FileDownload(FileTransfer):
 		file_data_stream = file_data_gen()
 		while True:
 			try:
-				data, last = await anext(file_data_stream)
+				data = await anext(file_data_stream)
 			except StopAsyncIteration:
 				logger.notice("file interaction stopped")
 				break
@@ -315,7 +315,7 @@ class FileDownload(FileTransfer):
 					channel=self._response_channel,
 					back_channel=self._back_channel,
 					number=number,
-					last=last,
+					last=self.last,
 					data=data,
 				)
 				await self._send_message(chunk_message)
@@ -323,7 +323,7 @@ class FileDownload(FileTransfer):
 				continue
 		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
 
-	async def read_file(self) -> Any:
+	async def read_file(self) -> AsyncGenerator[bytes, None]:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
 		assert isinstance(self._file_request.path, str)
 		assert isinstance(self._file_request.chunk_size, int)
@@ -334,14 +334,15 @@ class FileDownload(FileTransfer):
 				while True:
 					tmp = await file.read(self._file_request.chunk_size)
 					if tmp == b"":
-						yield last_tmp, True
+						self.last = True
+						yield last_tmp
 						break
-					yield last_tmp, False
+					yield last_tmp
 					last_tmp = tmp
 		except IOError:
 			await self._error(f"unexpected IOError: {str(IOError)}")
 
-	async def follow_file(self) -> AsyncGenerator[tuple[bytes, bool], None]:
+	async def follow_file(self) -> AsyncGenerator[bytes, None]:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
 		assert isinstance(self._file_request.path, str)
 		assert isinstance(self._file_request.chunk_size, int)
@@ -351,7 +352,7 @@ class FileDownload(FileTransfer):
 				while True:
 					tmp = await file.read(self._file_request.chunk_size)
 					if tmp != b"":
-						yield tmp, False
+						yield tmp
 		except IOError:
 			await self._error(f"unexpected IOError: {str(IOError)}")
 
