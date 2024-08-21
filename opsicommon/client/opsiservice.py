@@ -670,6 +670,7 @@ class ServiceClient:
 		for method in self.jsonrpc_interface:
 			try:
 				method_name = method["name"]
+				exec_locals = {}
 
 				if method_name not in ("backend_getInterface", "backend_exit"):
 					logger.debug("Creating instance method: %s", method_name)
@@ -709,8 +710,8 @@ class ServiceClient:
 					logger.trace("%s: arg string is: %s", method_name, arg_string)
 					logger.trace("%s: call string is: %s", method_name, call_string)
 					with warnings.catch_warnings():
-						exec(f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])')
-				setattr(instance, method_name, MethodType(eval(method_name), self))
+						exec(f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])', locals=exec_locals)
+				setattr(instance, method_name, MethodType(exec_locals[method_name] if exec_locals else eval(method_name), self))
 			except Exception as err:
 				logger.error("Failed to create instance method '%s': %s", method, err)
 
