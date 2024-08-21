@@ -4,7 +4,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "python-opsi-common"
-version = "4.4.0.1"
+version = "4.4.0.2"
 description = "The opsi python common library"
 homepage = "https://www.opsi.org"
 license = "AGPL-3.0"
@@ -37,8 +37,6 @@ cryptography = "^43.0"
 distro = ">=1.6"
 lz4 = ">=4.0"
 msgpack = ">=1.0"
-# https://github.com/jcrist/msgspec/pull/711
-msgspec = { git = "https://github.com/edgarrmondragon/msgspec.git", branch = "py313" }
 psutil = ">=5.8"
 ptyprocess = "^0.7"
 pycryptodome = ">=3.10"
@@ -52,6 +50,10 @@ zstandard = ">=0.21"
 
 [tool.ruff.format]
 indent-style = "tab"
+
+[tool.poetry.dependencies.msgspec]
+git = "https://github.com/edgarrmondragon/msgspec.git"
+branch = "py313"
 
 [tool.poetry.dependencies.pywin32]
 platform = "win32"
@@ -68,7 +70,6 @@ version = ">=1.5"
 [tool.poetry.group.dev.dependencies]
 hypothesis = ">=6.32"
 mypy = ">=1.0"
-# opsi-dev-tools = "^1.17"
 perflint = ">=0.7"
 pproxy = "^2.7"
 pytest = ">=7.0"
