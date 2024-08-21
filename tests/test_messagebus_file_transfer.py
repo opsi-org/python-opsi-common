@@ -75,7 +75,6 @@ async def test_file_upload(tmp_path: Path) -> None:
 	assert messages[0].sender == "test_res_sender"
 	assert messages[0].back_channel == "test_res_channel"
 	assert messages[0].file_id == file_upload_request.file_id
-	print(messages[0].path)
 	assert messages[0].path == str(upload_path / test_file.name)
 
 	with test_file.open("rb") as file:

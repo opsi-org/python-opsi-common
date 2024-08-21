@@ -248,7 +248,6 @@ class FileDownload(FileTransfer):
 			back_channel=back_channel,
 		)
 		self.size: int | None = None
-		# self.new_lines = []
 
 	async def start(self) -> None:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
