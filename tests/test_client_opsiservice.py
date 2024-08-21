@@ -736,7 +736,7 @@ class HTTPProxy(Thread):
 	def __init__(self, port: int):
 		super().__init__()
 		self._port = port
-		self._loop = asyncio.get_event_loop()
+		self._loop = asyncio.new_event_loop()
 		self._should_stop = False
 		self._requests: list[dict[str, str | int]] = []
 

@@ -13,13 +13,9 @@ from enum import StrEnum
 from typing import Annotated, Any, Type, TypeVar, cast
 from uuid import uuid4
 
-import msgspec
 from pydantic import AfterValidator, AliasChoices, BaseModel, Field, StringConstraints
 
-from opsicommon.utils import unix_timestamp
-
-message_decoder = msgspec.msgpack.Decoder()
-message_encoder = msgspec.msgpack.Encoder()
+from opsicommon.utils import unix_timestamp, msgpack_encode, msgpack_decode
 
 
 DEFAULT_MESSAGE_VALIDITY_PERIOD = 60000  # Milliseconds
@@ -123,10 +119,10 @@ class Message(BaseModel, ABC):
 
 	@classmethod
 	def from_msgpack(cls: Type[MessageT], data: bytes) -> MessageT:
-		return cls.from_dict(message_decoder.decode(data))
+		return cls.from_dict(msgpack_decode(data))
 
 	def to_msgpack(self, none_values: bool = False) -> bytes:
-		return message_encoder.encode(self.to_dict(none_values=none_values))
+		return msgpack_encode(self.to_dict(none_values=none_values))
 
 	def __repr__(self) -> str:
 		return f"Message(type={self.type}, channel={self.channel}, sender={self.sender})"

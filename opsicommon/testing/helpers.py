@@ -34,12 +34,11 @@ from typing import Any, Callable, Generator
 from urllib.parse import urlsplit, urlunsplit
 
 import lz4  # type: ignore[import]
-import msgspec
 from psutil import Process
 
 from opsicommon.config.opsi import OpsiConfig
-from opsicommon.ssl import as_pem, create_ca, create_server_cert  # type: ignore[import]
-
+from opsicommon.ssl import as_pem, create_ca, create_server_cert
+from opsicommon.utils import msgpack_decode, msgpack_encode, json_encode, json_decode
 
 class WebSocketError(Exception):
 	pass
@@ -71,7 +70,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			return
 
 		with open(self.server.log_file, "ab") as file:
-			file.write(msgspec.json.encode(data) + b"\n")
+			file.write(json_encode(data) + b"\n")
 
 	def version_string(self) -> str:
 		if self.server.response_headers:
@@ -232,9 +231,9 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			request = gzip.decompress(request)
 
 		if "json" in self.headers.get("Content-Type", ""):
-			request = msgspec.json.decode(request)
+			request = json_decode(request)
 		elif "msgpack" in self.headers.get("Content-Type", ""):
-			request = msgspec.msgpack.decode(request)
+			request = msgpack_decode(request)
 
 		log_request = b64encode(request).decode("ascii") if isinstance(request, bytes) else request
 		request_info = {
@@ -250,7 +249,7 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		if self.server.response_body:
 			response = self.server.response_body
 		elif "json" in self.headers.get("Content-Type", "") or "msgpack" in self.headers.get("Content-Type", ""):
-			response = msgspec.json.encode({"id": request["id"], "result": []})
+			response = json_encode({"id": request["id"], "result": []})
 		else:
 			response = b""
 

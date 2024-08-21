@@ -18,6 +18,7 @@ import pytest
 
 from opsicommon.logging import LEVEL_TO_OPSI_LEVEL, LOG_WARNING, StreamHandler, get_all_handlers, logging_config, use_logging_config
 from opsicommon.objects import Product
+from opsicommon.system.info import is_linux
 from opsicommon.utils import (
 	Singleton,
 	combine_versions,
@@ -33,7 +34,33 @@ from opsicommon.utils import (
 	unix_timestamp,
 	update_environment_from_config_files,
 	utc_timestamp,
+	msgpack_encode,
+	msgpack_decode,
+	json_encode,
+	json_decode,
+	_msgspec_msgpack_decode,
+	_msgspec_msgpack_encode,
+	_msgspec_json_decode,
+	_msgspec_json_encode,
 )
+
+
+def test_json_encode_decode() -> None:
+	if is_linux():
+		assert _msgspec_json_encode
+		assert _msgspec_json_decode
+	data = {"test": "value", "list": [1, 2, 3]}
+	encoded = json_encode(data)
+	assert json_decode(encoded) == data
+
+
+def test_msgpack_encode_decode() -> None:
+	if is_linux():
+		assert _msgspec_msgpack_encode
+		assert _msgspec_msgpack_decode
+	data = {"test": "value", "list": [1, 2, 3]}
+	encoded = msgpack_encode(data)
+	assert msgpack_decode(encoded) == data
 
 
 @pytest.mark.parametrize(

@@ -17,13 +17,13 @@ from typing import Any, Callable, Generator
 
 import packaging.version as packver
 import zstandard
-from msgspec import json, msgpack
 
 from opsicommon.logging import get_logger
 from opsicommon.objects import ProductDependency
 from opsicommon.package import OpsiPackage, PackageDependency
 from opsicommon.system import lock_file
 from opsicommon.types import Architecture, OperatingSystem
+from opsicommon.utils import json_decode, json_encode, msgpack_decode, msgpack_encode
 
 logger = get_logger("opsicommon.package")
 
@@ -279,9 +279,9 @@ class RepoMetaPackageCollection:
 			data = decompressor.decompress(data)
 
 		if data.startswith(b"{"):
-			p_data = json.decode(data)
+			p_data = json_decode(data)
 		else:
-			p_data = msgpack.decode(data)
+			p_data = msgpack_decode(data)
 
 		self.schema_version = p_data.get("schema_version", self.schema_version)
 		self.repository = RepoMetaRepository(**p_data.get("repository", {}))
@@ -310,7 +310,7 @@ class RepoMetaPackageCollection:
 		logger.notice("Writing package metafile to %s (encoding=%s, compression=%s)", path, encoding, compression)
 
 		data = asdict(self)
-		bdata = msgpack.encode(data) if encoding == "msgpack" else json.encode(data)
+		bdata = msgpack_encode(data) if encoding == "msgpack" else json_encode(data)
 		if compression:
 			if compression != "zstd":
 				raise ValueError(f"Invalid compression: {compression}")

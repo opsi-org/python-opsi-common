@@ -24,7 +24,24 @@ from datetime import datetime, timezone
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network, ip_address, ip_network
 from pathlib import Path
 from types import EllipsisType
-from typing import TYPE_CHECKING, Any, Callable, Generator, Iterable, Literal, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Generator, Iterable, Literal, Type
+
+_msgspec_json_encode: Callable | None = None
+_msgspec_json_decode: Callable | None = None
+_msgspec_msgpack_encode: Callable | None = None
+_msgspec_msgpack_decode: Callable | None = None
+try:
+	from msgspec.json import encode as _msgspec_json_encode
+	from msgspec.json import decode as _msgspec_json_decode
+	from msgspec.msgpack import encode as _msgspec_msgpack_encode
+	from msgspec.msgpack import decode as _msgspec_msgpack_decode
+except ImportError:
+	pass
+
+from pydantic_core import to_json as _pydantic_json_encode
+from pydantic_core import from_json as _pydantic_json_decode
+from msgpack import packb as _msgpack_msgpack_encode # type: ignore[import]
+from msgpack import unpackb as _msgpack_msgpack_decode # type: ignore[import]
 
 import lz4.frame  # type: ignore[import]
 from packaging.version import InvalidVersion, Version
@@ -51,8 +68,28 @@ BaseObject: Type[TBaseObject] | None = None
 logger = get_logger("opsicommon.general")
 
 
-# For typing: need Union here and cannot use |-syntax when working with strings (not importing Types)
-def combine_versions(obj: Union["Product", "ProductOnClient", "ProductOnDepot"]) -> str:
+def json_encode(obj: Any) -> bytes:
+	if _msgspec_json_encode:
+		return _msgspec_json_encode(obj)
+	return _pydantic_json_encode(obj)
+
+def json_decode(data: bytes) -> Any:
+	if _msgspec_json_decode:
+		return _msgspec_json_decode(data)
+	return _pydantic_json_decode(data)
+
+def msgpack_encode(obj: Any) -> bytes:
+	if _msgspec_msgpack_encode:
+		return _msgspec_msgpack_encode(obj)
+	return _msgpack_msgpack_encode(obj)
+
+def msgpack_decode(data: bytes) -> Any:
+	if _msgspec_msgpack_decode:
+		return _msgspec_msgpack_decode(data)
+	return _msgpack_msgpack_decode(data)
+
+
+def combine_versions(obj: Product | ProductOnClient | ProductOnDepot) -> str:
 	"""
 	Returns the combination of product and package version.
 

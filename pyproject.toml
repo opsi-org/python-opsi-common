@@ -47,13 +47,15 @@ rich = ">=13.0"
 tomlkit = "^0.13"
 websocket-client = ">=1.4"
 zstandard = ">=0.21"
+# msgspec no longer supported on windows x86, see https://github.com/jcrist/msgspec/pull/696
+msgspec = [
+    {platform = "linux", git = "https://github.com/edgarrmondragon/msgspec.git", branch = "py313"},
+    {platform = "darwin", git = "https://github.com/edgarrmondragon/msgspec.git", branch = "py313"},
+]
 
 [tool.ruff.format]
 indent-style = "tab"
 
-[tool.poetry.dependencies.msgspec]
-git = "https://github.com/edgarrmondragon/msgspec.git"
-branch = "py313"
 
 [tool.poetry.dependencies.pywin32]
 platform = "win32"

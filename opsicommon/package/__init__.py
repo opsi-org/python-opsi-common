@@ -6,13 +6,12 @@
 opsi package class and associated methods
 """
 
-import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal, cast
 
 import tomlkit
-
+import json
 from opsicommon.logging import get_logger
 from opsicommon.objects import Product, ProductDependency, ProductProperty
 from opsicommon.package.archive import (

@@ -34,7 +34,7 @@ from typing import (
 import attr
 
 from opsicommon.logging import get_logger
-
+from opsicommon.utils import json_decode, json_encode
 try:
 	# PyCryptodome from pypi installs into Crypto
 	from Crypto.Hash import MD5, SHA3_512
@@ -314,19 +314,19 @@ class OpsiLicense:
 		return res
 
 	@classmethod
-	def from_dict(cls, data_dict: dict) -> "OpsiLicense":
+	def from_dict(cls, data_dict: dict) -> OpsiLicense:
 		data_dict = dict(data_dict)
 		for attribute in list(data_dict):
 			if attribute.startswith("_"):
 				del data_dict[attribute]
 		return OpsiLicense(**data_dict)
 
-	def to_json(self, with_state: bool = False) -> str:
-		return json.dumps(self.to_dict(serializable=True, with_state=with_state))
+	def to_json(self, with_state: bool = False) -> bytes:
+		return json_encode(self.to_dict(serializable=True, with_state=with_state))
 
 	@classmethod
-	def from_json(cls, json_data: str) -> "OpsiLicense":
-		return OpsiLicense.from_dict(json.loads(json_data))
+	def from_json(cls, json_data: bytes) -> OpsiLicense:
+		return OpsiLicense.from_dict(json_decode(json_data))
 
 	def _hash_base(self, with_signature: bool = True) -> bytes:
 		string = ""

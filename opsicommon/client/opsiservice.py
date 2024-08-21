@@ -37,7 +37,6 @@ from urllib.parse import quote, unquote, urlparse
 from uuid import uuid4
 
 import lz4.frame  # type: ignore[import,no-redef]
-import msgspec
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from packaging import version
@@ -64,9 +63,9 @@ from ..exceptions import (
 	OpsiServiceUnavailableError,
 	OpsiServiceVerificationError,
 )
-from ..logging import get_logger, secret_filter
-from ..logging.constants import TRACE
-from ..messagebus.message import (
+from opsicommon.logging import get_logger, secret_filter
+from opsicommon.logging.constants import TRACE
+from opsicommon.messagebus.message import (
 	ChannelSubscriptionEventMessage,
 	ChannelSubscriptionRequestMessage,
 	JSONRPCRequestMessage,
@@ -75,11 +74,11 @@ from ..messagebus.message import (
 	MessageType,
 	timestamp,
 )
-from ..objects import deserialize, serialize
-from ..ssl.common import load_key, x509_name_to_dict
-from ..system import lock_file, set_system_datetime
-from ..types import forceHostId, forceOpsiHostKey
-from ..utils import prepare_proxy_environment
+from opsicommon.objects import deserialize, serialize
+from opsicommon.ssl.common import load_key, x509_name_to_dict
+from opsicommon.system import lock_file, set_system_datetime
+from opsicommon.types import forceHostId, forceOpsiHostKey
+from opsicommon.utils import prepare_proxy_environment, json_encode, json_decode, msgpack_decode, msgpack_encode
 
 warnings.simplefilter("ignore", InsecureRequestWarning)
 
@@ -299,11 +298,6 @@ class ServiceClient:
 		self._password = ""
 
 		self._uib_opsi_ca_cert = x509.load_pem_x509_certificate(UIB_OPSI_CA.encode("ascii"))
-
-		self._msgpack_decoder = msgspec.msgpack.Decoder()
-		self._msgpack_encoder = msgspec.msgpack.Encoder()
-		self._json_decoder = msgspec.json.Decoder()
-		self._json_encoder = msgspec.json.Encoder()
 
 		self._session = Session()
 
@@ -670,7 +664,7 @@ class ServiceClient:
 		for method in self.jsonrpc_interface:
 			try:
 				method_name = method["name"]
-				exec_locals = {}
+				exec_locals: dict[str, object] = {}
 
 				if method_name not in ("backend_getInterface", "backend_exit"):
 					logger.debug("Creating instance method: %s", method_name)
@@ -1246,10 +1240,10 @@ class ServiceClient:
 		serial = "msgpack" if self.server_version >= MIN_VERSION_MSGPACK else "json"
 		if serial == "msgpack":
 			headers["Content-Type"] = headers["Accept"] = "application/msgpack"
-			data = self._msgpack_encoder.encode(data_dict)
+			data = msgpack_encode(data_dict)
 		else:
 			headers["Content-Type"] = headers["Accept"] = "application/json"
-			data = self._json_encoder.encode(data_dict)
+			data = json_encode(data_dict)
 
 		if not isinstance(data, bytes):
 			data = data.encode("utf-8")
@@ -1314,9 +1308,9 @@ class ServiceClient:
 		rpc = {}
 		try:
 			if content_type == "application/msgpack":
-				rpc = self._msgpack_decoder.decode(data)
+				rpc = msgpack_decode(data)
 			else:
-				rpc = self._json_decoder.decode(data)
+				rpc = json_decode(data)
 			if not return_result_only:
 				return rpc
 		except Exception:

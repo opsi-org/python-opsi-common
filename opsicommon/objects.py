@@ -18,8 +18,6 @@ from inspect import getfullargspec
 from types import GeneratorType
 from typing import Any, Callable, Generator, Self, Type, TypeVar
 
-import msgspec
-
 from opsicommon.exceptions import BackendBadValueError, BackendConfigurationError
 from opsicommon.logging import get_logger
 from opsicommon.types import (
@@ -68,7 +66,7 @@ from opsicommon.types import (
 	forceUserId,
 	forceUUIDString,
 )
-from opsicommon.utils import combine_versions, generate_opsi_host_key, timestamp
+from opsicommon.utils import combine_versions, generate_opsi_host_key, timestamp, json_decode, json_encode
 
 __all__ = (
 	"AuditHardware",
@@ -3480,18 +3478,15 @@ def deserialize(obj: Any, deep: bool = False, prevent_object_creation: bool = Fa
 	return obj
 
 
-json_decoder = msgspec.json.Decoder()
-json_encoder = msgspec.json.Encoder()
-
 
 def from_json(obj: str | bytes, object_type: str | None = None, prevent_object_creation: bool = False) -> Any:
 	if isinstance(obj, str):
 		obj = obj.encode("utf-8")
-	obj = json_decoder.decode(obj)
+	obj = json_decode(obj)
 	if isinstance(obj, dict) and object_type:
 		obj["type"] = object_type
 	return deserialize(obj, prevent_object_creation=prevent_object_creation)
 
 
 def to_json(obj: Any, deep: bool = False) -> str:
-	return json_encoder.encode(serialize(obj, deep=deep)).decode("utf-8")
+	return json_encode(serialize(obj, deep=deep)).decode("utf-8")
