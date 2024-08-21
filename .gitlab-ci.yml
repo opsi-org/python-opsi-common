@@ -1,4 +1,4 @@
-image: docker.uib.gmbh/opsi/dev/pybuilder:deb9-py3.12
+image: docker.uib.gmbh/opsi/dev/pybuilder:deb9-py3.13
 
 stages:
   - test
@@ -11,7 +11,7 @@ pytest-darwin:
   tags:
     - catalina-py312-x64
   script:
-    - poetry env use 3.12
+    - poetry env use 3.13
     - poetry cache clear --all --quiet uibpypi
     - poetry lock --no-update
     - poetry install
@@ -36,7 +36,7 @@ pytest-windows:
     - Invoke-WebRequest -UseBasicParsing -Uri "$OPSIDEVTOOLS_URL_WINDOWS_X86" -OutFile opsi-dev-tools.zip
     - Expand-Archive opsi-dev-tools.zip -DestinationPath .
     - .\opsi-dev-tool.exe --self-install
-    - $pythonPath = py -3.12 -c "import sys; print(sys.executable)"
+    - $pythonPath = py -3.13 -c "import sys; print(sys.executable)"
     - poetry env use $pythonPath
     - poetry cache clear --all --quiet uibpypi
     - poetry lock --no-update
@@ -59,7 +59,7 @@ pytest-linux:
   script:
     - apt update
     - apt --yes install zstd  # need zstd for packaging tests
-    - poetry env use 3.12
+    - poetry env use 3.13
     - poetry cache clear --all --quiet uibpypi
     - poetry lock --no-update
     - poetry install
@@ -90,7 +90,7 @@ pylint-pytest:
     - apt-get update
     - apt-get --yes --allow-downgrades install libsqlite3-0=3.16.2-5+deb9u1
     - apt-get --yes install sqlite3
-    - poetry env use 3.12
+    - poetry env use 3.13
     - poetry lock --no-update
     - poetry install
     - poetry run ruff opsicommon tests
@@ -124,7 +124,7 @@ apidoc:
     - eval $(ssh-agent -s)
     - ssh-add <(echo "$BLOG_PUBLISH_PRIVATE_KEY")
   script:
-    - poetry env use 3.12
+    - poetry env use 3.13
     - poetry lock --no-update
     - poetry install
     - poetry run poetry run opsi-dev-cli apidoc makehtml --output python-opsi-common
@@ -135,7 +135,7 @@ apidoc:
 uibpypi:
   stage: publish
   script:
-    - poetry env use 3.12
+    - poetry env use 3.13
     - poetry lock --no-update
     - poetry install
     - poetry run opsi-dev-tool -l info --uib-pypi-publish
