@@ -21,6 +21,10 @@ from opsicommon.objects import Product
 from opsicommon.system.info import is_linux
 from opsicommon.utils import (
 	Singleton,
+	_msgspec_json_decode,
+	_msgspec_json_encode,
+	_msgspec_msgpack_decode,
+	_msgspec_msgpack_encode,
 	combine_versions,
 	compare_versions,
 	compress_data,
@@ -28,20 +32,16 @@ from opsicommon.utils import (
 	frozen_lru_cache,
 	generate_opsi_host_key,
 	ip_address_in_network,
+	json_decode,
+	json_encode,
+	msgpack_decode,
+	msgpack_encode,
 	prepare_proxy_environment,
 	retry,
 	timestamp,
 	unix_timestamp,
 	update_environment_from_config_files,
 	utc_timestamp,
-	msgpack_encode,
-	msgpack_decode,
-	json_encode,
-	json_decode,
-	_msgspec_msgpack_decode,
-	_msgspec_msgpack_encode,
-	_msgspec_json_decode,
-	_msgspec_json_encode,
 )
 
 
@@ -49,8 +49,10 @@ def test_json_encode_decode() -> None:
 	if is_linux():
 		assert _msgspec_json_encode
 		assert _msgspec_json_decode
-	data = {"test": "value", "list": [1, 2, 3]}
+	now = datetime.datetime.now()
+	data = {"test": "value", "list": [1, 2, 3], "now": now}
 	encoded = json_encode(data)
+	data["now"] = data["now"].isoformat()  # type: ignore[attr-defined]
 	assert json_decode(encoded) == data
 
 
@@ -58,8 +60,10 @@ def test_msgpack_encode_decode() -> None:
 	if is_linux():
 		assert _msgspec_msgpack_encode
 		assert _msgspec_msgpack_decode
-	data = {"test": "value", "list": [1, 2, 3]}
+	now = datetime.datetime.now()
+	data = {"test": "value", "list": [1, 2, 3], "now": now}
 	encoded = msgpack_encode(data)
+	data["now"] = data["now"].isoformat()  # type: ignore[attr-defined]
 	assert msgpack_decode(encoded) == data
 
 

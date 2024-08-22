@@ -31,20 +31,19 @@ _msgspec_json_decode: Callable | None = None
 _msgspec_msgpack_encode: Callable | None = None
 _msgspec_msgpack_decode: Callable | None = None
 try:
-	from msgspec.json import encode as _msgspec_json_encode
 	from msgspec.json import decode as _msgspec_json_decode
-	from msgspec.msgpack import encode as _msgspec_msgpack_encode
+	from msgspec.json import encode as _msgspec_json_encode
 	from msgspec.msgpack import decode as _msgspec_msgpack_decode
+	from msgspec.msgpack import encode as _msgspec_msgpack_encode
 except ImportError:
 	pass
 
-from pydantic_core import to_json as _pydantic_json_encode
-from pydantic_core import from_json as _pydantic_json_decode
+import lz4.frame  # type: ignore[import]
 from msgpack import packb as _msgpack_msgpack_encode  # type: ignore[import]
 from msgpack import unpackb as _msgpack_msgpack_decode  # type: ignore[import]
-
-import lz4.frame  # type: ignore[import]
 from packaging.version import InvalidVersion, Version
+from pydantic_core import from_json as _pydantic_json_decode
+from pydantic_core import to_json as _pydantic_json_encode
 from typing_extensions import deprecated
 
 from opsicommon.logging import get_logger
@@ -80,10 +79,16 @@ def json_decode(data: bytes) -> Any:
 	return _pydantic_json_decode(data)
 
 
+def _msgpack_encode_handler(obj: Any) -> Any:
+	if isinstance(obj, datetime):
+		return obj.isoformat()
+	raise TypeError(f"TypeError: can not serialize '{type(obj)}' object")
+
+
 def msgpack_encode(obj: Any) -> bytes:
 	if _msgspec_msgpack_encode:
 		return _msgspec_msgpack_encode(obj)
-	return _msgpack_msgpack_encode(obj)
+	return _msgpack_msgpack_encode(obj, default=_msgpack_encode_handler)
 
 
 def msgpack_decode(data: bytes) -> Any:
