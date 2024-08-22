@@ -38,7 +38,8 @@ from psutil import Process
 
 from opsicommon.config.opsi import OpsiConfig
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
-from opsicommon.utils import msgpack_decode, msgpack_encode, json_encode, json_decode
+from opsicommon.utils import msgpack_decode, json_encode, json_decode
+
 
 class WebSocketError(Exception):
 	pass

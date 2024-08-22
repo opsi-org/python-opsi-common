@@ -6,7 +6,6 @@
 messagebus.terminal tests
 """
 
-
 import asyncio
 import os
 import time

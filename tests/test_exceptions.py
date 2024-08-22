@@ -4,7 +4,6 @@
 Testing behaviour of exceptions.
 """
 
-
 import time
 from typing import Generator, Type
 

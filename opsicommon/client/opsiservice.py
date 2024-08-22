@@ -704,7 +704,10 @@ class ServiceClient:
 					logger.trace("%s: arg string is: %s", method_name, arg_string)
 					logger.trace("%s: call string is: %s", method_name, call_string)
 					with warnings.catch_warnings():
-						exec(f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])', locals=exec_locals)
+						exec(
+							f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])',
+							locals=exec_locals,
+						)
 				setattr(instance, method_name, MethodType(exec_locals[method_name] if exec_locals else eval(method_name), self))
 			except Exception as err:
 				logger.error("Failed to create instance method '%s': %s", method, err)
@@ -1013,8 +1016,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
-	) -> Response:
-		...
+	) -> Response: ...
 
 	@overload
 	def request(
@@ -1028,8 +1030,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
-	) -> RequestsResponse:
-		...
+	) -> RequestsResponse: ...
 
 	@overload
 	def request(
@@ -1043,8 +1044,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
-	) -> RequestsResponse | Response:
-		...
+	) -> RequestsResponse | Response: ...
 
 	def request(
 		self,
@@ -1082,8 +1082,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
-	) -> Response:
-		...
+	) -> Response: ...
 
 	@overload
 	def get(
@@ -1095,8 +1094,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
-	) -> RequestsResponse:
-		...
+	) -> RequestsResponse: ...
 
 	@overload
 	def get(
@@ -1108,8 +1106,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
-	) -> RequestsResponse | Response:
-		...
+	) -> RequestsResponse | Response: ...
 
 	def get(
 		self,
@@ -1142,8 +1139,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
-	) -> Response:
-		...
+	) -> Response: ...
 
 	@overload
 	def post(
@@ -1156,8 +1152,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
-	) -> RequestsResponse:
-		...
+	) -> RequestsResponse: ...
 
 	@overload
 	def post(
@@ -1170,8 +1165,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
-	) -> RequestsResponse | Response:
-		...
+	) -> RequestsResponse | Response: ...
 
 	def post(
 		self,

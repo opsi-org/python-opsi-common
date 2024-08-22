@@ -3478,7 +3478,6 @@ def deserialize(obj: Any, deep: bool = False, prevent_object_creation: bool = Fa
 	return obj
 
 
-
 def from_json(obj: str | bytes, object_type: str | None = None, prevent_object_creation: bool = False) -> Any:
 	if isinstance(obj, str):
 		obj = obj.encode("utf-8")

@@ -4,7 +4,6 @@
 This file is part of opsi - https://www.opsi.org
 """
 
-
 import datetime
 import time
 from contextlib import nullcontext

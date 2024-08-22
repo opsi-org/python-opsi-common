@@ -40,8 +40,8 @@ except ImportError:
 
 from pydantic_core import to_json as _pydantic_json_encode
 from pydantic_core import from_json as _pydantic_json_decode
-from msgpack import packb as _msgpack_msgpack_encode # type: ignore[import]
-from msgpack import unpackb as _msgpack_msgpack_decode # type: ignore[import]
+from msgpack import packb as _msgpack_msgpack_encode  # type: ignore[import]
+from msgpack import unpackb as _msgpack_msgpack_decode  # type: ignore[import]
 
 import lz4.frame  # type: ignore[import]
 from packaging.version import InvalidVersion, Version
@@ -73,15 +73,18 @@ def json_encode(obj: Any) -> bytes:
 		return _msgspec_json_encode(obj)
 	return _pydantic_json_encode(obj)
 
+
 def json_decode(data: bytes) -> Any:
 	if _msgspec_json_decode:
 		return _msgspec_json_decode(data)
 	return _pydantic_json_decode(data)
 
+
 def msgpack_encode(obj: Any) -> bytes:
 	if _msgspec_msgpack_encode:
 		return _msgspec_msgpack_encode(obj)
 	return _msgpack_msgpack_encode(obj)
+
 
 def msgpack_decode(data: bytes) -> Any:
 	if _msgspec_msgpack_decode:

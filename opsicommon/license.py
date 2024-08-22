@@ -35,6 +35,7 @@ import attr
 
 from opsicommon.logging import get_logger
 from opsicommon.utils import json_decode, json_encode
+
 try:
 	# PyCryptodome from pypi installs into Crypto
 	from Crypto.Hash import MD5, SHA3_512
@@ -131,13 +132,11 @@ def _hexstr2bytes(value: str) -> bytes:
 
 
 @overload
-def generate_key_pair(return_pem: Literal[True], bits: int = 2048) -> tuple[str, str]:
-	...
+def generate_key_pair(return_pem: Literal[True], bits: int = 2048) -> tuple[str, str]: ...
 
 
 @overload
-def generate_key_pair(return_pem: Literal[False], bits: int = 2048) -> tuple[RSA.RsaKey, RSA.RsaKey]:
-	...
+def generate_key_pair(return_pem: Literal[False], bits: int = 2048) -> tuple[RSA.RsaKey, RSA.RsaKey]: ...
 
 
 def generate_key_pair(return_pem: bool = False, bits: int = 2048) -> tuple[str, str] | tuple[RSA.RsaKey, RSA.RsaKey]:
