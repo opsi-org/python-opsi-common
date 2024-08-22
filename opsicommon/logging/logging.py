@@ -692,7 +692,7 @@ def logging_config(
 				if stderr_is_rich_console:
 					shandler = RichConsoleHandler(console=stderr_file)  # type: ignore[arg-type]
 				else:
-					shandler = StreamHandler(stream=stderr_file)  # type: ignore[type-var]
+					shandler = StreamHandler(stream=stderr_file)  # type: ignore[arg-type,type-var]
 				shandler.name = "opsi_stderr_handler"
 				logging.root.addHandler(shandler)
 		for hdlr in get_all_handlers((StreamHandler, RichConsoleHandler)):

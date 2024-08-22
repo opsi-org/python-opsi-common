@@ -99,9 +99,9 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			return ranges
 
 		for rah in [r.strip() for r in range_head.split("=")[1].split(",")]:
-			start_byte, end_byte = rah.split("-")
-			start_byte = int(start_byte or 0)
-			end_byte = int(end_byte or file_size)
+			start_byte_string, end_byte_string = rah.split("-")
+			start_byte = int(start_byte_string or 0)
+			end_byte = int(end_byte_string or file_size)
 			if end_byte >= file_size:
 				end_byte = file_size - 1
 			ranges.append((start_byte, end_byte))
