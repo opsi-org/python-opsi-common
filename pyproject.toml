@@ -55,7 +55,7 @@ indent-style = "tab"
 
 [tool.poetry.dependencies.pywin32]
 platform = "win32"
-version = ">=303"
+version = ">=303,<304"
 
 [tool.poetry.dependencies.pywinpty]
 platform = "win32"
