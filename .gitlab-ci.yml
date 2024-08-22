@@ -95,7 +95,7 @@ pylint-pytest:
     - poetry env use 3.13
     - poetry lock --no-update
     - poetry install
-    - poetry run ruff opsicommon tests
+    - poetry run ruff check opsicommon tests
     - poetry run mypy opsicommon tests
     - for db in coverage_*; do sqlite3 $db 'update file set path=replace(substr(path,instr(path,"opsicommon")),"\","/");'; done
     - echo -e '[run]\nrelative_files = True\n' > .coveragerc
