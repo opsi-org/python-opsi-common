@@ -1525,22 +1525,6 @@ url = "http://pypi.uib.gmbh:8080/simple"
 reference = "uibpypi"
 
 [[package]]
-name = "types-orjson"
-version = "3.6.2"
-description = "Typing stubs for orjson"
-optional = false
-python-versions = "*"
-files = [
-    {file = "types-orjson-3.6.2.tar.gz", hash = "sha256:cf9afcc79a86325c7aff251790338109ed6f6b1bab09d2d4262dd18c85a3c638"},
-    {file = "types_orjson-3.6.2-py3-none-any.whl", hash = "sha256:22ee9a79236b6b0bfb35a0684eded62ad930a88a56797fa3c449b026cf7dbfe4"},
-]
-
-[package.source]
-type = "legacy"
-url = "http://pypi.uib.gmbh:8080/simple"
-reference = "uibpypi"
-
-[[package]]
 name = "types-psutil"
 version = "6.0.0.20240621"
 description = "Typing stubs for psutil"
@@ -1780,4 +1764,4 @@ reference = "uibpypi"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.14"
-content-hash = "77e02e4da0df2556466f811ce3d852d9411835933b02a393264697f635c192a1"
+content-hash = "e100c00aaedd1653e73fb3ff274fee8d51edf112eeb86961b0e0dd4497570c99"
