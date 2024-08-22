@@ -9,7 +9,7 @@ pytest-darwin:
   #when: manual
   stage: test
   tags:
-    - catalina-py312-x64
+    - catalina-py313-x64
   script:
     - poetry env use 3.13
     - poetry cache clear --all --quiet uibpypi
@@ -31,7 +31,7 @@ pytest-windows:
   #when: manual
   stage: test
   tags:
-    - win10-py312-x86
+    - win10-py313-x86
   script:
     - Invoke-WebRequest -UseBasicParsing -Uri "$OPSIDEVTOOLS_URL_WINDOWS_X86" -OutFile opsi-dev-tools.zip
     - Expand-Archive opsi-dev-tools.zip -DestinationPath .
