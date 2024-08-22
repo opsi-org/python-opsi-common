@@ -1260,17 +1260,17 @@ reference = "uibpypi"
 
 [[package]]
 name = "pytest-asyncio"
-version = "0.23.8"
+version = "0.24.0"
 description = "Pytest support for asyncio"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pytest_asyncio-0.23.8-py3-none-any.whl", hash = "sha256:50265d892689a5faefb84df80819d1ecef566eb3549cf915dfb33569359d1ce2"},
-    {file = "pytest_asyncio-0.23.8.tar.gz", hash = "sha256:759b10b33a6dc61cce40a8bd5205e302978bbbcc00e279a8b61d9a6a3c82e4d3"},
+    {file = "pytest_asyncio-0.24.0-py3-none-any.whl", hash = "sha256:a811296ed596b69bf0b6f3dc40f83bcaf341b155a269052d82efa2b25ac7037b"},
+    {file = "pytest_asyncio-0.24.0.tar.gz", hash = "sha256:d081d828e576d85f875399194281e92bf8a68d60d72d1a2faf2feddb6c46b276"},
 ]
 
 [package.dependencies]
-pytest = ">=7.0.0,<9"
+pytest = ">=8.2,<9"
 
 [package.extras]
 docs = ["sphinx (>=5.3)", "sphinx-rtd-theme (>=1.0)"]
@@ -1373,21 +1373,21 @@ reference = "uibpypi"
 
 [[package]]
 name = "pyzsync"
-version = "1.3.1"
+version = "1.3.2"
 description = ""
 optional = false
 python-versions = "*"
 files = [
-    {file = "pyzsync-1.3.1-cp310-cp310-manylinux_2_24_x86_64.whl", hash = "sha256:bf50b13715c8cca02deaeb000a1268bee59e01b650f687f16e6e15fd008d874c"},
-    {file = "pyzsync-1.3.1-cp311-cp311-macosx_10_7_x86_64.whl", hash = "sha256:7e9ec1acf5f76974f41d8156a87e4ffd55a08293450e6d28661c76e702f90954"},
-    {file = "pyzsync-1.3.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:67e4f2f06795721ff07b0b817d0e2d515318a2f0ab33c3ca4210e692c7030ca5"},
-    {file = "pyzsync-1.3.1-cp311-cp311-manylinux_2_24_x86_64.whl", hash = "sha256:63002c90b39372b7c1d197bf8a0919d4adf51015c57a25b22bcf82107a971255"},
-    {file = "pyzsync-1.3.1-cp311-none-win32.whl", hash = "sha256:4087cdade3622daf55b94dd1dbd9afd901b50b2c0c9b7901de7fa5bb4c232944"},
-    {file = "pyzsync-1.3.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f74d0d08603fd2ef4caf4114db7b223c37e37b66f9d31c2bd27df555176514af"},
-    {file = "pyzsync-1.3.1-cp312-cp312-manylinux_2_24_x86_64.whl", hash = "sha256:4d2c618736d92c23c207f31760fed6e1c38c502705560574c6b8bbd291e136d4"},
-    {file = "pyzsync-1.3.1-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6f99b250e58111fe8d3c9a718c9b63f4cdddd482155c2f4c8ae4e264f6464336"},
-    {file = "pyzsync-1.3.1-cp313-cp313-manylinux_2_24_x86_64.whl", hash = "sha256:e5cc4b6964d7b8cf22462ef31beefa18fe5515f271ede2a49f0901675189faae"},
-    {file = "pyzsync-1.3.1.tar.gz", hash = "sha256:ddc2a0b6941b50b6c86d92b739c848ec248b7d37b5fe1fab223f007bacc2ac63"},
+    {file = "pyzsync-1.3.2-cp310-cp310-manylinux_2_24_x86_64.whl", hash = "sha256:fa693741ff01a78ad5875f6c225c921d37d80d0357163e4e6ae2121a8e04d417"},
+    {file = "pyzsync-1.3.2-cp311-cp311-macosx_10_7_x86_64.whl", hash = "sha256:78599b6c1cf2165003542a3306519893d11376952138805449eafbdbf7ff56a5"},
+    {file = "pyzsync-1.3.2-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e0e19550f7beade4178145a7d5eedff217997c35166e46cb2c3400ffc2c5a5b8"},
+    {file = "pyzsync-1.3.2-cp311-cp311-manylinux_2_24_x86_64.whl", hash = "sha256:5c06e24efd1d591bc6ff9d88fb9f3f19878c87c4a60fa9060063585a46ca2fd2"},
+    {file = "pyzsync-1.3.2-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7e7837a5e8e2e29fcc07bcf34d1551172f85a6dcc1e06c9fb80673137825704a"},
+    {file = "pyzsync-1.3.2-cp312-cp312-manylinux_2_24_x86_64.whl", hash = "sha256:dd5769263f54d075c98feec951fa287800d6600c21546808f71fa78159e17af0"},
+    {file = "pyzsync-1.3.2-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:05bd7726f566af6fec6d9dbdc21695f2982f98d3e9500aaadd32c15934e038d3"},
+    {file = "pyzsync-1.3.2-cp313-cp313-manylinux_2_24_x86_64.whl", hash = "sha256:9b1caeef613aad12d41350e8e7b56752dca558b18b25ac5ad22ff5594081c644"},
+    {file = "pyzsync-1.3.2-cp313-none-win32.whl", hash = "sha256:42f2ab607de77b47cb9830c0a9345904a86e1ada4afadab620814f2aae416cc0"},
+    {file = "pyzsync-1.3.2.tar.gz", hash = "sha256:a646da7cbb6abbec8e614d32f55ed8733d073ffd43f0dba45d6143037a8f031a"},
 ]
 
 [package.source]
@@ -1764,4 +1764,4 @@ reference = "uibpypi"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.14"
-content-hash = "e100c00aaedd1653e73fb3ff274fee8d51edf112eeb86961b0e0dd4497570c99"
+content-hash = "8df4f7e5e89d12f88924e8062cd4a15092f771e96274de8785f3ec24b6b279fb"

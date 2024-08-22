@@ -32,6 +32,8 @@ disallow_incomplete_defs = true
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.14"
+annotated-types = "^0.7"
+cffi = "^1.17"
 colorlog = ">=6.6"
 cryptography = "^43.0"
 distro = ">=1.6"
@@ -41,6 +43,7 @@ psutil = ">=5.8"
 ptyprocess = "^0.7"
 pycryptodome = ">=3.10"
 pydantic = "^2.8"
+pydantic-core = "^2.20"
 pyzsync = ">=1.2"
 requests = ">=2.26"
 rich = ">=13.0"
@@ -55,7 +58,6 @@ msgspec = [
 
 [tool.ruff.format]
 indent-style = "tab"
-
 
 [tool.poetry.dependencies.pywin32]
 platform = "win32"
@@ -75,7 +77,7 @@ mypy = ">=1.0"
 perflint = ">=0.7"
 pproxy = "^2.7"
 pytest = ">=7.0"
-pytest-asyncio = "^0.23.5.post1"
+pytest-asyncio = "^0.24"
 pytest-cov = ">=4.0"
 pyupgrade = ">=3.0"
 ruff = "^0.6"
