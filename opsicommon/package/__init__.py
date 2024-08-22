@@ -40,6 +40,18 @@ PACKAGE_DIR_TYPES = Literal["OPSI", "CLIENT_DATA", "SERVER_DATA"]
 logger = get_logger("opsicommon.package")
 
 
+def package_data_from_archive(archive: Path) -> dict[str, str]:
+	"""
+	Extracts product id, product version and package version from a package archive.
+	"""
+	parts = archive.stem.split("_")
+	return {
+		"id": "_".join(parts[:-1]),
+		"productVersion": parts[-1].split("-")[0],
+		"packageVersion": parts[-1].split("-")[1],
+	}
+
+
 @dataclass(slots=True, kw_only=True)
 class PackageDependency:
 	package: str
