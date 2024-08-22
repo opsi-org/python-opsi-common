@@ -14,7 +14,7 @@ from typing import cast
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509 import CertificateBuilder
+from cryptography.x509 import CertificateBuilder, CertificateSigningRequestBuilder
 from typing_extensions import deprecated
 
 from opsicommon.logging import get_logger
@@ -212,7 +212,6 @@ def create_server_cert(
 		logger.info("Creating server key pair")
 		key = rsa.generate_private_key(public_exponent=65537, key_size=bits)
 
-	# Chrome requires CN from Subject also as Subject Alt
 	hostnames.add(cn_attr[0].value)
 	alt_names = [x509.DNSName(hn) for hn in hostnames] + [x509.IPAddress(ip_address(ip)) for ip in ip_addresses]
 
@@ -245,7 +244,33 @@ def create_server_cert(
 		x509.ExtendedKeyUsage([x509.OID_SERVER_AUTH, x509.OID_CLIENT_AUTH, x509.OID_CODE_SIGNING, x509.OID_EMAIL_PROTECTION]),
 		critical=False,
 	)
-
-	if alt_names:
-		builder = builder.add_extension(x509.SubjectAlternativeName(alt_names), critical=False)
+	builder = builder.add_extension(x509.SubjectAlternativeName(alt_names), critical=False)
 	return (builder.sign(ca_key, hashes.SHA256()), key)
+
+
+def create_server_cert_signing_request(
+	*,
+	subject: x509.Name | dict[str, str],
+	ip_addresses: set,
+	hostnames: set,
+	key: rsa.RSAPrivateKey | None = None,
+	bits: int = SERVER_KEY_BITS,
+) -> tuple[x509.CertificateSigningRequest, rsa.RSAPrivateKey]:
+	if not isinstance(subject, x509.Name):
+		subject = x509_name_from_dict(cast(dict[str, str | None], subject))
+
+	cn_attr = subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
+	if not cn_attr or not cn_attr[0].value:
+		raise ValueError("commonName missing in subject")
+
+	if not key:
+		logger.info("Creating server key pair")
+		key = rsa.generate_private_key(public_exponent=65537, key_size=bits)
+
+	hostnames.add(cn_attr[0].value)
+	alt_names = [x509.DNSName(hn) for hn in hostnames] + [x509.IPAddress(ip_address(ip)) for ip in ip_addresses]
+
+	builder = CertificateSigningRequestBuilder(subject_name=subject)
+	builder = builder.add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+	builder = builder.add_extension(x509.SubjectAlternativeName(alt_names), critical=False)
+	return (builder.sign(key, hashes.SHA256()), key)

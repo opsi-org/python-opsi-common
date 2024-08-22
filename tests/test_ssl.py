@@ -21,6 +21,7 @@ from opsicommon.ssl import (
 	as_pem,
 	create_ca,
 	create_server_cert,
+	create_server_cert_signing_request,
 	create_x509_name,
 	install_ca,
 	is_self_signed,
@@ -198,6 +199,28 @@ def test_create_server_cert() -> None:
 	kwargs["subject"]["CN"] = "server.dom.tld"
 	cert, key = create_server_cert(**kwargs)
 	assert isinstance(cert, x509.Certificate)
+	assert isinstance(key, rsa.RSAPrivateKey)
+	assert cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == kwargs["subject"]["CN"]
+
+	alt_names = [extension for extension in cert.extensions if extension.oid == x509.OID_SUBJECT_ALTERNATIVE_NAME][0]
+	assert not alt_names.critical
+	assert alt_names.value.get_values_for_type(x509.DNSName) == list(kwargs["hostnames"])
+	assert alt_names.value.get_values_for_type(x509.IPAddress) == list(ipaddress.ip_address(ip) for ip in kwargs["ip_addresses"])
+
+
+def test_create_server_cert_signing_request() -> None:
+	kwargs: dict[str, Any] = {
+		"subject": {"emailAddress": "opsi@opsi.org"},
+		"ip_addresses": {"172.0.0.1", "::1", ipaddress.ip_address("192.168.1.1")},
+		"hostnames": {"localhost", "opsi", "opsi.dom.tld"},
+	}
+	with pytest.raises(ValueError) as err:
+		cert, key = create_server_cert_signing_request(**kwargs)
+	assert "commonName missing in subject" in str(err)
+
+	kwargs["subject"]["CN"] = "server.dom.tld"
+	cert, key = create_server_cert_signing_request(**kwargs)
+	assert isinstance(cert, x509.CertificateSigningRequest)
 	assert isinstance(key, rsa.RSAPrivateKey)
 	assert cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value == kwargs["subject"]["CN"]
 
