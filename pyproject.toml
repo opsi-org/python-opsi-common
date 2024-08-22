@@ -4,7 +4,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "python-opsi-common"
-version = "4.3.17.3"
+version = "4.3.17.4"
 description = "The opsi python common library"
 homepage = "https://www.opsi.org"
 license = "AGPL-3.0"
@@ -50,7 +50,7 @@ cryptography = "^42.0"
 ptyprocess = "^0.7"
 types-aiofiles = "^24.1.0.0"
 aiofiles = "^24.1.0"
-mailbits = "*"
+mailbits = "^0.2.1"
 
 [tool.ruff.format]
 indent-style = "tab"
