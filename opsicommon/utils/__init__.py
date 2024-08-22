@@ -26,6 +26,18 @@ from pathlib import Path
 from types import EllipsisType
 from typing import TYPE_CHECKING, Any, Callable, Generator, Iterable, Literal, Type
 
+import lz4.frame  # type: ignore[import]
+from msgpack import packb as _msgpack_msgpack_encode  # type: ignore[import]
+from msgpack import unpackb as _msgpack_msgpack_decode  # type: ignore[import]
+from packaging.version import InvalidVersion, Version
+from pydantic_core import from_json as _pydantic_json_decode
+from pydantic_core import to_json as _pydantic_json_encode
+from typing_extensions import deprecated
+
+from opsicommon.logging import get_logger
+from opsicommon.system.subprocess import patch_popen
+from opsicommon.types import _PACKAGE_VERSION_REGEX, _PRODUCT_VERSION_REGEX
+
 _msgspec_json_encode: Callable | None = None
 _msgspec_json_decode: Callable | None = None
 _msgspec_msgpack_encode: Callable | None = None
@@ -38,17 +50,6 @@ try:
 except ImportError:
 	pass
 
-import lz4.frame  # type: ignore[import]
-from msgpack import packb as _msgpack_msgpack_encode  # type: ignore[import]
-from msgpack import unpackb as _msgpack_msgpack_decode  # type: ignore[import]
-from packaging.version import InvalidVersion, Version
-from pydantic_core import from_json as _pydantic_json_decode
-from pydantic_core import to_json as _pydantic_json_encode
-from typing_extensions import deprecated
-
-from opsicommon.logging import get_logger
-from opsicommon.system.subprocess import patch_popen
-from opsicommon.types import _PACKAGE_VERSION_REGEX, _PRODUCT_VERSION_REGEX
 
 if platform.system().lower() == "windows":
 	OPSI_TMP_DIR = None  # default %TEMP% of user

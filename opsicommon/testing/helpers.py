@@ -38,7 +38,7 @@ from psutil import Process
 
 from opsicommon.config.opsi import OpsiConfig
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
-from opsicommon.utils import msgpack_decode, json_encode, json_decode
+from opsicommon.utils import json_decode, json_encode, msgpack_decode
 
 
 class WebSocketError(Exception):
@@ -99,9 +99,9 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			return ranges
 
 		for rah in [r.strip() for r in range_head.split("=")[1].split(",")]:
-			start_byte, end_byte = rah.split("-")
-			start_byte = int(start_byte or 0)
-			end_byte = int(end_byte or file_size)
+			str_start_byte, str_end_byte = rah.split("-")
+			start_byte = int(str_start_byte or 0)
+			end_byte = int(str_end_byte or file_size)
 			if end_byte >= file_size:
 				end_byte = file_size - 1
 			ranges.append((start_byte, end_byte))

@@ -692,7 +692,7 @@ def logging_config(
 				if stderr_is_rich_console:
 					shandler = RichConsoleHandler(console=stderr_file)  # type: ignore[arg-type]
 				else:
-					shandler = StreamHandler(stream=stderr_file)  # type: ignore[type-var]
+					shandler = StreamHandler(stream=stderr_file)  # type: ignore[arg-type]
 				shandler.name = "opsi_stderr_handler"
 				logging.root.addHandler(shandler)
 		for hdlr in get_all_handlers((StreamHandler, RichConsoleHandler)):
@@ -972,8 +972,8 @@ def remove_all_handlers(handler_type: type | None = None, handler_name: str | No
 		if not isinstance(_logger, PlaceHolder):
 			for _handler in _logger.handlers:
 				if (
-					not handler_type
-					or type(_handler) == handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
+					# Exact type needed, not subclass!
+					not handler_type or type(_handler) == handler_type  # noqa: E721
 				) and (not handler_name or _handler.name == handler_name):
 					_logger.removeHandler(_handler)
 
