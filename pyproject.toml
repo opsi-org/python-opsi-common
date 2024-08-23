@@ -4,7 +4,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "python-opsi-common"
-version = "4.3.17.4"
+version = "4.3.18.0"
 description = "The opsi python common library"
 homepage = "https://www.opsi.org"
 license = "AGPL-3.0"
@@ -57,7 +57,7 @@ indent-style = "tab"
 
 [tool.poetry.dependencies.pywin32]
 platform = "win32"
-version = ">=303"
+version = ">=303,<304"
 
 [tool.poetry.dependencies.pywinpty]
 platform = "win32"
