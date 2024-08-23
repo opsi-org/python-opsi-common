@@ -291,13 +291,7 @@ class FileDownload(FileTransfer):
 
 		number = 0
 		self.last = False
-		# start read
-		if self._file_request.follow:
-			file_data_gen = self.follow_file
-		else:
-			file_data_gen = self.read_file
-
-		file_data_stream = file_data_gen()
+		file_data_stream = self.read_file()
 		while True:
 			try:
 				data = await anext(file_data_stream)
@@ -332,26 +326,13 @@ class FileDownload(FileTransfer):
 				last_tmp = await file.read(self._file_request.chunk_size)
 				while True:
 					tmp = await file.read(self._file_request.chunk_size)
-					if tmp == b"":
+					if tmp == b"" and not self._file_request.follow:
 						self.last = True
 						yield last_tmp
 						break
-					yield last_tmp
+					if last_tmp != b"":
+						yield last_tmp
 					last_tmp = tmp
-		except IOError:
-			await self._error(f"unexpected IOError: {str(IOError)}")
-
-	async def follow_file(self) -> AsyncGenerator[bytes, None]:
-		assert isinstance(self._file_request, FileDownloadRequestMessage)
-		assert isinstance(self._file_request.path, str)
-		assert isinstance(self._file_request.chunk_size, int)
-		logger.notice("started tailing file")
-		try:
-			async with aiofiles.open(self._file_request.path, "rb") as file:
-				while True:
-					tmp = await file.read(self._file_request.chunk_size)
-					if tmp != b"":
-						yield tmp
 		except IOError:
 			await self._error(f"unexpected IOError: {str(IOError)}")
 
