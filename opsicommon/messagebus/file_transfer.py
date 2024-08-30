@@ -323,16 +323,13 @@ class FileDownload(FileTransfer):
 		logger.notice("started reading file")
 		try:
 			async with aiofiles.open(self._file_request.path, "rb") as file:
-				last_tmp = await file.read(self._file_request.chunk_size)
-				while True:
+				while not self.last:
 					tmp = await file.read(self._file_request.chunk_size)
-					if tmp == b"" and not self._file_request.follow:
+					if tmp:
+						yield tmp
+					elif not self._file_request.follow:
 						self.last = True
-						yield last_tmp
-						break
-					if last_tmp != b"":
-						yield last_tmp
-					last_tmp = tmp
+						yield tmp
 		except IOError:
 			await self._error(f"unexpected IOError: {str(IOError)}")
 
