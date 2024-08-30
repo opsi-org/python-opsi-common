@@ -234,7 +234,7 @@ async def test_file_download(tmp_path: Path) -> None:
 			assert isinstance(data_message, FileChunkMessage)
 			assert data_message.channel == res_back_channel
 			assert data_message.number == num
-			assert data_message.last == False
+			assert data_message.last is False
 			assert data_message.data == file.read(chunk_size)
 			num += 1
 
@@ -242,7 +242,7 @@ async def test_file_download(tmp_path: Path) -> None:
 	assert isinstance(last_message[0], FileChunkMessage)
 	assert last_message[0].channel == res_back_channel
 	assert last_message[0].number == num
-	assert last_message[0].last == True
+	assert last_message[0].last is True
 	assert last_message[0].data == b""
 
 
