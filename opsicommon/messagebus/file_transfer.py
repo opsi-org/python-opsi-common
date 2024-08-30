@@ -12,7 +12,9 @@ import asyncio
 from pathlib import Path
 from threading import Lock
 from time import time
-from typing import Callable
+from typing import AsyncGenerator, Callable
+
+import aiofiles
 
 from opsicommon.logging import get_logger
 from opsicommon.messagebus import CONNECTION_SESSION_CHANNEL, CONNECTION_USER_CHANNEL
@@ -69,6 +71,38 @@ class FileTransfer:
 	async def stop(self) -> None:
 		logger.info("Stopping %r (%r)", self)
 		self._should_stop = True
+
+	def _append_to_file(self, data: bytes) -> None:
+		if not self._file_path:
+			raise RuntimeError("File path not set")
+		with open(self._file_path, mode="ab") as file:
+			file.write(data)
+
+	async def process_file_chunk(self, message: FileChunkMessage) -> None:
+		if not isinstance(message, FileChunkMessage):
+			raise ValueError(f"Received invalid message type {message.type}")
+
+		self._last_chunk_time = time()
+		if message.number != self._chunk_number + 1:
+			await self._error(f"Expected chunk number {self._chunk_number + 1}", message)
+			return
+
+		self._chunk_number = message.number
+
+		await self._loop.run_in_executor(None, self._append_to_file, message.data)
+
+		if message.last:
+			logger.debug("Last chunk received")
+			self._completed = True
+			upload_result = FileUploadResultMessage(
+				sender=self._sender,
+				channel=self._response_channel,
+				file_id=self._file_id,
+				back_channel=self._back_channel,
+				path=str(self._file_path),
+			)
+			await self._send_message(upload_result)
+			self._should_stop = True
 
 	async def _error(self, error: str, message: Message | None = None) -> None:
 		logger.error(error)
@@ -231,7 +265,10 @@ class FileDownload(FileTransfer):
 			await self._error(str(error), message=self._file_request)
 			return
 
-		self.size = Path(self._file_request.path).stat().st_size
+		if self._file_request.follow:
+			self.size = None
+		else:
+			self.size = Path(self._file_request.path).stat().st_size
 		message = FileDownloadResponseMessage(
 			sender=self._sender,
 			channel=self._response_channel,
@@ -250,27 +287,51 @@ class FileDownload(FileTransfer):
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
 		assert isinstance(self._file_request.path, str)
 		assert isinstance(self._file_request.chunk_size, int)
-		assert isinstance(self.size, int)
+		assert isinstance(self.size, int | None)
 
 		number = 0
-		with open(self._file_request.path, "rb") as file:
-			while data := file.read(self._file_request.chunk_size):
+		self.last = False
+		file_data_stream = self.read_file()
+		while True:
+			try:
+				data = await anext(file_data_stream)
+			except StopAsyncIteration:
+				logger.notice("file interaction stopped")
+				break
+			else:
 				if self._should_stop:
 					if not self._completed:
 						await self._error("File transfer stopped before completion")
 					break
-				last = not self._file_request.chunk_size * (number + 1) < self.size
 				chunk_message = FileChunkMessage(
 					sender=self._sender,
 					channel=self._response_channel,
 					back_channel=self._back_channel,
 					number=number,
-					last=last,
+					last=self.last,
 					data=data,
 				)
 				await self._send_message(chunk_message)
 				number += 1
+				continue
 		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
+
+	async def read_file(self) -> AsyncGenerator[bytes, None]:
+		assert isinstance(self._file_request, FileDownloadRequestMessage)
+		assert isinstance(self._file_request.path, str)
+		assert isinstance(self._file_request.chunk_size, int)
+		logger.notice("started reading file")
+		try:
+			async with aiofiles.open(self._file_request.path, "rb") as file:
+				while not self.last:
+					tmp = await file.read(self._file_request.chunk_size)
+					if tmp:
+						yield tmp
+					elif not self._file_request.follow:
+						self.last = True
+						yield tmp
+		except IOError:
+			await self._error(f"unexpected IOError: {str(IOError)}")
 
 
 async def process_messagebus_message(

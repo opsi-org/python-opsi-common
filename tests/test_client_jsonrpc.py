@@ -254,7 +254,6 @@ def test_new_host_id_and_key_handling(tmp_path: Path) -> None:
 
 
 def test_compression_and_serialization(tmp_path: Path) -> None:
-	compression: bool | str | None
 	for compression, serialization in (
 		(True, "json"),
 		("lz4", "json"),
