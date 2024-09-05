@@ -75,7 +75,6 @@ async def test_file_upload(tmp_path: Path) -> None:
 	assert messages[0].sender == "test_res_sender"
 	assert messages[0].back_channel == "test_res_channel"
 	assert messages[0].file_id == file_upload_request.file_id
-	print(messages[0].path)
 	assert messages[0].path == str(upload_path / test_file.name)
 
 	with test_file.open("rb") as file:
@@ -184,7 +183,7 @@ async def test_file_download(tmp_path: Path) -> None:
 	channel = "test_channel"
 	chunk_size = 1000
 	message_sender = MessageSender()
-	test_file = str(tmp_path / "test_file.txt")
+	test_file = str(tmp_path / "test_file_download.txt")
 
 	file_download_request = FileDownloadRequestMessage(
 		sender=sender,
@@ -226,8 +225,8 @@ async def test_file_download(tmp_path: Path) -> None:
 	assert messages[0].back_channel == res_channel
 	assert messages[0].size == test_file_size
 
-	no_of_chunk = -(-test_file_size // chunk_size)
-	data_messages = await message_sender.wait_for_messages(count=no_of_chunk)
+	no_of_chunks = -(-test_file_size // chunk_size)
+	data_messages = await message_sender.wait_for_messages(count=no_of_chunks, true_count=True)
 
 	with Path(test_file).open("rb") as file:
 		num = 0
@@ -235,6 +234,68 @@ async def test_file_download(tmp_path: Path) -> None:
 			assert isinstance(data_message, FileChunkMessage)
 			assert data_message.channel == res_back_channel
 			assert data_message.number == num
-			assert data_message.last == (num == no_of_chunk - 1)
+			assert data_message.last is False
 			assert data_message.data == file.read(chunk_size)
 			num += 1
+
+	last_message = await message_sender.wait_for_messages(count=1)
+	assert isinstance(last_message[0], FileChunkMessage)
+	assert last_message[0].channel == res_back_channel
+	assert last_message[0].number == num
+	assert last_message[0].last is True
+	assert last_message[0].data == b""
+
+
+# Follow Tests
+async def test_file_follow(tmp_path: Path) -> None:
+	sender = "test_sender"
+	channel = "test_channel"
+	back_channel = "test_back_channel"
+	chunk_size = 1000
+	message_sender = MessageSender()
+	test_file = str(tmp_path / "test_file_follow.txt")
+
+	test_file_size = gen_test_file(file=test_file, chunk_size=chunk_size)
+	no_of_chunks = -(-test_file_size // chunk_size)
+
+	file_follow_request = FileDownloadRequestMessage(
+		sender=sender,
+		channel=channel,
+		back_channel=back_channel,
+		chunk_size=chunk_size,
+		path=test_file,
+		follow=True,
+	)
+	await process_messagebus_message(file_follow_request, send_message=message_sender.send_message, sender=sender, back_channel=channel)
+
+	messages = await message_sender.wait_for_messages(count=1, true_count=True)
+	assert isinstance(messages[0], FileDownloadResponseMessage)
+	assert messages[0].sender == sender
+	assert messages[0].back_channel == channel
+	assert messages[0].size is None
+
+	data_messages = await message_sender.wait_for_messages(count=no_of_chunks)
+
+	num = 0
+	with Path(test_file).open("rb") as file:
+		for data_message in data_messages:
+			assert isinstance(data_message, FileChunkMessage)
+			assert data_message.channel == back_channel
+			assert data_message.number == num
+			assert data_message.last is False
+			assert data_message.data == file.read(chunk_size)
+			num += 1
+
+	test_text = "moin moin"
+
+	with Path(test_file).open("a+") as file:
+		file.write(test_text)
+
+	new_data_message = await message_sender.wait_for_messages(count=1)
+	assert isinstance(new_data_message[0], FileChunkMessage)
+	assert new_data_message[0].channel == back_channel
+	assert new_data_message[0].number == num
+	assert new_data_message[0].last is False
+	assert new_data_message[0].data == bytes(test_text, encoding="UTF-8")
+
+	assert await message_sender.no_messages()

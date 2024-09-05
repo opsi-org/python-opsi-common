@@ -77,7 +77,7 @@ version = ">=1.5"
 
 [tool.poetry.group.dev.dependencies]
 hypothesis = ">=6.32"
-mypy = ">=1.0"
+mypy = "1.10.0"
 perflint = ">=0.7"
 pproxy = "^2.7"
 pytest = ">=7.0"

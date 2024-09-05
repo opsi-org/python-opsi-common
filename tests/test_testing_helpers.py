@@ -16,7 +16,7 @@ import requests
 import websocket  # type: ignore[import]
 
 from opsicommon.testing.helpers import (  # type: ignore[import]
-	HTTPTestServer,
+	HTTPTestServerRequestHandler,
 	environment,
 	http_test_server,
 )
@@ -204,20 +204,27 @@ def test_http_server_websocket(tmp_path: Path) -> None:
 
 
 def test_http_server_request_callback() -> None:
-	reqs = []
+	def request_callback(handler: HTTPTestServerRequestHandler, request: dict) -> bool:
+		handler.set_response_status(200, "OK")
+		handler.set_response_headers({"X-method": request["method"], "Content-Type": "text/plain"})
+		handler.set_response_body(request["method"].encode("utf-8"))
+		return False
 
-	def request_callback(server: HTTPTestServer, request: dict) -> None:
-		nonlocal reqs
-		reqs.append(request)
+	with http_test_server(request_callback=request_callback) as server:
+		res = requests.head(f"http://127.0.0.1:{server.port}/", timeout=10)
+		assert res.status_code == 200
+		assert res.headers["X-method"] == "HEAD"
 
-	with http_test_server(request_callback=request_callback, response_status=(200, "OK")) as server:
-		requests.head(f"http://127.0.0.1:{server.port}/", timeout=10)
-		requests.get(f"http://127.0.0.1:{server.port}/", timeout=10)
-		requests.post(f"http://127.0.0.1:{server.port}/", timeout=10)
-		requests.put(f"http://127.0.0.1:{server.port}/", timeout=10)
+		res = requests.get(f"http://127.0.0.1:{server.port}/", timeout=10)
+		assert res.status_code == 200
+		assert res.headers["X-method"] == "GET"
+		assert res.text == "GET"
 
-	assert len(reqs) == 4
-	assert reqs[0]["method"] == "HEAD"
-	assert reqs[1]["method"] == "GET"
-	assert reqs[2]["method"] == "POST"
-	assert reqs[3]["method"] == "PUT"
+		res = requests.post(f"http://127.0.0.1:{server.port}/", timeout=10)
+		assert res.status_code == 200
+		assert res.headers["X-method"] == "POST"
+		assert res.text == "POST"
+
+		res = requests.put(f"http://127.0.0.1:{server.port}/", timeout=10)
+		assert res.status_code == 200
+		assert res.headers["X-method"] == "PUT"

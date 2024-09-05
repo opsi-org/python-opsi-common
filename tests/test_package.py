@@ -11,12 +11,14 @@ from shutil import copy
 from typing import Literal
 
 import pytest
+from hypothesis import given, settings
+from hypothesis.strategies import sampled_from
 
 from hypothesis import given, settings
 from hypothesis.strategies import sampled_from
 
 from opsicommon.objects import NetbootProduct
-from opsicommon.package import OpsiPackage, PackageDependency
+from opsicommon.package import OpsiPackage, PackageDependency, package_data_from_archive
 from opsicommon.package.archive import ArchiveProgress, ArchiveProgressListener
 from opsicommon.package.associated_files import create_package_content_file, create_package_md5_file, create_package_zsync_file
 from opsicommon.package.control_file_handling import create_product_dependencies
@@ -785,3 +787,10 @@ def test_get_package_dependencies_as_json(package_dependencies: list[PackageDepe
 	package = OpsiPackage()
 	package.package_dependencies = package_dependencies
 	assert package.get_package_dependencies_as_json() == json_string
+
+
+def test_package_data_from_archive() -> None:
+	result = package_data_from_archive(TEST_DATA / "package_id-with_underscore-and-dash_42.0-1337.1.opsi")
+	assert result["id"] == "package_id-with_underscore-and-dash"
+	assert result["productVersion"] == "42.0"
+	assert result["packageVersion"] == "1337.1"

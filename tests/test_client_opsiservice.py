@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
 import platform
 import re
 import ssl
@@ -26,7 +27,7 @@ from unittest import mock
 from urllib.parse import unquote
 from warnings import catch_warnings, simplefilter
 
-import lz4.frame  # type: ignore[import,no-redef]
+import lz4.frame  # type: ignore[import]
 
 with catch_warnings():
 	simplefilter("ignore")
@@ -65,6 +66,7 @@ from opsicommon.client.opsiservice import (
 	get_service_client,
 )
 from opsicommon.exceptions import BackendAuthenticationError, BackendPermissionDeniedError, OpsiRpcError
+from opsicommon.logging import use_logging_config
 from opsicommon.messagebus.message import (
 	ChannelSubscriptionEventMessage,
 	FileUploadResultMessage,
@@ -77,7 +79,36 @@ from opsicommon.messagebus.message import (
 from opsicommon.objects import OpsiClient
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
 from opsicommon.system.info import is_macos, is_windows
-from opsicommon.testing.helpers import HTTPTestServerRequestHandler, environment, http_test_server, opsi_config  # type: ignore[import]
+from opsicommon.testing.helpers import (  # type: ignore[import]
+	HTTPTestServerRequestHandler,
+	environment,
+	http_test_server,
+	opsi_config,
+)
+
+GLOBALSIGN_ROOT_CA = """
+-----BEGIN CERTIFICATE-----
+MIIDdTCCAl2gAwIBAgILBAAAAAABFUtaw5QwDQYJKoZIhvcNAQEFBQAwVzELMAkG
+A1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExEDAOBgNVBAsTB1Jv
+b3QgQ0ExGzAZBgNVBAMTEkdsb2JhbFNpZ24gUm9vdCBDQTAeFw05ODA5MDExMjAw
+MDBaFw0yODAxMjgxMjAwMDBaMFcxCzAJBgNVBAYTAkJFMRkwFwYDVQQKExBHbG9i
+YWxTaWduIG52LXNhMRAwDgYDVQQLEwdSb290IENBMRswGQYDVQQDExJHbG9iYWxT
+aWduIFJvb3QgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDaDuaZ
+jc6j40+Kfvvxi4Mla+pIH/EqsLmVEQS98GPR4mdmzxzdzxtIK+6NiY6arymAZavp
+xy0Sy6scTHAHoT0KMM0VjU/43dSMUBUc71DuxC73/OlS8pF94G3VNTCOXkNz8kHp
+1Wrjsok6Vjk4bwY8iGlbKk3Fp1S4bInMm/k8yuX9ifUSPJJ4ltbcdG6TRGHRjcdG
+snUOhugZitVtbNV4FpWi6cgKOOvyJBNPc1STE4U6G7weNLWLBYy5d4ux2x8gkasJ
+U26Qzns3dLlwR5EiUWMWea6xrkEmCMgZK9FGqkjWZCrXgzT/LCrBbBlDSgeF59N8
+9iFo7+ryUp9/k5DPAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMBAf8E
+BTADAQH/MB0GA1UdDgQWBBRge2YaRQ2XyolQL30EzTSo//z9SzANBgkqhkiG9w0B
+AQUFAAOCAQEA1nPnfE920I2/7LqivjTFKDK1fPxsnCwrvQmeU79rXqoRSLblCKOz
+yj1hTdNGCbM+w6DjY1Ub8rrvrTnhQ7k4o+YviiY776BQVvnGCv04zcQLcFGUl5gE
+38NflNUVyRRBnMRddWQVDf9VMOyGj/8N7yy5Y0b2qvzfvGn9LhJIZJrglfCm7ymP
+AbEVtQwdpf5pLGkkeB6zpxxxYu7KyJesF12KwvhHhm4qxFYxldBniYUr+WymXUad
+DKqC5JlR3XC321Y9YeRq4VzW9v493kHMB65jUr9TU/Qr6cf9tveCX4XSQRjbgbME
+HMUfpIBvFSDJ3gyICh3WZlXi/EjJKSZp4A==
+-----END CERTIFICATE-----
+"""
 
 GLOBALSIGN_ROOT_CA = """
 -----BEGIN CERTIFICATE-----
@@ -122,6 +153,55 @@ class MyConnectionListener(ServiceConnectionListener):
 		self.events.append(("closed", service_client, None))
 
 
+@pytest.mark.parametrize(
+	"service_address, expected_is_local",
+	(
+		("localhost", True),
+		("localhost:4447", True),
+		("localhost:443", True),
+		("username:password@localhost:443", True),
+		("token@localhost:443", True),
+		("https://localhost", True),
+		("https://localhost:4448", True),
+		("https://10.10.1.1:4448", False),
+		("https://[2001:0db8:85a3:0000::8a2e:0370:7334]:4448", False),
+		("https://2001:0db8:85a3:0000:0000:8a2e:0370:7334", False),
+		("::1", True),
+		("[::1]:443", True),
+		("https://ip6-loopback:4447", True),
+		("ip6-localhost", True),
+	),
+)
+def test_is_local_address(service_address: str, expected_is_local: bool) -> None:
+	assert ServiceClient.is_local_address(service_address) == expected_is_local
+
+
+@pytest.mark.parametrize(
+	"service_address, expected_path",
+	(
+		("localhost", "opsi/services/localhost_4447/ca-certs.pem"),
+		("localhost:4447", "opsi/services/localhost_4447/ca-certs.pem"),
+		("localhost:443", "opsi/services/localhost_443/ca-certs.pem"),
+		("username:password@localhost:443", "opsi/services/localhost_443/ca-certs.pem"),
+		("token@localhost:443", "opsi/services/localhost_443/ca-certs.pem"),
+		("https://localhost", "opsi/services/localhost_4447/ca-certs.pem"),
+		("https://localhost:4448", "opsi/services/localhost_4448/ca-certs.pem"),
+		("https://10.10.1.1:4448", "opsi/services/10.10.1.1_4448/ca-certs.pem"),
+		(
+			"https://[2001:0db8:85a3:0000::8a2e:0370:7334]:4448",
+			"opsi/services/2001.0db8.85a3.0000.0000.8a2e.0370.7334_4448/ca-certs.pem",
+		),
+		("https://2001:0db8:85a3:0000:0000:8a2e:0370:7334", "opsi/services/2001.0db8.85a3.0000.0000.8a2e.0370.7334_4447/ca-certs.pem"),
+		("::1", "opsi/services/localhost_4447/ca-certs.pem"),
+		("[::1]:443", "opsi/services/localhost_443/ca-certs.pem"),
+	),
+)
+def test_get_ca_cert_file_path(service_address: str, expected_path: str) -> None:
+	base_dir = Path(os.getenv("APPDATA", "")) if is_windows() else Path.home() / ".config"
+	ca_cert_file_path = ServiceClient.get_ca_cert_file_path(service_address)
+	assert ca_cert_file_path == base_dir / expected_path
+
+
 def test_arguments() -> None:
 	# address
 	assert ServiceClient("localhost").base_url == "https://localhost:4447"
@@ -131,11 +211,9 @@ def test_arguments() -> None:
 	assert ServiceClient("https://localhost:4448/xy")._jsonrpc_path == "/xy"
 	assert ServiceClient("localhost:4448").base_url == "https://localhost:4448"
 	assert ServiceClient("1.2.3.4").base_url == "https://1.2.3.4:4447"
-	assert ServiceClient("::1").base_url == "https://[::1]:4447"
-	assert ServiceClient("2001:0db8:85a3:0000:0000:8a2e:0370:7334").base_url == "https://[2001:db8:85a3::8a2e:370:7334]:4447"
-	assert (
-		ServiceClient("[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:4448").base_url == "https://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:4448"
-	)
+	assert ServiceClient("::1").base_url == "https://[0000:0000:0000:0000:0000:0000:0000:0001]:4447"
+	assert ServiceClient("2001:0db8:85a3:0000::8a2e:0370:7334").base_url == "https://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:4447"
+	assert ServiceClient("[2001:0db8:85a3::8a2e:0370:7334]:4448").base_url == "https://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:4448"
 	with pytest.raises(ValueError):
 		ServiceClient("http://localhost:4448")
 
@@ -185,9 +263,6 @@ def test_arguments() -> None:
 		with opsi_config({"host.server-role": server_role}):
 			for mode in ServiceVerificationFlags:
 				expect = mode
-				if mode == ServiceVerificationFlags.OPSI_CA and server_role == "configserver":
-					expect = ServiceVerificationFlags.STRICT_CHECK
-
 				assert expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=mode)._verify
 				assert expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=mode.value)._verify
 				assert expect in ServiceClient("::1", ca_cert_file="ca.pem", verify=[mode])._verify
@@ -197,9 +272,6 @@ def test_arguments() -> None:
 		ServiceVerificationFlags.STRICT_CHECK
 	]
 
-	for mode in ServiceVerificationFlags.OPSI_CA, ServiceVerificationFlags.UIB_OPSI_CA:
-		with pytest.raises(ValueError, match="ca_cert_file required"):
-			ServiceClient("::1", verify=mode)
 	with pytest.raises(ValueError, match="bad_mode"):
 		ServiceClient("::1", verify="bad_mode")
 
@@ -230,8 +302,15 @@ def test_arguments() -> None:
 
 
 def test_set_addresses() -> None:
+	user_conf_path = Path(os.getenv("APPDATA", "")) if is_windows() else Path.home() / ".config"
+
 	service_client = ServiceClient(["https://opsiserver:4447", "https://opsiserver2:4447"])
 	assert service_client.base_url == "https://opsiserver:4447"
+	assert service_client.ca_cert_file == user_conf_path / "opsi/services/opsiserver_4447/ca-certs.pem"
+
+	service_client._address_index += 1
+	assert service_client.base_url == "https://opsiserver2:4447"
+	assert service_client.ca_cert_file == user_conf_path / "opsi/services/opsiserver2_4447/ca-certs.pem"
 
 	service_client.set_addresses("localhost")
 	assert service_client.base_url == "https://localhost:4447"
@@ -341,7 +420,7 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:
 	assert certs[2].subject == ca_cert3.subject
 
 	uib_opsi_ca = x509.load_pem_x509_certificate(UIB_OPSI_CA.encode("utf-8"))
-	service_client.add_uib_opsi_ca_to_cert_file()
+	service_client.handle_uib_opsi_ca_in_cert_file("add")
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 4
 	assert certs[0].subject == ca_cert1.subject
@@ -349,37 +428,43 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:
 	assert certs[2].subject == ca_cert3.subject
 	assert certs[3].subject == uib_opsi_ca.subject
 
-	service_client.add_uib_opsi_ca_to_cert_file()
-	service_client.add_uib_opsi_ca_to_cert_file()
-	service_client.add_uib_opsi_ca_to_cert_file()
+	service_client.handle_uib_opsi_ca_in_cert_file("add")
+	service_client.handle_uib_opsi_ca_in_cert_file("add")
+	service_client.handle_uib_opsi_ca_in_cert_file("add")
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 4
 	assert certs[0].subject == ca_cert1.subject
 	assert certs[1].subject == ca_cert2.subject
 	assert certs[2].subject == ca_cert3.subject
 	assert certs[3].subject == uib_opsi_ca.subject
+
+	for _ in range(2):
+		service_client.handle_uib_opsi_ca_in_cert_file("remove")
+		certs = service_client.read_ca_cert_file()
+		assert len(certs) == 3
+		assert uib_opsi_ca.subject not in (cert.subject for cert in certs)
 
 	pem = "\r\n\r\n\r\ngarbage" + as_pem(ca_cert2) + "\ngarbage\r\n\n" + as_pem(ca_cert3) + "garbage" + as_pem(ca_cert1) + "garbage\n\n\r\n"
 	ca_cert_file.write_text(pem, encoding="utf-8")
-	service_client.add_uib_opsi_ca_to_cert_file()
+	service_client.handle_uib_opsi_ca_in_cert_file("add")
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 4
 
 
-def test_get_opsi_ca_state(tmpdir: Path) -> None:
+def test_get_opsi_ca_certs_state(tmpdir: Path) -> None:
 	ca_cert_file = tmpdir / "ca_certs.pem"
 	service_client = ServiceClient("localhost", ca_cert_file=ca_cert_file)
-	assert service_client.get_opsi_ca_state() == OpsiCaState.UNAVAILABLE
+	assert service_client.get_opsi_ca_certs_state() == OpsiCaState.UNAVAILABLE
 
-	service_client.add_uib_opsi_ca_to_cert_file()
+	service_client.handle_uib_opsi_ca_in_cert_file("add")
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 1
-	assert service_client.get_opsi_ca_state() == OpsiCaState.UNAVAILABLE
+	assert service_client.get_opsi_ca_certs_state() == OpsiCaState.UNAVAILABLE
 
 	ca_cert, _ = create_ca(subject={"CN": "python-opsi-common test CA 1"}, valid_days=30)
 	certs.append(ca_cert)
 	service_client.write_ca_cert_file(certs)
-	assert service_client.get_opsi_ca_state() == OpsiCaState.AVAILABLE
+	assert service_client.get_opsi_ca_certs_state() == OpsiCaState.AVAILABLE
 
 	class MockCertificateBuilder(x509.CertificateBuilder):
 		def __init__(self, **kwargs: Any) -> None:
@@ -394,8 +479,8 @@ def test_get_opsi_ca_state(tmpdir: Path) -> None:
 		assert ca_cert.not_valid_after_utc < datetime.now(tz=timezone.utc)
 		certs = [ca_cert]
 	service_client.write_ca_cert_file(certs)
-	service_client.add_uib_opsi_ca_to_cert_file()
-	assert service_client.get_opsi_ca_state() == OpsiCaState.EXPIRED
+	service_client.handle_uib_opsi_ca_in_cert_file("add")
+	assert service_client.get_opsi_ca_certs_state() == OpsiCaState.EXPIRED
 
 
 @pytest.mark.parametrize(
@@ -878,11 +963,11 @@ def test_proxy(tmp_path: Path) -> None:
 				with pytest.raises(OpsiServiceConnectionError, match=".*Failed to resolve 'will-not-resolve'.*"):
 					client.connect()
 
-				match = ".*Name or service not known.*"
+				match = r".*(Name or service not known|Temporary failure in name resolution).*"
 				if is_macos():
-					match = ".*nodename nor servname provided, or not known.*"
+					match = r".*nodename nor servname provided, or not known.*"
 				elif is_windows():
-					match = ".*getaddrinfo failed.*"
+					match = r".*getaddrinfo failed.*"
 				with pytest.raises(OpsiServiceConnectionError, match=match):
 					client.messagebus.connect()
 
@@ -1611,68 +1696,100 @@ def test_backend_manager_and_get_service_client(tmp_path: Path) -> None:
 			"annotations": {},
 		},
 	]
-	with http_test_server(
-		generate_cert=True,
-		log_file=log_file,
-		response_body=json.dumps({"jsonrpc": "2.0", "result": interface}).encode("utf-8"),
-		response_headers={"server": "opsiconfd 4.3.0.0 (uvicorn)", "Content-Type": "application/json"},
-	) as server:
-		with opsi_config(
-			{
-				"host.id": "test-host.opsi.org",
-				"host.key": "11111111111111111111111111111111",
-				"service.url": f"https://localhost:{server.port}",
-			}
-		) as opsi_conf:
-			with (
-				mock.patch("opsicommon.client.opsiservice.CA_CERT_FILE", server.ca_cert),
-				mock.patch("opsicommon.client.opsiservice.opsi_config", opsi_conf),
-			):
-				with catch_warnings():
-					simplefilter("ignore")
-					backend = BackendManager()
-				backend.test_method(arg1=1, arg2=2)  # type: ignore[attr-defined]
 
-				reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+	def request_callback(handler: HTTPTestServerRequestHandler, request: dict) -> bool:
+		# print(request["path"])
+		if request["path"] == "/rpc":
+			handler.set_response_status(200, "OK")
+			handler.set_response_headers({"server": "opsiconfd 4.3.0.0 (uvicorn)", "Content-Type": "application/json"})
+			if request["method"] != "HEAD":
+				handler.set_response_body(json.dumps({"jsonrpc": "2.0", "result": interface}).encode("utf-8"))
+			return False
 
-				assert reqs[0]["method"] == "HEAD"
-				assert reqs[0]["path"] == "/rpc"
-				encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
-				auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
-				assert auth == "test-host.opsi.org:11111111111111111111111111111111"
+		if request["path"] == "/ssl/opsi-ca-cert.pem":
+			assert handler.server.test_server.ca_cert
+			handler.set_response_status(200, "OK")
+			handler.set_response_body(handler.server.test_server.ca_cert.read_bytes())
+			return False
 
-				assert reqs[1]["method"] == "POST"
-				assert reqs[1]["path"] == "/rpc"
-				assert reqs[1]["request"]["method"] == "backend_getInterface"
+		return False
 
-				assert reqs[2]["method"] == "POST"
-				assert reqs[2]["path"] == "/rpc"
-				assert reqs[2]["request"]["method"] == "test_method"
+	with use_logging_config(stderr_level=3):
+		with http_test_server(generate_cert=True, log_file=log_file, request_callback=request_callback) as server:
+			with opsi_config(
+				{
+					"host.id": "test-host.opsi.org",
+					"host.key": "11111111111111111111111111111111",
+					"service.url": f"https://localhost:{server.port}",
+				}
+			) as opsi_conf:
+				with (
+					mock.patch("opsicommon.client.opsiservice.OPSI_CA_CERT_FILE", server.ca_cert),
+					mock.patch("opsicommon.client.opsiservice.opsi_config", opsi_conf),
+				):
+					with catch_warnings():
+						simplefilter("ignore")
+						backend = BackendManager()
+					backend.test_method(arg1=1, arg2=2)  # type: ignore[attr-defined]
 
-				backend.disconnect()
-				log_file.unlink()
+					reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
 
-				with catch_warnings():
-					simplefilter("ignore")
-					backend = BackendManager(username="user", password="pass")
-				reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
-				assert reqs[0]["method"] == "HEAD"
-				assert reqs[0]["path"] == "/rpc"
-				encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
-				auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
-				assert auth == "user:pass"
-				backend.disconnect()
-				log_file.unlink()
+					assert reqs[0]["method"] == "HEAD"
+					assert reqs[0]["path"] == "/rpc"
+					encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
+					auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
+					assert auth == "test-host.opsi.org:11111111111111111111111111111111"
 
-				service_client = get_service_client()
-				reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
-				assert reqs[0]["method"] == "HEAD"
-				assert reqs[0]["path"] == "/rpc"
-				encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
-				auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
-				assert auth == "test-host.opsi.org:11111111111111111111111111111111"
-				service_client.disconnect()
-				log_file.unlink()
+					# assert reqs[1]["method"] == "GET"
+					# assert reqs[1]["path"] == "/ssl/opsi-ca-cert.pem"
+
+					assert reqs[1]["method"] == "POST"
+					assert reqs[1]["path"] == "/rpc"
+					assert reqs[1]["request"]["method"] == "backend_getInterface"
+
+					assert reqs[2]["method"] == "POST"
+					assert reqs[2]["path"] == "/rpc"
+					assert reqs[2]["request"]["method"] == "test_method"
+
+					backend.disconnect()
+					log_file.unlink()
+
+					with catch_warnings():
+						simplefilter("ignore")
+						backend = BackendManager(username="user", password="pass")
+					reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+					assert reqs[0]["method"] == "HEAD"
+					assert reqs[0]["path"] == "/rpc"
+					encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
+					auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
+					assert auth == "user:pass"
+					backend.disconnect()
+					log_file.unlink()
+
+					for address in (
+						f"https://localhost:{server.port}",
+						f"https://127.0.0.1:{server.port}",
+						f"localhost:{server.port}",
+						f"127.0.0.1:{server.port}",
+						f"https://some-other-host.opsi.test:{server.port}",
+					):
+						if "some-other-host.opsi.test" in address:
+							service_client = get_service_client(address=address, auto_connect=False)
+							assert service_client.verify == [ServiceVerificationFlags.OPSI_CA]
+							path = service_client.ca_cert_file.parts
+							assert path[-1] == "ca-certs.pem"
+							assert path[-2] == f"some-other-host.opsi.test_{server.port}"
+						else:
+							service_client = get_service_client(address=address)
+							assert service_client.verify == [ServiceVerificationFlags.STRICT_CHECK]
+							reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+							assert reqs[0]["method"] == "HEAD"
+							assert reqs[0]["path"] == "/rpc"
+							encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
+							auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
+							assert auth == "test-host.opsi.org:11111111111111111111111111111111"
+							service_client.disconnect()
+						log_file.unlink(missing_ok=True)
 
 
 def test_messagebus_jsonrpc() -> None:

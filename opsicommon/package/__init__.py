@@ -39,6 +39,18 @@ PACKAGE_DIR_TYPES = Literal["OPSI", "CLIENT_DATA", "SERVER_DATA"]
 logger = get_logger("opsicommon.package")
 
 
+def package_data_from_archive(archive: Path) -> dict[str, str]:
+	"""
+	Extracts product id, product version and package version from a package archive.
+	"""
+	parts = archive.stem.split("_")
+	return {
+		"id": "_".join(parts[:-1]),
+		"productVersion": parts[-1].split("-")[0],
+		"packageVersion": parts[-1].split("-")[1],
+	}
+
+
 @dataclass(slots=True, kw_only=True)
 class PackageDependency:
 	package: str
@@ -174,7 +186,9 @@ class OpsiPackage:
 		if self.product.changelog:
 			self.changelog = self.product.changelog
 
-	def package_archive_name(self) -> str:
+	def package_archive_name(self, custom_name: str | None = None) -> str:
+		if custom_name:
+			return f"{self.product.id}_{self.product.productVersion}-{self.product.packageVersion}~{custom_name}.opsi"
 		return f"{self.product.id}_{self.product.productVersion}-{self.product.packageVersion}.opsi"
 
 	def generate_control_file_legacy(self, control_file: Path) -> None:
@@ -298,7 +312,7 @@ class OpsiPackage:
 		primary_control_file = self.find_and_parse_control_file(opsi_dir)
 
 		destination = (destination or Path()).absolute()
-		package_archive = destination / self.package_archive_name()
+		package_archive = destination / self.package_archive_name(custom_name)
 		if not overwrite and package_archive.exists():
 			raise FileExistsError(f"Package archive '{package_archive}' already exists.")
 

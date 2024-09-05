@@ -48,6 +48,7 @@ class MessageSender:
 		self,
 		count: int,
 		timeout: float = 10.0,
+		delay: float = 0.1,
 		clear_messages: bool = True,
 		error_on_timeout: bool = True,
 		true_count: bool = False,
@@ -58,7 +59,7 @@ class MessageSender:
 				if error_on_timeout:
 					raise TimeoutError(f"Timeout waiting for {count} messages, got {len(self.messages_sent)}")
 				break
-			await asyncio.sleep(0.1)
+			await asyncio.sleep(delay)
 
 		if not clear_messages:
 			if not true_count:
@@ -73,6 +74,9 @@ class MessageSender:
 			messages = self.messages_sent.copy()
 			self.messages_sent = []
 		return messages
+
+	async def no_messages(self) -> bool:
+		return len(self.messages_sent) == 0
 
 
 class MessageSenderDownload(MessageSender):

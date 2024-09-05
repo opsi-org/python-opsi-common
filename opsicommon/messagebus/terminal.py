@@ -99,12 +99,14 @@ else:
 
 		from ptyprocess import PtyProcess  # type: ignore[import]
 
+		argv = shlex.split(shell)
 		sp_env = get_subprocess_environment()
 		sp_env.update(env or {})
 		if "TERM" not in sp_env:
 			sp_env["TERM"] = "xterm-256color"
+		sp_env["SHELL"] = argv[0]
 		try:
-			proc = PtyProcess.spawn(shlex.split(shell), dimensions=(rows, cols), env=sp_env, cwd=cwd)
+			proc = PtyProcess.spawn(argv, dimensions=(rows, cols), env=sp_env, cwd=cwd)
 		except Exception as err:
 			raise RuntimeError(f"Failed to start pty with shell {shell!r}: {err}") from err
 		return (proc.pid, proc.read, proc.write, proc.setwinsize, proc.terminate)
