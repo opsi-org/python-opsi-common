@@ -26,13 +26,14 @@ from contextvars import copy_context
 from dataclasses import astuple, dataclass
 from datetime import datetime, timezone
 from enum import Enum
+from functools import lru_cache
 from ipaddress import IPv6Address, ip_address
 from pathlib import Path
 from random import randint
 from threading import Event, Lock, Thread
 from traceback import TracebackException
 from types import MethodType, TracebackType
-from typing import Any, Callable, Generator, Iterable, Literal, Type, overload
+from typing import Any, Callable, Generator, Iterable, Literal, Type, cast, overload
 from urllib.parse import quote, unquote, urlparse
 from uuid import uuid4
 
@@ -52,7 +53,7 @@ from websocket import setdefaulttimeout as websocket_setdefaulttimeout
 from websocket._abnf import ABNF  # type: ignore[import]
 
 from .. import __version__
-from ..config import CA_CERT_FILE, OpsiConfig
+from ..config import OPSI_CA_CERT_FILE, OpsiConfig
 from ..exceptions import (
 	OpsiRpcError,
 	OpsiServiceAuthenticationError,
@@ -78,6 +79,7 @@ from ..messagebus.message import (
 from ..objects import deserialize, serialize
 from ..ssl.common import load_key, x509_name_to_dict
 from ..system import lock_file, set_system_datetime
+from ..system.info import is_windows
 from ..types import forceHostId, forceOpsiHostKey
 from ..utils import prepare_proxy_environment
 
@@ -231,7 +233,7 @@ class KeyPasswordHTTPAdapter(HTTPAdapter):
 
 
 class ServiceClient:
-	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "::1"]
+	no_proxy_addresses = ["localhost", "127.0.0.1", "ip6-localhost", "ip6-loopback", "::1"]
 
 	def __init__(
 		self,
@@ -260,19 +262,18 @@ class ServiceClient:
 
 		verify:
 		    strict_check:
-		        Check server certificate against default certs or ca_cert_file if provided.
+		        Check server certificate against ca_cert_file.
 		    uib_opsi_ca:
 		        In combination with verify. Also accept server certificates signed by uib.
 		    accept_all:
 		        Do not check server certificate.
 		    opsi_ca:
-		        Needs ca_cert_file to be set.
 		        If ca_cert_file missing or empty: Do not verify certificate.
 		        If ca_cert_file is present: Verify if accept_all is not set.
-		        After every successful connection: Fetch opsi ca from service and update ca_cert_file.
+		        After every successful connection: Fetch CA certs from service and update ca_cert_file.
 		    replace_expired_ca:
 		        To use in combination with fetch_ca_certs.
-		        If opsi_ca from ca_cert_file is expired => accept_all.
+		        If a CA from ca_cert_file is expired => accept_all.
 		"""
 
 		self._addresses: list[str] = []
@@ -360,18 +361,6 @@ class ServiceClient:
 		if ServiceVerificationFlags.UIB_OPSI_CA in verify and ServiceVerificationFlags.OPSI_CA not in self._verify:
 			self._verify.append(ServiceVerificationFlags.OPSI_CA)
 
-		if ServiceVerificationFlags.OPSI_CA in self._verify and not self._ca_cert_file:
-			raise ValueError(f"ca_cert_file required for selected {ServiceVerificationFlags.OPSI_CA}")
-
-		# TODO: Better test needed here (running in opsiclientd context on opsi configserver)
-		if ServiceVerificationFlags.OPSI_CA in self._verify and "opsi-client-agent" not in str(self._ca_cert_file):
-			try:
-				if os.path.exists(opsi_config.config_file) and opsi_config.get("host", "server-role") == "configserver":
-					# Never fetch opsi ca on configserver
-					self._verify.remove(ServiceVerificationFlags.OPSI_CA)
-			except Exception as err:
-				logger.debug(err, exc_info=True)
-
 		if not self._verify:
 			self._verify = [ServiceVerificationFlags.STRICT_CHECK]
 
@@ -402,27 +391,62 @@ class ServiceClient:
 			cookie_name, cookie_value = self._session_cookie.split("=", 1)
 			self._session.cookies.set(cookie_name, quote(cookie_value))  # type: ignore[no-untyped-call]
 
+		self.set_addresses(address)
+
 		if ServiceVerificationFlags.ACCEPT_ALL in self._verify:
 			self._session.verify = False
+		elif self._addresses:
+			self._session.verify = str(self.ca_cert_file)
 		else:
-			if self._ca_cert_file:
-				self._session.verify = str(self._ca_cert_file)
-				if (
-					ServiceVerificationFlags.UIB_OPSI_CA in self._verify
-					and self._ca_cert_file.exists()
-					and self._ca_cert_file.stat().st_size > 0
-				):
-					self.add_uib_opsi_ca_to_cert_file()
-			else:
-				self._session.verify = True
-
-		self.set_addresses(address)
+			self._session.verify = True
 
 		self._messagebus = Messagebus(self)
 
 	@property
 	def addresses(self) -> Iterable[str] | str | None:
 		return self._addresses
+
+	@staticmethod
+	def normalize_service_address(address: str) -> tuple[str, str]:
+		scheme = "https"
+		auth = ""
+		host = ""
+		port = _DEFAULT_HTTPS_PORT
+		path = ""
+		if "://" in address:
+			scheme, address = address.split("://", 1)
+			if "/" in address:
+				address, path = address.split("/", 1)
+				path = f"/{path.strip('/')}"
+
+		if scheme != "https":
+			raise ValueError(f"Protocol {scheme} not supported")
+
+		if "@" in address:
+			auth, address = address.split("@", 1)
+			auth += "@"
+
+		columns = address.count(":")
+		if columns > 1 or ("[" in address and "]" in address):
+			# IPv6 address
+			if "]:" in address:
+				address, str_port = address.split("]:", 1)
+				port = int(str_port)
+			host = address.replace("[", "").replace("]", "")
+		elif columns:
+			host, str_port = address.split(":", 1)
+			port = int(str_port)
+		else:
+			host = address
+
+		try:
+			ipa = ip_address(host)
+			if isinstance(ipa, IPv6Address):
+				host = f"[{ipa.exploded}]"
+		except ValueError:
+			pass
+
+		return f"{scheme}://{auth}{host}:{port}", path
 
 	def set_addresses(self, address: Iterable[str] | str | None) -> None:
 		self._addresses = []
@@ -431,21 +455,8 @@ class ServiceClient:
 			return
 
 		for addr in [address] if isinstance(address, str) else address:
-			if "://" not in addr:
-				try:
-					ipa = ip_address(addr)
-					if isinstance(ipa, IPv6Address):
-						addr = f"[{ipa.compressed}]"
-				except ValueError:
-					pass
-				addr = f"https://{addr}"
+			addr, path = self.normalize_service_address(addr)
 			url = urlparse(addr)
-			if url.scheme != "https":
-				raise ValueError(f"Protocol {url.scheme} not supported")
-
-			hostname = str(url.hostname)
-			if ":" in hostname:
-				hostname = f"[{hostname}]"
 
 			if url.username is not None:
 				if self.username and self.username != url.username:
@@ -457,11 +468,11 @@ class ServiceClient:
 					raise ValueError("Different passwords supplied")
 				self.password = url.password
 
-			path = url.path.rstrip("/")
+			path = path.rstrip("/")
 			if path and path != "/rpc":
 				self._jsonrpc_path = path
 
-			self._addresses.append(f"{url.scheme}://{hostname}:{url.port or _DEFAULT_HTTPS_PORT}")
+			self._addresses.append(addr)
 
 		service_hostname = urlparse(self.base_url).hostname or ""
 
@@ -486,9 +497,42 @@ class ServiceClient:
 	def verify(self) -> list[ServiceVerificationFlags]:
 		return self._verify
 
+	@staticmethod
+	def is_local_address(service_address: str) -> bool:
+		service_address = ServiceClient.normalize_service_address(service_address)[0]
+		url = urlparse(service_address)
+		if not url.hostname:
+			raise ValueError(f"Invalid service address: {service_address}")
+		host = url.hostname.lower().replace("[", "").replace("]", "")
+		return host in ("0000:0000:0000:0000:0000:0000:0000:0001", "127.0.0.1", "localhost", "ip6-localhost", "ip6-loopback")
+
+	@staticmethod
+	@lru_cache
+	def get_ca_cert_file_path(service_address: str) -> Path:
+		base_dir = Path.home() / ".config"
+		if is_windows():
+			appdata = os.getenv("APPDATA")
+			if not appdata:
+				raise RuntimeError("APPDATA environment variable not set")
+			base_dir = Path(appdata)
+
+		service_address = ServiceClient.normalize_service_address(service_address)[0]
+		url = urlparse(service_address)
+		if not url.hostname:
+			raise ValueError(f"Invalid service address: {service_address}")
+
+		host = url.hostname.lower().replace("[", "").replace("]", "")
+		if ServiceClient.is_local_address(service_address):
+			host = "localhost"
+
+		dirname = f"{host}_{url.port}".replace(":", ".")
+		return base_dir / "opsi" / "services" / dirname / "ca-certs.pem"
+
 	@property
-	def ca_cert_file(self) -> Path | None:
-		return self._ca_cert_file
+	def ca_cert_file(self) -> Path:
+		if self._ca_cert_file:
+			return self._ca_cert_file
+		return self.get_ca_cert_file_path(self.base_url)
 
 	@property
 	def client_cert_file(self) -> Path | None:
@@ -567,19 +611,19 @@ class ServiceClient:
 
 	def read_ca_cert_file(self) -> list[x509.Certificate]:
 		with self._ca_cert_lock:
-			if not self._ca_cert_file:
-				raise RuntimeError("CA cert file not set")
-
-			with open(self._ca_cert_file, "r", encoding="utf-8") as file:
+			with open(self.ca_cert_file, "r", encoding="utf-8") as file:
 				with lock_file(file=file, exclusive=False, timeout=5.0):
 					return self.certs_from_pem(file.read())
 
 	def write_ca_cert_file(self, certs: list[x509.Certificate]) -> None:
 		with self._ca_cert_lock:
-			if not self._ca_cert_file:
-				raise RuntimeError("CA cert file not set")
+			ca_cert_file = self.ca_cert_file
+			if str(ca_cert_file) == OPSI_CA_CERT_FILE:
+				# Never touch the opsi CA file
+				logger.warning("Not writing to opsiconfd CA file")
+				return
 
-			self._ca_cert_file.parent.mkdir(parents=True, exist_ok=True)
+			ca_cert_file.parent.mkdir(parents=True, exist_ok=True)
 			certs_pem = []
 			subjects = []
 			for cert in certs:
@@ -589,18 +633,15 @@ class ServiceClient:
 				certs_pem.append(cert.public_bytes(encoding=serialization.Encoding.PEM).decode("utf-8").strip() + "\n")
 				subjects.append(subj)
 
-			with open(self._ca_cert_file, "a+", encoding="utf-8") as file:
+			with open(ca_cert_file, "a+", encoding="utf-8") as file:
 				with lock_file(file=file, exclusive=True, timeout=5.0):
 					file.seek(0)
 					file.truncate()
 					file.write("".join(certs_pem))
 
-			logger.info("CA cert file '%s' successfully updated (%d certificates total)", self._ca_cert_file, len(certs))
+			logger.info("CA cert file '%s' successfully updated (%d certificates total)", ca_cert_file, len(certs))
 
 	def fetch_ca_certs(self, skip_verify: bool = False) -> None:
-		if not self._ca_cert_file:
-			raise RuntimeError("CA cert file not set")
-
 		verify = False if skip_verify else self._session.verify
 		logger.info("Fetching opsi CA from service (verify=%s)", verify)
 
@@ -620,23 +661,38 @@ class ServiceClient:
 
 		self.write_ca_cert_file(ca_certs)
 
-	def add_uib_opsi_ca_to_cert_file(self) -> None:
-		if not self._ca_cert_file:
-			raise RuntimeError("CA cert file not set")
-
+	def handle_uib_opsi_ca_in_cert_file(self, action: Literal["add", "remove"]) -> None:
 		uib_opsi_ca_cn = self._uib_opsi_ca_cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value
-		ca_certs = [
-			cert
-			for cert in self.get_opsi_ca_certs()
-			if cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value != uib_opsi_ca_cn
-		]
-		ca_certs.extend(self.certs_from_pem(UIB_OPSI_CA))
+		found = False
+		ca_certs = []
+		for cert in self.get_opsi_ca_certs():
+			if cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value == uib_opsi_ca_cn:
+				found = True
+			else:
+				ca_certs.append(cert)
+
+		if action == "remove":
+			if found:
+				logger.info("Removing uib opsi CA from cert file '%s' (%d certificates total)", self.ca_cert_file, len(ca_certs))
+			else:
+				logger.info(
+					"uib opsi CA not found in cert file '%s', nothing to remove (%d certificates total)", self.ca_cert_file, len(ca_certs)
+				)
+				return
+
+		elif action == "add":
+			ca_certs.extend(self.certs_from_pem(UIB_OPSI_CA))
+			if found:
+				logger.info("Updating uib opsi CA in cert file '%s' (%d certificates total)", self.ca_cert_file, len(ca_certs))
+			else:
+				logger.info("Adding uib opsi CA to cert file '%s' (%d certificates total)", self.ca_cert_file, len(ca_certs))
+
 		self.write_ca_cert_file(ca_certs)
-		logger.info("uib opsi CA added to cert file '%s' (%d certificates total)", self._ca_cert_file, len(ca_certs))
 
 	def get_opsi_ca_certs(self) -> list[x509.Certificate]:
 		ca_certs: list[x509.Certificate] = []
-		if not self._ca_cert_file or not self._ca_cert_file.exists() or self._ca_cert_file.stat().st_size == 0:
+		ca_cert_file = self.ca_cert_file
+		if not ca_cert_file.exists() or ca_cert_file.stat().st_size == 0:
 			return ca_certs
 		try:
 			ca_certs = self.read_ca_cert_file()
@@ -644,7 +700,7 @@ class ServiceClient:
 			logger.warning(err, exc_info=True)
 		return ca_certs
 
-	def get_opsi_ca_state(self) -> OpsiCaState:
+	def get_opsi_ca_certs_state(self) -> OpsiCaState:
 		now = datetime.now(tz=timezone.utc)
 		uib_opsi_ca_cn = self._uib_opsi_ca_cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value
 		for cert in self.get_opsi_ca_certs():
@@ -734,42 +790,54 @@ class ServiceClient:
 
 		self.disconnect()
 		with self._connect_lock:
-			ca_cert_file_exists = self._ca_cert_file and self._ca_cert_file.exists()
-			verify = self._session.verify
-			logger.debug(
-				"ca_cert_file: '%s', exists: %r, verify_flags: %r, session.verify: %r, verify: %r",
-				self._ca_cert_file,
-				ca_cert_file_exists,
-				self._verify,
-				self._session.verify,
-				verify,
-			)
-			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file:
-				opsi_ca_state = self.get_opsi_ca_state()
-				if opsi_ca_state == OpsiCaState.UNAVAILABLE:
-					logger.info(
-						"Service verification enabled, but %r does not contain opsi CA, skipping verification",
-						self._ca_cert_file,
-					)
-					verify = False
-				elif ServiceVerificationFlags.REPLACE_EXPIRED_CA in self._verify and opsi_ca_state == OpsiCaState.EXPIRED:
-					logger.info(
-						"Service verification enabled, but a certificate from CA cert file %r is expired, skipping verification",
-						self._ca_cert_file,
-					)
-					verify = False
-
-			if self._ca_cert_file and verify and not ca_cert_file_exists:
-				# Prevent OSError invalid path
-				verify = True
-
 			for listener in self._listener:
 				CallbackThread(listener.connection_open, service_client=self).start()
 
 			for address_index in range(len(self._addresses)):
 				self._address_index = address_index
+				ca_cert_file = self.ca_cert_file
+				ca_cert_file_exists = ca_cert_file.exists()
 
-				verify_addr = verify
+				if ServiceVerificationFlags.ACCEPT_ALL in self._verify:
+					self._session.verify = False
+				else:
+					self._session.verify = str(self.ca_cert_file)
+
+				verify = cast(bool | str, self._session.verify)
+				logger.debug(
+					"ca_cert_file: '%s', exists: %r, verify_flags: %r, session.verify: %r, verify: %r",
+					ca_cert_file,
+					ca_cert_file_exists,
+					self._verify,
+					self._session.verify,
+					verify,
+				)
+				if ServiceVerificationFlags.OPSI_CA in self._verify:
+					opsi_ca_state = self.get_opsi_ca_certs_state()
+					if opsi_ca_state == OpsiCaState.UNAVAILABLE:
+						logger.info(
+							"Service verification enabled, but '%s' does not contain CA certs, skipping verification",
+							ca_cert_file,
+						)
+						verify = False
+					elif ServiceVerificationFlags.REPLACE_EXPIRED_CA in self._verify and opsi_ca_state == OpsiCaState.EXPIRED:
+						logger.info(
+							"Service verification enabled, but a certificate from CA cert file '%s' is expired, skipping verification",
+							ca_cert_file,
+						)
+						verify = False
+
+				if verify:
+					if ca_cert_file_exists:
+						if ServiceVerificationFlags.UIB_OPSI_CA in self._verify:
+							self.handle_uib_opsi_ca_in_cert_file("add")
+						else:
+							self.handle_uib_opsi_ca_in_cert_file("remove")
+					else:
+						# Prevent OSError invalid path
+						verify = True
+
+				verify_addr: str | bool = verify
 				# Accept status 405 for older opsiconfd versions
 				allow_status_codes = [200, 405]
 				if self.service_is_opsiclientd():
@@ -854,7 +922,7 @@ class ServiceClient:
 				except Exception as err:
 					logger.warning("Failed to process date header %r: %r", response.headers["date"], err, exc_info=True)
 
-			if ServiceVerificationFlags.OPSI_CA in self._verify and self._ca_cert_file and not self.service_is_opsiclientd():
+			if ServiceVerificationFlags.OPSI_CA in self._verify and not self.service_is_opsiclientd():
 				try:
 					self.fetch_ca_certs(skip_verify=not verify)
 				except Exception as err:
@@ -1690,10 +1758,9 @@ class Messagebus(Thread):
 		self._connect_exception = None
 
 		sslopt: dict[str, str | ssl.VerifyMode] = {}
+		sslopt["ca_certs"] = str(self._client.ca_cert_file)
 		if ServiceVerificationFlags.ACCEPT_ALL in self._client.verify:
 			sslopt["cert_reqs"] = ssl.CERT_NONE
-		if self._client.ca_cert_file:
-			sslopt["ca_certs"] = str(self._client.ca_cert_file)
 		if self._client.client_cert_file:
 			sslopt["certfile"] = str(self._client.client_cert_file)
 			if self._client.client_key_file:
@@ -1831,7 +1898,9 @@ class BackendManager(ServiceClient):
 			username=username or opsi_config.get("host", "id"),
 			password=password or opsi_config.get("host", "key"),
 			user_agent=f"BackendManager/{__version__}/{os.path.basename(sys.argv[0])}",
-			ca_cert_file=CA_CERT_FILE,
+			# BackendManager can only be used to connect to the local opsi service.
+			# Using local CA cert file read-only with strict verification and.
+			ca_cert_file=OPSI_CA_CERT_FILE,
 			verify=ServiceVerificationFlags.STRICT_CHECK,
 			jsonrpc_create_objects=True,
 			jsonrpc_create_methods=True,
@@ -1840,20 +1909,42 @@ class BackendManager(ServiceClient):
 
 
 def get_service_client(
-	*, address: str | None = None, username: str | None = None, password: str | None = None, user_agent: str | None = None
+	*,
+	address: str | None = None,
+	username: str | None = None,
+	password: str | None = None,
+	user_agent: str | None = None,
+	auto_connect: bool = True,
 ) -> ServiceClient:
 	if user_agent is None:
 		user_agent = f"service-client/{__version__}/{os.path.basename(sys.argv[0])}"
+
+	service_url = opsi_config.get("service", "url")
+	service_url_is_local = False
+	if service_url:
+		service_url = ServiceClient.normalize_service_address(service_url)[0]
+		service_url_is_local = ServiceClient.is_local_address(service_url)
+
+	address = ServiceClient.normalize_service_address(address)[0] if address else service_url
+
+	verify = ServiceVerificationFlags.OPSI_CA
+	ca_cert_file = None
+
+	if os.path.exists(OPSI_CA_CERT_FILE) and (service_url == address or (service_url_is_local and ServiceClient.is_local_address(address))):
+		verify = ServiceVerificationFlags.STRICT_CHECK
+		ca_cert_file = OPSI_CA_CERT_FILE
+
 	service_client = ServiceClient(
-		address=address or opsi_config.get("service", "url"),
+		address=address,
 		username=username or opsi_config.get("host", "id"),
 		password=password or opsi_config.get("host", "key"),
 		user_agent=user_agent,
-		verify=ServiceVerificationFlags.STRICT_CHECK,
-		ca_cert_file=CA_CERT_FILE,
+		verify=verify,
+		ca_cert_file=ca_cert_file,
 		jsonrpc_create_objects=True,
 		jsonrpc_create_methods=True,
 	)
-	service_client.connect()
-	logger.info("Connected to %s", service_client.server_name)
+	if auto_connect:
+		service_client.connect()
+		logger.info("Connected to %s", service_client.server_name)
 	return service_client

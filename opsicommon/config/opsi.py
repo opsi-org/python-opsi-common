@@ -27,7 +27,7 @@ from ..utils import Singleton
 
 logger = get_logger("opsicommon.config")
 
-CA_CERT_FILE = "/etc/opsi/ssl/opsi-ca-cert.pem"
+OPSI_CA_CERT_FILE = "/etc/opsi/ssl/opsi-ca-cert.pem"
 GLOBAL_CONF = "/etc/opsi/global.conf"
 DISPATCH_CONF = "/etc/opsi/backendManager/dispatch.conf"
 JSONRPC_CONF = "/etc/opsi/backends/jsonrpc.conf"
