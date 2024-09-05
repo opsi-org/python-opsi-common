@@ -256,28 +256,24 @@ class ServiceClient:
 		jsonrpc_create_methods: bool = False,
 	) -> None:
 		"""
-				proxy_url:
-				    system = Use system proxy
-				    None = Do not use a proxy
+		proxy_url:
+		    system = Use system proxy
+		    None = Do not use a proxy
 
-				verify:
-				    strict_check:
-				        Check server certificate against ca_cert_file.
-				    uib_opsi_ca:
-				        In combination with verify. Also accept server certificates signed by uib.
-				    accept_all:
-				        Do not check server certificate.
-				    opsi_ca:
-				        If ca_cert_file missing or empty: Do not verify certificate.
-				        If ca_cert_file is present: Verify if accept_all is not set.
-				        After every successful connection: Fetch CA certs from service and update ca_cert_file.
-				    replace_expired_ca:
-				        To use in combination with fetch_ca_certs.
-		<<<<<<< HEAD
-				        If opsi_ca from ca_cert_file is expired => accept_all.
-		=======
-				        If a CA from ca_cert_file is expired => accept_all.
-		>>>>>>> v4.3
+		verify:
+		    strict_check:
+		        Check server certificate against ca_cert_file.
+		    uib_opsi_ca:
+		        In combination with verify. Also accept server certificates signed by uib.
+		    accept_all:
+		        Do not check server certificate.
+		    opsi_ca:
+		        If ca_cert_file missing or empty: Do not verify certificate.
+		        If ca_cert_file is present: Verify if accept_all is not set.
+		        After every successful connection: Fetch CA certs from service and update ca_cert_file.
+		    replace_expired_ca:
+		        To use in combination with fetch_ca_certs.
+		        If a CA from ca_cert_file is expired => accept_all.
 		"""
 
 		self._addresses: list[str] = []
