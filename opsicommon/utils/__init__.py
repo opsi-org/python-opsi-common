@@ -168,7 +168,7 @@ def prepare_proxy_environment(
 		return "://".join((protocol, host))
 
 	if no_proxy_addresses is None:
-		no_proxy_addresses = ["::1", "127.0.0.1", "ip6-localhost", "localhost"]
+		no_proxy_addresses = ["::1", "127.0.0.1", "ip6-localhost", "ip6-loopback", "localhost"]
 	if session is None:
 		# Import is slow
 		from requests import Session
