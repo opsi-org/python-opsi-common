@@ -13,6 +13,7 @@ pytest-darwin:
   script:
     - curl -o opsi-dev-tools.tar.gz "$OPSIDEVTOOLS_URL_DARWIN_X64"
     - tar -xvf opsi-dev-tools.tar.gz
+    - poetry --version
     - poetry env use 3.11
     - poetry cache clear --all --quiet uibpypi
     - poetry lock --no-update
@@ -39,6 +40,7 @@ pytest-windows:
     - Expand-Archive opsi-dev-tools.zip -DestinationPath .
     - .\opsi-dev-tool.exe --self-install
     - $pythonPath = py -3.11 -c "import sys; print(sys.executable)"
+    - poetry --version
     - poetry env use $pythonPath
     - poetry cache clear --all --quiet uibpypi
     - poetry lock --no-update
@@ -61,6 +63,7 @@ pytest-linux:
   script:
     - apt update
     - apt --yes install zstd  # need zstd for packaging tests
+    - poetry --version
     - poetry env use 3.11
     - poetry cache clear --all --quiet uibpypi
     - poetry lock --no-update
