@@ -48,9 +48,8 @@ tomlkit = "^0.13"
 pydantic = "^2.9"
 cryptography = "^43.0"
 ptyprocess = "^0.7"
-types-aiofiles = "^24.1.0.0"
-aiofiles = "^24.1.0"
-mailbits = "^0.2.1"
+aiofiles = "^24.1"
+mailbits = "^0.2"
 
 [tool.ruff.format]
 indent-style = "tab"
