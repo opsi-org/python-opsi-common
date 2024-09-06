@@ -8,20 +8,20 @@ handling of archives
 
 from __future__ import annotations
 
-from abc import ABC
-from dataclasses import dataclass, field
 import fnmatch
 import os
 import re
 import subprocess
 import tarfile
-from contextlib import contextmanager
+import time
+from abc import ABC
+from contextlib import contextmanager, nullcontext
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from threading import Lock
-import time
 from typing import IO, Any, Generator
-from contextlib import nullcontext
+
 import packaging.version
 import zstandard
 
@@ -403,7 +403,10 @@ def create_archive_external(
 ) -> None:
 	if not is_linux():
 		raise RuntimeError("External archiving is only available on linux")
-	from fcntl import fcntl, F_GETFL, F_SETFL
+	from fcntl import F_GETFL, F_SETFL, fcntl
+
+	if not files:
+		raise ValueError("No files to archive")
 
 	archive = archive.absolute()
 	logger.info("Creating archive '%s'", archive)
@@ -510,6 +513,9 @@ def create_archive_internal(
 	dereference: bool = False,
 	progress_listener: ArchiveProgressListener | None = None,
 ) -> None:
+	if not files:
+		raise ValueError("No files to archive")
+
 	archive = archive.absolute()
 	logger.info("Creating archive '%s'", archive)
 

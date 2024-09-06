@@ -24,15 +24,15 @@ from hypothesis.strategies import binary, from_regex, sampled_from
 from pyzsync import SOURCE_REMOTE, get_patch_instructions, read_zsync_file
 
 from opsicommon.package.archive import (
-	get_archive_files,
+	ArchiveFile,
+	ArchiveProgress,
+	ArchiveProgressListener,
 	create_archive,
 	create_archive_external,
 	create_archive_internal,
 	extract_archive_external,
 	extract_archive_internal,
-	ArchiveFile,
-	ArchiveProgress,
-	ArchiveProgressListener,
+	get_archive_files,
 )
 from opsicommon.package.associated_files import create_package_zsync_file
 from opsicommon.testing.helpers import memory_usage_monitor
@@ -230,17 +230,20 @@ def test_archive_hypothesis(filename: str, data: bytes, internal: bool, compress
 		archive = tmp_path / f"archive.tar.{compression}"
 		create_archive = create_archive_internal if internal else create_archive_external
 		files = list(get_archive_files(source))
-		create_archive(archive, files, compression=compression)
-		destination = tmp_path / "destination"
-		extract_archive = extract_archive_internal if internal else extract_archive_external
-		extract_archive(archive, destination)
-		src_contents = [file.relative_to(source) for file in source.rglob("*")]
-		dst_contents = [file.relative_to(destination) for file in destination.rglob("*")]
-		src_contents.sort()
-		dst_contents.sort()
-		# print("src:", src_contents)
-		# print("dst:", dst_contents)
-		assert dst_contents == src_contents
+		if filename.endswith("~"):
+			assert not files
+		else:
+			create_archive(archive, files, compression=compression)
+			destination = tmp_path / "destination"
+			extract_archive = extract_archive_internal if internal else extract_archive_external
+			extract_archive(archive, destination)
+			src_contents = [file.relative_to(source) for file in source.rglob("*")]
+			dst_contents = [file.relative_to(destination) for file in destination.rglob("*")]
+			src_contents.sort()
+			dst_contents.sort()
+			# print("src:", src_contents)
+			# print("dst:", dst_contents)
+			assert dst_contents == src_contents
 
 
 @pytest.mark.linux

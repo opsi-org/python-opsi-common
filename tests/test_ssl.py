@@ -257,7 +257,7 @@ def test_load_key(tmp_path: Path) -> None:
 	key_file = tmp_path / "key.pem"
 	key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 	key_file.write_text(as_pem(key, passphrase="password"), encoding="utf-8")
-	with pytest.raises(RuntimeError, match=r".*Bad decrypt. Incorrect password\?.*"):
+	with pytest.raises(RuntimeError, match=r".*the provided password may be incorrect.*"):
 		load_key(key_file, "wrongpassword")
 	with pytest.raises(TypeError, match=r".*Password was not given but private key is encrypted.*"):
 		load_key(key_file)
