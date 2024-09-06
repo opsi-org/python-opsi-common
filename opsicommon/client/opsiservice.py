@@ -1909,7 +1909,7 @@ def get_service_client(
 	client_key_file: str | Path | None = None,
 	client_key_password: str | None = None,
 	ca_cert_file: str | Path | None = None,
-	verify: ServiceVerificationFlags | None = None,
+	verify: str | None = None,
 	client_cert_auth: bool | None = None,
 	auto_connect: bool = True,
 	session_cookie: str | None = None,
@@ -1921,7 +1921,6 @@ def get_service_client(
 	jsonrpc_create_objects: bool = False,
 	jsonrpc_create_methods: bool = False,
 ) -> ServiceClient:
-	verify_set = verify is not None
 	if user_agent is None:
 		user_agent = f"service-client/{__version__}/{os.path.basename(sys.argv[0])}"
 
@@ -1933,8 +1932,9 @@ def get_service_client(
 
 	address = ServiceClient.normalize_service_address(address)[0] if address else service_url
 
-	if not verify_set:
+	if not verify:
 		verify = ServiceVerificationFlags.OPSI_CA
+
 	ca_cert_file = None
 
 	if opsi_config.get("host", "server-role") in ("configserver", "depotserver") and (

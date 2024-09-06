@@ -972,8 +972,7 @@ def remove_all_handlers(handler_type: type | None = None, handler_name: str | No
 		if not isinstance(_logger, PlaceHolder):
 			for _handler in _logger.handlers:
 				if (
-					not handler_type
-					or type(_handler) == handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
+					not handler_type or type(_handler) == handler_type  # exact type needed, not subclass # noqa: E721
 				) and (not handler_name or _handler.name == handler_name):
 					_logger.removeHandler(_handler)
 
