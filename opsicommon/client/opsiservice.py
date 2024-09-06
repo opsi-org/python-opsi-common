@@ -63,6 +63,7 @@ from opsicommon.messagebus.message import (
 	timestamp,
 )
 from opsicommon.objects import deserialize, serialize
+from opsicommon.server import get_opsiconfd_config
 from opsicommon.ssl.common import load_key, x509_name_to_dict
 from opsicommon.system import lock_file, set_system_datetime
 from opsicommon.system.info import is_windows
@@ -1912,8 +1913,19 @@ def get_service_client(
 	address: str | None = None,
 	username: str | None = None,
 	password: str | None = None,
-	user_agent: str | None = None,
+	client_cert_file: str | Path | None = None,
+	client_key_file: str | Path | None = None,
+	client_key_password: str | None = None,
+	auto_client_cert_auth: bool = True,
 	auto_connect: bool = True,
+	session_cookie: str | None = None,
+	session_lifetime: int = 150,
+	proxy_url: str | None = "system",
+	user_agent: str | None = None,
+	connect_timeout: float = 10,
+	max_time_diff: float = 0,
+	jsonrpc_create_objects: bool = False,
+	jsonrpc_create_methods: bool = False,
 ) -> ServiceClient:
 	if user_agent is None:
 		user_agent = f"service-client/{__version__}/{os.path.basename(sys.argv[0])}"
@@ -1929,9 +1941,24 @@ def get_service_client(
 	verify = ServiceVerificationFlags.OPSI_CA
 	ca_cert_file = None
 
-	if os.path.exists(OPSI_CA_CERT_FILE) and (service_url == address or (service_url_is_local and ServiceClient.is_local_address(address))):
-		verify = ServiceVerificationFlags.STRICT_CHECK
-		ca_cert_file = OPSI_CA_CERT_FILE
+	if opsi_config.get("host", "server-role") in ("configserver", "depotserver") and (
+		service_url == address or (service_url_is_local and ServiceClient.is_local_address(address))
+	):
+		if os.path.exists(OPSI_CA_CERT_FILE):
+			verify = ServiceVerificationFlags.STRICT_CHECK
+			ca_cert_file = OPSI_CA_CERT_FILE
+		if auto_client_cert_auth and (not client_cert_file or not client_key_file):
+			cfg = get_opsiconfd_config({"ssl_server_key": "", "ssl_server_cert": "", "ssl_server_key_passphrase": ""})
+			logger.debug("opsiconfd config: %r", cfg)
+			if (
+				cfg["ssl_server_key"]
+				and os.path.exists(cfg["ssl_server_key"])
+				and cfg["ssl_server_cert"]
+				and os.path.exists(cfg["ssl_server_cert"])
+			):
+				client_cert_file = cfg["ssl_server_cert"]
+				client_key_file = cfg["ssl_server_key"]
+				client_key_password = cfg["ssl_server_key_passphrase"]
 
 	service_client = ServiceClient(
 		address=address,
@@ -1940,8 +1967,16 @@ def get_service_client(
 		user_agent=user_agent,
 		verify=verify,
 		ca_cert_file=ca_cert_file,
-		jsonrpc_create_objects=True,
-		jsonrpc_create_methods=True,
+		client_cert_file=client_cert_file,
+		client_key_file=client_key_file,
+		client_key_password=client_key_password,
+		jsonrpc_create_objects=jsonrpc_create_objects,
+		jsonrpc_create_methods=jsonrpc_create_methods,
+		session_cookie=session_cookie,
+		session_lifetime=session_lifetime,
+		proxy_url=proxy_url,
+		connect_timeout=connect_timeout,
+		max_time_diff=max_time_diff,
 	)
 	if auto_connect:
 		service_client.connect()

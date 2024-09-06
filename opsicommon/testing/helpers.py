@@ -8,6 +8,8 @@
 Helpers for testing.
 """
 
+from __future__ import annotations
+
 import ctypes
 import datetime
 import gc
@@ -604,7 +606,7 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 	daemon_threads = False
 	allow_reuse_address = True
 
-	def __init__(self, test_server: "HTTPTestServer", server_address: tuple[str, int], address_family: int = socket.AF_INET) -> None:
+	def __init__(self, test_server: HTTPTestServer, server_address: tuple[str, int], address_family: int = socket.AF_INET) -> None:
 		self.address_family = address_family
 		super().__init__(server_address, HTTPTestServerRequestHandler)
 		self.test_server = test_server

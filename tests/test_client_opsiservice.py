@@ -1720,6 +1720,7 @@ def test_backend_manager_and_get_service_client(tmp_path: Path) -> None:
 				{
 					"host.id": "test-host.opsi.org",
 					"host.key": "11111111111111111111111111111111",
+					"host.server-role": "depotserver",
 					"service.url": f"https://localhost:{server.port}",
 				}
 			) as opsi_conf:
@@ -1790,6 +1791,42 @@ def test_backend_manager_and_get_service_client(tmp_path: Path) -> None:
 							assert auth == "test-host.opsi.org:11111111111111111111111111111111"
 							service_client.disconnect()
 						log_file.unlink(missing_ok=True)
+
+					# Test client cert auth
+					server.client_verify_mode = ssl.CERT_REQUIRED
+					server.restart()
+
+					service_client = get_service_client(
+						address=f"https://127.0.0.1:{server.port}", client_cert_file=server.server_cert, client_key_file=server.server_key
+					)
+					reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+					assert len(reqs) == 3
+					log_file.unlink(missing_ok=True)
+
+					with pytest.raises((OpsiServiceConnectionError, OpsiServiceClientCertificateError)):
+						service_client = get_service_client(address=f"https://127.0.0.1:{server.port}", auto_client_cert_auth=True)
+					assert not log_file.exists()
+
+					with mock.patch(
+						"opsicommon.client.opsiservice.get_opsiconfd_config",
+						lambda *args, **kwargs: {
+							"ssl_server_key": str(server.server_key),
+							"ssl_server_cert": str(server.server_cert),
+							"ssl_server_key_passphrase": "",
+						},
+					):
+						with pytest.raises((OpsiServiceConnectionError, OpsiServiceClientCertificateError)):
+							service_client = get_service_client(address=f"https://127.0.0.1:{server.port}", auto_client_cert_auth=False)
+						assert not log_file.exists()
+
+						service_client = get_service_client(
+							address=f"https://127.0.0.1:{server.port}",
+							client_cert_file=server.server_cert,
+							client_key_file=server.server_key,
+						)
+						reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+						assert len(reqs) == 3
+						service_client = get_service_client(address=f"https://127.0.0.1:{server.port}", auto_client_cert_auth=True)
 
 
 def test_messagebus_jsonrpc() -> None:
