@@ -4,7 +4,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "python-opsi-common"
-version = "4.3.19.1"
+version = "4.3.19.2"
 description = "The opsi python common library"
 homepage = "https://www.opsi.org"
 license = "AGPL-3.0"
@@ -54,6 +54,9 @@ mailbits = "^0.2"
 [tool.ruff.format]
 indent-style = "tab"
 
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+
 [tool.poetry.dependencies.pywin32]
 platform = "win32"
 version = ">=303,<304"
@@ -80,6 +83,3 @@ types-aiofiles = "^24.1"
 types-orjson = ">=3.6"
 types-psutil = "^6.0"
 types-requests = ">=2.32"
-
-[tool.pytest.ini_options]
-asyncio_default_fixture_loop_scope = "function"
