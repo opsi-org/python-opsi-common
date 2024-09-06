@@ -1086,8 +1086,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
-	) -> Response:
-		...
+	) -> Response: ...
 
 	@overload
 	def request(
@@ -1101,8 +1100,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
-	) -> RequestsResponse:
-		...
+	) -> RequestsResponse: ...
 
 	@overload
 	def request(
@@ -1116,8 +1114,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
-	) -> RequestsResponse | Response:
-		...
+	) -> RequestsResponse | Response: ...
 
 	def request(
 		self,
@@ -1155,8 +1152,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
-	) -> Response:
-		...
+	) -> Response: ...
 
 	@overload
 	def get(
@@ -1168,8 +1164,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
-	) -> RequestsResponse:
-		...
+	) -> RequestsResponse: ...
 
 	@overload
 	def get(
@@ -1181,8 +1176,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
-	) -> RequestsResponse | Response:
-		...
+	) -> RequestsResponse | Response: ...
 
 	def get(
 		self,
@@ -1215,8 +1209,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
-	) -> Response:
-		...
+	) -> Response: ...
 
 	@overload
 	def post(
@@ -1229,8 +1222,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
-	) -> RequestsResponse:
-		...
+	) -> RequestsResponse: ...
 
 	@overload
 	def post(
@@ -1243,8 +1235,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
-	) -> RequestsResponse | Response:
-		...
+	) -> RequestsResponse | Response: ...
 
 	def post(
 		self,
@@ -1916,7 +1907,9 @@ def get_service_client(
 	client_cert_file: str | Path | None = None,
 	client_key_file: str | Path | None = None,
 	client_key_password: str | None = None,
-	auto_client_cert_auth: bool = True,
+	ca_cert_file: str | Path | None = None,
+	verify: ServiceVerificationFlags | None = None,
+	client_cert_auth: bool | None = None,
 	auto_connect: bool = True,
 	session_cookie: str | None = None,
 	session_lifetime: int = 150,
@@ -1927,6 +1920,7 @@ def get_service_client(
 	jsonrpc_create_objects: bool = False,
 	jsonrpc_create_methods: bool = False,
 ) -> ServiceClient:
+	verify_set = verify is not None
 	if user_agent is None:
 		user_agent = f"service-client/{__version__}/{os.path.basename(sys.argv[0])}"
 
@@ -1938,27 +1932,35 @@ def get_service_client(
 
 	address = ServiceClient.normalize_service_address(address)[0] if address else service_url
 
-	verify = ServiceVerificationFlags.OPSI_CA
+	if not verify_set:
+		verify = ServiceVerificationFlags.OPSI_CA
 	ca_cert_file = None
 
 	if opsi_config.get("host", "server-role") in ("configserver", "depotserver") and (
 		service_url == address or (service_url_is_local and ServiceClient.is_local_address(address))
 	):
-		if os.path.exists(OPSI_CA_CERT_FILE):
-			verify = ServiceVerificationFlags.STRICT_CHECK
+		if not ca_cert_file and os.path.exists(OPSI_CA_CERT_FILE):
 			ca_cert_file = OPSI_CA_CERT_FILE
-		if auto_client_cert_auth and (not client_cert_file or not client_key_file):
-			cfg = get_opsiconfd_config({"ssl_server_key": "", "ssl_server_cert": "", "ssl_server_key_passphrase": ""})
-			logger.debug("opsiconfd config: %r", cfg)
-			if (
-				cfg["ssl_server_key"]
-				and os.path.exists(cfg["ssl_server_key"])
-				and cfg["ssl_server_cert"]
-				and os.path.exists(cfg["ssl_server_cert"])
-			):
-				client_cert_file = cfg["ssl_server_cert"]
-				client_key_file = cfg["ssl_server_key"]
-				client_key_password = cfg["ssl_server_key_passphrase"]
+		if str(ca_cert_file) == str(OPSI_CA_CERT_FILE):
+			verify = ServiceVerificationFlags.STRICT_CHECK
+		if client_cert_auth is None:
+			client_cert_auth = True
+
+	if client_key_file and ca_cert_file and client_cert_auth is None:
+		client_cert_auth = True
+
+	if client_cert_auth and (not client_cert_file or not client_key_file):
+		cfg = get_opsiconfd_config({"ssl_server_key": "", "ssl_server_cert": "", "ssl_server_key_passphrase": ""})
+		logger.debug("opsiconfd config: %r", cfg)
+		if (
+			cfg["ssl_server_key"]
+			and os.path.exists(cfg["ssl_server_key"])
+			and cfg["ssl_server_cert"]
+			and os.path.exists(cfg["ssl_server_cert"])
+		):
+			client_cert_file = cfg["ssl_server_cert"]
+			client_key_file = cfg["ssl_server_key"]
+			client_key_password = cfg["ssl_server_key_passphrase"]
 
 	service_client = ServiceClient(
 		address=address,

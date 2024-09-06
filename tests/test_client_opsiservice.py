@@ -1796,15 +1796,22 @@ def test_backend_manager_and_get_service_client(tmp_path: Path) -> None:
 					server.client_verify_mode = ssl.CERT_REQUIRED
 					server.restart()
 
+					# Explicit cert and key
 					service_client = get_service_client(
 						address=f"https://127.0.0.1:{server.port}", client_cert_file=server.server_cert, client_key_file=server.server_key
 					)
 					reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
 					assert len(reqs) == 3
-					log_file.unlink(missing_ok=True)
+					log_file.unlink()
 
+					# Auto client cert auth, but no cert / key
 					with pytest.raises((OpsiServiceConnectionError, OpsiServiceClientCertificateError)):
-						service_client = get_service_client(address=f"https://127.0.0.1:{server.port}", auto_client_cert_auth=True)
+						service_client = get_service_client(address=f"https://127.0.0.1:{server.port}")
+					assert not log_file.exists()
+
+					# Explicit client cert auth, but no cert / key
+					with pytest.raises((OpsiServiceConnectionError, OpsiServiceClientCertificateError)):
+						service_client = get_service_client(address=f"https://127.0.0.1:{server.port}", client_cert_auth=True)
 					assert not log_file.exists()
 
 					with mock.patch(
@@ -1815,10 +1822,18 @@ def test_backend_manager_and_get_service_client(tmp_path: Path) -> None:
 							"ssl_server_key_passphrase": "",
 						},
 					):
+						# No client cert auth, with auto cert / key
 						with pytest.raises((OpsiServiceConnectionError, OpsiServiceClientCertificateError)):
-							service_client = get_service_client(address=f"https://127.0.0.1:{server.port}", auto_client_cert_auth=False)
+							service_client = get_service_client(address=f"https://127.0.0.1:{server.port}", client_cert_auth=False)
 						assert not log_file.exists()
 
+						# Auto client cert auth, with auto cert / key
+						service_client = get_service_client(address=f"https://127.0.0.1:{server.port}")
+						reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
+						assert len(reqs) == 3
+						log_file.unlink()
+
+						# Client cert auth, with explicit cert / key
 						service_client = get_service_client(
 							address=f"https://127.0.0.1:{server.port}",
 							client_cert_file=server.server_cert,
@@ -1826,7 +1841,6 @@ def test_backend_manager_and_get_service_client(tmp_path: Path) -> None:
 						)
 						reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
 						assert len(reqs) == 3
-						service_client = get_service_client(address=f"https://127.0.0.1:{server.port}", auto_client_cert_auth=True)
 
 
 def test_messagebus_jsonrpc() -> None:
