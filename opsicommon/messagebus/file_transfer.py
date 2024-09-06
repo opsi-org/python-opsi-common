@@ -53,6 +53,7 @@ class FileTransfer:
 		self._chunk_number = 0
 		self._file_path: Path | None = None
 		self._should_stop = False
+		self._error: str | None = None
 		self._completed = False
 
 	def __str__(self) -> str:
@@ -82,9 +83,12 @@ class FileTransfer:
 		if not isinstance(message, FileChunkMessage):
 			raise ValueError(f"Received invalid message type {message.type}")
 
+		if self._error:
+			return
+
 		self._last_chunk_time = time()
 		if message.number != self._chunk_number + 1:
-			await self._error(f"Expected chunk number {self._chunk_number + 1}", message)
+			await self._process_error(f"Expected chunk number {self._chunk_number + 1}", message)
 			return
 
 		self._chunk_number = message.number
@@ -104,8 +108,10 @@ class FileTransfer:
 			await self._send_message(upload_result)
 			self._should_stop = True
 
-	async def _error(self, error: str, message: Message | None = None) -> None:
+	async def _process_error(self, error: str, message: Message | None = None) -> None:
+		self._error = error
 		logger.error(error)
+		self._should_stop = True
 		error_message = FileTransferErrorMessage(
 			sender=self._sender,
 			channel=self._response_channel,
@@ -172,7 +178,7 @@ class FileUpload(FileTransfer):
 
 		except Exception as error:
 			logger.error(error, exc_info=True)
-			await self._error(str(error), message=self._file_request)
+			await self._process_error(str(error), message=self._file_request)
 			return
 
 		message = FileUploadResponseMessage(
@@ -192,10 +198,10 @@ class FileUpload(FileTransfer):
 		while True:
 			if self._should_stop:
 				if not self._completed:
-					await self._error("File transfer stopped before completion")
+					await self._process_error("File transfer stopped before completion")
 				break
 			if time() > self._last_chunk_time + self.chunk_timeout:
-				await self._error("File transfer timed out while waiting for next chunk")
+				await self._process_error("File transfer timed out while waiting for next chunk")
 				break
 			await asyncio.sleep(1)
 		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
@@ -212,7 +218,7 @@ class FileUpload(FileTransfer):
 
 		self._last_chunk_time = time()
 		if message.number != self._chunk_number + 1:
-			await self._error(f"Expected chunk number {self._chunk_number + 1}", message)
+			await self._process_error(f"Expected chunk number {self._chunk_number + 1}", message)
 			return
 
 		self._chunk_number = message.number
@@ -262,7 +268,7 @@ class FileDownload(FileTransfer):
 				raise FileNotFoundError(f"File '{self._file_request.path}' is missing or file path is incorrect")
 		except Exception as error:
 			logger.error(error, exc_info=True)
-			await self._error(str(error), message=self._file_request)
+			await self._process_error(str(error), message=self._file_request)
 			return
 
 		if self._file_request.follow:
@@ -301,7 +307,7 @@ class FileDownload(FileTransfer):
 			else:
 				if self._should_stop:
 					if not self._completed:
-						await self._error("File transfer stopped before completion")
+						await self._process_error("File transfer stopped before completion")
 					break
 				chunk_message = FileChunkMessage(
 					sender=self._sender,
@@ -331,7 +337,7 @@ class FileDownload(FileTransfer):
 						self.last = True
 						yield tmp
 		except IOError:
-			await self._error(f"unexpected IOError: {str(IOError)}")
+			await self._process_error(f"unexpected IOError: {str(IOError)}")
 
 
 async def process_messagebus_message(

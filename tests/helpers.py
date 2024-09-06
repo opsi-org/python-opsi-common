@@ -12,8 +12,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
 
-from opsicommon.logging import use_logging_config
+from opsicommon.logging import get_logger, use_logging_config
 from opsicommon.messagebus.message import Message
+
+logger = get_logger()
 
 
 @contextmanager
@@ -40,6 +42,7 @@ class MessageSender:
 		self.messages_sent: list[Message] = []
 
 	async def send_message(self, message: Message) -> None:
+		logger.debug("send_message: %r", message)
 		if self.print_messages:
 			print(message.to_dict())
 		self.messages_sent.append(message)
