@@ -300,7 +300,7 @@ class FileDownload(FileTransfer):
 		file_data_stream = self.read_file()
 		while True:
 			try:
-				data = await anext(file_data_stream)
+				data = await anext(file_data_stream)  # noqa: F821
 			except StopAsyncIteration:
 				logger.notice("file interaction stopped")
 				break
