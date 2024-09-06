@@ -1774,5 +1774,10 @@ reference = "uibpypi"
 
 [metadata]
 lock-version = "2.0"
+<<<<<<< HEAD
 python-versions = ">=3.11,<3.14"
 content-hash = "8df4f7e5e89d12f88924e8062cd4a15092f771e96274de8785f3ec24b6b279fb"
+=======
+python-versions = ">=3.11,<3.13"
+content-hash = "c1cc564b3c418223875f54ae20232e544f0876350683c6a6165766d1567c208c"
+>>>>>>> e0bc9fb... [fix] Add cffi
