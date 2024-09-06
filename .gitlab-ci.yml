@@ -140,7 +140,7 @@ apidoc:
 uibpypi:
   stage: publish
   script:
-    - poetry env use 3.13
+    - poetry env use 3.11
     - poetry lock --no-update
     - poetry install
     - opsi-dev-tool -l info --uib-pypi-publish
