@@ -33,6 +33,7 @@ disallow_incomplete_defs = true
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
 aiofiles = "^24.1"
+annotated-types = "^0.7"
 cffi = "^1.17"
 colorlog = ">=6.6"
 cryptography = "^43.0"
