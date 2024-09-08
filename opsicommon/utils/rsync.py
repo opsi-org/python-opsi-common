@@ -166,18 +166,15 @@ def _execute(job: Any, input_handle: BinaryIO, output_handle: BinaryIO | None = 
 
 
 @overload
-def librsync_signature(filename: Path | str, base64_encoded: Literal[True]) -> str:
-	...
+def librsync_signature(filename: Path | str, base64_encoded: Literal[True]) -> str: ...
 
 
 @overload
-def librsync_signature(filename: Path | str, base64_encoded: Literal[False]) -> bytes:
-	...
+def librsync_signature(filename: Path | str, base64_encoded: Literal[False]) -> bytes: ...
 
 
 @overload
-def librsync_signature(filename: Path | str) -> str:
-	...
+def librsync_signature(filename: Path | str) -> str: ...
 
 
 def librsync_signature(filename: Path | str, base64_encoded: bool = True) -> str | bytes:

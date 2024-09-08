@@ -52,6 +52,7 @@ from websocket import WebSocket, WebSocketApp  # type: ignore[import]
 from websocket import setdefaulttimeout as websocket_setdefaulttimeout
 from websocket._abnf import ABNF  # type: ignore[import]
 
+from opsicommon.system.network import get_ip_addresses, get_hostnames
 from opsicommon import __version__
 from opsicommon.config import OPSI_CA_CERT_FILE, OpsiConfig
 from opsicommon.exceptions import (
@@ -499,13 +500,18 @@ class ServiceClient:
 		return self._verify
 
 	@staticmethod
+	@lru_cache
 	def is_local_address(service_address: str) -> bool:
 		service_address = ServiceClient.normalize_service_address(service_address)[0]
 		url = urlparse(service_address)
 		if not url.hostname:
 			raise ValueError(f"Invalid service address: {service_address}")
 		host = url.hostname.lower().replace("[", "").replace("]", "")
-		return host in ("0000:0000:0000:0000:0000:0000:0000:0001", "127.0.0.1", "localhost", "ip6-localhost", "ip6-loopback")
+		return (
+			host in ("0000:0000:0000:0000:0000:0000:0000:0001", "127.0.0.1", "localhost", "ip6-localhost", "ip6-loopback")
+			or host in [a["ip_address"].exploded for a in get_ip_addresses()]
+			or host in get_hostnames()
+		)
 
 	@staticmethod
 	@lru_cache

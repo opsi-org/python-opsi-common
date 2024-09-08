@@ -4,7 +4,6 @@
 test_server_rights
 """
 
-
 import os
 import platform
 from pathlib import Path

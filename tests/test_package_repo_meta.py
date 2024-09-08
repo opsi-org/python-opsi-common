@@ -4,7 +4,6 @@
 tests for opsicommon.package.repo_meta
 """
 
-
 import shutil
 from dataclasses import asdict
 from datetime import datetime, timezone

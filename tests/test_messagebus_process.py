@@ -6,7 +6,6 @@
 messagebus.process tests
 """
 
-
 import pytest
 from opsicommon.messagebus import CONNECTION_USER_CHANNEL
 from opsicommon.messagebus.message import (

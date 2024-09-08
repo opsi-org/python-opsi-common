@@ -131,13 +131,11 @@ def _hexstr2bytes(value: str) -> bytes:
 
 
 @overload
-def generate_key_pair(return_pem: Literal[True], bits: int = 2048) -> tuple[str, str]:
-	...
+def generate_key_pair(return_pem: Literal[True], bits: int = 2048) -> tuple[str, str]: ...
 
 
 @overload
-def generate_key_pair(return_pem: Literal[False], bits: int = 2048) -> tuple[RSA.RsaKey, RSA.RsaKey]:
-	...
+def generate_key_pair(return_pem: Literal[False], bits: int = 2048) -> tuple[RSA.RsaKey, RSA.RsaKey]: ...
 
 
 def generate_key_pair(return_pem: bool = False, bits: int = 2048) -> tuple[str, str] | tuple[RSA.RsaKey, RSA.RsaKey]:
