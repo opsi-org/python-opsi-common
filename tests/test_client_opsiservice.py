@@ -1782,6 +1782,7 @@ def test_backend_manager_and_get_service_client(tmp_path: Path) -> None:
 						if "some-other-host.opsi.test" in address:
 							service_client = get_service_client(address=address, auto_connect=False)
 							assert service_client.verify == [ServiceVerificationFlags.OPSI_CA]
+							assert service_client.ca_cert_file
 							path = service_client.ca_cert_file.parts
 							assert path[-1] == "ca-certs.pem"
 							assert path[-2] == f"some-other-host.opsi.test_{server.port}"
