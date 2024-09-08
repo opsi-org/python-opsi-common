@@ -536,10 +536,12 @@ class ServiceClient:
 		return base_dir / "opsi" / "services" / dirname / "ca-certs.pem"
 
 	@property
-	def ca_cert_file(self) -> Path:
+	def ca_cert_file(self) -> Path | None:
 		if self._ca_cert_file:
 			return self._ca_cert_file
-		return self.get_ca_cert_file_path(self.base_url)
+		if ServiceVerificationFlags.OPSI_CA in self._verify:
+			return self.get_ca_cert_file_path(self.base_url)
+		return None
 
 	@property
 	def client_cert_file(self) -> Path | None:
@@ -617,14 +619,19 @@ class ServiceClient:
 		return certs
 
 	def read_ca_cert_file(self) -> list[x509.Certificate]:
+		ca_cert_file = self.ca_cert_file
+		if not ca_cert_file:
+			raise OpsiServiceError("No CA cert file defined")
 		with self._ca_cert_lock:
-			with open(self.ca_cert_file, "r", encoding="utf-8") as file:
+			with open(ca_cert_file, "r", encoding="utf-8") as file:
 				with lock_file(file=file, exclusive=False, timeout=5.0):
 					return self.certs_from_pem(file.read())
 
 	def write_ca_cert_file(self, certs: list[x509.Certificate]) -> None:
+		ca_cert_file = self.ca_cert_file
+		if not ca_cert_file:
+			raise OpsiServiceError("No CA cert file defined")
 		with self._ca_cert_lock:
-			ca_cert_file = self.ca_cert_file
 			if str(ca_cert_file) == OPSI_CA_CERT_FILE:
 				# Never touch the opsi CA file
 				logger.warning("Not writing to opsiconfd CA file")
@@ -669,6 +676,9 @@ class ServiceClient:
 		self.write_ca_cert_file(ca_certs)
 
 	def handle_uib_opsi_ca_in_cert_file(self, action: Literal["add", "remove"]) -> None:
+		ca_cert_file = self.ca_cert_file
+		if not ca_cert_file:
+			raise OpsiServiceError("No CA cert file defined")
 		uib_opsi_ca_cn = self._uib_opsi_ca_cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value
 		found = False
 		ca_certs = []
@@ -680,26 +690,26 @@ class ServiceClient:
 
 		if action == "remove":
 			if found:
-				logger.info("Removing uib opsi CA from cert file '%s' (%d certificates total)", self.ca_cert_file, len(ca_certs))
+				logger.info("Removing uib opsi CA from cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
 			else:
 				logger.info(
-					"uib opsi CA not found in cert file '%s', nothing to remove (%d certificates total)", self.ca_cert_file, len(ca_certs)
+					"uib opsi CA not found in cert file '%s', nothing to remove (%d certificates total)", ca_cert_file, len(ca_certs)
 				)
 				return
 
 		elif action == "add":
 			ca_certs.extend(self.certs_from_pem(UIB_OPSI_CA))
 			if found:
-				logger.info("Updating uib opsi CA in cert file '%s' (%d certificates total)", self.ca_cert_file, len(ca_certs))
+				logger.info("Updating uib opsi CA in cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
 			else:
-				logger.info("Adding uib opsi CA to cert file '%s' (%d certificates total)", self.ca_cert_file, len(ca_certs))
+				logger.info("Adding uib opsi CA to cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
 
 		self.write_ca_cert_file(ca_certs)
 
 	def get_opsi_ca_certs(self) -> list[x509.Certificate]:
 		ca_certs: list[x509.Certificate] = []
 		ca_cert_file = self.ca_cert_file
-		if not ca_cert_file.exists() or ca_cert_file.stat().st_size == 0:
+		if not ca_cert_file or not ca_cert_file.exists() or ca_cert_file.stat().st_size == 0:
 			return ca_certs
 		try:
 			ca_certs = self.read_ca_cert_file()
@@ -803,12 +813,15 @@ class ServiceClient:
 			for address_index in range(len(self._addresses)):
 				self._address_index = address_index
 				ca_cert_file = self.ca_cert_file
-				ca_cert_file_exists = ca_cert_file.exists()
+				ca_cert_file_exists = ca_cert_file and ca_cert_file.exists()
 
 				if ServiceVerificationFlags.ACCEPT_ALL in self._verify:
 					self._session.verify = False
-				else:
+				elif ca_cert_file:
 					self._session.verify = str(self.ca_cert_file)
+				else:
+					self._session.verify = True
+
 
 				verify = cast(bool | str, self._session.verify)
 				logger.debug(

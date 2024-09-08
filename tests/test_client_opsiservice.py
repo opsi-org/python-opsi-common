@@ -280,16 +280,21 @@ def test_arguments() -> None:
 def test_set_addresses() -> None:
 	user_conf_path = Path(os.getenv("APPDATA", "")) if is_windows() else Path.home() / ".config"
 
-	service_client = ServiceClient(["https://opsiserver:4447", "https://opsiserver2:4447"])
+	service_client = ServiceClient(["https://opsiserver:4447", "https://opsiserver2:4447"], verify="strict_check")
 	assert service_client.base_url == "https://opsiserver:4447"
-	assert service_client.ca_cert_file == user_conf_path / "opsi/services/opsiserver_4447/ca-certs.pem"
+	assert service_client.ca_cert_file is None
 
-	service_client._address_index += 1
-	assert service_client.base_url == "https://opsiserver2:4447"
-	assert service_client.ca_cert_file == user_conf_path / "opsi/services/opsiserver2_4447/ca-certs.pem"
+	for verify in ("opsi_ca", "uib_opsi_ca"):
+		service_client = ServiceClient(["https://opsiserver:4447", "https://opsiserver2:4447"], verify=verify)
+		assert service_client.base_url == "https://opsiserver:4447"
+		assert service_client.ca_cert_file == user_conf_path / "opsi/services/opsiserver_4447/ca-certs.pem"
 
-	service_client.set_addresses("localhost")
-	assert service_client.base_url == "https://localhost:4447"
+		service_client._address_index += 1
+		assert service_client.base_url == "https://opsiserver2:4447"
+		assert service_client.ca_cert_file == user_conf_path / "opsi/services/opsiserver2_4447/ca-certs.pem"
+
+		service_client.set_addresses("localhost")
+		assert service_client.base_url == "https://localhost:4447"
 
 	service_client = ServiceClient()
 	with pytest.raises(ValueError):
