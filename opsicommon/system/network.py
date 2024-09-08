@@ -8,7 +8,7 @@ system.network
 
 import ipaddress
 import socket
-from typing import Any, Dict, Generator, Set
+from typing import Any, Generator
 
 import psutil  # type: ignore[import]
 
@@ -18,7 +18,7 @@ from opsicommon.types import forceFqdn
 logger = get_logger("opsicommon.general")
 
 
-def get_ip_addresses() -> Generator[Dict[str, Any], None, None]:
+def get_ip_addresses() -> Generator[dict[str, Any], None, None]:
 	for interface, snics in psutil.net_if_addrs().items():
 		for snic in snics:
 			family = None
@@ -64,8 +64,8 @@ def get_domain() -> str:
 	return ".".join(get_fqdn().split(".")[1:])
 
 
-def get_hostnames() -> Set[str]:
-	names = {"localhost"}
+def get_hostnames() -> set[str]:
+	names = {"localhost", "ip6-localhost", "ip6-loopback"}
 	names.add(get_fqdn())
 	for addr in get_ip_addresses():
 		try:
