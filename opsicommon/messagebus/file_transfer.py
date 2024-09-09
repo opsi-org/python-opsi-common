@@ -112,6 +112,7 @@ class FileTransfer:
 		self._error = error
 		logger.error(error)
 		self._should_stop = True
+		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
 		error_message = FileTransferErrorMessage(
 			sender=self._sender,
 			channel=self._response_channel,
@@ -199,10 +200,11 @@ class FileUpload(FileTransfer):
 			if self._should_stop:
 				if not self._completed:
 					await self._process_error("File transfer stopped before completion")
+					return
 				break
 			if time() > self._last_chunk_time + self.chunk_timeout:
 				await self._process_error("File transfer timed out while waiting for next chunk")
-				break
+				return
 			await asyncio.sleep(1)
 		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
 
