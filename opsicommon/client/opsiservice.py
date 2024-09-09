@@ -67,7 +67,7 @@ from opsicommon.server import get_opsiconfd_config
 from opsicommon.ssl.common import load_key, x509_name_to_dict
 from opsicommon.system import lock_file, set_system_datetime
 from opsicommon.system.info import is_windows
-from opsicommon.system.network import get_ip_addresses, get_hostnames
+from opsicommon.system.network import get_hostnames, get_ip_addresses
 from opsicommon.types import forceHostId, forceOpsiHostKey
 from opsicommon.utils import json_decode, json_encode, msgpack_decode, msgpack_encode, prepare_proxy_environment
 
@@ -142,7 +142,11 @@ kGOsCMSImzajpmtonx3ccPgSOyEWyoEaGij6u80QtFkj9g==
 
 
 logger = get_logger("opsicommon.general")
-opsi_config = OpsiConfig(upgrade_config=False)
+
+
+@lru_cache
+def get_opsi_config() -> OpsiConfig:
+	return OpsiConfig(upgrade_config=False)
 
 
 class ServiceVerificationFlags(str, Enum):
@@ -243,6 +247,7 @@ class ServiceClient:
 		*,
 		username: str | None = None,
 		password: str | None = None,
+		totp: str | None = None,
 		client_cert_file: str | Path | None = None,
 		client_key_file: str | Path | None = None,
 		client_key_password: str | None = None,
@@ -300,6 +305,7 @@ class ServiceClient:
 		self._service_unavailable: OpsiServiceUnavailableError | None = None
 		self._username = ""
 		self._password = ""
+		self._totp = None
 
 		self._uib_opsi_ca_cert = x509.load_pem_x509_certificate(UIB_OPSI_CA.encode("ascii"))
 
@@ -307,6 +313,7 @@ class ServiceClient:
 
 		self.username = username
 		self.password = password
+		self.totp = totp
 
 		self._client_cert_file = None
 		self._client_key_file = None
@@ -580,6 +587,14 @@ class ServiceClient:
 		)
 
 	@property
+	def totp(self) -> str | None:
+		return self._totp
+
+	@totp.setter
+	def totp(self, totp: str) -> None:
+		self._totp = str(totp) if totp else None
+
+	@property
 	def proxy_url(self) -> str | None:
 		return self._proxy_url
 
@@ -809,6 +824,7 @@ class ServiceClient:
 			for listener in self._listener:
 				CallbackThread(listener.connection_open, service_client=self).start()
 
+			headers: dict[str, str] = {"x-opsi-mfa-otp": self.totp} if self.totp else {}
 			for address_index in range(len(self._addresses)):
 				self._address_index = address_index
 				ca_cert_file = self.ca_cert_file
@@ -820,7 +836,6 @@ class ServiceClient:
 					self._session.verify = str(self.ca_cert_file)
 				else:
 					self._session.verify = True
-
 
 				verify = cast(bool | str, self._session.verify)
 				logger.debug(
@@ -869,6 +884,7 @@ class ServiceClient:
 					response = self._request(
 						method="HEAD",
 						path=self._jsonrpc_path,
+						headers=headers,
 						connect_timeout=self._connect_timeout,
 						read_timeout=self._connect_timeout,
 						verify=verify_addr,
@@ -1903,6 +1919,7 @@ class BackendManager(ServiceClient):
 
 	def __init__(self, username: str | None = None, password: str | None = None, **kwargs: Any) -> None:
 		warnings.warn("BackendManager is deprecated, please use opsicommon.client.opsiservice.get_service_client()")
+		opsi_config = get_opsi_config()
 		super().__init__(
 			address=opsi_config.get("service", "url"),
 			username=username or opsi_config.get("host", "id"),
@@ -1923,6 +1940,7 @@ def get_service_client(
 	address: str | None = None,
 	username: str | None = None,
 	password: str | None = None,
+	totp: str | None = None,
 	client_cert_file: str | Path | None = None,
 	client_key_file: str | Path | None = None,
 	client_key_password: str | None = None,
@@ -1941,6 +1959,8 @@ def get_service_client(
 ) -> ServiceClient:
 	if user_agent is None:
 		user_agent = f"service-client/{__version__}/{os.path.basename(sys.argv[0])}"
+
+	opsi_config = get_opsi_config()
 
 	service_url = opsi_config.get("service", "url")
 	service_url_is_local = False
@@ -1985,6 +2005,7 @@ def get_service_client(
 		address=address,
 		username=username or opsi_config.get("host", "id"),
 		password=password or opsi_config.get("host", "key"),
+		totp=totp,
 		user_agent=user_agent,
 		verify=verify,
 		ca_cert_file=ca_cert_file,

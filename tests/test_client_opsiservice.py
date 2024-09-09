@@ -811,6 +811,35 @@ def test_cookie_handling(tmp_path: Path) -> None:
 			assert unquote(req4["headers"].get("Cookie")) == session_cookie
 
 
+def test_totp(tmp_path: Path) -> None:
+	log_file = tmp_path / "request.log"
+	with http_test_server(generate_cert=True, log_file=log_file) as server:
+		totp = "123456"
+		with ServiceClient(
+			f"https://127.0.0.1:{server.port}", verify="accept_all", username="username", password="password", totp=totp
+		) as client:
+			client.get("/")
+			assert client.totp == totp
+
+			lines = log_file.read_text(encoding="utf-8").strip().split("\n")
+			req1 = json.loads(lines[0])
+			assert req1["method"] == "HEAD"
+			assert req1["headers"].get("x-opsi-mfa-otp") == totp
+
+			client.disconnect()
+			log_file.unlink()
+
+			totp = "654321"
+			client.totp = totp
+			client.get("/")
+			assert client.totp == totp
+
+			lines = log_file.read_text(encoding="utf-8").strip().split("\n")
+			req1 = json.loads(lines[0])
+			assert req1["method"] == "HEAD"
+			assert req1["headers"].get("x-opsi-mfa-otp") == totp
+
+
 def get_local_ipv4_address() -> str | None:
 	for _interface, snics in psutil.net_if_addrs().items():
 		for snic in snics:
