@@ -2153,7 +2153,16 @@ def test_permission_error_ca_cert_file() -> None:
 			return load_verify_locations_orig(self, cafile, capath, cadata)
 		raise OSError("Permission denied")
 
-	with http_test_server(generate_cert=True) as server:
+	def request_callback(handler: HTTPTestServerRequestHandler, request: dict) -> bool:
+		handler.set_response_status(200, "OK")
+		if request["path"] in ("/ssl/opsi-ca-cert.pem", "/ssl/ca-certs.pem"):
+			assert handler.server.test_server.ca_cert
+			handler.set_response_body(handler.server.test_server.ca_cert.read_bytes())
+		else:
+			handler.set_response_body(b"")
+		return False
+
+	with http_test_server(generate_cert=True, request_callback=request_callback) as server:
 		time.sleep(2)
 		with mock.patch("ssl.SSLContext.load_verify_locations", load_verify_locations):
 			with ServiceClient(f"https://localhost:{server.port}", verify="opsi_ca", ca_cert_file=server.ca_cert) as client:
