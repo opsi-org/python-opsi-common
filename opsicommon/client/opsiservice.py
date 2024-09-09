@@ -958,7 +958,11 @@ class ServiceClient:
 					logger.warning("Failed to process date header %r: %r", response.headers["date"], err, exc_info=True)
 
 			if ServiceVerificationFlags.OPSI_CA in self._verify and not self.service_is_opsiclientd():
-				self.fetch_ca_certs(skip_verify=not verify)
+				try:
+					self.fetch_ca_certs(skip_verify=not verify)
+				except Exception as err:
+					logger.error("Failed to fetch CA certs: %s", err, exc_info=True)
+					raise OpsiServiceVerificationError(f"Failed to fetch CA certs: {err}") from err
 
 		try:
 			self.jsonrpc_interface = self.jsonrpc("backend_getInterface")
