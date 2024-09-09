@@ -1760,7 +1760,7 @@ def test_backend_manager_and_get_service_client(tmp_path: Path) -> None:
 			) as opsi_conf:
 				with (
 					mock.patch("opsicommon.client.opsiservice.OPSI_CA_CERT_FILE", server.ca_cert),
-					mock.patch("opsicommon.client.opsiservice.opsi_config", opsi_conf),
+					mock.patch("opsicommon.client.opsiservice.get_opsi_config", lambda: opsi_conf),
 				):
 					with catch_warnings():
 						simplefilter("ignore")
