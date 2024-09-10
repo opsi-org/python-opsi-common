@@ -66,7 +66,10 @@ def get_domain() -> str:
 
 def get_hostnames() -> set[str]:
 	names = {"localhost", "ip6-localhost", "ip6-loopback"}
-	names.add(get_fqdn())
+	try:
+		names.add(get_fqdn())
+	except RuntimeError as err:
+		logger.info("Failed to get fqdn: %s", err)
 	for addr in get_ip_addresses():
 		try:
 			(hostname, aliases, _addr) = socket.gethostbyaddr(addr["address"])
