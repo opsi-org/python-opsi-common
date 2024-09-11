@@ -33,7 +33,7 @@ from random import randint
 from threading import Event, Lock, Thread
 from traceback import TracebackException
 from types import MethodType, TracebackType
-from typing import Any, Callable, Generator, Iterable, Literal, Type, cast, overload
+from typing import Any, BinaryIO, Callable, Generator, Iterable, Literal, Type, cast, overload
 from urllib.parse import quote, unquote, urlparse
 from uuid import uuid4
 
@@ -236,6 +236,34 @@ class KeyPasswordHTTPAdapter(HTTPAdapter):
 		if self.key_password:
 			kwargs["key_password"] = self.key_password
 		super().init_poolmanager(*args, **kwargs)  # type: ignore[no-untyped-call]
+
+
+class UploadFile:
+	def __init__(self, file: Path, progress_callback: Callable | None = None) -> None:
+		self.file = file
+		self.progress_callback = progress_callback
+		self.file_size = file.stat().st_size
+		self._file_handle: BinaryIO | None = None
+		self._position = 0
+
+	def __enter__(self) -> UploadFile:
+		self._file_handle = open(self.file, "rb")
+		self._position = 0
+		if self.progress_callback:
+			self.progress_callback(0, self.file_size)
+		return self
+
+	def __exit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType) -> None:
+		if self._file_handle:
+			self._file_handle.close()
+
+	def read(self, size: int = -1) -> bytes:
+		assert self._file_handle
+		data = self._file_handle.read(size)
+		self._position += len(data)
+		if self.progress_callback:
+			self.progress_callback(self._position, self.file_size)
+		return data
 
 
 class ServiceClient:
@@ -1035,7 +1063,7 @@ class ServiceClient:
 		headers: dict[str, str] | None = None,
 		connect_timeout: float | None = None,
 		read_timeout: float | None = None,
-		data: bytes | None = None,
+		data: bytes | UploadFile | None = None,
 		verify: str | bool | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 	) -> RequestsResponse:
@@ -1438,6 +1466,21 @@ class ServiceClient:
 			return deserialize(rpc.get("result"))
 
 		return rpc.get("result")
+
+	def upload(self, source: Path, destination: str, *, progress_callback: Callable | None = None) -> None:
+		if source.is_dir():
+			raise NotImplementedError("Directory upload not supported")
+
+		with UploadFile(source, progress_callback) as upload_file:
+			logger.info("Uploading '%s' to '%s' (size: %d)", source, destination, upload_file.file_size)
+			self._assert_connected()
+			self._request(
+				method="PUT",
+				path=destination,
+				data=upload_file,
+				headers={"Content-Type": "binary/octet-stream", "Content-Length": str(upload_file.file_size)},
+				allow_status_codes=(200, 201),
+			)
 
 	@property
 	def messagebus(self) -> Messagebus:
