@@ -2073,8 +2073,8 @@ def get_service_client(
 	user_agent: str | None = None,
 	connect_timeout: float = 10,
 	max_time_diff: float = 0,
-	jsonrpc_create_objects: bool = False,
-	jsonrpc_create_methods: bool = False,
+	jsonrpc_create_objects: bool = True,
+	jsonrpc_create_methods: bool = True,
 ) -> ServiceClient:
 	if user_agent is None:
 		user_agent = f"service-client/{__version__}/{os.path.basename(sys.argv[0])}"

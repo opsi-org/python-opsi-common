@@ -55,7 +55,9 @@ from .constants import (
 if TYPE_CHECKING:
 	from rich.console import Console
 
-context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("context", default={})
+context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar(
+	"context", default={}
+)
 
 
 class OPSILogger(logging.Logger):
@@ -189,7 +191,18 @@ def logrecord_init(
 	:param sinfo: Call stack information.
 	:param **kwargs: Additional keyword-arguments.
 	"""
-	self.__init_orig__(name, level, pathname, lineno, msg, args, exc_info, func=func, sinfo=sinfo, **kwargs)  # type: ignore[attr-defined]
+	self.__init_orig__(
+		name,
+		level,
+		pathname,
+		lineno,
+		msg,
+		args,
+		exc_info,
+		func=func,
+		sinfo=sinfo,
+		**kwargs,
+	)  # type: ignore[attr-defined]
 	self.opsilevel = logging.level_to_opsi_level.get(level, level)  # type: ignore[attr-defined]
 	self.context = {}
 	self.contextstring = ""
@@ -200,7 +213,11 @@ logging.LogRecord.__init__ = logrecord_init  # type: ignore[assignment]
 
 
 def handle_log_exception(
-	exc: Exception, record: logging.LogRecord | None = None, stderr: bool = True, temp_file: bool = False, log: bool = False
+	exc: Exception,
+	record: logging.LogRecord | None = None,
+	stderr: bool = True,
+	temp_file: bool = False,
+	log: bool = False,
 ) -> None:
 	"""
 	Handles an exception in logging process.
@@ -221,7 +238,10 @@ def handle_log_exception(
 	try:
 		text = "Logging error:\n"
 
-		if isinstance(exc, PermissionError) and platform.system().lower() in ("linux", "darwin"):
+		if isinstance(exc, PermissionError) and platform.system().lower() in (
+			"linux",
+			"darwin",
+		):
 			try:
 				stat_info = os.stat(exc.filename)
 				text += f"File permissions: {stat_info.st_mode:o}, owner: {stat_info.st_uid}, group: {stat_info.st_gid}\n"
@@ -240,7 +260,9 @@ def handle_log_exception(
 			sys.stderr.write(text)
 
 		if temp_file:
-			filename = os.path.join(tempfile.gettempdir(), f"log_exception_{os.getpid()}.txt")
+			filename = os.path.join(
+				tempfile.gettempdir(), f"log_exception_{os.getpid()}.txt"
+			)
 			with codecs.open(filename, "a", "utf-8") as file:
 				file.write(text)
 
@@ -276,7 +298,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		empty dictionary as context.
 
 		:param filter_dict: Dictionary that must be present in record context
-		        in order to accept the LogRecord.
+				in order to accept the LogRecord.
 		:type filter_dict: Dict
 		"""
 		super().__init__()
@@ -304,7 +326,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		key-value entry. None means, every record can pass.
 
 		:param filter_dict: Value that must be present in record context
-		        in order to accept the LogRecord.
+				in order to accept the LogRecord.
 		:type filter_dict: Dict
 		"""
 		if filter_dict is None:
@@ -351,10 +373,10 @@ class ContextSecretFormatter(Formatter):
 
 	This class fulfills two formatting tasks:
 	1. It alters the LogRecord to also include a string representation of
-	        a context dictionary, which can be logged by specifying a log
-	        format which includes %(contextstring)s
+			a context dictionary, which can be logged by specifying a log
+			format which includes %(contextstring)s
 	2. It can replace secret strings specified to a SecretFilter by a
-	        replacement string, thus censor passwords etc.
+			replacement string, thus censor passwords etc.
 	"""
 
 	logger_name_in_context_string = False
@@ -411,7 +433,11 @@ class ContextSecretFormatter(Formatter):
 		context_ = getattr(record, "context", None)
 		if context_:
 			record.contextstring = ",".join(
-				[str(v) for k, v in context_.items() if self.logger_name_in_context_string or k != "logger"]  # type: ignore[attr-defined]
+				[
+					str(v)
+					for k, v in context_.items()
+					if self.logger_name_in_context_string or k != "logger"
+				]  # type: ignore[attr-defined]
 			)
 
 		msg = self.orig_formatter.format(record)
@@ -470,7 +496,9 @@ class SecretFilter(metaclass=Singleton):
 		"""
 		root_logger = logging.root
 		for handler in root_logger.handlers:
-			if handler.formatter and not isinstance(handler.formatter, ContextSecretFormatter):
+			if handler.formatter and not isinstance(
+				handler.formatter, ContextSecretFormatter
+			):
 				handler.formatter = ContextSecretFormatter(handler.formatter)
 
 	def set_min_length(self, min_length: int) -> None:
@@ -671,14 +699,21 @@ def logging_config(
 
 		handler: FileHandler
 		if file_rotate_max_bytes and file_rotate_max_bytes > 0:
-			handler = RotatingFileHandler(log_file, encoding="utf-8", maxBytes=file_rotate_max_bytes, backupCount=file_rotate_backup_count)
+			handler = RotatingFileHandler(
+				log_file,
+				encoding="utf-8",
+				maxBytes=file_rotate_max_bytes,
+				backupCount=file_rotate_backup_count,
+			)
 		else:
 			handler = FileHandler(log_file, encoding="utf-8")
 		handler.name = "opsi_file_handler"
 		logging.root.addHandler(handler)
 
 	if file_level is not None:
-		for hdlr in get_all_handlers(FileHandler) + get_all_handlers(RotatingFileHandler):
+		for hdlr in get_all_handlers(FileHandler) + get_all_handlers(
+			RotatingFileHandler
+		):
 			hdlr.setLevel(file_level)
 
 	if stderr_level is not None:
@@ -729,7 +764,9 @@ def logging_config(
 		and hasattr(stderr_file, "isatty")
 		and not stderr_file.isatty()
 	):
-		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")
+		stderr_format = stderr_format.replace("%(log_color)s", "").replace(
+			"%(reset)s", ""
+		)
 
 	set_format(file_format=file_format, stderr_format=stderr_format)
 
@@ -767,11 +804,19 @@ def use_logging_config(
 	orig_logging_state = dict(_logging_state.__dict__)
 	try:
 		logging_config(
-			stderr_level=stderr_level, stderr_format=stderr_format, stderr_file=stderr_file, file_level=file_level, file_format=file_format
+			stderr_level=stderr_level,
+			stderr_format=stderr_format,
+			stderr_file=stderr_file,
+			file_level=file_level,
+			file_format=file_format,
 		)
 		yield
 	finally:
-		kwargs = {k: v for k, v in orig_logging_state.items() if getattr(_logging_state, k) != v}
+		kwargs = {
+			k: v
+			for k, v in orig_logging_state.items()
+			if getattr(_logging_state, k) != v
+		}
 		if kwargs:
 			logging_config(**kwargs)
 
@@ -797,15 +842,26 @@ def set_format(
 	:param datefmt: Date format for logging. If omitted, a default dateformat is used.
 	:type datefmt: str
 	:param log_colors: Dictionary of colors for different log levels.
-	        If omitted, a default Color dictionary is used.
+			If omitted, a default Color dictionary is used.
 	:type log_colors: Dict
 	"""
-	for handler_type in (StreamHandler, FileHandler, RotatingFileHandler, RichConsoleHandler):
-		fmt = stderr_format if handler_type is StreamHandler or handler_type is RichConsoleHandler else file_format
+	for handler_type in (
+		StreamHandler,
+		FileHandler,
+		RotatingFileHandler,
+		RichConsoleHandler,
+	):
+		fmt = (
+			stderr_format
+			if handler_type is StreamHandler or handler_type is RichConsoleHandler
+			else file_format
+		)
 		for handler in get_all_handlers(handler_type):
 			formatter: Formatter
 			if handler_type != RichConsoleHandler and fmt.find("(log_color)") >= 0:
-				formatter = ColoredFormatter(fmt, datefmt=datefmt, log_colors=log_colors or LOG_COLORS)
+				formatter = ColoredFormatter(
+					fmt, datefmt=datefmt, log_colors=log_colors or LOG_COLORS
+				)
 			else:
 				formatter = Formatter(fmt, datefmt=datefmt)
 			csformatter = ContextSecretFormatter(formatter)
@@ -873,7 +929,7 @@ def set_filter(filter_dict: dict[str, Any] | None) -> None:
 	this specific dictionary. None means, every record can pass.
 
 	:param filter_dict: Dictionary that must be present in record
-	        context in order to accept the LogRecord.
+			context in order to accept the LogRecord.
 	:type filter_dict: Dict
 	"""
 	add_context_filter_to_loggers()
@@ -887,10 +943,10 @@ def set_filter_from_string(filter_string: str | list[str] | None) -> None:
 	This method expects a string (e.g. from user input).
 	It is parsed to create a dictionary which is set as filter dictionary.
 	The parsing rules are:
-	        *	Entries are separated by ';'.
-	        *	One entry consists of exactly two strings separated by '='.
-	        *	The first one is interpreted as key, the second as value(s).
-	        *	Values of the same key are separated by ','.
+			*	Entries are separated by ';'.
+			*	One entry consists of exactly two strings separated by '='.
+			*	The first one is interpreted as key, the second as value(s).
+			*	Values of the same key are separated by ','.
 
 	:param filter_string: String to parse for a filter statement.
 	:type filter_string: str
@@ -916,18 +972,24 @@ def set_filter_from_string(filter_string: str | list[str] | None) -> None:
 
 def get_all_loggers() -> list[logging.Logger | logging.RootLogger]:
 	"""
-	        Gets list of all loggers.
+			Gets list of all loggers.
 
-	        This method requests all Logger instances registered at
-	        logging.Logger.manager.loggerDict and returns them as a list.
+			This method requests all Logger instances registered at
+			logging.Logger.manager.loggerDict and returns them as a list.
 	not
-	        :returns: List containing all loggers (including root)
-	        :rtype: List
+			:returns: List containing all loggers (including root)
+			:rtype: List
 	"""
-	return [logging.root] + [lg for lg in logging.Logger.manager.loggerDict.values() if not isinstance(lg, PlaceHolder)]
+	return [logging.root] + [
+		lg
+		for lg in logging.Logger.manager.loggerDict.values()
+		if not isinstance(lg, PlaceHolder)
+	]
 
 
-def get_all_handlers(handler_type: type | tuple[type, ...] | None = None, handler_name: str | None = None) -> list[logging.Handler]:
+def get_all_handlers(
+	handler_type: type | tuple[type, ...] | None = None, handler_name: str | None = None
+) -> list[logging.Handler]:
 	"""
 	Gets list of all handlers.
 
@@ -950,7 +1012,8 @@ def get_all_handlers(handler_type: type | tuple[type, ...] | None = None, handle
 					(not isinstance(_handler, NullHandler))
 					and (
 						not isinstance(handler_type, tuple)
-						or type(_handler) in handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
+						or type(_handler)
+						in handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
 					)
 					and (not handler_name or _handler.name == handler_name)
 				):
@@ -958,7 +1021,9 @@ def get_all_handlers(handler_type: type | tuple[type, ...] | None = None, handle
 	return handlers
 
 
-def remove_all_handlers(handler_type: type | None = None, handler_name: str | None = None) -> None:
+def remove_all_handlers(
+	handler_type: type | None = None, handler_name: str | None = None
+) -> None:
 	"""
 	Removes all handlers (of a certain type).
 
@@ -998,7 +1063,7 @@ def print_logger_info() -> None:
 					tmp.insert(1, f'"{_handler.name}"')
 					name = " ".join(tmp)
 				print(f"  - Handler: {name} ", file=stderr)
-				print(f"    - Formatter: {_handler.formatter}", file=stderr)
+				print(f"	- Formatter: {_handler.formatter}", file=stderr)
 
 
 def init_warnings_capture(traceback_log_level: int = logging.INFO) -> None:
