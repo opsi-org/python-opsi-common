@@ -111,8 +111,8 @@ class RepoMetaPackage:
 	package_version: str
 	name: str | None = None
 	priority: int = 0
-	product_dependencies: list[RepoMetaPackageDependency] = field(default_factory=list)
-	package_dependencies: list[RepoMetaProductDependency] = field(default_factory=list)
+	product_dependencies: list[RepoMetaProductDependency] = field(default_factory=list)
+	package_dependencies: list[RepoMetaPackageDependency] = field(default_factory=list)
 	description: str | None = None
 	compatibility: list[RepoMetaPackageCompatibility] | None = None
 	changelog_url: str | None = None
