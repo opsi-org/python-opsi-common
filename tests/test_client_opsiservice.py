@@ -1604,6 +1604,8 @@ def test_timeouts() -> None:
 			client.register_connection_listener(listener)
 			with pytest.raises(OpsiServiceConnectionError):
 				client.connect()
+
+			time.sleep(1)
 			assert len(listener.events) == 2
 			assert listener.events[0][0] == "open"
 			assert listener.events[1][0] == "failed"
