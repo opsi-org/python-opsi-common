@@ -1549,6 +1549,7 @@ def test_webdav_content() -> None:
 			handler.set_response_status(207, "Multi-Status")
 			handler.set_response_headers({"server": "opsiconfd 4.3.0.0 (uvicorn)", "Content-Type": "application/xml"})
 			handler.set_response_body(DAV_PROPFIND_RESPONSE.encode("utf-8"))
+		return False
 
 	with http_test_server(generate_cert=True, request_callback=request_callback) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
