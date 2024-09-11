@@ -2368,7 +2368,9 @@ def test_permission_error_ca_cert_file_lock() -> None:
 		mock.patch("ssl.SSLContext.load_verify_locations", load_verify_locations),
 		http_test_server(generate_cert=True) as server,
 	):
-		with ServiceClient(f"https://localhost:{server.port}", verify="strict_check", ca_cert_file=server.ca_cert) as client:
+		with ServiceClient(
+			f"https://localhost:{server.port}", verify="strict_check", ca_cert_file=server.ca_cert, jsonrpc_create_methods=True
+		) as client:
 			assert server.ca_cert
 			with open(server.ca_cert, "a+", encoding="utf-8") as file:
 				file_handle = file
