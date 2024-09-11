@@ -289,7 +289,7 @@ def get_file_infos_from_dav_xml(dav_xml: str) -> list[DAVFileInfo]:
 		if child.tag != "{DAV:}response":
 			raise ValueError("No valid davxml given")
 
-		if child[0].tag != "{DAV:}href" or child[1].tag != "{DAV:}propstat":
+		if child[0].tag != "{DAV:}href" or not child[0].text or child[1].tag != "{DAV:}propstat":
 			continue
 
 		file_info = DAVFileInfo(path=unquote(child[0].text).rstrip("/"), type="file", size=0)
@@ -301,18 +301,14 @@ def get_file_infos_from_dav_xml(dav_xml: str) -> list[DAVFileInfo]:
 				continue
 
 			for childnode in node:
-				tag = childnode.tag
-				text = childnode.text
-				if tag == "{DAV:}getcontenttype":
-					if "directory" in text:
-						file_info.type = "dir"
-				elif tag == "{DAV:}resourcetype":
-					for resChild in childnode:
-						if resChild.tag == "{DAV:}collection":
+				if childnode.tag == "{DAV:}getcontenttype" and childnode.text and "directory" in childnode.text:
+					file_info.type = "dir"
+				elif childnode.tag == "{DAV:}resourcetype":
+					for res_child in childnode:
+						if res_child.tag == "{DAV:}collection":
 							file_info.type = "dir"
-				elif tag == "{DAV:}getcontentlength":
-					if text != "None":
-						file_info.size = int(text)
+				elif childnode.tag == "{DAV:}getcontentlength" and childnode.text:
+					file_info.size = int(childnode.text)
 
 		file_infos.append(file_info)
 
@@ -1519,7 +1515,7 @@ class ServiceClient:
 
 		return rpc.get("result")
 
-	def delete(self, path: str):
+	def delete(self, path: str) -> None:
 		logger.info("Deleting '%s'", path)
 		self._assert_connected()
 		self._request(
