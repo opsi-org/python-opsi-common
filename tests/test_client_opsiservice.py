@@ -800,16 +800,12 @@ def test_cookie_handling(tmp_path: Path) -> None:
 			assert unquote(req1["headers"].get("Cookie")) == session_cookie
 
 			req2 = json.loads(lines[1])
-			assert req2["method"] == "POST"
+			assert req2["method"] == "GET"
 			assert unquote(req2["headers"].get("Cookie")) == session_cookie
 
 			req3 = json.loads(lines[2])
-			assert req3["method"] == "GET"
+			assert req3["headers"]["Upgrade"] == "websocket"
 			assert unquote(req3["headers"].get("Cookie")) == session_cookie
-
-			req4 = json.loads(lines[3])
-			assert req4["headers"]["Upgrade"] == "websocket"
-			assert unquote(req4["headers"].get("Cookie")) == session_cookie
 
 
 def test_totp(tmp_path: Path) -> None:
@@ -964,8 +960,7 @@ def test_proxy(tmp_path: Path) -> None:
 			assert len(proxy_server.get_and_clear_requests()) == len(requests)
 
 			assert requests[0]["method"] == "HEAD"
-			assert requests[1]["method"] == "POST"
-			assert requests[2]["headers"]["Upgrade"] == "websocket"
+			assert requests[1]["headers"]["Upgrade"] == "websocket"
 
 		# Use system proxy
 		proxy_env = {
@@ -985,11 +980,9 @@ def test_proxy(tmp_path: Path) -> None:
 			assert requests[0]["method"] == "HEAD"
 			assert requests[0]["path"] == "/rpc"
 
-			assert requests[1]["method"] == "POST"
-
-			assert requests[2]["method"] == "GET"
-			assert requests[2]["path"] == "/messagebus/v1?compression=lz4"
-			assert requests[2]["headers"]["Upgrade"] == "websocket"
+			assert requests[1]["method"] == "GET"
+			assert requests[1]["path"] == "/messagebus/v1?compression=lz4"
+			assert requests[1]["headers"]["Upgrade"] == "websocket"
 
 		# Test proxy address can't be resolved
 		proxy_env = {"http_proxy": "http://will-not-resolve:991", "https_proxy": "http://will-not-resolve:991", "no_proxy": ""}
@@ -1038,7 +1031,7 @@ def test_server_name_handling(
 	log_file = tmp_path / f"{server_name}.log"
 	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"Server": server_name}) as server:
 		server_version = None
-		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", jsonrpc_create_methods=True) as client:
 			client.connect()
 			assert client.server_name == server_name
 			# print(server_name, client.server_version, client.server_version.release, expected_version)
@@ -1425,11 +1418,13 @@ def test_get() -> None:
 			assert status_code == 202
 
 
-def test_file_upload(tmp_path: Path) -> None:
+def test_file_upload_and_delete(tmp_path: Path) -> None:
 	local_dir = tmp_path / "local"
 	local_dir.mkdir()
 	remote_dir = tmp_path / "remote"
-	remote_dir.mkdir()
+	remote_subdir = remote_dir / "subdir"
+	remote_subdir.mkdir(parents=True)
+
 	(remote_dir / "rpc").write_bytes(b"")
 	test_file = local_dir / "陰陽local.bin"
 	data = random.randbytes(1_000_000)
@@ -1447,6 +1442,158 @@ def test_file_upload(tmp_path: Path) -> None:
 			assert (remote_dir / "陰陽remote.bin").read_bytes() == data
 			assert values[0] == (0, 1_000_000)
 			assert values[-1] == (1_000_000, 1_000_000)
+
+			client.upload(test_file, "/subdir/remote.bin")
+			assert (remote_dir / "subdir/remote.bin").read_bytes() == data
+
+			client.delete("/陰陽remote.bin")
+			assert not (remote_dir / "陰陽remote.bin").exists()
+
+			client.delete("/subdir/remote.bin")
+			assert not (remote_dir / "subdir/remote.bin").exists()
+
+
+DAV_PROPFIND_RESPONSE = """<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:">
+	<D:response xmlns:lp1="DAV:"
+		xmlns:lp2="http://apache.org/dav/props/">
+		<D:href>/depot/testdir/</D:href>
+		<D:propstat>
+			<D:prop>
+				<lp1:resourcetype>
+					<D:collection/>
+				</lp1:resourcetype>
+				<lp1:creationdate>2024-09-11T16:41:32Z</lp1:creationdate>
+				<lp1:getlastmodified>Wed, 11 Sep 2024 16:41:32 GMT</lp1:getlastmodified>
+				<lp1:getetag>"1000-621daa99a1f91"</lp1:getetag>
+				<D:supportedlock>
+					<D:lockentry>
+						<D:lockscope>
+							<D:exclusive/>
+						</D:lockscope>
+						<D:locktype>
+							<D:write/>
+						</D:locktype>
+					</D:lockentry>
+					<D:lockentry>
+						<D:lockscope>
+							<D:shared/>
+						</D:lockscope>
+						<D:locktype>
+							<D:write/>
+						</D:locktype>
+					</D:lockentry>
+				</D:supportedlock>
+				<D:lockdiscovery/>
+				<D:getcontenttype>httpd/unix-directory</D:getcontenttype>
+			</D:prop>
+			<D:status>HTTP/1.1 200 OK</D:status>
+		</D:propstat>
+	</D:response>
+	<D:response xmlns:lp1="DAV:"
+		xmlns:lp2="http://apache.org/dav/props/">
+		<D:href>/depot/testdir/testfile.txt</D:href>
+		<D:propstat>
+			<D:prop>
+				<lp1:resourcetype/>
+				<lp1:creationdate>2024-09-11T16:41:24Z</lp1:creationdate>
+				<lp1:getcontentlength>11</lp1:getcontentlength>
+				<lp1:getlastmodified>Wed, 11 Sep 2024 16:41:24 GMT</lp1:getlastmodified>
+				<lp1:getetag>"b-621daa9250026"</lp1:getetag>
+				<lp2:executable>F</lp2:executable>
+				<D:supportedlock>
+					<D:lockentry>
+						<D:lockscope>
+							<D:exclusive/>
+						</D:lockscope>
+						<D:locktype>
+							<D:write/>
+						</D:locktype>
+					</D:lockentry>
+					<D:lockentry>
+						<D:lockscope>
+							<D:shared/>
+						</D:lockscope>
+						<D:locktype>
+							<D:write/>
+						</D:locktype>
+					</D:lockentry>
+				</D:supportedlock>
+				<D:lockdiscovery/>
+				<D:getcontenttype>text/plain</D:getcontenttype>
+			</D:prop>
+			<D:status>HTTP/1.1 200 OK</D:status>
+		</D:propstat>
+	</D:response>
+	<D:response xmlns:lp1="DAV:"
+		xmlns:lp2="http://apache.org/dav/props/">
+		<D:href>/depot/testdir/subdir/</D:href>
+		<D:propstat>
+			<D:prop>
+				<lp1:resourcetype>
+					<D:collection/>
+				</lp1:resourcetype>
+				<lp1:creationdate>2024-09-11T16:42:13Z</lp1:creationdate>
+				<lp1:getlastmodified>Wed, 11 Sep 2024 16:42:13 GMT</lp1:getlastmodified>
+				<lp1:getetag>"1000-621daac07cec5"</lp1:getetag>
+				<D:supportedlock>
+					<D:lockentry>
+						<D:lockscope>
+							<D:exclusive/>
+						</D:lockscope>
+						<D:locktype>
+							<D:write/>
+						</D:locktype>
+					</D:lockentry>
+					<D:lockentry>
+						<D:lockscope>
+							<D:shared/>
+						</D:lockscope>
+						<D:locktype>
+							<D:write/>
+						</D:locktype>
+					</D:lockentry>
+				</D:supportedlock>
+				<D:lockdiscovery/>
+				<D:getcontenttype>httpd/unix-directory</D:getcontenttype>
+			</D:prop>
+			<D:status>HTTP/1.1 200 OK</D:status>
+		</D:propstat>
+	</D:response>
+</D:multistatus>
+"""
+
+
+def test_webdav_content() -> None:
+	def request_callback(handler: HTTPTestServerRequestHandler, request: dict) -> bool:
+		if request["path"] == "/rpc":
+			handler.set_response_status(200, "OK")
+			handler.set_response_headers({"server": "opsiconfd 4.3.0.0 (uvicorn)", "Content-Type": "application/json"})
+		elif request["path"] == "/depot/testdir/":
+			handler.set_response_status(207, "Multi-Status")
+			handler.set_response_headers({"server": "opsiconfd 4.3.0.0 (uvicorn)", "Content-Type": "application/xml"})
+			handler.set_response_body(DAV_PROPFIND_RESPONSE.encode("utf-8"))
+
+	with http_test_server(generate_cert=True, request_callback=request_callback) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			for path in ("/depot/testdir", "/depot/testdir/"):
+				file_infos = client.webdav_content(path)
+
+				assert len(file_infos) == 2
+
+				assert file_infos[0].path == "/depot/testdir/testfile.txt"
+				assert file_infos[0].type == "file"
+				assert file_infos[0].size == 11
+				assert file_infos[0].name == "testfile.txt"
+				assert file_infos[0].relative_path(path) == "testfile.txt"
+				assert file_infos[0].relative_path("/depot") == "testdir/testfile.txt"
+
+				assert file_infos[1].path == "/depot/testdir/subdir"
+				assert file_infos[1].type == "dir"
+				assert file_infos[1].size == 0
+				assert file_infos[1].name == "subdir"
+				assert file_infos[1].relative_path(path) == "subdir"
+				assert file_infos[1].relative_path("/depot") == "testdir/subdir"
 
 
 def test_timeouts() -> None:
@@ -1506,7 +1653,7 @@ def test_messagebus_ping() -> None:
 def test_jsonrpc(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.0.0 (uvicorn)"}) as server:
-		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all", jsonrpc_create_methods=True) as client:
 			params: list[tuple[Any, ...] | list[Any] | None] = [
 				[1],
 				(1, 2),
@@ -1544,7 +1691,7 @@ def test_jsonrpc(tmp_path: Path) -> None:
 def test_custom_jsonrpc_path(tmp_path: Path) -> None:
 	log_file = tmp_path / "request.log"
 	with http_test_server(generate_cert=True, log_file=log_file, response_headers={"server": "opsiconfd 4.2.0.0 (uvicorn)"}) as server:
-		with ServiceClient(f"https://127.0.0.1:{server.port}/opsiclientd", verify="accept_all") as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port}/opsiclientd", verify="accept_all", jsonrpc_create_methods=True) as client:
 			client.jsonrpc("method")
 
 			reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
@@ -1552,6 +1699,7 @@ def test_custom_jsonrpc_path(tmp_path: Path) -> None:
 			assert reqs[0]["method"] == "HEAD"
 			# get interface
 			assert reqs[1]["method"] == "POST"
+
 			assert reqs[2]["method"] == "POST"
 			assert reqs[2]["path"] == "/opsiclientd"
 

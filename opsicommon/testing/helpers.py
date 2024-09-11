@@ -432,8 +432,32 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		if self.server.serve_directory:
 			super().do_HEAD()
 		else:
-			self.send_response(200, "OK")
+			if self.server.response_status:
+				self.send_response(self.server.response_status[0], self.server.response_status[1])
+			else:
+				self.send_response(200, "OK")
 			self.end_headers()
+
+	def do_PROPFIND(self) -> None:
+		"""Serve a PROPFIND request."""
+		request_info = {"method": "PROPFIND", "client_address": self.client_address, "path": self.path, "headers": dict(self.headers)}
+		self._log(request_info)
+
+		if self.server.request_callback:
+			if self.server.request_callback(self, request_info):
+				return None
+
+		if self.server.response_status:
+			self.send_response(self.server.response_status[0], self.server.response_status[1])
+		else:
+			self.send_response(207, "Multi-Status")
+
+		response = b""
+		if self.server.response_body:
+			response = self.server.response_body
+		self.send_header("Content-Length", str(len(response)))
+		self.end_headers()
+		self.wfile.write(response)
 
 	def do_CONNECT(self) -> None:
 		"""

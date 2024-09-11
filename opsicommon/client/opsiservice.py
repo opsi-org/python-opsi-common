@@ -13,6 +13,7 @@ import asyncio
 import gzip
 import locale
 import os
+import posixpath
 import random
 import re
 import ssl
@@ -36,6 +37,7 @@ from types import MethodType, TracebackType
 from typing import Any, BinaryIO, Callable, Generator, Iterable, Literal, Type, cast, overload
 from urllib.parse import quote, unquote, urlparse
 from uuid import uuid4
+from xml.etree import ElementTree
 
 import lz4.frame  # type: ignore[import,no-redef]
 from cryptography import x509
@@ -264,6 +266,57 @@ class UploadFile:
 		if self.progress_callback:
 			self.progress_callback(self._position, self.file_size)
 		return data
+
+
+@dataclass(kw_only=True)
+class DAVFileInfo:
+	path: str
+	type: Literal["file", "dir"]
+	size: int = 0
+
+	@property
+	def name(self) -> str:
+		return self.path.rstrip("/").rsplit("/", maxsplit=1)[-1]
+
+	def relative_path(self, start: str) -> str:
+		return posixpath.relpath(self.path, start=start)
+
+
+def get_file_infos_from_dav_xml(dav_xml: str) -> list[DAVFileInfo]:
+	file_infos = []
+	root = ElementTree.fromstring(dav_xml)
+	for child in root:
+		if child.tag != "{DAV:}response":
+			raise ValueError("No valid davxml given")
+
+		if child[0].tag != "{DAV:}href" or child[1].tag != "{DAV:}propstat":
+			continue
+
+		file_info = DAVFileInfo(path=unquote(child[0].text).rstrip("/"), type="file", size=0)
+		if file_info.name in (".", ".."):
+			continue
+
+		for node in child[1]:
+			if node.tag != "{DAV:}prop":
+				continue
+
+			for childnode in node:
+				tag = childnode.tag
+				text = childnode.text
+				if tag == "{DAV:}getcontenttype":
+					if "directory" in text:
+						file_info.type = "dir"
+				elif tag == "{DAV:}resourcetype":
+					for resChild in childnode:
+						if resChild.tag == "{DAV:}collection":
+							file_info.type = "dir"
+				elif tag == "{DAV:}getcontentlength":
+					if text != "None":
+						file_info.size = int(text)
+
+		file_infos.append(file_info)
+
+	return file_infos
 
 
 class ServiceClient:
@@ -992,28 +1045,28 @@ class ServiceClient:
 					logger.error("Failed to fetch CA certs: %s", err, exc_info=True)
 					raise OpsiServiceVerificationError(f"Failed to fetch CA certs: {err}") from err
 
-		try:
-			self.jsonrpc_interface = self.jsonrpc("backend_getInterface")
-		except Exception as err:
-			logger.error("Failed to get interface description: %s", err, exc_info=True)
-
-		self._jsonrpc_method_params = {}
-		for method in self.jsonrpc_interface:
-			self._jsonrpc_method_params[method["name"]] = {}
-			def_idx = 0
-			for param in method["params"]:
-				default = None
-				if param[0] == "*":
-					param = param.lstrip("*")
-					if method["defaults"]:
-						try:
-							default = method["defaults"][def_idx]
-						except IndexError:
-							pass
-					def_idx += 1
-				self._jsonrpc_method_params[method["name"]][param] = default
-
 		if self.jsonrpc_create_methods:
+			try:
+				self.jsonrpc_interface = self.jsonrpc("backend_getInterface")
+			except Exception as err:
+				logger.error("Failed to get interface description: %s", err, exc_info=True)
+
+			self._jsonrpc_method_params = {}
+			for method in self.jsonrpc_interface:
+				self._jsonrpc_method_params[method["name"]] = {}
+				def_idx = 0
+				for param in method["params"]:
+					default = None
+					if param[0] == "*":
+						param = param.lstrip("*")
+						if method["defaults"]:
+							try:
+								default = method["defaults"][def_idx]
+							except IndexError:
+								pass
+						def_idx += 1
+					self._jsonrpc_method_params[method["name"]][param] = default
+
 			self.create_jsonrpc_methods()
 
 		for listener in self._listener:
@@ -1466,20 +1519,42 @@ class ServiceClient:
 
 		return rpc.get("result")
 
-	def upload(self, source: Path, destination: str, *, progress_callback: Callable | None = None) -> None:
+	def delete(self, path: str):
+		logger.info("Deleting '%s'", path)
+		self._assert_connected()
+		self._request(
+			method="DELETE",
+			path=path,
+			allow_status_codes=(204,),
+		)
+
+	def upload(self, source: Path, path: str, *, progress_callback: Callable | None = None) -> None:
 		if source.is_dir():
 			raise NotImplementedError("Directory upload not supported")
 
 		with UploadFile(source, progress_callback) as upload_file:
-			logger.info("Uploading '%s' to '%s' (size: %d)", source, destination, upload_file.file_size)
+			logger.info("Uploading '%s' to '%s' (size: %d)", source, path, upload_file.file_size)
 			self._assert_connected()
 			self._request(
 				method="PUT",
-				path=destination,
+				path=path,
 				data=upload_file,
 				headers={"Content-Type": "binary/octet-stream", "Content-Length": str(upload_file.file_size)},
 				allow_status_codes=(200, 201),
 			)
+
+	def webdav_content(self, path: str) -> list[DAVFileInfo]:
+		path = "/" + path.strip("/")
+		self._assert_connected()
+		response = self._request(
+			method="PROPFIND",
+			path=path + "/",
+			headers={"depth": "1"},
+			allow_status_codes=(207,),
+		)
+		dav_xml = response.text
+		logger.trace(dav_xml)
+		return [fi for fi in get_file_infos_from_dav_xml(dav_xml) if fi.path != path]
 
 	@property
 	def messagebus(self) -> Messagebus:
