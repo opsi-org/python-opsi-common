@@ -12,6 +12,7 @@ import base64
 import json
 import os
 import platform
+import random
 import re
 import ssl
 import time
@@ -1422,6 +1423,30 @@ def test_get() -> None:
 		with client.connection():
 			(status_code, reason, headers, content) = thread.response
 			assert status_code == 202
+
+
+def test_file_upload(tmp_path: Path) -> None:
+	local_dir = tmp_path / "local"
+	local_dir.mkdir()
+	remote_dir = tmp_path / "remote"
+	remote_dir.mkdir()
+	(remote_dir / "rpc").write_bytes(b"")
+	test_file = local_dir / "陰陽local.bin"
+	data = random.randbytes(1_000_000)
+	test_file.write_bytes(data)
+
+	values = []
+
+	def progress_callback(progress: int, total: int) -> None:
+		nonlocal values
+		values.append((progress, total))
+
+	with http_test_server(generate_cert=True, serve_directory=remote_dir) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.upload(test_file, "/陰陽remote.bin", progress_callback=progress_callback)
+			assert (remote_dir / "陰陽remote.bin").read_bytes() == data
+			assert values[0] == (0, 1_000_000)
+			assert values[-1] == (1_000_000, 1_000_000)
 
 
 def test_timeouts() -> None:
