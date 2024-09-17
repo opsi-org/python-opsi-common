@@ -40,7 +40,7 @@ from opsicommon.logging import (
 	use_logging_config,
 )
 from opsicommon.logging.constants import LOG_DEBUG, LOG_ERROR, LOG_INFO, LOG_NOTSET, LOG_SECRET, LOG_TRACE, LOG_WARNING
-from opsicommon.logging.logging import get_logger_levels
+from opsicommon.logging.logging import get_logger_levels, reset_logging
 
 from .helpers import log_stream
 
@@ -50,10 +50,14 @@ OTHER_FORMAT = "[%(opsilevel)d] [%(asctime)s.%(msecs)03d] [%(contextstring)s] %(
 logger = get_logger()
 
 
+@pytest.fixture(autouse=True)
+def _reset_logging() -> None:
+	reset_logging()
+
+
 def test_levels() -> None:
 	with log_stream(LOG_SECRET, format="%(message)s") as stream:
 		expected = ""
-		print_logger_info()
 		for level in ("secret", "confidential", "trace", "debug2", "debug", "info", "notice", "warning", "error", "critical", "comment"):
 			func = getattr(logger, level)
 			msg = f"logline {level}"

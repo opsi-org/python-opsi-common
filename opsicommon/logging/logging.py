@@ -595,6 +595,13 @@ class _LoggingState:
 	file_level: int | None = None
 	file_format: str | None = None
 
+	def reset(self) -> None:
+		self.stderr_level = None
+		self.stderr_format = None
+		self.stderr_file = None
+		self.file_level = None
+		self.file_format = None
+
 
 _logging_state = _LoggingState()
 
@@ -679,7 +686,7 @@ def logging_config(
 		logging.root.addHandler(handler)
 
 	if file_level is not None:
-		for hdlr in get_all_handlers(FileHandler) + get_all_handlers(RotatingFileHandler):
+		for hdlr in get_all_handlers((FileHandler, RotatingFileHandler)):
 			hdlr.setLevel(file_level)
 
 	if stderr_level is not None:
@@ -1023,6 +1030,13 @@ def init_warnings_capture(traceback_log_level: int = logging.INFO) -> None:
 				log(traceback_log_level, _line)
 
 	warnings.showwarning = _log_warning  # type: ignore[assignment]
+
+
+def reset_logging() -> None:
+	remove_all_handlers()
+	logging.root.setLevel(logging.WARNING)
+	_logging_state.reset()
+	logging_config(stderr_level=logging.WARNING)
 
 
 init_warnings_capture()
