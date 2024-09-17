@@ -39,14 +39,8 @@ from opsicommon.logging import (
 	set_format,
 	use_logging_config,
 )
-from opsicommon.logging.constants import (
-	LOG_DEBUG,
-	LOG_ERROR,
-	LOG_INFO,
-	LOG_SECRET,
-	LOG_TRACE,
-	LOG_WARNING,
-)
+from opsicommon.logging.constants import LOG_DEBUG, LOG_ERROR, LOG_INFO, LOG_NOTSET, LOG_SECRET, LOG_TRACE, LOG_WARNING
+from opsicommon.logging.logging import get_logger_levels
 
 from .helpers import log_stream
 
@@ -512,6 +506,13 @@ def test_sub_logger() -> None:
 		sub_logger.error("sub_logger_4")
 		sub_logger.warning("sub_logger_5")
 
+		levels = get_logger_levels(opsi_level=True)
+		assert levels["root"] == LOG_WARNING
+		assert levels["sub"] == LOG_ERROR
+		for key in levels:
+			if key not in ("root", "sub"):
+				assert levels[key] == LOG_NOTSET
+
 		logging_config(logger_levels={"s.*": LOG_WARNING})
 
 		sub_logger.warning("sub_logger_6")
@@ -526,6 +527,20 @@ def test_sub_logger() -> None:
 		assert "sub_logger_4" in log
 		assert "sub_logger_5" not in log
 		assert "sub_logger_6" in log
+
+		levels = get_logger_levels(opsi_level=True)
+		assert levels["root"] == LOG_WARNING
+		assert levels["sub"] == LOG_WARNING
+		for key in levels:
+			if key not in ("root", "sub"):
+				assert levels[key] == LOG_NOTSET
+
+		levels = get_logger_levels(opsi_level=False)
+		assert levels["root"] == logging.WARNING
+		assert levels["sub"] == logging.WARNING
+		for key in levels:
+			if key not in ("root", "sub"):
+				assert levels[key] == logging.NOTSET
 
 
 def test_use_logging_config() -> None:

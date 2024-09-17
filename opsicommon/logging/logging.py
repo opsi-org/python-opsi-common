@@ -42,6 +42,7 @@ from .constants import (
 	DEFAULT_COLORED_FORMAT,
 	DEFAULT_FORMAT,
 	ESSENTIAL,
+	LEVEL_TO_OPSI_LEVEL,
 	LOG_COLORS,
 	LOG_NONE,
 	NONE,
@@ -1041,6 +1042,12 @@ def remove_all_handlers(
 					not handler_type or type(_handler) == handler_type  # noqa: E721
 				) and (not handler_name or _handler.name == handler_name):
 					_logger.removeHandler(_handler)
+
+
+def get_logger_levels(opsi_level: bool = True) -> dict[str, int]:
+	return dict(
+		sorted({lg.name: LEVEL_TO_OPSI_LEVEL.get(lg.level, lg.level) if opsi_level else lg.level for lg in get_all_loggers()}.items())
+	)
 
 
 def print_logger_info() -> None:
