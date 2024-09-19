@@ -47,6 +47,7 @@ from opsicommon.client.opsiservice import (
 	MIN_VERSION_SESSION_API,
 	UIB_OPSI_CA,
 	BackendManager,
+	DAVFileInfo,
 	Messagebus,
 	MessagebusListener,
 	OpsiCaState,
@@ -1451,6 +1452,55 @@ def test_file_upload_and_delete(tmp_path: Path) -> None:
 
 			client.delete("/subdir/remote.bin")
 			assert not (remote_dir / "subdir/remote.bin").exists()
+
+
+def test_download(tmp_path: Path) -> None:
+	local_dir = tmp_path / "local"
+	local_dir.mkdir()
+	remote_dir = tmp_path / "remote"
+	(remote_dir / "some_dir" / "some_nested_dir").mkdir(parents=True)
+
+	(remote_dir / "rpc").write_bytes(b"")
+	data1 = random.randbytes(1_000_000)
+	data2 = random.randbytes(1_000_000)
+	(remote_dir / "some_dir" / "some_file").write_bytes(data1)
+	(remote_dir / "some_dir" / "some_nested_dir" / "some_deep_file").write_bytes(data2)
+
+	values = []
+
+	def progress_callback(progress: int, total: int) -> None:
+		nonlocal values
+		values.append((progress, total))
+
+	def mocked_webdav_content(self, path: str, include_base_path: bool = False) -> list[DAVFileInfo]:  # type: ignore  # noqa
+		responsens: dict[str, list[DAVFileInfo]] = {
+			"/some_dir": [
+				DAVFileInfo(path="/some_dir", type="dir", size=0),
+				DAVFileInfo(path="/some_dir/some_nested_dir", type="dir", size=0),
+				DAVFileInfo(path="/some_dir/some_file", type="file", size=1_000_000),
+			],
+			"/some_dir/some_nested_dir": [
+				DAVFileInfo(path="/some_dir/some_nested_dir", type="dir", size=0),
+				DAVFileInfo(path="/some_dir/some_nested_dir/some_deep_file", type="file", size=1_000_000),
+			],
+			"/some_dir/some_file": [
+				DAVFileInfo(path="/some_dir/some_file", type="file", size=1_000_000),
+			],
+			"/some_dir/some_nested_dir/some_deep_file": [
+				DAVFileInfo(path="/some_dir/some_nested_dir/some_deep_file", type="file", size=1_000_000),
+			],
+		}
+		return responsens[path]
+
+	with http_test_server(generate_cert=True, serve_directory=remote_dir) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			with mock.patch("opsicommon.client.opsiservice.ServiceClient.webdav_content", mocked_webdav_content):  # type: ignore
+				client.download("/some_dir", local_dir, progress_callback=progress_callback)
+			assert (remote_dir / "some_dir" / "some_file").read_bytes() == data1
+			assert (local_dir / "some_dir" / "some_nested_dir" / "some_deep_file").read_bytes() == data2
+			assert len(values) == (1_000_000 // 8192 + 1) * 2  # two files with 1_000_000 bytes each
+			assert values[0] == (8192, 1_000_000)
+			assert values[-1] == (1_000_000, 1_000_000)
 
 
 DAV_PROPFIND_RESPONSE = """<?xml version="1.0" encoding="utf-8"?>
