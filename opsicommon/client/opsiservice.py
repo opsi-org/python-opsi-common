@@ -1540,14 +1540,12 @@ class ServiceClient:
 			)
 
 	def download(self, source: str, destination: Path, *, progress_callback: Callable | None = None) -> None:
-		print("download called with", source, destination)
 		contents = self.webdav_content(source, include_base_path=True)
 		if not contents:
 			raise FileNotFoundError(f"File/Directory not found: {source}")
 		current = contents[0]
 		if current.type == "dir":
 			logger.info("Creating directory '%s'", destination / current.name)
-			print("creating dir ", destination / current.name)
 			(destination / current.name).mkdir(exist_ok=True)
 			logger.debug("recursing to subpaths %s of %s", [content.name for content in contents], source)
 			for content in contents[1:]:
