@@ -714,16 +714,18 @@ class ServiceClient:
 				with lock_file(file=file, exclusive=False, timeout=5.0):
 					return self.certs_from_pem(file.read())
 
-	def write_ca_cert_file(self, certs: list[x509.Certificate]) -> None:
+	def write_ca_cert_file(self, certs: list[x509.Certificate], force: bool = False) -> None:
 		ca_cert_file = self.ca_cert_file
+
+		if not force and str(ca_cert_file) == OPSI_CA_CERT_FILE:
+			# Do not touch the opsi CA file
+			logger.info("Not writing to opsiconfd CA file")
+			return
+
 		if not ca_cert_file:
 			raise OpsiServiceError("No CA cert file defined")
-		with self._ca_cert_lock:
-			if str(ca_cert_file) == OPSI_CA_CERT_FILE:
-				# Never touch the opsi CA file
-				logger.warning("Not writing to opsiconfd CA file")
-				return
 
+		with self._ca_cert_lock:
 			ca_cert_file.parent.mkdir(parents=True, exist_ok=True)
 			certs_pem = []
 			subjects = []
@@ -742,7 +744,7 @@ class ServiceClient:
 
 			logger.info("CA cert file '%s' successfully updated (%d certificates total)", ca_cert_file, len(certs))
 
-	def fetch_ca_certs(self, skip_verify: bool = False) -> None:
+	def fetch_ca_certs(self, *, skip_verify: bool = False, force_write_ca_cert_file: bool = False) -> None:
 		verify = False if skip_verify else self._session.verify
 		logger.info("Fetching opsi CA from service (verify=%s)", verify)
 
@@ -760,7 +762,7 @@ class ServiceClient:
 		if ServiceVerificationFlags.UIB_OPSI_CA in self._verify:
 			ca_certs.extend(self.certs_from_pem(UIB_OPSI_CA))
 
-		self.write_ca_cert_file(ca_certs)
+		self.write_ca_cert_file(ca_certs, force=force_write_ca_cert_file)
 
 	def handle_uib_opsi_ca_in_cert_file(self, action: Literal["add", "remove"]) -> None:
 		ca_cert_file = self.ca_cert_file
