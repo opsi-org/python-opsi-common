@@ -56,9 +56,7 @@ from .constants import (
 if TYPE_CHECKING:
 	from rich.console import Console
 
-context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar(
-	"context", default={}
-)
+context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("context", default={})
 
 
 class OPSILogger(logging.Logger):
@@ -192,7 +190,7 @@ def logrecord_init(
 	:param sinfo: Call stack information.
 	:param **kwargs: Additional keyword-arguments.
 	"""
-	self.__init_orig__(
+	self.__init_orig__(  # type: ignore[attr-defined]
 		name,
 		level,
 		pathname,
@@ -203,7 +201,7 @@ def logrecord_init(
 		func=func,
 		sinfo=sinfo,
 		**kwargs,
-	)  # type: ignore[attr-defined]
+	)
 	self.opsilevel = logging.level_to_opsi_level.get(level, level)  # type: ignore[attr-defined]
 	self.context = {}
 	self.contextstring = ""
@@ -261,9 +259,7 @@ def handle_log_exception(
 			sys.stderr.write(text)
 
 		if temp_file:
-			filename = os.path.join(
-				tempfile.gettempdir(), f"log_exception_{os.getpid()}.txt"
-			)
+			filename = os.path.join(tempfile.gettempdir(), f"log_exception_{os.getpid()}.txt")
 			with codecs.open(filename, "a", "utf-8") as file:
 				file.write(text)
 
@@ -434,11 +430,7 @@ class ContextSecretFormatter(Formatter):
 		context_ = getattr(record, "context", None)
 		if context_:
 			record.contextstring = ",".join(
-				[
-					str(v)
-					for k, v in context_.items()
-					if self.logger_name_in_context_string or k != "logger"
-				]  # type: ignore[attr-defined]
+				[str(v) for k, v in context_.items() if self.logger_name_in_context_string or k != "logger"]  # type: ignore[attr-defined]
 			)
 
 		msg = self.orig_formatter.format(record)
@@ -497,9 +489,7 @@ class SecretFilter(metaclass=Singleton):
 		"""
 		root_logger = logging.root
 		for handler in root_logger.handlers:
-			if handler.formatter and not isinstance(
-				handler.formatter, ContextSecretFormatter
-			):
+			if handler.formatter and not isinstance(handler.formatter, ContextSecretFormatter):
 				handler.formatter = ContextSecretFormatter(handler.formatter)
 
 	def set_min_length(self, min_length: int) -> None:
@@ -770,9 +760,7 @@ def logging_config(
 		and hasattr(stderr_file, "isatty")
 		and not stderr_file.isatty()
 	):
-		stderr_format = stderr_format.replace("%(log_color)s", "").replace(
-			"%(reset)s", ""
-		)
+		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")
 
 	set_format(file_format=file_format, stderr_format=stderr_format)
 
@@ -818,11 +806,7 @@ def use_logging_config(
 		)
 		yield
 	finally:
-		kwargs = {
-			k: v
-			for k, v in orig_logging_state.items()
-			if getattr(_logging_state, k) != v
-		}
+		kwargs = {k: v for k, v in orig_logging_state.items() if getattr(_logging_state, k) != v}
 		if kwargs:
 			logging_config(**kwargs)
 
@@ -857,17 +841,11 @@ def set_format(
 		RotatingFileHandler,
 		RichConsoleHandler,
 	):
-		fmt = (
-			stderr_format
-			if handler_type is StreamHandler or handler_type is RichConsoleHandler
-			else file_format
-		)
+		fmt = stderr_format if handler_type is StreamHandler or handler_type is RichConsoleHandler else file_format
 		for handler in get_all_handlers(handler_type):
 			formatter: Formatter
 			if handler_type != RichConsoleHandler and fmt.find("(log_color)") >= 0:
-				formatter = ColoredFormatter(
-					fmt, datefmt=datefmt, log_colors=log_colors or LOG_COLORS
-				)
+				formatter = ColoredFormatter(fmt, datefmt=datefmt, log_colors=log_colors or LOG_COLORS)
 			else:
 				formatter = Formatter(fmt, datefmt=datefmt)
 			csformatter = ContextSecretFormatter(formatter)
@@ -986,16 +964,10 @@ def get_all_loggers() -> list[logging.Logger | logging.RootLogger]:
 			:returns: List containing all loggers (including root)
 			:rtype: List
 	"""
-	return [logging.root] + [
-		lg
-		for lg in logging.Logger.manager.loggerDict.values()
-		if not isinstance(lg, PlaceHolder)
-	]
+	return [logging.root] + [lg for lg in logging.Logger.manager.loggerDict.values() if not isinstance(lg, PlaceHolder)]
 
 
-def get_all_handlers(
-	handler_type: type | tuple[type, ...] | None = None, handler_name: str | None = None
-) -> list[logging.Handler]:
+def get_all_handlers(handler_type: type | tuple[type, ...] | None = None, handler_name: str | None = None) -> list[logging.Handler]:
 	"""
 	Gets list of all handlers.
 
@@ -1018,8 +990,7 @@ def get_all_handlers(
 					(not isinstance(_handler, NullHandler))
 					and (
 						not isinstance(handler_type, tuple)
-						or type(_handler)
-						in handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
+						or type(_handler) in handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
 					)
 					and (not handler_name or _handler.name == handler_name)
 				):
@@ -1027,9 +998,7 @@ def get_all_handlers(
 	return handlers
 
 
-def remove_all_handlers(
-	handler_type: type | None = None, handler_name: str | None = None
-) -> None:
+def remove_all_handlers(handler_type: type | None = None, handler_name: str | None = None) -> None:
 	"""
 	Removes all handlers (of a certain type).
 

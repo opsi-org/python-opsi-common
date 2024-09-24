@@ -95,6 +95,3 @@ types-aiofiles = "^24.1"
 types-orjson = ">=3.6"
 types-psutil = "^6.0"
 types-requests = ">=2.32"
-
-[tool.pytest.ini_options]
-asyncio_default_fixture_loop_scope = "function"
