@@ -40,7 +40,16 @@ def get_subprocess_environment(env: Mapping[str, str] | None = None) -> dict[str
 	executable_path = _get_executable_path()
 	if getattr(sys, "frozen", False):
 		# Running in pyinstaller / frozen
-		env.pop("_MEIPASS2", None)
+		for env_var in (
+			"_PYI_APPLICATION_HOME_DIR",
+			"_PYI_ARCHIVE_FILE",
+			"_PYI_PARENT_PROCESS_LEVEL",
+			"_PYI_LINUX_PROCESS_NAME",
+			"_PYI_APPLICATION_HOME_DIR",
+			"_PYI_SPLASH_IPC",
+			"_MEIPASS2",
+		):
+			env.pop(env_var, None)
 		if is_posix():
 			ldlp = []
 			for entry in (env.get("LD_LIBRARY_PATH_ORIG") or env.get("LD_LIBRARY_PATH") or "").split(os.pathsep):
