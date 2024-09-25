@@ -14,9 +14,6 @@ import pytest
 from hypothesis import given, settings
 from hypothesis.strategies import sampled_from
 
-from hypothesis import given, settings
-from hypothesis.strategies import sampled_from
-
 from opsicommon.objects import NetbootProduct
 from opsicommon.package import OpsiPackage, PackageDependency, package_data_from_archive
 from opsicommon.package.archive import ArchiveProgress, ArchiveProgressListener

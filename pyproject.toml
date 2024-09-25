@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "python-opsi-common"
-version = "4.4.0.2"
+version = "4.4.0.3"
 description = "The opsi python common library"
 homepage = "https://www.opsi.org"
 license = "AGPL-3.0"
@@ -52,7 +52,6 @@ rich = ">=13.8"
 tomlkit = "^0.13"
 websocket-client = ">=1.4"
 zstandard = ">=0.21"
-
 [[tool.poetry.dependencies.msgspec]]
 platform = "linux"
 git = "https://github.com/edgarrmondragon/msgspec.git"
@@ -95,6 +94,3 @@ types-aiofiles = "^24.1"
 types-orjson = ">=3.6"
 types-psutil = "^6.0"
 types-requests = ">=2.32"
-
-[tool.pytest.ini_options]
-asyncio_default_fixture_loop_scope = "function"

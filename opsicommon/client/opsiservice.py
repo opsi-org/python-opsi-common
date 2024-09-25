@@ -1541,7 +1541,30 @@ class ServiceClient:
 				allow_status_codes=(200, 201),
 			)
 
-	def webdav_content(self, path: str) -> list[DAVFileInfo]:
+	def download(self, source: str, destination: Path, *, progress_callback: Callable | None = None) -> None:
+		contents = self.webdav_content(source, include_base_path=True)
+		if not contents:
+			raise FileNotFoundError(f"File/Directory not found: {source}")
+		current = contents[0]
+		if current.type == "dir":
+			logger.info("Creating directory '%s'", destination / current.name)
+			(destination / current.name).mkdir(exist_ok=True)
+			logger.debug("recursing to subpaths %s of %s", [content.name for content in contents], source)
+			for content in contents[1:]:
+				self.download(content.path, destination / current.name, progress_callback=progress_callback)
+		else:
+			logger.info("Downloading '%s' to '%s' (size: %d)", current.path, destination / current.name, current.size)
+			self._assert_connected()
+			response = self._request(method="GET", path=current.path)  # stream=True is set implicitely
+			with (destination / current.name).open("wb") as dest_file:
+				position = 0
+				for chunk in response.iter_content(chunk_size=8192):
+					num_bytes = dest_file.write(chunk)
+					position += num_bytes
+					if progress_callback:
+						progress_callback(position, current.size)
+
+	def webdav_content(self, path: str, include_base_path: bool = False) -> list[DAVFileInfo]:
 		path = "/" + path.strip("/")
 		self._assert_connected()
 		response = self._request(
@@ -1552,7 +1575,7 @@ class ServiceClient:
 		)
 		dav_xml = response.text
 		logger.trace(dav_xml)
-		return [fi for fi in get_file_infos_from_dav_xml(dav_xml) if fi.path != path]
+		return [fi for fi in get_file_infos_from_dav_xml(dav_xml) if fi.path != path or include_base_path]
 
 	@property
 	def messagebus(self) -> Messagebus:
