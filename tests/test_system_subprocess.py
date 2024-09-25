@@ -46,7 +46,7 @@ def test_ld_library_path(ld_library_path_orig: str, ld_library_path: str, execut
 	try:
 		with pytest.deprecated_call():
 			monkeypatch_subprocess_for_frozen()
-		env_vars = {"_MEIPASS2": "/tmp/foobar"}
+		env_vars = {"_MEIPASS2": "/tmp/foobar", "_PYI_APPLICATION_HOME_DIR": "/tmp/foobar", "_PYI_LINUX_PROCESS_NAME": "frozen-proc"}
 		if ld_library_path_orig is not None:
 			env_vars["LD_LIBRARY_PATH_ORIG"] = ld_library_path_orig
 		if ld_library_path is not None:
@@ -60,10 +60,14 @@ def test_ld_library_path(ld_library_path_orig: str, ld_library_path: str, execut
 				assert proc_env.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
 				assert proc_env.get("LD_LIBRARY_PATH") == expected_ld_library_path
 				assert proc_env.get("_MEIPASS2") is None
+				assert proc_env.get("_PYI_APPLICATION_HOME_DIR") is None
+				assert proc_env.get("_PYI_LINUX_PROCESS_NAME") is None
 				proc.wait()
 			assert os.environ.get("LD_LIBRARY_PATH_ORIG") == ld_library_path_orig
 			assert os.environ.get("LD_LIBRARY_PATH") == ld_library_path
 			assert os.environ.get("_MEIPASS2") == "/tmp/foobar"
+			assert os.environ.get("_PYI_APPLICATION_HOME_DIR") == "/tmp/foobar"
+			assert os.environ.get("_PYI_LINUX_PROCESS_NAME") == "frozen-proc"
 	finally:
 		setattr(sys, "frozen", frozen)
 
