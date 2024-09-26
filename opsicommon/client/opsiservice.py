@@ -1695,6 +1695,7 @@ class Messagebus(Thread):
 		self._connected_result.set()
 		if self._subscribed_channels:
 			# Restore subscriptions on reconnect
+			logger.info("Restoring channel subscriptions: %r", self._subscribed_channels)
 			self.send_message(
 				ChannelSubscriptionRequestMessage(
 					sender="@", channel="service:messagebus", channels=self._subscribed_channels, operation="add"
@@ -1755,6 +1756,7 @@ class Messagebus(Thread):
 
 			if isinstance(msg, ChannelSubscriptionEventMessage):
 				self._subscribed_channels = msg.subscribed_channels
+				logger.info("Current channel subscriptions: %r", self._subscribed_channels)
 
 			for listener in self._listener:
 				if listener.message_types and msg.type not in listener.message_types:
