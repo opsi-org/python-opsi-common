@@ -1270,7 +1270,15 @@ def test_messagebus_reconnect() -> None:
 		nonlocal rpc_id
 		if rpc_id == 0:
 			smsg = ChannelSubscriptionEventMessage(
-				sender="service:worker:test:1", channel="host:test-client.uib.local", subscribed_channels=["chan1", "chan2", "chan3"]
+				sender="service:worker:test:1",
+				channel="host:test-client.uib.local",
+				subscribed_channels=[
+					"chan1",
+					"chan2",
+					"chan3",
+					"session:11111111-1111-1111-1111-111111111111",
+					"session:22222222-2222-2222-2222-222222222222",
+				],
 			)
 			handler.ws_send_message(lz4.frame.compress(smsg.to_msgpack(), compression_level=0, block_linked=True))
 
@@ -1292,11 +1300,18 @@ def test_messagebus_reconnect() -> None:
 			with listener.register(client.messagebus):
 				client.connect_messagebus()
 				time.sleep(3)
-				assert client.messagebus._subscribed_channels == ["chan1", "chan2", "chan3"]
+				assert client.messagebus._subscribed_channels == [
+					"chan1",
+					"chan2",
+					"chan3",
+					"session:11111111-1111-1111-1111-111111111111",
+					"session:22222222-2222-2222-2222-222222222222",
+				]
 
 				rpc_id = 10
 				server.restart(new_cert=True)
 				time.sleep(10)
+				# Should not resubscribe to sessuion channels
 				assert client.messagebus._subscribed_channels == ["chan1", "chan2", "chan3"]
 
 			print("messages", listener.messages)

@@ -1728,6 +1728,9 @@ class Messagebus(Thread):
 		else:
 			self._next_connect_wait = 0
 
+		# Do not resubscribe to session channels
+		self._subscribed_channels = [c for c in self._subscribed_channels if not c.startswith("session:")]
+
 		# Add random wait time to reduce the load on the server
 		self._next_connect_wait += float(randint(self.reconnect_wait_min, self.reconnect_wait_max))
 
@@ -1887,6 +1890,7 @@ class Messagebus(Thread):
 		self._should_be_connected = False
 		if not self._connected:
 			return
+
 		self._disconnected_result.clear()
 		self._disconnect()
 		if wait:
