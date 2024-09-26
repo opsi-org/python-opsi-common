@@ -1673,6 +1673,7 @@ class Messagebus(Thread):
 		self._connect_attempt = 0
 		self._next_connect_wait = 0.0
 		self._subscribed_channels: list[str] = []
+		self._resubscribe_channels: list[str] = []
 		self.threaded_callbacks = True
 		self.compression: str | None = "lz4"
 		# from websocket import enableTrace
@@ -1693,14 +1694,6 @@ class Messagebus(Thread):
 		self._next_connect_wait = 0.0
 		self._connected = True
 		self._connected_result.set()
-		if self._subscribed_channels:
-			# Restore subscriptions on reconnect
-			logger.info("Restoring channel subscriptions: %r", self._subscribed_channels)
-			self.send_message(
-				ChannelSubscriptionRequestMessage(
-					sender="@", channel="service:messagebus", channels=self._subscribed_channels, operation="add"
-				)
-			)
 
 		for listener in self._listener:
 			self._run_listener_callback(listener, "messagebus_connection_established", messagebus=self)
@@ -1730,7 +1723,7 @@ class Messagebus(Thread):
 			self._next_connect_wait = 0
 
 		# Do not resubscribe to session channels
-		self._subscribed_channels = [c for c in self._subscribed_channels if not c.startswith("session:")]
+		self._resubscribe_channels = [c for c in self._subscribed_channels if not c.startswith("session:")]
 
 		# Add random wait time to reduce the load on the server
 		self._next_connect_wait += float(randint(self.reconnect_wait_min, self.reconnect_wait_max))
@@ -1757,6 +1750,18 @@ class Messagebus(Thread):
 			if isinstance(msg, ChannelSubscriptionEventMessage):
 				self._subscribed_channels = msg.subscribed_channels
 				logger.info("Current channel subscriptions: %r", self._subscribed_channels)
+
+				if self._resubscribe_channels:
+					# Restore subscriptions on reconnect
+					add_channels = [c for c in self._resubscribe_channels if c not in self._subscribed_channels]
+					self._resubscribe_channels = []
+					if add_channels:
+						logger.info("Restoring channel subscriptions: %r", add_channels)
+						self.send_message(
+							ChannelSubscriptionRequestMessage(
+								sender="@", channel="service:messagebus", channels=add_channels, operation="add"
+							)
+						)
 
 			for listener in self._listener:
 				if listener.message_types and msg.type not in listener.message_types:
