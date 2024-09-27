@@ -71,6 +71,7 @@ from opsicommon.exceptions import BackendAuthenticationError, BackendPermissionD
 from opsicommon.logging import use_logging_config
 from opsicommon.messagebus.message import (
 	ChannelSubscriptionEventMessage,
+	ChannelSubscriptionRequestMessage,
 	FileUploadResultMessage,
 	JSONRPCRequestMessage,
 	JSONRPCResponseMessage,
@@ -1290,12 +1291,28 @@ def test_messagebus_reconnect() -> None:
 			self.messages.append(message)
 
 	rpc_id = 0
+	subscribed_channels = []
 
 	def ws_connect_callback(handler: HTTPTestServerRequestHandler) -> None:
 		nonlocal rpc_id
-		if rpc_id == 0:
+		nonlocal subscribed_channels
+		if rpc_id in (0, 10):
+			subscribed_channels = [
+				"chan1",
+				"chan2",
+				"chan3",
+				"session:11111111-1111-1111-1111-111111111111",
+				"session:22222222-2222-2222-2222-222222222222",
+			]
+			if rpc_id == 10:
+				subscribed_channels = [
+					"chan4",
+					"session:33333333-3333-3333-3333-333333333333",
+				]
 			smsg = ChannelSubscriptionEventMessage(
-				sender="service:worker:test:1", channel="host:test-client.uib.local", subscribed_channels=["chan1", "chan2", "chan3"]
+				sender="service:worker:test:1",
+				channel="host:test-client.uib.local",
+				subscribed_channels=subscribed_channels,
 			)
 			handler.ws_send_message(lz4.frame.compress(smsg.to_msgpack(), compression_level=0, block_linked=True))
 
@@ -1322,7 +1339,10 @@ def test_messagebus_reconnect() -> None:
 			handler.ws_send_message(lz4.frame.compress(smsg.to_msgpack(), compression_level=0, block_linked=True))
 
 	with http_test_server(
-		generate_cert=True, ws_connect_callback=ws_connect_callback, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}
+		generate_cert=True,
+		ws_connect_callback=ws_connect_callback,
+		ws_message_callback=ws_message_callback,
+		response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"},
 	) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			client.messagebus.reconnect_wait_min = 5
@@ -1332,15 +1352,28 @@ def test_messagebus_reconnect() -> None:
 			with listener.register(client.messagebus):
 				client.connect_messagebus()
 				time.sleep(3)
-				assert client.messagebus._subscribed_channels == ["chan1", "chan2", "chan3"]
+				assert client.messagebus._subscribed_channels == [
+					"chan1",
+					"chan2",
+					"chan3",
+					"session:11111111-1111-1111-1111-111111111111",
+					"session:22222222-2222-2222-2222-222222222222",
+				]
 
 				rpc_id = 10
 				server.restart(new_cert=True)
 				time.sleep(10)
-				assert client.messagebus._subscribed_channels == ["chan1", "chan2", "chan3"]
+				# Should resubscribe to channels except session channels
+				assert client.messagebus._subscribed_channels == [
+					"chan4",
+					"session:33333333-3333-3333-3333-333333333333",
+					"chan1",
+					"chan2",
+					"chan3",
+				]
 
 			print("messages", listener.messages)
-			expected_messages = 6 + 1  # 6 * JSONRPCResponseMessage + 1 * ChannelSubscriptionEventMessage
+			expected_messages = 6 + 3  # 6 * JSONRPCResponseMessage + 3 * ChannelSubscriptionEventMessage
 			assert len(listener.messages) == expected_messages
 			rpc_ids = [int(m.rpc_id) for m in listener.messages if hasattr(m, "rpc_id")]  # type: ignore[attr-defined]
 			assert all((rpc_id in rpc_ids for rpc_id in [1, 2, 3, 11, 12, 13]))
