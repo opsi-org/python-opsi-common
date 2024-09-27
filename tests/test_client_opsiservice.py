@@ -1293,10 +1293,10 @@ def test_messagebus_reconnect() -> None:
 
 		for _ in range(3):
 			rpc_id += 1
-			smsg = JSONRPCResponseMessage(
+			jmsg = JSONRPCResponseMessage(
 				sender="service:worker:test:1", channel="host:test-client.uib.local", rpc_id=str(rpc_id), result="RESULT"
 			)
-			handler.ws_send_message(lz4.frame.compress(smsg.to_msgpack(), compression_level=0, block_linked=True))
+			handler.ws_send_message(lz4.frame.compress(jmsg.to_msgpack(), compression_level=0, block_linked=True))
 
 	def ws_message_callback(handler: HTTPTestServerRequestHandler, message: bytes) -> None:
 		nonlocal subscribed_channels
