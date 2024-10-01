@@ -36,6 +36,7 @@ def get_subprocess_environment(env: Mapping[str, str] | None = None) -> dict[str
 		env = os.environ.copy()
 	else:
 		env = dict(env)
+	logger.trace("Original environment: %s", env)
 
 	executable_path = _get_executable_path()
 	if getattr(sys, "frozen", False):
@@ -69,7 +70,9 @@ def get_subprocess_environment(env: Mapping[str, str] | None = None) -> dict[str
 			else:
 				logger.debug("Removing LD_LIBRARY_PATH from env for subprocess")
 				env.pop("LD_LIBRARY_PATH", None)
+
 	env.pop("OPENSSL_MODULES", None)
+	logger.trace("Environment for subprocess: %s", env)
 	return env
 
 
