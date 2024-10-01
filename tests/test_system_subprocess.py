@@ -38,6 +38,8 @@ from .helpers import environment
 		("", "/some/path:/usr/lib/opsi_component", "/usr/lib/opsi_component/bin/executable", "/some/path"),
 		# LD_LIBRARY_PATH_ORIG is not set, hardcoded excludes must be removed fom LD_LIBRARY_PATH
 		("", "/some/path:/usr/lib/opsiclientd:/usr/lib/opsiconfd", "/usr/lib/opsi_component/bin/executable", "/some/path"),
+		# LD_LIBRARY_PATH_ORIG is not set, hardcoded excludes must not be added to LD_LIBRARY_PATH
+		("", "/some/path:/usr/lib:/usr/lib/opsiclientd/_internal", "mount", "/some/path:/usr/lib"),
 	),
 )
 def test_ld_library_path(ld_library_path_orig: str, ld_library_path: str, executable_path: str, expected_ld_library_path: str) -> None:

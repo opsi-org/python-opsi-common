@@ -57,9 +57,9 @@ def get_subprocess_environment(env: Mapping[str, str] | None = None) -> dict[str
 				entry = entry.strip()
 				if not entry:
 					continue
-				if entry in LD_LIBRARY_EXCLUDE_LIST:
-					continue
 				entry_path = Path(entry)
+				if any(entry_path.is_relative_to(Path(p)) for p in LD_LIBRARY_EXCLUDE_LIST):
+					continue
 				if executable_path.is_relative_to(entry_path):
 					continue
 				ldlp.append(entry)
