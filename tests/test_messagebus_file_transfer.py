@@ -298,6 +298,7 @@ async def test_file_follow(tmp_path: Path) -> None:
 			assert data_message.data == file.read(chunk_size)
 			num += 1
 
+	await asyncio.sleep(1)
 	test_text = "moin moin"
 
 	with Path(test_file).open("a+") as file:

@@ -306,7 +306,7 @@ class FileDownload(FileTransfer):
 			try:
 				data = await anext(file_data_stream)  # noqa: F821
 			except StopAsyncIteration:
-				logger.notice("file interaction stopped")
+				logger.notice("File interaction stopped")
 				break
 			else:
 				if self._should_stop:
@@ -329,18 +329,20 @@ class FileDownload(FileTransfer):
 	async def read_file(self) -> AsyncGenerator[bytes, None]:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
 		assert isinstance(self._file_request.path, str)
-		logger.notice("started reading file")
+		logger.notice("Started reading file")
 		try:
 			async with aiofiles.open(self._file_request.path, "rb") as file:
 				while not self.last:
 					tmp = await file.read(self._chunk_size)
 					if tmp:
 						yield tmp
-					elif not self._file_request.follow:
+					elif self._file_request.follow:
+						await asyncio.sleep(0.1)
+					else:
 						self.last = True
 						yield tmp
 		except IOError:
-			await self._process_error(f"unexpected IOError: {str(IOError)}")
+			await self._process_error(f"Unexpected IOError: {str(IOError)}")
 
 
 async def process_messagebus_message(
