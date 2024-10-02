@@ -31,7 +31,6 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.13"
 aiofiles = "^24.1"
 annotated-types = "^0.7"
 cffi = "^1.17"
@@ -42,11 +41,13 @@ lz4 = ">=4.0"
 mailbits = "^0.2"
 msgpack = ">=1.0"
 msgspec = ">=0.15"
+packaging = "^24.1"
 psutil = ">=5.8"
 ptyprocess = "^0.7"
 pycryptodome = ">=3.10"
 pydantic = "^2.9"
 pydantic-core = "^2.20"
+python = ">=3.11,<3.13"
 pyzsync = ">=1.2"
 requests = ">=2.26"
 rich = ">=13.8"
