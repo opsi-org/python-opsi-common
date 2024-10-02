@@ -3,9 +3,9 @@
 [[package]]
 name = "aiofiles"
 version = "24.1.0"
-description = ""
+description = "File support for asyncio."
 optional = false
-python-versions = "*"
+python-versions = ">=3.8"
 files = [
     {file = "aiofiles-24.1.0-py3-none-any.whl", hash = "sha256:b4ec55f4195e3eb5d7abd1bf7e061763e864dd4954231fb8539a0ef8bb8260e5"},
     {file = "aiofiles-24.1.0.tar.gz", hash = "sha256:22a075c9e5a3810f0c2e48f3008c94d68c65d763b9b03857924c99e57355166c"},
@@ -19,9 +19,9 @@ reference = "uibpypi"
 [[package]]
 name = "annotated-types"
 version = "0.7.0"
-description = ""
+description = "Reusable constraint types to use with typing.Annotated"
 optional = false
-python-versions = "*"
+python-versions = ">=3.8"
 files = [
     {file = "annotated_types-0.7.0-py3-none-any.whl", hash = "sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53"},
     {file = "annotated_types-0.7.0.tar.gz", hash = "sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89"},
@@ -51,13 +51,21 @@ reference = "uibpypi"
 [[package]]
 name = "attrs"
 version = "24.2.0"
-description = ""
+description = "Classes Without Boilerplate"
 optional = false
-python-versions = "*"
+python-versions = ">=3.7"
 files = [
     {file = "attrs-24.2.0-py3-none-any.whl", hash = "sha256:81921eb96de3191c8258c199618104dd27ac608d9366f5e35d011eae1867ede2"},
     {file = "attrs-24.2.0.tar.gz", hash = "sha256:5cfb1b9148b5b086569baec03f20d7b6bf3bcacc9a42bebf87ffaaca362f6346"},
 ]
+
+[package.extras]
+benchmark = ["cloudpickle", "hypothesis", "mypy (>=1.11.1)", "pympler", "pytest (>=4.3.0)", "pytest-codspeed", "pytest-mypy-plugins", "pytest-xdist[psutil]"]
+cov = ["cloudpickle", "coverage[toml] (>=5.3)", "hypothesis", "mypy (>=1.11.1)", "pympler", "pytest (>=4.3.0)", "pytest-mypy-plugins", "pytest-xdist[psutil]"]
+dev = ["cloudpickle", "hypothesis", "mypy (>=1.11.1)", "pre-commit", "pympler", "pytest (>=4.3.0)", "pytest-mypy-plugins", "pytest-xdist[psutil]"]
+docs = ["cogapp", "furo", "myst-parser", "sphinx", "sphinx-notfound-page", "sphinxcontrib-towncrier", "towncrier (<24.7)"]
+tests = ["cloudpickle", "hypothesis", "mypy (>=1.11.1)", "pympler", "pytest (>=4.3.0)", "pytest-mypy-plugins", "pytest-xdist[psutil]"]
+tests-mypy = ["mypy (>=1.11.1)", "pytest-mypy-plugins"]
 
 [package.source]
 type = "legacy"
@@ -398,9 +406,9 @@ reference = "uibpypi"
 [[package]]
 name = "cryptography"
 version = "43.0.0"
-description = ""
+description = "cryptography is a package which provides cryptographic recipes and primitives to Python developers."
 optional = false
-python-versions = "*"
+python-versions = ">=3.7"
 files = [
     {file = "cryptography-43.0.0-cp37-abi3-macosx_10_9_universal2.whl", hash = "sha256:64c3f16e2a4fc51c0d06af28441881f98c5d91009b8caaff40cf3548089e9c74"},
     {file = "cryptography-43.0.0-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3dcdedae5c7710b9f97ac6bba7e1052b95c7083c9d0e9df96e02a1932e777895"},
@@ -430,6 +438,19 @@ files = [
     {file = "cryptography-43.0.0-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:e9c5266c432a1e23738d178e51c2c7a5e2ddf790f248be939448c0ba2021f9d1"},
     {file = "cryptography-43.0.0.tar.gz", hash = "sha256:b88075ada2d51aa9f18283532c9f60e72170041bba88d7f37e49cbb10275299e"},
 ]
+
+[package.dependencies]
+cffi = {version = ">=1.12", markers = "platform_python_implementation != \"PyPy\""}
+
+[package.extras]
+docs = ["sphinx (>=5.3.0)", "sphinx-rtd-theme (>=1.1.1)"]
+docstest = ["pyenchant (>=1.6.11)", "readme-renderer", "sphinxcontrib-spelling (>=4.0.1)"]
+nox = ["nox"]
+pep8test = ["check-sdist", "click", "mypy", "ruff"]
+sdist = ["build"]
+ssh = ["bcrypt (>=3.1.5)"]
+test = ["certifi", "cryptography-vectors (==43.0.0)", "pretend", "pytest (>=6.2.0)", "pytest-benchmark", "pytest-cov", "pytest-xdist"]
+test-randomorder = ["pytest-randomly"]
 
 [package.source]
 type = "legacy"
@@ -757,7 +778,6 @@ files = [
     {file = "msgpack-1.0.8-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:5fbb160554e319f7b22ecf530a80a3ff496d38e8e07ae763b9e82fadfe96f273"},
     {file = "msgpack-1.0.8-cp39-cp39-win32.whl", hash = "sha256:f9af38a89b6a5c04b7d18c492c8ccf2aee7048aff1ce8437c4683bb5a1df893d"},
     {file = "msgpack-1.0.8-cp39-cp39-win_amd64.whl", hash = "sha256:ed59dd52075f8fc91da6053b12e8c89e37aa043f8986efd89e61fae69dc1b011"},
-    {file = "msgpack-1.0.8-py3-none-any.whl", hash = "sha256:24f727df1e20b9876fa6e95f840a2a2651e34c0ad147676356f4bf5fbb0206ca"},
     {file = "msgpack-1.0.8.tar.gz", hash = "sha256:95c02b0e27e706e48d0e5426d1710ca78e0f0628d6e89d5b5a5b91a5f12274f3"},
 ]
 
@@ -893,13 +913,18 @@ reference = "uibpypi"
 [[package]]
 name = "platformdirs"
 version = "4.2.2"
-description = ""
+description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
 optional = false
-python-versions = "*"
+python-versions = ">=3.8"
 files = [
     {file = "platformdirs-4.2.2-py3-none-any.whl", hash = "sha256:2d7a1657e36a80ea911db832a8a6ece5ee53d8de21edd5cc5879af6530b1bfee"},
     {file = "platformdirs-4.2.2.tar.gz", hash = "sha256:38b7b51f512eed9e84a22788b4bce1de17c0adb134d6becb09836e37d8654cd3"},
 ]
+
+[package.extras]
+docs = ["furo (>=2023.9.10)", "proselint (>=0.13)", "sphinx (>=7.2.6)", "sphinx-autodoc-typehints (>=1.25.2)"]
+test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest (>=7.4.3)", "pytest-cov (>=4.1)", "pytest-mock (>=3.12)"]
+type = ["mypy (>=1.8)"]
 
 [package.source]
 type = "legacy"
@@ -1062,13 +1087,25 @@ reference = "uibpypi"
 [[package]]
 name = "pydantic"
 version = "2.9.0"
-description = ""
+description = "Data validation using Python type hints"
 optional = false
-python-versions = "*"
+python-versions = ">=3.8"
 files = [
     {file = "pydantic-2.9.0-py3-none-any.whl", hash = "sha256:f66a7073abd93214a20c5f7b32d56843137a7a2e70d02111f3be287035c45370"},
     {file = "pydantic-2.9.0.tar.gz", hash = "sha256:c7a8a9fdf7d100afa49647eae340e2d23efa382466a8d177efcd1381e9be5598"},
 ]
+
+[package.dependencies]
+annotated-types = ">=0.4.0"
+pydantic-core = "2.23.2"
+typing-extensions = [
+    {version = ">=4.12.2", markers = "python_version >= \"3.13\""},
+    {version = ">=4.6.1", markers = "python_version < \"3.13\""},
+]
+tzdata = {version = "*", markers = "python_version >= \"3.9\""}
+
+[package.extras]
+email = ["email-validator (>=2.0.0)"]
 
 [package.source]
 type = "legacy"
@@ -1078,9 +1115,9 @@ reference = "uibpypi"
 [[package]]
 name = "pydantic-core"
 version = "2.23.2"
-description = ""
+description = "Core functionality for Pydantic validation and serialization"
 optional = false
-python-versions = "*"
+python-versions = ">=3.8"
 files = [
     {file = "pydantic_core-2.23.2-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:7d0324a35ab436c9d768753cbc3c47a865a2cbc0757066cb864747baa61f6ece"},
     {file = "pydantic_core-2.23.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:276ae78153a94b664e700ac362587c73b84399bd1145e135287513442e7dfbc7"},
@@ -1173,6 +1210,9 @@ files = [
     {file = "pydantic_core-2.23.2.tar.gz", hash = "sha256:95d6bf449a1ac81de562d65d180af5d8c19672793c81877a2eda8fde5d08f2fd"},
 ]
 
+[package.dependencies]
+typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
+
 [package.source]
 type = "legacy"
 url = "http://pypi.uib.gmbh:8080/simple"
@@ -1181,13 +1221,16 @@ reference = "uibpypi"
 [[package]]
 name = "pygments"
 version = "2.18.0"
-description = ""
+description = "Pygments is a syntax highlighting package written in Python."
 optional = false
-python-versions = "*"
+python-versions = ">=3.8"
 files = [
     {file = "pygments-2.18.0-py3-none-any.whl", hash = "sha256:b8e6aca0523f3ab76fee51799c488e38782ac06eafcf95e7ba832985c8e7b13a"},
     {file = "pygments-2.18.0.tar.gz", hash = "sha256:786ff802f32e91311bff3889f6e9a86e81505fe99f2735bb6d60ae0c5004f199"},
 ]
+
+[package.extras]
+windows-terminal = ["colorama (>=0.4.6)"]
 
 [package.source]
 type = "legacy"
@@ -1323,20 +1366,7 @@ description = "Python for Window Extensions"
 optional = false
 python-versions = "*"
 files = [
-    {file = "pywin32-306-cp310-cp310-win32.whl", hash = "sha256:06d3420a5155ba65f0b72f2699b5bacf3109f36acbe8923765c22938a69dfc8d"},
-    {file = "pywin32-306-cp310-cp310-win_amd64.whl", hash = "sha256:84f4471dbca1887ea3803d8848a1616429ac94a4a8d05f4bc9c5dcfd42ca99c8"},
-    {file = "pywin32-306-cp311-cp311-win32.whl", hash = "sha256:e65028133d15b64d2ed8f06dd9fbc268352478d4f9289e69c190ecd6818b6407"},
-    {file = "pywin32-306-cp311-cp311-win_amd64.whl", hash = "sha256:a7639f51c184c0272e93f244eb24dafca9b1855707d94c192d4a0b4c01e1100e"},
-    {file = "pywin32-306-cp311-cp311-win_arm64.whl", hash = "sha256:70dba0c913d19f942a2db25217d9a1b726c278f483a919f1abfed79c9cf64d3a"},
-    {file = "pywin32-306-cp312-cp312-win32.whl", hash = "sha256:383229d515657f4e3ed1343da8be101000562bf514591ff383ae940cad65458b"},
-    {file = "pywin32-306-cp312-cp312-win_amd64.whl", hash = "sha256:37257794c1ad39ee9be652da0462dc2e394c8159dfd913a8a4e8eb6fd346da0e"},
-    {file = "pywin32-306-cp312-cp312-win_arm64.whl", hash = "sha256:5821ec52f6d321aa59e2db7e0a35b997de60c201943557d108af9d4ae1ec7040"},
-    {file = "pywin32-306-cp37-cp37m-win32.whl", hash = "sha256:1c73ea9a0d2283d889001998059f5eaaba3b6238f767c9cf2833b13e6a685f65"},
-    {file = "pywin32-306-cp37-cp37m-win_amd64.whl", hash = "sha256:72c5f621542d7bdd4fdb716227be0dd3f8565c11b280be6315b06ace35487d36"},
-    {file = "pywin32-306-cp38-cp38-win32.whl", hash = "sha256:e4c092e2589b5cf0d365849e73e02c391c1349958c5ac3e9d5ccb9a28e017b3a"},
-    {file = "pywin32-306-cp38-cp38-win_amd64.whl", hash = "sha256:e8ac1ae3601bee6ca9f7cb4b5363bf1c0badb935ef243c4733ff9a393b1690c0"},
-    {file = "pywin32-306-cp39-cp39-win32.whl", hash = "sha256:e25fd5b485b55ac9c057f67d94bc203f3f6595078d1fb3b458c9c28b7153a802"},
-    {file = "pywin32-306-cp39-cp39-win_amd64.whl", hash = "sha256:39b61c15272833b5c329a2989999dcae836b1eed650252ab1b7bfbe1d59f30f4"},
+    {file = "pywin32-306-cp313-cp313-win32.whl", hash = "sha256:56ea5d7d30a011daa23f6b5e9a624db00688b85f8c864128a4fc23ea17d9ed2b"},
 ]
 
 [package.source]
@@ -1601,15 +1631,37 @@ url = "http://pypi.uib.gmbh:8080/simple"
 reference = "uibpypi"
 
 [[package]]
+name = "tzdata"
+version = "2024.2"
+description = "Provider of IANA time zone data"
+optional = false
+python-versions = ">=2"
+files = [
+    {file = "tzdata-2024.2-py2.py3-none-any.whl", hash = "sha256:a48093786cdcde33cad18c2555e8532f34422074448fbc874186f0abd79565cd"},
+    {file = "tzdata-2024.2.tar.gz", hash = "sha256:7d85cc416e9382e69095b7bdf4afd9e3880418a2413feec7069d533d6b4e31cc"},
+]
+
+[package.source]
+type = "legacy"
+url = "http://pypi.uib.gmbh:8080/simple"
+reference = "uibpypi"
+
+[[package]]
 name = "urllib3"
 version = "2.2.2"
-description = ""
+description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
-python-versions = "*"
+python-versions = ">=3.8"
 files = [
     {file = "urllib3-2.2.2-py3-none-any.whl", hash = "sha256:a448b2f64d686155468037e1ace9f2d2199776e17f0a46610480d311f73e3472"},
     {file = "urllib3-2.2.2.tar.gz", hash = "sha256:dd505485549a7a552833da5e6063639d0d177c04f23bc3864e41e5dc5f612168"},
 ]
+
+[package.extras]
+brotli = ["brotli (>=1.0.9)", "brotlicffi (>=0.8.0)"]
+h2 = ["h2 (>=4,<5)"]
+socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
+zstd = ["zstandard (>=0.18.0)"]
 
 [package.source]
 type = "legacy"
@@ -1783,4 +1835,4 @@ reference = "uibpypi"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.14"
-content-hash = "086a56f2c280235c2e0b59aa3c7693eb109f086d7c06959b426036db03ca1b76"
+content-hash = "68b49a5263d7591758b07f6c5b91ff86fc35d4026a325f58fc20062a1f5a900c"
