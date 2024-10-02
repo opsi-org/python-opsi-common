@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from opsicommon.logging import LOG_TRACE, use_logging_config
 from opsicommon.messagebus import CONNECTION_USER_CHANNEL
-from opsicommon.messagebus.file_transfer import process_messagebus_message, stop_running_file_transfers
+from opsicommon.messagebus.file_transfer import DEFAULT_CHUNK_SIZE, FileDownload, process_messagebus_message, stop_running_file_transfers
 from opsicommon.messagebus.message import (
 	FileChunkMessage,
 	FileDownloadRequestMessage,
@@ -175,6 +175,18 @@ async def test_stop_running_transfers(tmp_path: Path) -> None:
 		assert isinstance(messages[0], FileTransferErrorMessage)
 		assert messages[0].file_id == file_upload_request.file_id
 		assert "File transfer stopped before completion" in messages[0].error.message
+
+
+async def test_file_download_chunk_size() -> None:
+	for chunk_size in [None, -1, 0, 1000]:
+		file_download_request = FileDownloadRequestMessage(
+			sender="test_sender",
+			channel="test_channel",
+			chunk_size=chunk_size,
+			path="/some/path",
+		)
+		file_download = FileDownload(send_message=lambda x: None, file_download_request=file_download_request)
+		assert file_download._chunk_size == chunk_size if chunk_size and chunk_size > 0 else DEFAULT_CHUNK_SIZE
 
 
 # Download Tests
