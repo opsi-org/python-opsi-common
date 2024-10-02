@@ -416,7 +416,10 @@ class ServiceClient:
 			# Test key loading (passphrase)
 			load_key(self._client_key_file or self._client_cert_file, self._client_key_password)
 			if self._client_key_password:
-				self._session.mount("https://", KeyPasswordHTTPAdapter(self._client_key_password))
+				http_adapter = KeyPasswordHTTPAdapter(self._client_key_password)
+				self._session.mount("https://", http_adapter)
+				# Needed for connection over HTTP proxy
+				self._session.mount("http://", http_adapter)
 
 		self._ca_cert_file = None
 		if ca_cert_file:
