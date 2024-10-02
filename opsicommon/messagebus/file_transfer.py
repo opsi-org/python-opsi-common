@@ -31,6 +31,8 @@ from opsicommon.messagebus.message import (
 	Message,
 )
 
+DEFAULT_CHUNK_SIZE = 262144  # 256 KiB
+
 file_transfers: dict[str, FileTransfer] = {}
 file_transfers_lock = Lock()
 
@@ -255,7 +257,10 @@ class FileDownload(FileTransfer):
 			sender=sender,
 			back_channel=back_channel,
 		)
-		self.size: int | None = None
+		self._chunk_size = DEFAULT_CHUNK_SIZE
+		if file_download_request.chunk_size and file_download_request.chunk_size > 0:
+			self._chunk_size = int(file_download_request.chunk_size)
+		self._size: int | None = None
 
 	async def start(self) -> None:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
@@ -264,8 +269,6 @@ class FileDownload(FileTransfer):
 		try:
 			if not self._file_request.path:
 				raise ValueError("File path missing")
-			if not self._file_request.chunk_size:
-				raise ValueError("Chunk size missing")
 			if not Path(self._file_request.path).is_file():
 				raise FileNotFoundError(f"File '{self._file_request.path}' is missing or file path is incorrect")
 		except Exception as error:
@@ -274,15 +277,15 @@ class FileDownload(FileTransfer):
 			return
 
 		if self._file_request.follow:
-			self.size = None
+			self._size = None
 		else:
-			self.size = Path(self._file_request.path).stat().st_size
+			self._size = Path(self._file_request.path).stat().st_size
 		message = FileDownloadResponseMessage(
 			sender=self._sender,
 			channel=self._response_channel,
 			file_id=self._file_id,
 			back_channel=self._back_channel,
-			size=self.size,
+			size=self._size,
 		)
 
 		await self._send_message(message)
@@ -294,8 +297,7 @@ class FileDownload(FileTransfer):
 	async def _download_manager(self) -> None:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
 		assert isinstance(self._file_request.path, str)
-		assert isinstance(self._file_request.chunk_size, int)
-		assert isinstance(self.size, int | None)
+		assert isinstance(self._size, int | None)
 
 		number = 0
 		self.last = False
@@ -327,12 +329,11 @@ class FileDownload(FileTransfer):
 	async def read_file(self) -> AsyncGenerator[bytes, None]:
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
 		assert isinstance(self._file_request.path, str)
-		assert isinstance(self._file_request.chunk_size, int)
 		logger.notice("started reading file")
 		try:
 			async with aiofiles.open(self._file_request.path, "rb") as file:
 				while not self.last:
-					tmp = await file.read(self._file_request.chunk_size)
+					tmp = await file.read(self._chunk_size)
 					if tmp:
 						yield tmp
 					elif not self._file_request.follow:
