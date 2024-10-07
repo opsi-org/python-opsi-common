@@ -48,6 +48,7 @@ from requests import Response as RequestsResponse
 from requests.adapters import HTTPAdapter
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
+from urllib3 import HTTPSConnectionPool
 from urllib3.exceptions import InsecureRequestWarning
 from websocket import WebSocket, WebSocketApp  # type: ignore[import]
 from websocket import setdefaulttimeout as websocket_setdefaulttimeout
@@ -229,12 +230,24 @@ class Response:
 			yield item
 
 
+HTTPSConnectionPool_orig_new_conn = HTTPSConnectionPool._new_conn
+
+
+def patch_https_connection_pool_key_password(key_password: str | None) -> None:
+	def _new_conn(self: HTTPSConnectionPool) -> None:
+		self.key_password = key_password
+		HTTPSConnectionPool_orig_new_conn(self)
+
+	setattr(HTTPSConnectionPool, "_new_conn", _new_conn)
+
+
 class KeyPasswordHTTPAdapter(HTTPAdapter):
 	def __init__(self, key_password: str | None) -> None:
 		self.key_password = key_password
 		super().__init__()
 
 	def init_poolmanager(self, *args: Any, **kwargs: Any) -> None:
+		print("===>>>> init_poolmanager")
 		if self.key_password:
 			kwargs["key_password"] = self.key_password
 		super().init_poolmanager(*args, **kwargs)  # type: ignore[no-untyped-call]
@@ -405,21 +418,20 @@ class ServiceClient:
 				self._client_key_file = Path(client_key_file)
 				self._session.cert = (str(self._client_cert_file), str(self._client_key_file))
 
+			_client_key_file = self._client_key_file or self._client_cert_file
+
 			logger.info(
 				"Using client certificate file '%s' and key file '%s'",
 				self._client_cert_file,
-				self._client_key_file or self._client_cert_file,
+				_client_key_file,
 			)
 			self._client_key_password = client_key_password or None
 
 			logger.debug("Trying to load private key")
 			# Test key loading (passphrase)
-			load_key(self._client_key_file or self._client_cert_file, self._client_key_password)
-			if self._client_key_password:
-				http_adapter = KeyPasswordHTTPAdapter(self._client_key_password)
-				self._session.mount("https://", http_adapter)
-				# Needed for connection over HTTP proxy
-				self._session.mount("http://", http_adapter)
+			load_key(_client_key_file, self._client_key_password)
+
+			patch_https_connection_pool_key_password(self._client_key_password)
 
 		self._ca_cert_file = None
 		if ca_cert_file:
@@ -947,7 +959,7 @@ class ServiceClient:
 					if ca_cert_file_exists:
 						if ServiceVerificationFlags.UIB_OPSI_CA in self._verify:
 							self.handle_uib_opsi_ca_in_cert_file("add")
-						else:
+						elif ServiceVerificationFlags.OPSI_CA in self._verify:
 							self.handle_uib_opsi_ca_in_cert_file("remove")
 					else:
 						# Prevent OSError invalid path

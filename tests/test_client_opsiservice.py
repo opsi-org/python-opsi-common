@@ -30,6 +30,8 @@ from warnings import catch_warnings, simplefilter
 
 import lz4.frame  # type: ignore[import]
 
+from opsicommon.logging import logger
+
 with catch_warnings():
 	simplefilter("ignore")
 	import pproxy  # type: ignore[import]
@@ -683,6 +685,7 @@ def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 	client_cert_file = tmpdir / "client_cert.pem"
 	client_cert_file.write_text(as_pem(client_key, passphrase=client_key_password) + as_pem(client_cert), encoding="utf-8")
 
+	# Server without CA cert
 	with (
 		opsi_config({"host.server-role": ""}),
 		http_test_server(
@@ -739,6 +742,7 @@ def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 
 	time.sleep(1)
 
+	# Server with CA cert
 	with (
 		opsi_config({"host.server-role": ""}),
 		http_test_server(
@@ -778,6 +782,30 @@ def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 			# Force websocket authentication
 			client._session.cookies = None  # type: ignore[assignment]
 			client.connect_messagebus()
+
+		if not client_key_password:
+			return
+
+		# Test client certificate authentication via proxy
+		proxy_port = 18181
+		with run_proxy(proxy_port) as proxy_server, mock.patch("opsicommon.client.opsiservice.ServiceClient.no_proxy_addresses", []):
+			with use_logging_config(stderr_level=8):
+				with ServiceClient(
+					f"https://127.0.0.1:{server.port}",
+					verify=ServiceVerificationFlags.STRICT_CHECK,
+					ca_cert_file=ca_cert_file,
+					client_cert_file=client_cert_file,
+					client_key_file=client_key_file,
+					client_key_password=client_key_password,
+					proxy_url=f"http://127.0.0.1:{proxy_port}",
+				) as client:
+					client.get("/")
+					# Force websocket authentication
+					client._session.cookies = None  # type: ignore[assignment]
+					client.connect_messagebus()
+
+					proxy_reqs = proxy_server.get_and_clear_requests()
+					print(proxy_reqs)
 
 
 def test_cookie_handling(tmp_path: Path) -> None:
@@ -900,10 +928,12 @@ def run_proxy(port: int = 8080) -> Generator[HTTPProxy, None, None]:
 	proxy = HTTPProxy(port)
 	proxy.daemon = True
 	proxy.start()
+	logger.info("HTTP proxy started on port %d", port)
 	time.sleep(2)
 	yield proxy
 	proxy.stop()
 	proxy.join(2)
+	logger.info("HTTP proxy stopped")
 
 
 def test_proxy(tmp_path: Path) -> None:
