@@ -34,7 +34,7 @@ from random import randint
 from threading import Event, Lock, Thread
 from traceback import TracebackException
 from types import MethodType, TracebackType
-from typing import Any, BinaryIO, Callable, Generator, Iterable, Literal, Type, cast, overload
+from typing import TYPE_CHECKING, Any, BinaryIO, Callable, Generator, Iterable, Literal, Type, cast, overload
 from urllib.parse import quote, unquote, urlparse
 from uuid import uuid4
 from xml.etree import ElementTree
@@ -87,6 +87,9 @@ from opsicommon.system.info import is_windows
 from opsicommon.system.network import get_hostnames, get_ip_addresses
 from opsicommon.types import forceHostId, forceOpsiHostKey
 from opsicommon.utils import prepare_proxy_environment
+
+if TYPE_CHECKING:
+	from urllib3._base_connection import BaseHTTPSConnection
 
 warnings.simplefilter("ignore", InsecureRequestWarning)
 
@@ -234,9 +237,9 @@ HTTPSConnectionPool_orig_new_conn = HTTPSConnectionPool._new_conn
 
 
 def patch_https_connection_pool_key_password(key_password: str | None) -> None:
-	def _new_conn(self: HTTPSConnectionPool) -> None:
+	def _new_conn(self: HTTPSConnectionPool) -> BaseHTTPSConnection:
 		self.key_password = key_password
-		HTTPSConnectionPool_orig_new_conn(self)
+		return HTTPSConnectionPool_orig_new_conn(self)
 
 	setattr(HTTPSConnectionPool, "_new_conn", _new_conn)
 
