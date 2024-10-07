@@ -2132,10 +2132,8 @@ def get_service_client(
 	opsi_config = get_opsi_config()
 
 	service_url = opsi_config.get("service", "url")
-	service_url_is_local = False
 	if service_url:
 		service_url = ServiceClient.normalize_service_address(service_url)[0]
-		service_url_is_local = ServiceClient.is_local_address(service_url)
 
 	address = ServiceClient.normalize_service_address(address)[0] if address else service_url
 
@@ -2145,8 +2143,9 @@ def get_service_client(
 	ca_cert_file = None
 
 	if opsi_config.get("host", "server-role") in ("configserver", "depotserver") and (
-		service_url == address or (service_url_is_local and ServiceClient.is_local_address(address))
+		service_url == address or ServiceClient.is_local_address(address)
 	):
+		# Connection to the service URL or local opsiconfd (on depot)
 		if not ca_cert_file and os.path.exists(OPSI_CA_CERT_FILE):
 			ca_cert_file = OPSI_CA_CERT_FILE
 		if str(ca_cert_file) == str(OPSI_CA_CERT_FILE):
