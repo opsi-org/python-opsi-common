@@ -762,25 +762,24 @@ def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 			return
 
 		# Test client certificate authentication via proxy
-		proxy_port = 18181
+		proxy_port = 18182
 		with run_proxy(proxy_port) as proxy_server, mock.patch("opsicommon.client.opsiservice.ServiceClient.no_proxy_addresses", []):
-			with use_logging_config(stderr_level=8):
-				with ServiceClient(
-					f"https://127.0.0.1:{server.port}",
-					verify=ServiceVerificationFlags.STRICT_CHECK,
-					ca_cert_file=ca_cert_file,
-					client_cert_file=client_cert_file,
-					client_key_file=client_key_file,
-					client_key_password=client_key_password,
-					proxy_url=f"http://127.0.0.1:{proxy_port}",
-				) as client:
-					client.get("/")
-					# Force websocket authentication
-					client._session.cookies = None  # type: ignore[assignment]
-					client.connect_messagebus()
+			with ServiceClient(
+				f"https://127.0.0.1:{server.port}",
+				verify=ServiceVerificationFlags.STRICT_CHECK,
+				ca_cert_file=ca_cert_file,
+				client_cert_file=client_cert_file,
+				client_key_file=client_key_file,
+				client_key_password=client_key_password,
+				proxy_url=f"http://127.0.0.1:{proxy_port}",
+			) as client:
+				client.get("/")
+				# Force websocket authentication
+				client._session.cookies = None  # type: ignore[assignment]
+				client.connect_messagebus()
 
-					proxy_reqs = proxy_server.get_and_clear_requests()
-					print(proxy_reqs)
+				proxy_reqs = proxy_server.get_and_clear_requests()
+				print(proxy_reqs)
 
 
 def test_cookie_handling(tmp_path: Path) -> None:
