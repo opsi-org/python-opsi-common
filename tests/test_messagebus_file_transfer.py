@@ -12,9 +12,16 @@ from unittest.mock import patch
 
 from opsicommon.logging import LOG_TRACE, use_logging_config
 from opsicommon.messagebus import CONNECTION_USER_CHANNEL
-from opsicommon.messagebus.file_transfer import DEFAULT_CHUNK_SIZE, FileDownload, process_messagebus_message, stop_running_file_transfers
+from opsicommon.messagebus.file_transfer import (
+	DEFAULT_CHUNK_SIZE,
+	FileDownload,
+	get_file_transfers,
+	process_messagebus_message,
+	stop_running_file_transfers,
+)
 from opsicommon.messagebus.message import (
 	FileChunkMessage,
+	FileDownloadAbortRequestMessage,
 	FileDownloadRequestMessage,
 	FileDownloadResponseMessage,
 	FileTransferErrorMessage,
@@ -25,6 +32,13 @@ from opsicommon.messagebus.message import (
 
 from .helpers import MessageSender, gen_test_file
 
+
+async def wait_for_get_file_transfers_empty() -> None:
+	for _ in range(5):
+		await asyncio.sleep(1)
+		if not get_file_transfers():
+			break
+	assert len(get_file_transfers()) == 0
 
 async def test_file_upload(tmp_path: Path) -> None:
 	sender = "test_sender"
@@ -97,6 +111,7 @@ async def test_file_upload(tmp_path: Path) -> None:
 	assert len(messages) == 1
 	assert isinstance(messages[0], FileUploadResultMessage)
 
+	await wait_for_get_file_transfers_empty()
 
 async def test_upload_chunk_timeout(tmp_path: Path) -> None:
 	sender = "test_sender"
@@ -142,6 +157,7 @@ async def test_upload_chunk_timeout(tmp_path: Path) -> None:
 		assert messages[0].ref_id == file_chunk_message.id
 		assert messages[0].file_id == file_chunk_message.file_id
 
+	await wait_for_get_file_transfers_empty()
 
 async def test_stop_running_transfers(tmp_path: Path) -> None:
 	sender = "test_sender"
@@ -176,6 +192,7 @@ async def test_stop_running_transfers(tmp_path: Path) -> None:
 		assert messages[0].file_id == file_upload_request.file_id
 		assert "File transfer stopped before completion" in messages[0].error.message
 
+	await wait_for_get_file_transfers_empty()
 
 async def test_file_download_chunk_size() -> None:
 	for chunk_size in [None, -1, 0, 1000]:
@@ -189,7 +206,6 @@ async def test_file_download_chunk_size() -> None:
 		assert file_download._chunk_size == chunk_size if chunk_size and chunk_size > 0 else DEFAULT_CHUNK_SIZE
 
 
-# Download Tests
 async def test_file_download(tmp_path: Path) -> None:
 	sender = "test_sender"
 	channel = "test_channel"
@@ -213,7 +229,7 @@ async def test_file_download(tmp_path: Path) -> None:
 	assert messages[0].channel == sender
 	assert messages[0].file_id == file_download_request.file_id
 
-	# create file and repeat
+	# Create file and repeat
 
 	res_sender = "test_res_sender"
 	res_channel = "test_res_channel"
@@ -257,9 +273,9 @@ async def test_file_download(tmp_path: Path) -> None:
 	assert last_message[0].last is True
 	assert last_message[0].data == b""
 
+	await wait_for_get_file_transfers_empty()
 
-# Follow Tests
-async def test_file_follow(tmp_path: Path) -> None:
+async def test_file_download_follow(tmp_path: Path) -> None:
 	sender = "test_sender"
 	channel = "test_channel"
 	back_channel = "test_back_channel"
@@ -299,6 +315,9 @@ async def test_file_follow(tmp_path: Path) -> None:
 			num += 1
 
 	await asyncio.sleep(1)
+	assert len(get_file_transfers()) == 1
+	assert get_file_transfers()[0]._file_id == file_follow_request.file_id
+
 	test_text = "moin moin"
 
 	with Path(test_file).open("a+") as file:
@@ -312,3 +331,26 @@ async def test_file_follow(tmp_path: Path) -> None:
 	assert new_data_message[0].data == bytes(test_text, encoding="UTF-8")
 
 	assert await message_sender.no_messages()
+
+	assert len(get_file_transfers()) == 1
+	assert get_file_transfers()[0]._file_id == file_follow_request.file_id
+
+	# Abort running file transfer
+	file_download_abort_message = FileDownloadAbortRequestMessage(
+		sender=sender,
+		channel=channel,
+		back_channel=back_channel,
+		file_id=file_follow_request.file_id,
+	)
+	await process_messagebus_message(
+		file_download_abort_message, send_message=message_sender.send_message, sender=sender, back_channel=channel
+	)
+
+	await wait_for_get_file_transfers_empty()
+
+	await process_messagebus_message(
+		file_download_abort_message, send_message=message_sender.send_message, sender=sender, back_channel=channel
+	)
+	new_data_message = await message_sender.wait_for_messages(count=1)
+	assert isinstance(new_data_message[0], FileTransferErrorMessage)
+	assert "not found" in new_data_message[0].error.message

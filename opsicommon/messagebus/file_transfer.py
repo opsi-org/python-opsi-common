@@ -21,6 +21,7 @@ from opsicommon.messagebus import CONNECTION_SESSION_CHANNEL, CONNECTION_USER_CH
 from opsicommon.messagebus.message import (
 	Error,
 	FileChunkMessage,
+	FileDownloadAbortRequestMessage,
 	FileDownloadRequestMessage,
 	FileDownloadResponseMessage,
 	FileTransferErrorMessage,
@@ -280,6 +281,9 @@ class FileDownload(FileTransfer):
 			self._size = None
 		else:
 			self._size = Path(self._file_request.path).stat().st_size
+
+		self._manager_task = self._loop.create_task(self._manager())
+
 		message = FileDownloadResponseMessage(
 			sender=self._sender,
 			channel=self._response_channel,
@@ -290,11 +294,10 @@ class FileDownload(FileTransfer):
 
 		await self._send_message(message)
 
-		self._manager_task = self._loop.create_task(self._download_manager())
-
 		logger.info("Started %r")
 
-	async def _download_manager(self) -> None:
+	async def _manager(self) -> None:
+		logger.debug("Starting download manager")
 		assert isinstance(self._file_request, FileDownloadRequestMessage)
 		assert isinstance(self._file_request.path, str)
 		assert isinstance(self._size, int | None)
@@ -302,28 +305,24 @@ class FileDownload(FileTransfer):
 		number = 0
 		self.last = False
 		file_data_stream = self.read_file()
-		while True:
+		while not self._should_stop:
 			try:
 				data = await anext(file_data_stream)  # noqa: F821
 			except StopAsyncIteration:
 				logger.notice("File interaction stopped")
 				break
-			else:
-				if self._should_stop:
-					if not self._completed:
-						await self._process_error("File transfer stopped before completion")
-					break
-				chunk_message = FileChunkMessage(
-					sender=self._sender,
-					channel=self._response_channel,
-					back_channel=self._back_channel,
-					number=number,
-					last=self.last,
-					data=data,
-				)
-				await self._send_message(chunk_message)
-				number += 1
-				continue
+
+			chunk_message = FileChunkMessage(
+				sender=self._sender,
+				channel=self._response_channel,
+				back_channel=self._back_channel,
+				number=number,
+				last=self.last,
+				data=data,
+			)
+			await self._send_message(chunk_message)
+			number += 1
+
 		await self._loop.run_in_executor(None, remove_file_transfer, self._file_id)
 
 	async def read_file(self) -> AsyncGenerator[bytes, None]:
@@ -332,7 +331,7 @@ class FileDownload(FileTransfer):
 		logger.notice("Started reading file")
 		try:
 			async with aiofiles.open(self._file_request.path, "rb") as file:
-				while not self.last:
+				while not self.last and not self._should_stop:
 					tmp = await file.read(self._chunk_size)
 					if tmp:
 						yield tmp
@@ -392,6 +391,8 @@ async def process_messagebus_message(
 		elif file_transfer:
 			if isinstance(message, FileChunkMessage) and isinstance(file_transfer, FileUpload):
 				await file_transfer.process_file_chunk(message)
+			elif isinstance(message, FileDownloadAbortRequestMessage):
+				await file_transfer.stop()
 			else:
 				raise ValueError(f"Invalid message type {type(message)} received")
 		else:
@@ -422,3 +423,8 @@ async def stop_running_file_transfers() -> None:
 	with file_transfers_lock:
 		for file_transfer in list(file_transfers.values()):
 			await file_transfer.stop()
+
+
+def get_file_transfers() -> list[FileTransfer]:
+	with file_transfers_lock:
+		return list(file_transfers.values())
