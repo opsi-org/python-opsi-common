@@ -41,21 +41,14 @@ def get_subprocess_environment(env: Mapping[str, str] | None = None) -> dict[str
 	executable_path = _get_executable_path()
 	if getattr(sys, "frozen", False):
 		# Running in pyinstaller / frozen
-		for env_var in (
-			"_PYI_APPLICATION_HOME_DIR",
-			"_PYI_ARCHIVE_FILE",
-			"_PYI_PARENT_PROCESS_LEVEL",
-			"_PYI_LINUX_PROCESS_NAME",
-			"_PYI_APPLICATION_HOME_DIR",
-			"_PYI_SPLASH_IPC",
-			"_MEIPASS2",
-		):
-			env.pop(env_var, None)
+		pyi_home = env.get("_PYI_APPLICATION_HOME_DIR") or env.get("_MEIPASS2") or ""
 		if is_posix():
 			ldlp = []
 			for entry in (env.get("LD_LIBRARY_PATH_ORIG") or env.get("LD_LIBRARY_PATH") or "").split(os.pathsep):
 				entry = entry.strip()
 				if not entry:
+					continue
+				if entry == pyi_home:
 					continue
 				entry_path = Path(entry)
 				if any(entry_path.is_relative_to(Path(p)) for p in LD_LIBRARY_EXCLUDE_LIST):
@@ -70,7 +63,15 @@ def get_subprocess_environment(env: Mapping[str, str] | None = None) -> dict[str
 			else:
 				logger.debug("Removing LD_LIBRARY_PATH from env for subprocess")
 				env.pop("LD_LIBRARY_PATH", None)
-
+		for env_var in (
+			"_PYI_APPLICATION_HOME_DIR",
+			"_PYI_ARCHIVE_FILE",
+			"_PYI_PARENT_PROCESS_LEVEL",
+			"_PYI_LINUX_PROCESS_NAME",
+			"_PYI_SPLASH_IPC",
+			"_MEIPASS2",
+		):
+			env.pop(env_var, None)
 	env.pop("OPENSSL_MODULES", None)
 	logger.trace("Environment for subprocess: %s", env)
 	return env
