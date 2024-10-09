@@ -55,6 +55,7 @@ class MessageType(StrEnum):
 	FILE_UPLOAD_RESPONSE = "file_upload_response"
 	FILE_UPLOAD_RESULT = "file_upload_result"
 	FILE_DOWNLOAD_REQUEST = "file_download_request"
+	FILE_DOWNLOAD_ABORT_REQUEST = "file_download_abort_request"
 	FILE_DOWNLOAD_INFORMATION = "file_download_information"
 	FILE_CHUNK = "file_chunk"
 
@@ -523,6 +524,14 @@ class FileDownloadRequestMessage(FileTransferMessage):
 	follow: bool = False
 
 
+class FileDownloadAbortRequestMessage(FileTransferMessage):
+	"""
+	Message for requesting to abort a file download
+	"""
+
+	type: str = MessageType.FILE_DOWNLOAD_ABORT_REQUEST
+
+
 class FileDownloadResponseMessage(FileTransferMessage):
 	"""
 	Message with information like file size, type, number of chunks.
@@ -577,6 +586,7 @@ MESSAGE_TYPE_TO_CLASS = {
 	MessageType.FILE_UPLOAD_RESPONSE.value: FileUploadResponseMessage,
 	MessageType.FILE_UPLOAD_RESULT.value: FileUploadResultMessage,
 	MessageType.FILE_DOWNLOAD_REQUEST.value: FileDownloadRequestMessage,
+	MessageType.FILE_DOWNLOAD_ABORT_REQUEST.value: FileDownloadAbortRequestMessage,
 	MessageType.FILE_DOWNLOAD_INFORMATION.value: FileDownloadResponseMessage,
 	MessageType.FILE_CHUNK.value: FileChunkMessage,
 }
