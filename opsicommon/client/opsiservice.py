@@ -2126,7 +2126,7 @@ def get_service_client(
 		# Connection to the service URL or local opsiconfd (on depot)
 		if not ca_cert_file and os.path.exists(OPSI_CA_CERT_FILE):
 			ca_cert_file = OPSI_CA_CERT_FILE
-		if str(ca_cert_file) == str(OPSI_CA_CERT_FILE):
+		if verify != ServiceVerificationFlags.ACCEPT_ALL and str(ca_cert_file) == str(OPSI_CA_CERT_FILE):
 			verify = ServiceVerificationFlags.STRICT_CHECK
 		if client_cert_auth is None:
 			client_cert_auth = True
