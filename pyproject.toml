@@ -57,12 +57,12 @@ zstandard = ">=0.21"
 [[tool.poetry.dependencies.msgspec]]
 platform = "linux"
 git = "https://github.com/edgarrmondragon/msgspec.git"
-branch = "py313"
+branch = "main"
 
 [[tool.poetry.dependencies.msgspec]]
 platform = "darwin"
 git = "https://github.com/edgarrmondragon/msgspec.git"
-branch = "py313"
+branch = "main"
 
 [tool.ruff.format]
 indent-style = "tab"
