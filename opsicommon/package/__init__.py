@@ -6,12 +6,13 @@
 opsi package class and associated methods
 """
 
+import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal, cast
 
 import tomlkit
-import json
+
 from opsicommon.logging import get_logger
 from opsicommon.objects import Product, ProductDependency, ProductProperty
 from opsicommon.package.archive import (
@@ -131,9 +132,15 @@ class OpsiPackage:
 
 			# Extract custom last
 			for archive in sorted(archives, key=lambda a: len(a.name.split("."))):
-				extract_archive(archive, temp_dir, file_pattern="control*")  # or OPSI? difference tar and cpio
+				extract_archive(archive, temp_dir)  # file_pattern="control*" use all to also get changelog files
 
 			self.find_and_parse_control_file(temp_dir)
+			if not self.changelog:
+				for candidate in temp_dir.iterdir():
+					print("Checking log file candidate", candidate)
+					if "changelog" in candidate.name.lower():
+						self.changelog = candidate.read_text(encoding="utf-8")
+						break
 
 	def compare_version_with_control_file(self, control_file: Path, condition: Literal["==", "=", "<", "<=", ">", ">="]) -> bool:
 		opsi_package = OpsiPackage()
