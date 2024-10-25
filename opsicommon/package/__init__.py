@@ -137,7 +137,6 @@ class OpsiPackage:
 			self.find_and_parse_control_file(temp_dir)
 			if not self.changelog:
 				for candidate in temp_dir.iterdir():
-					print("Checking log file candidate", candidate)
 					if "changelog" in candidate.name.lower():
 						self.changelog = candidate.read_text(encoding="utf-8")
 						break
