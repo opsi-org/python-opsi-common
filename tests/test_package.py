@@ -257,6 +257,7 @@ def test_load_package(product_type: str, form: str) -> None:
 	assert package.product_dependencies[0].requiredProductId == "hwaudit"
 	assert package.product_dependencies[0].requiredAction == "setup"
 	assert package.product_dependencies[0].requirementType == "before"
+	assert "(42.0-1337) testing; urgency=low" in package.changelog
 
 
 @pytest.mark.linux
