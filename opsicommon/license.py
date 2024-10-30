@@ -702,7 +702,10 @@ class OpsiLicensePool:
 			modules[lic.module_id]["state"] = OPSI_MODULE_STATE_LICENSED
 			modules[lic.module_id]["license_ids"].append(lic.id)
 			modules[lic.module_id]["license_ids"].sort()
-			modules[lic.module_id]["client_number"] += lic.client_number
+			if lic.type == OPSI_LICENSE_TYPE_CORE:
+				modules[lic.module_id]["client_number"] = max(modules[lic.module_id]["client_number"], lic.client_number)
+			else:
+				modules[lic.module_id]["client_number"] += lic.client_number
 			modules[lic.module_id]["client_number"] = min(modules[lic.module_id]["client_number"], OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED)
 
 		for module_id, info in modules.items():
