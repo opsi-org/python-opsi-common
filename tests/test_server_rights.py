@@ -198,3 +198,31 @@ def test_set_rights_file_in_dir(tmp_path: Path) -> None:
 
 	set_rights(fil2)
 	assert os.stat(fil2).st_mode & 0o7777 == 0o600
+
+
+@pytest.mark.linux
+def test_set_rights_link(tmp_path: Path) -> None:
+	registry = PermissionRegistry()
+	registry.remove_permissions()
+
+	dir1 = os.path.join(tmp_path, "dir1")
+	dir2 = os.path.join(dir1, "dir2")
+	link1 = os.path.join(dir1, "link1")
+
+	for path in (dir1, dir2):
+		os.mkdir(path)
+		os.chmod(path, 0o777)
+
+	os.symlink(link1, dir2)
+	os.chmod(link1, 0o777)
+	registry.register_permission(DirPermission(dir1, None, None, 0o660, 0o770, recursive=True))
+
+	set_rights(dir1)
+	assert os.stat(dir1).st_mode & 0o7777 == 0o770
+	assert os.stat(dir2).st_mode & 0o7777 == 0o770
+	assert os.stat(link1).st_mode & 0o7777 == 0o777
+
+	set_rights(dir2)
+	assert os.stat(dir1).st_mode & 0o7777 == 0o770
+	assert os.stat(dir2).st_mode & 0o7777 == 0o770
+	assert os.stat(link1).st_mode & 0o7777 == 0o777
