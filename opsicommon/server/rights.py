@@ -259,7 +259,9 @@ def set_rights(start_path: str | Path = "/") -> None:
 				if abspath in permissions:
 					remove_dirs.append(name)
 					continue
-				permission.apply(abspath)
+				# always set ownership
+				# do not set stat bits for symlinks
+				permission.apply(abspath, chmod=(not os.path.islink(abspath) or modify_file_exe))
 
 			if remove_dirs:
 				for name in remove_dirs:

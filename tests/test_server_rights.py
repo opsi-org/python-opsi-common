@@ -7,6 +7,8 @@ test_server_rights
 import os
 import platform
 from pathlib import Path
+from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -32,6 +34,11 @@ def some_secondary_group_name() -> str:
 			return grp.getgrgid(gid).gr_name
 	pytest.skip("No group for test found. Aborting.")
 	return ""
+
+
+class DummyOpsiConfig:
+	def get(self, category: str, config: str | None = None) -> Any:
+		return ""
 
 
 @pytest.mark.linux
@@ -202,27 +209,28 @@ def test_set_rights_file_in_dir(tmp_path: Path) -> None:
 
 @pytest.mark.linux
 def test_set_rights_link(tmp_path: Path) -> None:
-	registry = PermissionRegistry()
+	with patch("opsicommon.server.rights.OpsiConfig", DummyOpsiConfig):
+		registry = PermissionRegistry()
 	registry.remove_permissions()
 
 	dir1 = os.path.join(tmp_path, "dir1")
 	dir2 = os.path.join(dir1, "dir2")
+	fil1 = os.path.join(dir2, "fil1")
 	link1 = os.path.join(dir1, "link1")
+	link2 = os.path.join(dir1, "link2")
 
 	for path in (dir1, dir2):
 		os.mkdir(path)
 		os.chmod(path, 0o777)
 
-	os.symlink(link1, dir2)
-	os.chmod(link1, 0o777)
-	registry.register_permission(DirPermission(dir1, None, None, 0o660, 0o770, recursive=True))
+	os.symlink(dir2, link1)
+	os.symlink(fil1, link2)
+	orig_stat_link1 = os.stat(link1, follow_symlinks=False).st_mode
+	orig_stat_link2 = os.stat(link2, follow_symlinks=False).st_mode
+	registry.register_permission(DirPermission(dir1, None, None, 0o660, 0o770, recursive=True, modify_file_exe=False))
 
 	set_rights(dir1)
 	assert os.stat(dir1).st_mode & 0o7777 == 0o770
 	assert os.stat(dir2).st_mode & 0o7777 == 0o770
-	assert os.stat(link1).st_mode & 0o7777 == 0o777
-
-	set_rights(dir2)
-	assert os.stat(dir1).st_mode & 0o7777 == 0o770
-	assert os.stat(dir2).st_mode & 0o7777 == 0o770
-	assert os.stat(link1).st_mode & 0o7777 == 0o777
+	assert os.stat(link1, follow_symlinks=False).st_mode == orig_stat_link1
+	assert os.stat(link2, follow_symlinks=False).st_mode == orig_stat_link2
