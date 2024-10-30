@@ -29,6 +29,7 @@ from opsicommon.license import (
 	OPSI_LICENSE_STATE_REPLACED_BY_NON_CORE,
 	OPSI_LICENSE_STATE_REVOKED,
 	OPSI_LICENSE_STATE_VALID,
+	OPSI_LICENSE_TYPE_CORE,
 	OPSI_LICENSE_TYPE_STANDARD,
 	OPSI_MODULE_IDS,
 	OPSI_MODULE_STATE_CLOSE_TO_LIMIT,
@@ -793,6 +794,45 @@ def test_license_state_replaced_by_non_core() -> None:
 		for lic in olp.licenses:
 			if lic.id == "7cf9ef7e-6e6f-43f5-8b52-7c4e582ff6f1":
 				assert lic.get_state() == OPSI_LICENSE_STATE_REPLACED_BY_NON_CORE
+
+
+def test_license_do_not_add_core_client_numbers() -> None:
+	private_key, public_key = generate_key_pair(return_pem=False)
+
+	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
+		lic = dict(LIC1)
+		del lic["id"]
+		lic["module_id"] = "scalability1"
+		lic["type"] = OPSI_LICENSE_TYPE_CORE
+		lic["valid_from"] = "2000-01-01"
+		lic["valid_until"] = "9999-12-31"
+		lic["client_number"] = 20
+		lic1 = OpsiLicense(**lic)
+		lic1.sign(private_key)
+
+		lic["valid_from"] = "2100-01-01"
+		lic["valid_until"] = "2200-12-31"
+		lic["client_number"] = 30
+		lic2 = OpsiLicense(**lic)
+		lic2.sign(private_key)
+
+		olp = OpsiLicensePool()
+		olp.add_license(lic1, lic2)
+
+		modules = olp.get_modules(at_date=date.fromisoformat("2000-01-01"))
+		assert modules["scalability1"]["client_number"] == 20
+		assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_LICENSED
+		assert modules["scalability1"]["available"] is True
+
+		modules = olp.get_modules(at_date=date.fromisoformat("2100-01-01"))
+		assert modules["scalability1"]["client_number"] == 30
+		assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_LICENSED
+		assert modules["scalability1"]["available"] is True
+
+		modules = olp.get_modules(at_date=date.fromisoformat("2300-01-01"))
+		assert modules["scalability1"]["client_number"] == 20
+		assert modules["scalability1"]["state"] == OPSI_MODULE_STATE_LICENSED
+		assert modules["scalability1"]["available"] is True
 
 
 def test_license_state_revoked() -> None:

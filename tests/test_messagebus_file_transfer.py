@@ -40,6 +40,7 @@ async def wait_for_get_file_transfers_empty() -> None:
 			break
 	assert len(get_file_transfers()) == 0
 
+
 async def test_file_upload(tmp_path: Path) -> None:
 	sender = "test_sender"
 	channel = "test_channel"
@@ -113,6 +114,7 @@ async def test_file_upload(tmp_path: Path) -> None:
 
 	await wait_for_get_file_transfers_empty()
 
+
 async def test_upload_chunk_timeout(tmp_path: Path) -> None:
 	sender = "test_sender"
 	channel = "test_channel"
@@ -159,6 +161,7 @@ async def test_upload_chunk_timeout(tmp_path: Path) -> None:
 
 	await wait_for_get_file_transfers_empty()
 
+
 async def test_stop_running_transfers(tmp_path: Path) -> None:
 	sender = "test_sender"
 	channel = "test_channel"
@@ -193,6 +196,7 @@ async def test_stop_running_transfers(tmp_path: Path) -> None:
 		assert "File transfer stopped before completion" in messages[0].error.message
 
 	await wait_for_get_file_transfers_empty()
+
 
 async def test_file_download_chunk_size() -> None:
 	for chunk_size in [None, -1, 0, 1000]:
@@ -274,6 +278,7 @@ async def test_file_download(tmp_path: Path) -> None:
 	assert last_message[0].data == b""
 
 	await wait_for_get_file_transfers_empty()
+
 
 async def test_file_download_follow(tmp_path: Path) -> None:
 	sender = "test_sender"
