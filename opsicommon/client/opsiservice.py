@@ -91,6 +91,9 @@ from ..exceptions import (
 if TYPE_CHECKING:
 	from urllib3._base_connection import BaseHTTPSConnection
 
+if TYPE_CHECKING:
+	from urllib3._base_connection import BaseHTTPSConnection
+
 warnings.simplefilter("ignore", InsecureRequestWarning)
 
 

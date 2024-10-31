@@ -4,7 +4,11 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "python-opsi-common"
+<<<<<<< HEAD
 version = "4.4.0.5"
+=======
+version = "4.3.21.14"
+>>>>>>> v4.3
 description = "The opsi python common library"
 homepage = "https://www.opsi.org"
 license = "AGPL-3.0"
@@ -47,6 +51,7 @@ ptyprocess = "^0.7"
 pycryptodome = ">=3.10"
 pydantic = "^2.9"
 pydantic-core = "^2.20"
+python = ">=3.11,<3.13"
 pyzsync = ">=1.2"
 requests = ">=2.26"
 rich = ">=13.8"

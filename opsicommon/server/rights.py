@@ -78,10 +78,12 @@ class FilePermission:
 			logger.trace("%s: %d:%d != %d:%d", path, stat_res.st_uid, stat_res.st_gid, uid, self.gid)
 			os.chown(path, uid, self.gid, follow_symlinks=not stat.S_ISLNK(stat_res.st_mode))
 
-	def apply(self, path: str | Path) -> None:
+	def apply(self, path: str | Path, chown: bool = True, chmod: bool = True) -> None:
 		stat_res = os.stat(path, follow_symlinks=False)
-		self.chmod(path, stat_res)
-		self.chown(path, stat_res)
+		if chmod:
+			self.chmod(path, stat_res)
+		if chown:
+			self.chown(path, stat_res)
 
 
 @dataclass
@@ -247,9 +249,9 @@ def set_rights(start_path: str | Path = "/") -> None:
 				abspath = os.path.join(root, name)
 				if abspath in permissions:
 					continue
-				if not modify_file_exe and os.path.islink(abspath):
-					continue
-				permission.apply(abspath)
+				# always set ownership
+				# do not set stat bits for symlinks
+				permission.apply(abspath, chmod=(not os.path.islink(abspath) or modify_file_exe))
 
 			remove_dirs = []
 			for name in dirs:
@@ -257,7 +259,9 @@ def set_rights(start_path: str | Path = "/") -> None:
 				if abspath in permissions:
 					remove_dirs.append(name)
 					continue
-				permission.apply(abspath)
+				# always set ownership
+				# do not set stat bits for symlinks
+				permission.apply(abspath, chmod=(not os.path.islink(abspath) or modify_file_exe))
 
 			if remove_dirs:
 				for name in remove_dirs:
