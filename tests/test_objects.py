@@ -8,6 +8,7 @@ import json
 from typing import Any, Dict, Optional, Type
 
 import pytest
+from pydantic_core import PydanticSerializationError
 
 from opsicommon.objects import (
 	Entity,
@@ -563,7 +564,7 @@ def test_serialize() -> None:
 		(Product("test-prod", "2.0", "3", windowsSoftwareIds=["123", "abc"]), None),
 		({"ident": ["product", "LocalbootProduct", "client1.dom.tld"]}, None),
 		("string", None),
-		(Exception("test"), TypeError),
+		(Exception("test"), (TypeError, PydanticSerializationError)),
 		(123, None),
 		(None, None),
 		([1, "b", {"x": "y"}], None),
