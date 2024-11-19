@@ -73,9 +73,11 @@ OPSI_MODULE_STATE_OVER_LIMIT = "over_limit"
 OPSI_MODULE_STATE_CLOSE_TO_LIMIT = "close_to_limit"
 
 OPSI_MODULE_IDS = (
+	"custom_ca",
 	"directory-connector",
 	"dynamic_depot",
 	"install_by_shutdown",
+	"letsencrypt",
 	"license_management",
 	"linux_agent",
 	"local_imaging",
@@ -85,6 +87,7 @@ OPSI_MODULE_IDS = (
 	"roaming_profiles",
 	"scalability1",
 	"secureboot",
+	"sso",
 	"swondemand",
 	"treeview",
 	"uefi",
