@@ -132,7 +132,7 @@ class OpsiPackage:
 
 			# Extract custom last
 			for archive in sorted(archives, key=lambda a: len(a.name.split("."))):
-				extract_archive(archive, temp_dir, file_pattern="control*")  # or OPSI? difference tar and cpio
+				extract_archive(archive, temp_dir)  # file_pattern="control*" use all to also get changelog files
 
 			self.find_and_parse_control_file(temp_dir)
 
