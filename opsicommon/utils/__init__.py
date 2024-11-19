@@ -20,6 +20,7 @@ import tempfile
 import time
 import zlib
 from contextlib import contextmanager
+from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network, ip_address, ip_network
 from pathlib import Path
@@ -71,6 +72,8 @@ logger = get_logger("opsicommon.general")
 def json_encode(obj: Any) -> bytes:
 	if _msgspec_json_encode:
 		return _msgspec_json_encode(obj)
+	if is_dataclass(obj) and not isinstance(obj, type):
+		return _pydantic_json_encode(asdict(obj))
 	return _pydantic_json_encode(obj)
 
 
@@ -89,6 +92,8 @@ def _msgpack_encode_handler(obj: Any) -> Any:
 def msgpack_encode(obj: Any) -> bytes:
 	if _msgspec_msgpack_encode:
 		return _msgspec_msgpack_encode(obj)
+	if is_dataclass(obj) and not isinstance(obj, type):
+		return _msgpack_msgpack_encode(asdict(obj), default=_msgpack_encode_handler)
 	return _msgpack_msgpack_encode(obj, default=_msgpack_encode_handler)
 
 
