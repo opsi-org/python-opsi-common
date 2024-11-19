@@ -10,9 +10,10 @@ import platform
 import random
 import time
 from contextlib import contextmanager
+from dataclasses import asdict, dataclass
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
 from pathlib import Path
-from typing import Generator, Literal
+from typing import Any, Generator, Literal
 
 import pytest
 
@@ -65,6 +66,18 @@ def test_msgpack_encode_decode() -> None:
 	encoded = msgpack_encode(data)
 	data["now"] = data["now"].isoformat()  # type: ignore[attr-defined]
 	assert msgpack_decode(encoded) == data
+
+
+def test_msgpack_encode_decode_dataclass() -> None:
+	@dataclass
+	class TestClass:
+		id: int | str
+		result: Any
+		jsonrpc: str = "2.0"
+
+	data = TestClass(id=1, result={"key1": "value1", "key2": ["listvalue1", "listvalue2"]})
+	encoded = msgpack_encode(data)
+	assert msgpack_decode(encoded) == asdict(data)
 
 
 @pytest.mark.parametrize(
