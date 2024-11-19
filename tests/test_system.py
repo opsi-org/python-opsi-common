@@ -12,7 +12,7 @@ import shutil
 import subprocess
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 from uuid import UUID
@@ -110,11 +110,11 @@ def test_drop_privileges() -> None:
 @pytest.mark.not_in_docker
 @pytest.mark.admin_permissions
 def test_set_system_datetime() -> None:
-	now = datetime.utcnow()
+	now = datetime.now(tz=timezone.utc)
 	try:
 		new_time = now - timedelta(seconds=10)
 		set_system_datetime(new_time)
-		cur = datetime.utcnow()
+		cur = datetime.now(tz=timezone.utc)
 		assert abs((new_time - cur).total_seconds()) <= 1
 	finally:
 		set_system_datetime(now)
