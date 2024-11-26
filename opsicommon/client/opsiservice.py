@@ -718,7 +718,7 @@ class ServiceClient:
 
 		cookie_name, cookie_value = session_cookie.split("=", 1)
 		secret_filter.add_secrets(cookie_value)
-		self._session.cookies.set(cookie_name, quote(cookie_value))  # type: ignore[no-untyped-call]
+		self._session.cookies.set(cookie_name, cookie_value)
 
 	def register_connection_listener(self, listener: ServiceConnectionListener) -> None:
 		with self._listener_lock:
