@@ -843,8 +843,7 @@ def test_totp(tmp_path: Path) -> None:
 			assert req1["headers"].get("x-opsi-mfa-otp") == totp
 
 
-# @pytest.mark.parametrize("sso_success", (False, True))
-@pytest.mark.parametrize("sso_success", (True,))
+@pytest.mark.parametrize("sso_success", (False, True))
 def test_sso(tmp_path: Path, sso_success: bool) -> None:
 	log_file = tmp_path / "request.log"
 	base_url = ""
@@ -893,9 +892,9 @@ def test_sso(tmp_path: Path, sso_success: bool) -> None:
 		mock.patch("opsicommon.client.opsiservice.webbrowser.open", mock_webbrowser_open),
 	):
 		base_url = f"https://127.0.0.1:{server.port}"
-		with ServiceClient(base_url, verify="accept_all") as client:
+		with ServiceClient(base_url, verify="accept_all", sso=True) as client:
 			if sso_success:
-				client.connect(sso=True)
+				client.connect()
 				current_cookie = client.session_cookie
 				assert current_cookie
 
@@ -906,9 +905,9 @@ def test_sso(tmp_path: Path, sso_success: bool) -> None:
 				assert res[1]["path"] == "/auth/wait_authenticated"
 				log_file.unlink()
 
-				with ServiceClient(base_url, verify="accept_all", session_cookie=client.session_cookie) as client2:
+				with ServiceClient(base_url, verify="accept_all", sso=True, session_cookie=client.session_cookie) as client2:
 					# Must reuse session cookie
-					client2.connect(sso=True)
+					client2.connect()
 					assert client2.session_cookie == current_cookie
 
 					res = [json.loads(line) for line in log_file.read_text(encoding="utf-8").strip().split("\n")]
@@ -917,10 +916,10 @@ def test_sso(tmp_path: Path, sso_success: bool) -> None:
 					assert res[0]["headers"]["Cookie"] == current_cookie
 					log_file.unlink()
 
-					with ServiceClient(base_url, verify="accept_all", session_cookie=client2.session_cookie) as client3:
+					with ServiceClient(base_url, verify="accept_all", sso=True, session_cookie=client2.session_cookie) as client3:
 						# Session is no longer valid, need to re-authenticate
 						sessions = {}
-						client3.connect(sso=True)
+						client3.connect()
 						assert client3.session_cookie != current_cookie
 
 						res = [json.loads(line) for line in log_file.read_text(encoding="utf-8").strip().split("\n")]
@@ -935,7 +934,7 @@ def test_sso(tmp_path: Path, sso_success: bool) -> None:
 
 			else:
 				with pytest.raises(OpsiServiceAuthenticationError):
-					client.connect(sso=True)
+					client.connect()
 
 
 def get_local_ipv4_address() -> str | None:

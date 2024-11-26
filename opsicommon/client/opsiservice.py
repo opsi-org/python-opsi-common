@@ -344,6 +344,7 @@ class ServiceClient:
 		username: str | None = None,
 		password: str | None = None,
 		totp: str | None = None,
+		sso: bool = False,
 		client_cert_file: str | Path | None = None,
 		client_key_file: str | Path | None = None,
 		client_key_password: str | None = None,
@@ -402,6 +403,7 @@ class ServiceClient:
 		self._username = None
 		self._password = None
 		self._totp = None
+		self._sso = sso
 
 		self._uib_opsi_ca_cert = x509.load_pem_x509_certificate(UIB_OPSI_CA.encode("ascii"))
 
@@ -921,7 +923,7 @@ class ServiceClient:
 		finally:
 			self.stop()
 
-	def connect(self, sso: bool = False) -> None:
+	def connect(self) -> None:
 		if not self._addresses:
 			raise OpsiServiceConnectionError("Service address undefined")
 
@@ -985,7 +987,7 @@ class ServiceClient:
 				# Accept status 405 for older opsiconfd versions
 				allow_status_codes = [200, 405]
 				if self.service_is_opsiclientd():
-					if sso:
+					if self._sso:
 						raise RuntimeError("SSO not supported for opsiclientd")
 
 					logger.notice("Connecting to local opsiclientd, skipping verification and allowing error 500")
@@ -994,7 +996,7 @@ class ServiceClient:
 					verify_addr = False
 
 				try:
-					if sso:
+					if self._sso:
 						authenticated = False
 						if self.session_cookie:
 							try:
@@ -2235,6 +2237,7 @@ def get_service_client(
 		username=username or opsi_config.get("host", "id"),
 		password=password or opsi_config.get("host", "key"),
 		totp=totp,
+		sso=sso,
 		user_agent=user_agent,
 		verify=verify,
 		ca_cert_file=ca_cert_file,
