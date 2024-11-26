@@ -49,6 +49,7 @@ from packaging import version
 from requests import HTTPError, Session
 from requests import Response as RequestsResponse
 from requests.adapters import HTTPAdapter
+from requests.cookies import RequestsCookieJar
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3 import HTTPSConnectionPool
@@ -699,6 +700,8 @@ class ServiceClient:
 
 	@property
 	def session_cookie(self) -> str | None:
+		if not self._session.cookies:
+			return None
 		cookies = self._session.cookies.items()
 		if not cookies:
 			return None
@@ -706,7 +709,7 @@ class ServiceClient:
 
 	@session_cookie.setter
 	def session_cookie(self, session_cookie: str | None) -> None:
-		self._session.cookies.clear()
+		self._session.cookies = RequestsCookieJar()
 		if not session_cookie:
 			return
 		logger.confidential("Setting session cookie: %s", session_cookie)
