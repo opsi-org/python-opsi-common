@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import gzip
+import json
 import locale
 import os
 import posixpath
@@ -20,6 +21,7 @@ import ssl
 import sys
 import time
 import warnings
+import webbrowser
 from abc import ABC
 from base64 import b64encode
 from contextlib import contextmanager
@@ -911,7 +913,7 @@ class ServiceClient:
 		finally:
 			self.stop()
 
-	def connect(self) -> None:
+	def connect(self, sso: bool = False) -> None:
 		if not self._addresses:
 			raise OpsiServiceConnectionError("Service address undefined")
 
@@ -975,21 +977,50 @@ class ServiceClient:
 				# Accept status 405 for older opsiconfd versions
 				allow_status_codes = [200, 405]
 				if self.service_is_opsiclientd():
+					if sso:
+						raise RuntimeError("SSO not supported for opsiclientd")
+
 					logger.notice("Connecting to local opsiclientd, skipping verification and allowing error 500")
 					# Accept status 500 for older opsiclientd versions
 					allow_status_codes.append(500)
 					verify_addr = False
 
 				try:
-					response = self._request(
-						method="HEAD",
-						path=self._jsonrpc_path,
-						headers=headers,
-						connect_timeout=self._connect_timeout,
-						read_timeout=self._connect_timeout,
-						verify=verify_addr,
-						allow_status_codes=allow_status_codes,
-					)
+					if sso:
+						response = self._request(
+							method="GET",
+							path="/auth/session_id",
+							headers=headers,
+							connect_timeout=self._connect_timeout,
+							read_timeout=self._connect_timeout,
+							verify=verify_addr,
+							allow_status_codes=[200],
+						)
+						session_id = response.json()
+
+						url = f"{self.base_url}/auth/saml/login?session_id={session_id}&redirect=close_window"
+						webbrowser.open(url)
+
+						response = self._request(
+							method="POST",
+							path="/auth/wait_authenticated",
+							data=json.dumps({"wait_time": 60}).encode("utf-8"),
+							read_timeout=65,
+							verify=verify_addr,
+							allow_status_codes=[200],
+						)
+						if not response.json():
+							raise OpsiServiceAuthenticationError("SSO failed")
+					else:
+						response = self._request(
+							method="HEAD",
+							path=self._jsonrpc_path,
+							headers=headers,
+							connect_timeout=self._connect_timeout,
+							read_timeout=self._connect_timeout,
+							verify=verify_addr,
+							allow_status_codes=allow_status_codes,
+						)
 					break
 				except OpsiServiceError as err:
 					if self._address_index >= len(self._addresses) - 1:
@@ -2120,6 +2151,7 @@ def get_service_client(
 	verify: str | None = None,
 	client_cert_auth: bool | None = None,
 	auto_connect: bool = True,
+	sso: bool = False,
 	session_cookie: str | None = None,
 	session_lifetime: int = 150,
 	proxy_url: str | None = "system",
