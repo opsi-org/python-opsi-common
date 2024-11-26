@@ -842,6 +842,40 @@ def test_totp(tmp_path: Path) -> None:
 			assert req1["headers"].get("x-opsi-mfa-otp") == totp
 
 
+@pytest.mark.parametrize("sso_success", (False, True))
+def test_sso(tmp_path: Path, sso_success: bool) -> None:
+	log_file = tmp_path / "request.log"
+	base_url = ""
+	session_id = "76170e9aeeae4623a44912fddfc928f0"
+
+	def mock_webbrowser_open(url: str) -> None:
+		assert url == f"{base_url}/auth/saml/login?session_id={session_id}&redirect=close_window"
+
+	def request_callback(handler: HTTPTestServerRequestHandler, request: dict) -> bool:
+		if request["path"] == "/auth/session_id":
+			handler.set_response_status(200, "OK")
+			handler.set_response_headers({"server": "opsiconfd 4.3.0.0 (uvicorn)", "Content-Type": "application/json"})
+			handler.set_response_body(json.dumps(session_id).encode("utf-8"))
+		elif request["path"] == "/auth/wait_authenticated":
+			time.sleep(3)
+			handler.set_response_status(200, "OK")
+			handler.set_response_headers({"server": "opsiconfd 4.3.0.0 (uvicorn)", "Content-Type": "application/json"})
+			handler.set_response_body(json.dumps(sso_success).encode("utf-8"))
+		return False
+
+	with (
+		http_test_server(generate_cert=True, log_file=log_file, request_callback=request_callback) as server,
+		mock.patch("opsicommon.client.opsiservice.webbrowser.open", mock_webbrowser_open),
+	):
+		base_url = f"https://127.0.0.1:{server.port}"
+		with ServiceClient(base_url, verify="accept_all") as client:
+			if sso_success:
+				client.connect(sso=True)
+			else:
+				with pytest.raises(OpsiServiceAuthenticationError):
+					client.connect(sso=True)
+
+
 def get_local_ipv4_address() -> str | None:
 	for _interface, snics in psutil.net_if_addrs().items():
 		for snic in snics:
