@@ -48,6 +48,7 @@ from packaging import version
 from requests import HTTPError, Session
 from requests import Response as RequestsResponse
 from requests.adapters import HTTPAdapter
+from requests.cookies import RequestsCookieJar
 from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3 import HTTPSConnectionPool
@@ -346,6 +347,7 @@ class ServiceClient:
 		username: str | None = None,
 		password: str | None = None,
 		totp: str | None = None,
+		sso: bool = False,
 		client_cert_file: str | Path | None = None,
 		client_key_file: str | Path | None = None,
 		client_key_password: str | None = None,
@@ -401,9 +403,10 @@ class ServiceClient:
 		self._ca_cert_lock = Lock()
 		self._listener: list[ServiceConnectionListener] = []
 		self._service_unavailable: OpsiServiceUnavailableError | None = None
-		self._username = ""
-		self._password = ""
+		self._username = None
+		self._password = None
 		self._totp = None
+		self._sso = sso
 
 		self._uib_opsi_ca_cert = x509.load_pem_x509_certificate(UIB_OPSI_CA.encode("ascii"))
 
@@ -468,10 +471,6 @@ class ServiceClient:
 		if not self._verify:
 			self._verify = [ServiceVerificationFlags.STRICT_CHECK]
 
-		if session_cookie and "=" not in session_cookie:
-			raise ValueError("Invalid session cookie, <name>=<value> is needed")
-		self._session_cookie = session_cookie or None
-
 		self._session_lifetime = max(1, int(session_lifetime))
 		self._proxy_url = str(proxy_url) if proxy_url and proxy_url != "none" else None
 
@@ -484,16 +483,12 @@ class ServiceClient:
 			"X-opsi-version": __version__,
 			"X-opsi-session-lifetime": str(self._session_lifetime),
 		}
+		self._session.headers.update(self.default_headers)
+		self.session_cookie = session_cookie
 
 		ca_bundle = os.environ.get("REQUESTS_CA_BUNDLE", None)
 		if ca_bundle:
 			logger.warning("Environment variable REQUESTS_CA_BUNDLE is set to %r", ca_bundle)
-
-		self._session.headers.update(self.default_headers)
-		if self._session_cookie:
-			logger.confidential("Using session cookie passed: %s", self._session_cookie)
-			cookie_name, cookie_value = self._session_cookie.split("=", 1)
-			self._session.cookies.set(cookie_name, quote(cookie_value))  # type: ignore[no-untyped-call]
 
 		self.set_addresses(address)
 
@@ -661,37 +656,42 @@ class ServiceClient:
 	def connected(self) -> bool:
 		return self._connected
 
+	def _update_auth(self) -> None:
+		if not self._username and not self._password:
+			self._session.auth = None
+			return
+
+		self._session.auth = (  # type: ignore[assignment] # session.auth should be Tuple of str, but that is a problem with weird locales
+			(self._username or "").encode("utf-8"),
+			(self._password or "").encode("utf-8"),
+		)
+
 	@property
 	def username(self) -> str | None:
 		return self._username
 
 	@username.setter
-	def username(self, username: str) -> None:
+	def username(self, username: str | None) -> None:
 		self._username = username
-		self._session.auth = (  # type: ignore[assignment] # session.auth should be Tuple of str, but that is a problem with weird locales
-			(self._username or "").encode("utf-8"),
-			(self._password or "").encode("utf-8"),
-		)
+		self._update_auth()
 
 	@property
 	def password(self) -> str | None:
 		return self._password
 
 	@password.setter
-	def password(self, password: str) -> None:
+	def password(self, password: str | None) -> None:
 		self._password = password
-		secret_filter.add_secrets(self._password)
-		self._session.auth = (  # type: ignore[assignment] # session.auth should be Tuple of str, but that is a problem with weird locales
-			(self._username or "").encode("utf-8"),
-			(self._password or "").encode("utf-8"),
-		)
+		if self._password:
+			secret_filter.add_secrets(self._password)
+		self._update_auth()
 
 	@property
 	def totp(self) -> str | None:
 		return self._totp
 
 	@totp.setter
-	def totp(self, totp: str) -> None:
+	def totp(self, totp: str | None) -> None:
 		self._totp = str(totp) if totp else None
 
 	@property
@@ -700,13 +700,25 @@ class ServiceClient:
 
 	@property
 	def session_cookie(self) -> str | None:
-		if not self._session.cookies or not self._session.cookies._cookies:  # type: ignore[attr-defined]
+		if not self._session.cookies:
 			return None
-		for tmp1 in self._session.cookies._cookies.values():  # type: ignore[attr-defined]
-			for tmp2 in tmp1.values():
-				for cookie in tmp2.values():
-					return f"{cookie.name}={unquote(cookie.value)}"
-		return None
+		cookies = self._session.cookies.items()
+		if not cookies:
+			return None
+		return f"{cookies[0][0]}={cookies[0][1]}"
+
+	@session_cookie.setter
+	def session_cookie(self, session_cookie: str | None) -> None:
+		self._session.cookies = RequestsCookieJar()
+		if not session_cookie:
+			return
+		logger.confidential("Setting session cookie: %s", session_cookie)
+		if "=" not in session_cookie:
+			raise ValueError("Invalid session cookie, <name>=<value> is needed")
+
+		cookie_name, cookie_value = session_cookie.split("=", 1)
+		secret_filter.add_secrets(cookie_value)
+		self._session.cookies.set(cookie_name, cookie_value)
 
 	def register_connection_listener(self, listener: ServiceConnectionListener) -> None:
 		with self._listener_lock:
@@ -977,7 +989,7 @@ class ServiceClient:
 				# Accept status 405 for older opsiconfd versions
 				allow_status_codes = [200, 405]
 				if self.service_is_opsiclientd():
-					if sso:
+					if self._sso:
 						raise RuntimeError("SSO not supported for opsiclientd")
 
 					logger.notice("Connecting to local opsiclientd, skipping verification and allowing error 500")
@@ -986,34 +998,52 @@ class ServiceClient:
 					verify_addr = False
 
 				try:
-					if sso:
-						response = self._request(
-							method="GET",
-							path="/auth/session_id",
-							headers=headers,
-							connect_timeout=self._connect_timeout,
-							read_timeout=self._connect_timeout,
-							verify=verify_addr,
-							allow_status_codes=[200],
-						)
-						session_id = response.json()
+					if self._sso:
+						authenticated = False
+						if self.session_cookie:
+							try:
+								response = self._request(
+									method="GET",
+									path="/auth/authenticated",
+									headers=headers,
+									connect_timeout=self._connect_timeout,
+									read_timeout=self._connect_timeout,
+									verify=verify_addr,
+									allow_status_codes=[200],
+								)
+								authenticated = response.json()
+							except OpsiServiceAuthenticationError:
+								pass
 
-						url = f"{self.base_url}/auth/saml/login?session_id={session_id}&redirect=close_window"
-						try:
-							webbrowser.open(url)
-						except Exception as err:
-							raise OpsiServiceAuthenticationError(f"SSO failed: failed to open browser: {err}") from err
+						if not authenticated:
+							self.session_cookie = None
+							response = self._request(
+								method="GET",
+								path="/auth/session_id",
+								headers=headers,
+								connect_timeout=self._connect_timeout,
+								read_timeout=self._connect_timeout,
+								verify=verify_addr,
+								allow_status_codes=[200],
+							)
+							session_id = response.json()
 
-						response = self._request(
-							method="POST",
-							path="/auth/wait_authenticated",
-							data=json.dumps({"wait_time": 60}).encode("utf-8"),
-							read_timeout=65,
-							verify=verify_addr,
-							allow_status_codes=[200],
-						)
-						if not response.json():
-							raise OpsiServiceAuthenticationError("SSO failed")
+							url = f"{self.base_url}/auth/saml/login?session_id={session_id}&redirect=close_window"
+							try:
+								webbrowser.open(url)
+							except Exception as err:
+								raise OpsiServiceAuthenticationError(f"SSO failed: failed to open browser: {err}") from err
+
+							response = self._request(
+								method="POST",
+								path="/auth/wait_authenticated",
+								data=json.dumps({"wait_time": 60}).encode("utf-8"),
+								read_timeout=65,
+								verify=verify_addr,
+								allow_status_codes=[200],
+							)
+							if not response.json():
+								raise OpsiServiceAuthenticationError("SSO failed")
 					else:
 						response = self._request(
 							method="HEAD",
@@ -1032,9 +1062,6 @@ class ServiceClient:
 						raise
 
 			self._connected = True
-			session_cookie = self.session_cookie
-			if session_cookie:
-				secret_filter.add_secrets(session_cookie.split("=", 1)[-1])
 
 			if "server" in response.headers:
 				self.server_name = response.headers["server"]
@@ -2212,6 +2239,7 @@ def get_service_client(
 		username=username or opsi_config.get("host", "id"),
 		password=password or opsi_config.get("host", "key"),
 		totp=totp,
+		sso=sso,
 		user_agent=user_agent,
 		verify=verify,
 		ca_cert_file=ca_cert_file,
