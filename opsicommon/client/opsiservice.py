@@ -997,7 +997,10 @@ class ServiceClient:
 						session_id = response.json()
 
 						url = f"{self.base_url}/auth/saml/login?session_id={session_id}&redirect=close_window"
-						webbrowser.open(url)
+						try:
+							webbrowser.open(url)
+						except Exception as err:
+							raise OpsiServiceAuthenticationError(f"SSO failed: failed to open browser: {err}") from err
 
 						response = self._request(
 							method="POST",
