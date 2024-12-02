@@ -42,7 +42,6 @@ from uuid import uuid4
 from xml.etree import ElementTree
 
 import lz4.frame  # type: ignore[import,no-redef]
-import msgspec
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from packaging import version
@@ -58,19 +57,6 @@ from websocket import WebSocket, WebSocketApp  # type: ignore[import]
 from websocket import setdefaulttimeout as websocket_setdefaulttimeout
 from websocket._abnf import ABNF  # type: ignore[import]
 
-from opsicommon import __version__
-from opsicommon.config import OPSI_CA_CERT_FILE, OpsiConfig
-from opsicommon.exceptions import (
-	OpsiRpcError,
-	OpsiServiceAuthenticationError,
-	OpsiServiceClientCertificateError,
-	OpsiServiceConnectionError,
-	OpsiServiceError,
-	OpsiServicePermissionError,
-	OpsiServiceTimeoutError,
-	OpsiServiceUnavailableError,
-	OpsiServiceVerificationError,
-)
 from opsicommon.logging import get_logger, secret_filter
 from opsicommon.logging.constants import TRACE
 from opsicommon.messagebus.message import (
@@ -89,7 +75,24 @@ from opsicommon.system import lock_file, set_system_datetime
 from opsicommon.system.info import is_windows
 from opsicommon.system.network import get_hostnames, get_ip_addresses
 from opsicommon.types import forceHostId, forceOpsiHostKey
-from opsicommon.utils import prepare_proxy_environment
+from opsicommon.utils import json_decode, json_encode, msgpack_decode, msgpack_encode, prepare_proxy_environment
+
+from .. import __version__
+from ..config import OPSI_CA_CERT_FILE, OpsiConfig
+from ..exceptions import (
+	OpsiRpcError,
+	OpsiServiceAuthenticationError,
+	OpsiServiceClientCertificateError,
+	OpsiServiceConnectionError,
+	OpsiServiceError,
+	OpsiServicePermissionError,
+	OpsiServiceTimeoutError,
+	OpsiServiceUnavailableError,
+	OpsiServiceVerificationError,
+)
+
+if TYPE_CHECKING:
+	from urllib3._base_connection import BaseHTTPSConnection
 
 if TYPE_CHECKING:
 	from urllib3._base_connection import BaseHTTPSConnection
@@ -406,11 +409,6 @@ class ServiceClient:
 		self._sso = sso
 
 		self._uib_opsi_ca_cert = x509.load_pem_x509_certificate(UIB_OPSI_CA.encode("ascii"))
-
-		self._msgpack_decoder = msgspec.msgpack.Decoder()
-		self._msgpack_encoder = msgspec.msgpack.Encoder()
-		self._json_decoder = msgspec.json.Decoder()
-		self._json_encoder = msgspec.json.Encoder()
 
 		self._session = Session()
 
@@ -869,6 +867,7 @@ class ServiceClient:
 		for method in self.jsonrpc_interface:
 			try:
 				method_name = method["name"]
+				exec_locals: dict[str, object] = {}
 
 				if method_name not in ("backend_getInterface", "backend_exit"):
 					logger.debug("Creating instance method: %s", method_name)
@@ -908,8 +907,11 @@ class ServiceClient:
 					logger.trace("%s: arg string is: %s", method_name, arg_string)
 					logger.trace("%s: call string is: %s", method_name, call_string)
 					with warnings.catch_warnings():
-						exec(f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])')
-				setattr(instance, method_name, MethodType(eval(method_name), self))
+						exec(
+							f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])',
+							locals=exec_locals,
+						)
+				setattr(instance, method_name, MethodType(exec_locals[method_name] if exec_locals else eval(method_name), self))
 			except Exception as err:
 				logger.error("Failed to create instance method '%s': %s", method, err)
 
@@ -1499,10 +1501,10 @@ class ServiceClient:
 		serial = "msgpack" if self.server_version >= MIN_VERSION_MSGPACK else "json"
 		if serial == "msgpack":
 			headers["Content-Type"] = headers["Accept"] = "application/msgpack"
-			data = self._msgpack_encoder.encode(data_dict)
+			data = msgpack_encode(data_dict)
 		else:
 			headers["Content-Type"] = headers["Accept"] = "application/json"
-			data = self._json_encoder.encode(data_dict)
+			data = json_encode(data_dict)
 
 		if not isinstance(data, bytes):
 			data = data.encode("utf-8")
@@ -1567,9 +1569,9 @@ class ServiceClient:
 		rpc = {}
 		try:
 			if content_type == "application/msgpack":
-				rpc = self._msgpack_decoder.decode(data)
+				rpc = msgpack_decode(data)
 			else:
-				rpc = self._json_decoder.decode(data)
+				rpc = json_decode(data)
 			if not return_result_only:
 				return rpc
 		except Exception:
