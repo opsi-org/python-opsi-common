@@ -18,7 +18,6 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Type, Un
 from urllib.parse import quote, unquote, urlparse
 
 import lz4.frame  # type: ignore[import,no-redef]
-import msgspec
 import requests
 import urllib3
 from requests.adapters import HTTPAdapter
@@ -36,7 +35,7 @@ from ..exceptions import (
 from ..logging import get_logger, secret_filter
 from ..objects import deserialize, serialize
 from ..types import forceHostId, forceOpsiHostKey
-from ..utils import prepare_proxy_environment
+from ..utils import json_decode, json_encode, msgpack_decode, msgpack_encode, prepare_proxy_environment
 
 warnings.simplefilter("ignore", urllib3.exceptions.InsecureRequestWarning)
 
@@ -132,11 +131,6 @@ class JSONRPCClient:
 		self.x_opsi_new_host_key: Optional[str] = None
 		self.base_url = None
 		self.no_proxy_addresses = list(set(self.no_proxy_addresses + [socket.getfqdn()]))
-
-		self._msgpack_decoder = msgspec.msgpack.Decoder()
-		self._msgpack_encoder = msgspec.msgpack.Encoder()
-		self._json_decoder = msgspec.json.Decoder()
-		self._json_encoder = msgspec.json.Encoder()
 
 		session_id = None
 		for option, value in kwargs.items():
@@ -426,10 +420,10 @@ class JSONRPCClient:
 
 		if serialization == "msgpack":
 			headers["Accept"] = headers["Content-Type"] = "application/msgpack"
-			data = self._msgpack_encoder.encode(data_dict)
+			data = msgpack_encode(data_dict)
 		else:
 			headers["Accept"] = headers["Content-Type"] = "application/json"
-			data = self._json_encoder.encode(data_dict)
+			data = json_encode(data_dict)
 
 		if not isinstance(data, bytes):
 			data = data.encode("utf-8")
@@ -527,9 +521,9 @@ class JSONRPCClient:
 
 		try:
 			if content_type == "application/msgpack":
-				data = self._msgpack_decoder.decode(data)
+				data = msgpack_decode(data)
 			else:
-				data = self._json_decoder.decode(data)
+				data = json_decode(data)
 		except Exception:
 			if error_cls:
 				raise error_cls(f"{error_msg} (error on server)") from None
@@ -598,7 +592,7 @@ class JSONRPCClient:
 				logger.trace("%s: arg string is: %s", method_name, arg_string)
 				logger.trace("%s: call string is: %s", method_name, call_string)
 				with warnings.catch_warnings():
-					exec_locals: dict[str, object] = {}
+					exec_locals: dict[str, Callable] = {}
 					exec(
 						f'def {method_name}(self, {arg_string}): return self.execute_rpc("{method_name}", [{call_string}])',
 						None,
