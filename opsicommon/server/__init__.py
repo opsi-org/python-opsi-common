@@ -26,7 +26,7 @@ def get_opsiconfd_config(template: dict[str, Any] | None = None, ignore_error: b
 	config = dict(template) if template else {}
 	try:
 		for attribute, value in _opsiconfd_get_config().items():
-			if "passphrase" in attribute or "password" in attribute:
+			if "passphrase" in attribute or "password" in attribute or "private_key" in attribute:
 				secret_filter.add_secrets(value)
 			if not template or attribute in template:
 				config[attribute] = value

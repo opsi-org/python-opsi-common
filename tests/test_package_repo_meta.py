@@ -24,6 +24,7 @@ from opsicommon.package.repo_meta import (
 	RepoMetaProductDependency,
 )
 from opsicommon.types import Architecture, OperatingSystem
+from opsicommon.utils import json_decode, msgpack_decode
 
 TEST_REPO = Path() / "tests/data/repo_meta"
 

@@ -15,6 +15,7 @@ import platform
 import random
 import re
 import ssl
+import string
 import time
 import traceback
 from contextlib import contextmanager
@@ -261,7 +262,7 @@ def test_arguments() -> None:
 		ServiceClient("::1", verify="bad_mode")
 
 	# session_cookie
-	assert ServiceClient("::1", session_cookie="cookie=val")._session_cookie == "cookie=val"
+	assert ServiceClient("::1", session_cookie="cookie=val").session_cookie == "cookie=val"
 	with pytest.raises(ValueError):
 		assert ServiceClient("::1", session_cookie="cookie")
 
@@ -844,6 +845,100 @@ def test_totp(tmp_path: Path) -> None:
 			req1 = json.loads(lines[0])
 			assert req1["method"] == "HEAD"
 			assert req1["headers"].get("x-opsi-mfa-otp") == totp
+
+
+@pytest.mark.parametrize("sso_success", (False, True))
+def test_sso(tmp_path: Path, sso_success: bool) -> None:
+	log_file = tmp_path / "request.log"
+	base_url = ""
+	# <session-id>: <authenticated>
+	sessions: dict[str, bool] = {}
+
+	def mock_webbrowser_open(url: str) -> None:
+		match = re.search(r"^(https://.*)/auth/saml/login\?session_id=([a-f0-9]{32})&redirect=close_window$", url)
+		assert match
+		assert match.group(1) == base_url
+		sessions[match.group(2)] = True
+
+	def request_callback(handler: HTTPTestServerRequestHandler, request: dict) -> bool:
+		response_status = (200, "OK")
+		headers = {
+			"server": "opsiconfd 4.3.0.0 (uvicorn)",
+			"Content-Type": "application/json",
+		}
+		cookie = request["headers"].get("Cookie")
+		session_id = cookie.split("=")[1] if cookie else ""
+
+		if request["path"] == "/auth/session_id":
+			session_id = ("".join(random.choices(string.hexdigits, k=32))).lower()
+			sessions[session_id] = False
+			handler.set_response_body(json.dumps(session_id).encode("utf-8"))
+		elif request["path"] == "/auth/authenticated":
+			if sessions.get(session_id):
+				handler.set_response_body(json.dumps(True).encode("utf-8"))
+			else:
+				response_status = (401, "Unauthorized")
+		elif request["path"] == "/auth/wait_authenticated":
+			if sessions.get(session_id):
+				handler.set_response_body(json.dumps(sso_success).encode("utf-8"))
+			else:
+				response_status = (401, "Unauthorized")
+
+		if response_status[0] != 401:
+			headers["Set-Cookie"] = f"opsiconfd-session={session_id}"
+
+		handler.set_response_status(*response_status)
+		handler.set_response_headers(headers)
+		return False
+
+	with (
+		http_test_server(generate_cert=True, log_file=log_file, request_callback=request_callback) as server,
+		mock.patch("opsicommon.client.opsiservice.webbrowser.open", mock_webbrowser_open),
+	):
+		base_url = f"https://127.0.0.1:{server.port}"
+		with ServiceClient(base_url, verify="accept_all", sso=True) as client:
+			if sso_success:
+				client.connect()
+				current_cookie = client.session_cookie
+				assert current_cookie
+
+				res = [json.loads(line) for line in log_file.read_text(encoding="utf-8").strip().split("\n")]
+				assert len(res) == 2
+				assert res[0]["path"] == "/auth/session_id"
+				assert "Cookie" not in res[0]["headers"]
+				assert res[1]["path"] == "/auth/wait_authenticated"
+				log_file.unlink()
+
+				with ServiceClient(base_url, verify="accept_all", sso=True, session_cookie=client.session_cookie) as client2:
+					# Must reuse session cookie
+					client2.connect()
+					assert client2.session_cookie == current_cookie
+
+					res = [json.loads(line) for line in log_file.read_text(encoding="utf-8").strip().split("\n")]
+					assert len(res) == 1
+					assert res[0]["path"] == "/auth/authenticated"
+					assert res[0]["headers"]["Cookie"] == current_cookie
+					log_file.unlink()
+
+					with ServiceClient(base_url, verify="accept_all", sso=True, session_cookie=client2.session_cookie) as client3:
+						# Session is no longer valid, need to re-authenticate
+						sessions = {}
+						client3.connect()
+						assert client3.session_cookie != current_cookie
+
+						res = [json.loads(line) for line in log_file.read_text(encoding="utf-8").strip().split("\n")]
+						assert len(res) == 3
+						assert res[0]["path"] == "/auth/authenticated"
+						assert res[0]["headers"]["Cookie"] == current_cookie
+						assert "Cookie" in res[0]["headers"]
+						assert res[1]["path"] == "/auth/session_id"
+						assert "Cookie" not in res[1]["headers"]
+						assert res[2]["path"] == "/auth/wait_authenticated"
+						log_file.unlink()
+
+			else:
+				with pytest.raises(OpsiServiceAuthenticationError):
+					client.connect()
 
 
 def get_local_ipv4_address() -> str | None:

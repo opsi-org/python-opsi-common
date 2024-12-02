@@ -142,6 +142,12 @@ class OpsiPackage:
 						self.changelog = candidate.read_text(encoding="utf-8")
 						break
 
+			if not self.changelog:
+				for candidate in temp_dir.iterdir():
+					if "changelog" in candidate.name.lower():
+						self.changelog = candidate.read_text(encoding="utf-8")
+						break
+
 	def compare_version_with_control_file(self, control_file: Path, condition: Literal["==", "=", "<", "<=", ">", ">="]) -> bool:
 		opsi_package = OpsiPackage()
 		if control_file.suffix == ".toml":

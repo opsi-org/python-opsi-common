@@ -66,7 +66,7 @@ from opsicommon.types import (
 	forceUserId,
 	forceUUIDString,
 )
-from opsicommon.utils import combine_versions, generate_opsi_host_key, timestamp, json_decode, json_encode
+from opsicommon.utils import combine_versions, generate_opsi_host_key, json_decode, json_encode, timestamp
 
 __all__ = (
 	"AuditHardware",

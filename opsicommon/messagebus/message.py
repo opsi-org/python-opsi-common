@@ -15,8 +15,7 @@ from uuid import uuid4
 
 from pydantic import AfterValidator, AliasChoices, BaseModel, Field, StringConstraints
 
-from opsicommon.utils import unix_timestamp, msgpack_encode, msgpack_decode
-
+from opsicommon.utils import msgpack_decode, msgpack_encode, unix_timestamp
 
 DEFAULT_MESSAGE_VALIDITY_PERIOD = 60000  # Milliseconds
 

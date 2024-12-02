@@ -71,7 +71,7 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.poetry.dependencies.pywin32]
 platform = "win32"
-version = ">=306"
+version = ">=308"
 
 [tool.poetry.dependencies.pywinpty]
 platform = "win32"
