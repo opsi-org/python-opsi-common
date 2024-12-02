@@ -10,16 +10,22 @@ import platform
 import random
 import time
 from contextlib import contextmanager
+from dataclasses import asdict, dataclass
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
 from pathlib import Path
-from typing import Generator, Literal
+from typing import Any, Generator, Literal
 
 import pytest
 
 from opsicommon.logging import LEVEL_TO_OPSI_LEVEL, LOG_WARNING, StreamHandler, get_all_handlers, logging_config, use_logging_config
 from opsicommon.objects import Product
+from opsicommon.system.info import is_linux
 from opsicommon.utils import (
 	Singleton,
+	_msgspec_json_decode,
+	_msgspec_json_encode,
+	_msgspec_msgpack_decode,
+	_msgspec_msgpack_encode,
 	combine_versions,
 	compare_versions,
 	compress_data,
@@ -27,6 +33,10 @@ from opsicommon.utils import (
 	frozen_lru_cache,
 	generate_opsi_host_key,
 	ip_address_in_network,
+	json_decode,
+	json_encode,
+	msgpack_decode,
+	msgpack_encode,
 	prepare_proxy_environment,
 	retry,
 	timestamp,
@@ -34,6 +44,40 @@ from opsicommon.utils import (
 	update_environment_from_config_files,
 	utc_timestamp,
 )
+
+
+def test_json_encode_decode() -> None:
+	if is_linux():
+		assert _msgspec_json_encode
+		assert _msgspec_json_decode
+	now = datetime.datetime.now()
+	data = {"test": "value", "list": [1, 2, 3], "now": now}
+	encoded = json_encode(data)
+	data["now"] = data["now"].isoformat()  # type: ignore[attr-defined]
+	assert json_decode(encoded) == data
+
+
+def test_msgpack_encode_decode() -> None:
+	if is_linux():
+		assert _msgspec_msgpack_encode
+		assert _msgspec_msgpack_decode
+	now = datetime.datetime.now()
+	data = {"test": "value", "list": [1, 2, 3], "now": now}
+	encoded = msgpack_encode(data)
+	data["now"] = data["now"].isoformat()  # type: ignore[attr-defined]
+	assert msgpack_decode(encoded) == data
+
+
+def test_msgpack_encode_decode_dataclass() -> None:
+	@dataclass
+	class TestClass:
+		id: int | str
+		result: Any
+		jsonrpc: str = "2.0"
+
+	data = TestClass(id=1, result={"key1": "value1", "key2": ["listvalue1", "listvalue2"]})
+	encoded = msgpack_encode(data)
+	assert msgpack_decode(encoded) == asdict(data)
 
 
 @pytest.mark.parametrize(

@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pytest
 import zstandard
-from msgspec import json, msgpack
 
 from opsicommon.objects import ProductDependency
 from opsicommon.package import PackageDependency
@@ -24,6 +23,7 @@ from opsicommon.package.repo_meta import (
 	RepoMetaProductDependency,
 )
 from opsicommon.types import Architecture, OperatingSystem
+from opsicommon.utils import json_decode, msgpack_decode
 
 TEST_REPO = Path() / "tests/data/repo_meta"
 
@@ -33,7 +33,7 @@ def read_metafile(file: Path) -> dict:
 	if ".zstd" in file.suffixes:
 		decompressor = zstandard.ZstdDecompressor()
 		bdata = decompressor.decompress(bdata)
-	data = msgpack.decode(bdata) if ".msgpack" in file.suffixes else json.decode(bdata)
+	data = msgpack_decode(bdata) if ".msgpack" in file.suffixes else json_decode(bdata)
 	return data
 
 
