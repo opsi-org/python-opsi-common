@@ -70,7 +70,11 @@ from opsicommon.client.opsiservice import (
 	WebSocketApp,
 	get_service_client,
 )
-from opsicommon.exceptions import BackendAuthenticationError, BackendPermissionDeniedError, OpsiRpcError
+from opsicommon.exceptions import (
+	BackendAuthenticationError,
+	BackendPermissionDeniedError,
+	OpsiRpcError,
+)
 from opsicommon.logging import use_logging_config
 from opsicommon.messagebus.message import (
 	ChannelSubscriptionEventMessage,
