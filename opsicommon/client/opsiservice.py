@@ -925,7 +925,7 @@ class ServiceClient:
 		finally:
 			self.stop()
 
-	def connect(self) -> None:
+	def connect(self, sso: bool = False) -> None:
 		if not self._addresses:
 			raise OpsiServiceConnectionError("Service address undefined")
 
