@@ -135,7 +135,7 @@ class OpsiPackage:
 				extract_archive(archive, temp_dir)  # file_pattern="control*" use all to also get changelog files
 
 			self.find_and_parse_control_file(temp_dir)
-			
+
 			if not self.changelog:
 				for candidate in temp_dir.iterdir():
 					if "changelog" in candidate.name.lower():
