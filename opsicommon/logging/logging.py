@@ -190,18 +190,7 @@ def logrecord_init(
 	:param sinfo: Call stack information.
 	:param **kwargs: Additional keyword-arguments.
 	"""
-	self.__init_orig__(  # type: ignore[attr-defined]
-		name,
-		level,
-		pathname,
-		lineno,
-		msg,
-		args,
-		exc_info,
-		func=func,
-		sinfo=sinfo,
-		**kwargs,
-	)
+	self.__init_orig__(name, level, pathname, lineno, msg, args, exc_info, func=func, sinfo=sinfo, **kwargs)  # type: ignore[attr-defined]
 	self.opsilevel = logging.level_to_opsi_level.get(level, level)  # type: ignore[attr-defined]
 	self.context = {}
 	self.contextstring = ""
@@ -212,11 +201,7 @@ logging.LogRecord.__init__ = logrecord_init  # type: ignore[assignment]
 
 
 def handle_log_exception(
-	exc: Exception,
-	record: logging.LogRecord | None = None,
-	stderr: bool = True,
-	temp_file: bool = False,
-	log: bool = False,
+	exc: Exception, record: logging.LogRecord | None = None, stderr: bool = True, temp_file: bool = False, log: bool = False
 ) -> None:
 	"""
 	Handles an exception in logging process.
@@ -237,10 +222,7 @@ def handle_log_exception(
 	try:
 		text = "Logging error:\n"
 
-		if isinstance(exc, PermissionError) and platform.system().lower() in (
-			"linux",
-			"darwin",
-		):
+		if isinstance(exc, PermissionError) and platform.system().lower() in ("linux", "darwin"):
 			try:
 				stat_info = os.stat(exc.filename)
 				text += f"File permissions: {stat_info.st_mode:o}, owner: {stat_info.st_uid}, group: {stat_info.st_gid}\n"
@@ -295,7 +277,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		empty dictionary as context.
 
 		:param filter_dict: Dictionary that must be present in record context
-				in order to accept the LogRecord.
+		        in order to accept the LogRecord.
 		:type filter_dict: Dict
 		"""
 		super().__init__()
@@ -323,7 +305,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		key-value entry. None means, every record can pass.
 
 		:param filter_dict: Value that must be present in record context
-				in order to accept the LogRecord.
+		        in order to accept the LogRecord.
 		:type filter_dict: Dict
 		"""
 		if filter_dict is None:
@@ -370,10 +352,10 @@ class ContextSecretFormatter(Formatter):
 
 	This class fulfills two formatting tasks:
 	1. It alters the LogRecord to also include a string representation of
-			a context dictionary, which can be logged by specifying a log
-			format which includes %(contextstring)s
+	        a context dictionary, which can be logged by specifying a log
+	        format which includes %(contextstring)s
 	2. It can replace secret strings specified to a SecretFilter by a
-			replacement string, thus censor passwords etc.
+	        replacement string, thus censor passwords etc.
 	"""
 
 	logger_name_in_context_string = False
@@ -697,12 +679,7 @@ def logging_config(
 
 		handler: FileHandler
 		if file_rotate_max_bytes and file_rotate_max_bytes > 0:
-			handler = RotatingFileHandler(
-				log_file,
-				encoding="utf-8",
-				maxBytes=file_rotate_max_bytes,
-				backupCount=file_rotate_backup_count,
-			)
+			handler = RotatingFileHandler(log_file, encoding="utf-8", maxBytes=file_rotate_max_bytes, backupCount=file_rotate_backup_count)
 		else:
 			handler = FileHandler(log_file, encoding="utf-8")
 		handler.name = "opsi_file_handler"
@@ -798,11 +775,7 @@ def use_logging_config(
 	orig_logging_state = dict(_logging_state.__dict__)
 	try:
 		logging_config(
-			stderr_level=stderr_level,
-			stderr_format=stderr_format,
-			stderr_file=stderr_file,
-			file_level=file_level,
-			file_format=file_format,
+			stderr_level=stderr_level, stderr_format=stderr_format, stderr_file=stderr_file, file_level=file_level, file_format=file_format
 		)
 		yield
 	finally:
@@ -832,15 +805,10 @@ def set_format(
 	:param datefmt: Date format for logging. If omitted, a default dateformat is used.
 	:type datefmt: str
 	:param log_colors: Dictionary of colors for different log levels.
-			If omitted, a default Color dictionary is used.
+	        If omitted, a default Color dictionary is used.
 	:type log_colors: Dict
 	"""
-	for handler_type in (
-		StreamHandler,
-		FileHandler,
-		RotatingFileHandler,
-		RichConsoleHandler,
-	):
+	for handler_type in (StreamHandler, FileHandler, RotatingFileHandler, RichConsoleHandler):
 		fmt = stderr_format if handler_type is StreamHandler or handler_type is RichConsoleHandler else file_format
 		for handler in get_all_handlers(handler_type):
 			formatter: Formatter
@@ -913,7 +881,7 @@ def set_filter(filter_dict: dict[str, Any] | None) -> None:
 	this specific dictionary. None means, every record can pass.
 
 	:param filter_dict: Dictionary that must be present in record
-			context in order to accept the LogRecord.
+	        context in order to accept the LogRecord.
 	:type filter_dict: Dict
 	"""
 	add_context_filter_to_loggers()
@@ -927,10 +895,10 @@ def set_filter_from_string(filter_string: str | list[str] | None) -> None:
 	This method expects a string (e.g. from user input).
 	It is parsed to create a dictionary which is set as filter dictionary.
 	The parsing rules are:
-			*	Entries are separated by ';'.
-			*	One entry consists of exactly two strings separated by '='.
-			*	The first one is interpreted as key, the second as value(s).
-			*	Values of the same key are separated by ','.
+	        *	Entries are separated by ';'.
+	        *	One entry consists of exactly two strings separated by '='.
+	        *	The first one is interpreted as key, the second as value(s).
+	        *	Values of the same key are separated by ','.
 
 	:param filter_string: String to parse for a filter statement.
 	:type filter_string: str
@@ -956,13 +924,13 @@ def set_filter_from_string(filter_string: str | list[str] | None) -> None:
 
 def get_all_loggers() -> list[logging.Logger | logging.RootLogger]:
 	"""
-			Gets list of all loggers.
+	        Gets list of all loggers.
 
-			This method requests all Logger instances registered at
-			logging.Logger.manager.loggerDict and returns them as a list.
+	        This method requests all Logger instances registered at
+	        logging.Logger.manager.loggerDict and returns them as a list.
 	not
-			:returns: List containing all loggers (including root)
-			:rtype: List
+	        :returns: List containing all loggers (including root)
+	        :rtype: List
 	"""
 	return [logging.root] + [lg for lg in logging.Logger.manager.loggerDict.values() if not isinstance(lg, PlaceHolder)]
 
@@ -1012,8 +980,7 @@ def remove_all_handlers(handler_type: type | None = None, handler_name: str | No
 		if not isinstance(_logger, PlaceHolder):
 			for _handler in _logger.handlers:
 				if (
-					# Exact type needed, not subclass!
-					not handler_type or type(_handler) == handler_type  # noqa: E721
+					not handler_type or type(_handler) == handler_type  # exact type needed, not subclass # noqa: E721
 				) and (not handler_name or _handler.name == handler_name):
 					_logger.removeHandler(_handler)
 
@@ -1044,7 +1011,7 @@ def print_logger_info() -> None:
 					tmp.insert(1, f'"{_handler.name}"')
 					name = " ".join(tmp)
 				print(f"  - Handler: {name} ", file=stderr)
-				print(f"	- Formatter: {_handler.formatter}", file=stderr)
+				print(f"    - Formatter: {_handler.formatter}", file=stderr)
 
 
 def init_warnings_capture(traceback_log_level: int = logging.INFO) -> None:
