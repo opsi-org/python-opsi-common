@@ -598,8 +598,13 @@ class JSONRPCClient:
 				logger.trace("%s: arg string is: %s", method_name, arg_string)
 				logger.trace("%s: call string is: %s", method_name, call_string)
 				with warnings.catch_warnings():
-					exec(f'def {method_name}(self, {arg_string}): return self.execute_rpc("{method_name}", [{call_string}])')
-					setattr(self, method_name, types.MethodType(eval(method_name), self))
+					exec_locals: dict[str, object] = {}
+					exec(
+						f'def {method_name}(self, {arg_string}): return self.execute_rpc("{method_name}", [{call_string}])',
+						None,
+						exec_locals,
+					)
+					setattr(self, method_name, types.MethodType(exec_locals[method_name], self))
 			except Exception as err:
 				logger.critical("Failed to create instance method '%s': %s", method, err)
 
