@@ -12,12 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
-from opsicommon.server.rights import (
-	DirPermission,
-	FilePermission,
-	PermissionRegistry,
-	set_rights,
-)
+from opsicommon.server.rights import DirPermission, FilePermission, PermissionRegistry, set_rights
 
 if platform.system().lower() == "linux":
 	import grp
@@ -215,7 +210,7 @@ def test_set_rights_link(tmp_path: Path) -> None:
 
 	dir1 = os.path.join(tmp_path, "dir1")
 	dir2 = os.path.join(dir1, "dir2")
-	fil1 = os.path.join(dir2, "fil1")
+	file1 = os.path.join(dir2, "file1")
 	link1 = os.path.join(dir1, "link1")
 	link2 = os.path.join(dir1, "link2")
 
@@ -223,14 +218,19 @@ def test_set_rights_link(tmp_path: Path) -> None:
 		os.mkdir(path)
 		os.chmod(path, 0o777)
 
+	# create file1 in dir1
+	open(file1, "wb").close()
+
 	os.symlink(dir2, link1)
-	os.symlink(fil1, link2)
+	os.symlink(file1, link2)
 	orig_stat_link1 = os.stat(link1, follow_symlinks=False).st_mode
 	orig_stat_link2 = os.stat(link2, follow_symlinks=False).st_mode
 	registry.register_permission(DirPermission(dir1, None, None, 0o660, 0o770, recursive=True, modify_file_exe=False))
+	registry.register_permission(FilePermission(link2, None, None, 0o660))
 
 	set_rights(dir1)
 	assert os.stat(dir1).st_mode & 0o7777 == 0o770
 	assert os.stat(dir2).st_mode & 0o7777 == 0o770
 	assert os.stat(link1, follow_symlinks=False).st_mode == orig_stat_link1
 	assert os.stat(link2, follow_symlinks=False).st_mode == orig_stat_link2
+	assert os.stat(file1).st_mode & 0o7777 == 0o660

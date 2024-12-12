@@ -68,7 +68,12 @@ class FilePermission:
 		cur_mode = stat_res.st_mode & 0o7777
 		if cur_mode != self.file_permissions:
 			logger.trace("%s: %o != %o", path, cur_mode, self.file_permissions)
-			os.chmod(path, self.file_permissions, follow_symlinks=not stat.S_ISLNK(stat_res.st_mode))
+			if os.chmod in os.supports_follow_symlinks:
+				os.chmod(path, self.file_permissions, follow_symlinks=not stat.S_ISLNK(stat_res.st_mode))
+			else:
+				if stat.S_ISLNK(stat_res.st_mode):
+					logger.debug("File is symlink '%s'. Target file '%s permissions will be changed.", path, Path(path).resolve())
+				os.chmod(path, self.file_permissions)
 
 	def chown(self, path: str | Path, stat_res: Optional[os.stat_result] = None) -> None:
 		stat_res = stat_res or os.stat(path, follow_symlinks=False)
