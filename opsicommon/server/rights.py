@@ -26,6 +26,7 @@ if platform.system().lower() == "linux":
 
 	_HAS_ROOT_RIGHTS = os.geteuid() == 0
 
+CHMOD_SUPPORTS_FOLLOW_SYMLINKS = os.chmod in os.supports_follow_symlinks
 
 logger = get_logger("opsi.general")
 
@@ -68,7 +69,7 @@ class FilePermission:
 		cur_mode = stat_res.st_mode & 0o7777
 		if cur_mode != self.file_permissions:
 			logger.trace("%s: %o != %o", path, cur_mode, self.file_permissions)
-			if os.chmod in os.supports_follow_symlinks:
+			if CHMOD_SUPPORTS_FOLLOW_SYMLINKS:
 				os.chmod(path, self.file_permissions, follow_symlinks=not stat.S_ISLNK(stat_res.st_mode))
 			else:
 				if stat.S_ISLNK(stat_res.st_mode):
