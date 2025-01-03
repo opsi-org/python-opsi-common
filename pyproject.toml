@@ -1,15 +1,15 @@
 [build-system]
-requires = ["poetry>=1.4"]
+requires = [ "poetry>=1.4",]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "python-opsi-common"
-version = "4.3.23.2"
+version = "4.3.23.3"
 description = "The opsi python common library"
 homepage = "https://www.opsi.org"
 license = "AGPL-3.0"
-maintainers = ["uib GmbH <info@uib.de>"]
-authors = ["uib GmbH <info@uib.de>"]
+maintainers = [ "uib GmbH <info@uib.de>",]
+authors = [ "uib GmbH <info@uib.de>",]
 [[tool.poetry.packages]]
 include = "opsicommon"
 
@@ -53,7 +53,6 @@ rich = ">=13.8"
 tomlkit = ">=0.13"
 websocket-client = ">=1.4"
 zstandard = ">=0.21"
-
 [[tool.poetry.dependencies.msgspec]]
 platform = "linux"
 git = "https://github.com/edgarrmondragon/msgspec.git"
