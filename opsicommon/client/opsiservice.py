@@ -912,7 +912,7 @@ class ServiceClient:
 							None,
 							exec_locals,
 						)
-				setattr(instance, method_name, MethodType(exec_locals[method_name] if exec_locals else eval(method_name), self))
+				setattr(instance, method_name, MethodType(exec_locals[method_name] if exec_locals else eval(method_name), self))  # type: ignore[arg-type]
 			except Exception as err:
 				logger.error("Failed to create instance method '%s': %s", method, err)
 

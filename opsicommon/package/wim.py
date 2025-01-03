@@ -129,6 +129,7 @@ def wim_info(wim_file: Path | str) -> WIMInfo:
 		line = line.strip()
 		if not line or ":" not in line:
 			continue
+		val: Any
 		attr, val = line.split(":", 1)
 		attr = attr.strip().lower().replace(" ", "_")
 		val = cast(Any, val.strip())

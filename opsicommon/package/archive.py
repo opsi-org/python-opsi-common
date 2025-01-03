@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from threading import Lock
-from typing import IO, Any, Generator
+from typing import TYPE_CHECKING, Any, Generator
 
 import packaging.version
 import zstandard
@@ -28,6 +28,9 @@ import zstandard
 from opsicommon.config.opsi import OpsiConfig
 from opsicommon.logging import get_logger
 from opsicommon.system.info import is_linux
+
+if TYPE_CHECKING:
+	from _typeshed import SupportsRead
 
 logger = get_logger("opsicommon.package")
 
@@ -94,7 +97,7 @@ class ArchiveProgressListener(ABC):
 
 
 class ProgressFileWrapper:
-	def __init__(self, filesize: int, fileobj: IO[bytes], progress: ArchiveProgress | None = None):
+	def __init__(self, filesize: int, fileobj: SupportsRead[bytes], progress: ArchiveProgress | None = None):
 		self._filesize = filesize
 		self._fileobj = fileobj
 		self._progress = progress
@@ -131,7 +134,7 @@ class ProgressTarFile(tarfile.TarFile):
 			assert isinstance(self._progress, ArchiveProgress)
 		super().__init__(*args, **kwargs)
 
-	def addfile(self, tarinfo: tarfile.TarInfo, fileobj: IO[bytes] | None = None) -> None:
+	def addfile(self, tarinfo: tarfile.TarInfo, fileobj: SupportsRead[bytes] | None = None) -> None:
 		if fileobj and self._progress:
 			fileobj = ProgressFileWrapper(filesize=tarinfo.size, fileobj=fileobj, progress=self._progress)  # type: ignore[assignment]
 		return super().addfile(tarinfo, fileobj)
