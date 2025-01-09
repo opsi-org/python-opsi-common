@@ -48,6 +48,7 @@ from opsicommon.client.opsiservice import (
 	MIN_VERSION_MESSAGEBUS,
 	MIN_VERSION_MSGPACK,
 	MIN_VERSION_SESSION_API,
+	RPC_TIMEOUTS_DEFAULT,
 	UIB_OPSI_CA,
 	BackendManager,
 	DAVFileInfo,
@@ -68,6 +69,7 @@ from opsicommon.client.opsiservice import (
 	ServiceConnectionListener,
 	ServiceVerificationFlags,
 	WebSocketApp,
+	get_rpc_timeout,
 	get_service_client,
 )
 from opsicommon.exceptions import (
@@ -2606,3 +2608,11 @@ def test_permission_error_ca_cert_file_lock() -> None:
 				_lock_file(file, exclusive=True)
 				client.connect()
 				assert attempts == 3
+
+
+@pytest.mark.parametrize(
+	("method", "timeout"),
+	[("hostControlSafe_fireEvent", 10.0), ("depot_installPackage", 4 * 3600.0), ("backend_getInterface", float(RPC_TIMEOUTS_DEFAULT))],
+)
+def test_get_rpc_timeout(method: str, timeout: float) -> None:
+	assert get_rpc_timeout(method) == timeout

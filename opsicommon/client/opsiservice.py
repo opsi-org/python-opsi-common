@@ -114,7 +114,12 @@ RPC_TIMEOUTS = {
 	"depot_createMd5SumFile": 3600,
 	"depot_createZsyncFile": 3600,
 }
+RPC_TIMEOUTS_DEFAULT = 300
+RPC_TIMEOUTS_REGEX = {
+	re.compile("^hostControl"): 10,
+}
 
+# def get_timout lru_cache
 _DEFAULT_HTTPS_PORT = 4447
 
 # It is possible to set multiple certificates as UIB_OPSI_CA
@@ -159,6 +164,16 @@ logger = get_logger("opsicommon.general")
 @lru_cache
 def get_opsi_config() -> OpsiConfig:
 	return OpsiConfig(upgrade_config=False)
+
+
+@lru_cache
+def get_rpc_timeout(method: str) -> float:
+	if method in RPC_TIMEOUTS:
+		return RPC_TIMEOUTS[method]
+	for regex, timeout in RPC_TIMEOUTS_REGEX.items():
+		if regex.match(method):
+			return timeout
+	return RPC_TIMEOUTS_DEFAULT
 
 
 class ServiceVerificationFlags(str, Enum):
@@ -1520,7 +1535,7 @@ class ServiceClient:
 			data = gzip.compress(data)
 
 		if not read_timeout:
-			read_timeout = float(RPC_TIMEOUTS.get(method, 300))
+			read_timeout = get_rpc_timeout(method)
 
 		logger.info(
 			"JSONRPC request to %s: id=%r, method=%s, Content-Type=%s, Content-Encoding=%s, timeout=%r",
@@ -1933,7 +1948,7 @@ class Messagebus(Thread):
 			params = tuple(params)
 		msg = JSONRPCRequestMessage(sender="*", channel="service:config:jsonrpc", method=method, params=params)
 		self.send_message(msg)
-		timeout = float(RPC_TIMEOUTS.get(method, 300))
+		timeout = get_rpc_timeout(method)
 		res = self.wait_for_jsonrpc_response_message(rpc_id=msg.rpc_id, timeout=timeout)
 		if not return_result_only:
 			return {"jsonrpc": "2.0", "id": res.rpc_id, "result": res.result, "error": res.error}
