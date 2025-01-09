@@ -2297,9 +2297,11 @@ def test_messagebus_jsonrpc() -> None:
 				assert res == list(_params or [])
 
 			delay = 3.0
+			get_rpc_timeout.cache_clear()
 			with mock.patch("opsicommon.client.opsiservice.RPC_TIMEOUTS", {"test": 1}):
 				with pytest.raises(OpsiServiceTimeoutError):
 					res = messagebus.jsonrpc("test")
+			get_rpc_timeout.cache_clear()
 
 			rpc_error = {"code": 0, "message": "error_message", "data": {"class": "BackendPermissionDeniedError", "details": "details"}}
 			with pytest.raises(BackendPermissionDeniedError) as err:
