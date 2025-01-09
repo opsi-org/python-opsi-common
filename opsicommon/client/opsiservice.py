@@ -119,7 +119,6 @@ RPC_TIMEOUTS_REGEX = {
 	re.compile("^hostControl"): 10,
 }
 
-# def get_timout lru_cache
 _DEFAULT_HTTPS_PORT = 4447
 
 # It is possible to set multiple certificates as UIB_OPSI_CA
