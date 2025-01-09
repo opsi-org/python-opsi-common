@@ -169,11 +169,11 @@ def get_opsi_config() -> OpsiConfig:
 @lru_cache
 def get_rpc_timeout(method: str) -> float:
 	if method in RPC_TIMEOUTS:
-		return RPC_TIMEOUTS[method]
+		return float(RPC_TIMEOUTS[method])
 	for regex, timeout in RPC_TIMEOUTS_REGEX.items():
 		if regex.match(method):
-			return timeout
-	return RPC_TIMEOUTS_DEFAULT
+			return float(timeout)
+	return float(RPC_TIMEOUTS_DEFAULT)
 
 
 class ServiceVerificationFlags(str, Enum):
