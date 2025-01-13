@@ -47,7 +47,7 @@ from .constants import (
 if TYPE_CHECKING:
 	from rich.console import Console
 
-context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("context", default={})
+_context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("context", default={})
 
 _logger_context_names: dict[str, str] = {}
 
@@ -58,7 +58,7 @@ class OPSILogger(logging.Logger):
 
 	@property
 	def context_name(self) -> str:
-		_logger_context_names.get(self.name, "")
+		return _logger_context_names.get(self.name, "")
 
 	@context_name.setter
 	def context_name(self, value: str) -> None:
@@ -295,7 +295,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		:returns: Context for currently active thread/task.
 		:rtype: Dict
 		"""
-		return context.get()
+		return _context.get()
 
 	def set_filter(self, filter_dict: dict[str, Any] | None = None) -> None:
 		"""
@@ -337,7 +337,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		:rtype: bool
 		"""
 		if not getattr(record, "context", None):
-			record.context = context.get()  # type: ignore[attr-defined]
+			record.context = _context.get()  # type: ignore[attr-defined]
 			record.context["logger"] = record.name  # type: ignore[attr-defined]
 
 		for filter_key, filter_values in self.filter_dict.items():
@@ -409,11 +409,11 @@ class ContextSecretFormatter(Formatter):
 		:rytpe: str
 		"""
 
-		context_ = getattr(record, "context", None)
-		logger_name = _logger_context_names.get(record.name)
-		record.contextstring = ",".join(  # type: ignore[attr-defined]
-			[logger_name if k == "logger" else str(v) for k, v in context_.items() if logger_name or k != "logger"]
-		)
+		if context_ := getattr(record, "context", None):
+			logger_name = _logger_context_names.get(record.name) or ""
+			record.contextstring = ",".join(  # type: ignore[attr-defined]
+				[logger_name if k == "logger" else str(v) for k, v in context_.items() if logger_name or k != "logger"]
+			)
 
 		msg = self.orig_formatter.format(record)
 		if not self.secret_filter_enabled:
@@ -842,7 +842,7 @@ def log_context(new_context: dict[str, Any]) -> Generator[None, None, None]:
 		yield
 	finally:
 		if token is not None:
-			context.reset(token)
+			_context.reset(token)
 
 
 def set_context(new_context: dict[str, Any]) -> contextvars.Token:
@@ -858,7 +858,7 @@ def set_context(new_context: dict[str, Any]) -> contextvars.Token:
 	:rtype: contextvars.Token
 	"""
 	if isinstance(new_context, dict):
-		return context.set(new_context)
+		return _context.set(new_context)
 	return None
 
 
