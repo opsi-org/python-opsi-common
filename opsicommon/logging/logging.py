@@ -20,16 +20,7 @@ import tempfile
 import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass
-from logging import (
-	NOTSET,
-	FileHandler,
-	Formatter,
-	Handler,
-	LogRecord,
-	NullHandler,
-	PlaceHolder,
-	StreamHandler,
-)
+from logging import NOTSET, FileHandler, Formatter, Handler, LogRecord, NullHandler, PlaceHolder, StreamHandler
 from logging.handlers import RotatingFileHandler
 from traceback import format_stack, format_tb
 from typing import IO, TYPE_CHECKING, Any, Generator
@@ -58,10 +49,20 @@ if TYPE_CHECKING:
 
 context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("context", default={})
 
+_logger_context_names: dict[str, str] = {}
+
 
 class OPSILogger(logging.Logger):
 	def __init__(self, name: str, level: int | str = NOTSET) -> None:
 		super().__init__(name, level)
+
+	@property
+	def context_name(self) -> str:
+		_logger_context_names.get(self.name, "")
+
+	@context_name.setter
+	def context_name(self, value: str) -> None:
+		_logger_context_names[self.name] = value
 
 	def secret(self, msg: Any, *args: Any, **kwargs: Any) -> None:
 		"""
@@ -338,6 +339,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		if not getattr(record, "context", None):
 			record.context = context.get()  # type: ignore[attr-defined]
 			record.context["logger"] = record.name  # type: ignore[attr-defined]
+
 		for filter_key, filter_values in self.filter_dict.items():
 			record_value = record.context.get(filter_key)  # type: ignore[attr-defined]
 			# Filter out record if key not present or value not in filter values
@@ -357,8 +359,6 @@ class ContextSecretFormatter(Formatter):
 	2. It can replace secret strings specified to a SecretFilter by a
 	        replacement string, thus censor passwords etc.
 	"""
-
-	logger_name_in_context_string = False
 
 	def __init__(self, orig_formatter: Formatter) -> None:
 		"""
@@ -410,10 +410,10 @@ class ContextSecretFormatter(Formatter):
 		"""
 
 		context_ = getattr(record, "context", None)
-		if context_:
-			record.contextstring = ",".join(
-				[str(v) for k, v in context_.items() if self.logger_name_in_context_string or k != "logger"]  # type: ignore[attr-defined]
-			)
+		logger_name = _logger_context_names.get(record.name)
+		record.contextstring = ",".join(  # type: ignore[attr-defined]
+			[logger_name if k == "logger" else str(v) for k, v in context_.items() if logger_name or k != "logger"]
+		)
 
 		msg = self.orig_formatter.format(record)
 		if not self.secret_filter_enabled:
@@ -1036,6 +1036,8 @@ def reset_logging() -> None:
 	remove_all_handlers()
 	logging.root.setLevel(logging.WARNING)
 	_logging_state.reset()
+	_logger_context_names.clear()
+	context_filter.set_filter(None)
 	logging_config(stderr_level=logging.WARNING)
 
 
