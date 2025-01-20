@@ -16,7 +16,7 @@ pytest-darwin:
     - poetry --version
     - poetry env use 3.11
     - poetry cache clear --all --quiet uibpypi
-    - poetry lock --regenerate
+    #- poetry lock --regenerate
     - poetry install
     - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_darwin1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
     - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_darwin2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
@@ -43,7 +43,7 @@ pytest-windows:
     - poetry --version
     - poetry env use $pythonPath
     - poetry cache clear --all --quiet uibpypi
-    - poetry lock --regenerate
+    #- poetry lock --regenerate
     - poetry install
     - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_windows1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests\\test_logging.py tests
     - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_windows2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests\\test_logging.py
@@ -66,7 +66,7 @@ pytest-linux:
     - poetry --version
     - poetry env use 3.11
     - poetry cache clear --all --quiet uibpypi
-    - poetry lock --regenerate
+    #- poetry lock --regenerate
     - poetry install
     - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_linux1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests/test_logging.py tests
     - poetry run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_linux2.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v tests/test_logging.py
@@ -96,7 +96,7 @@ pylint-pytest:
     - apt-get --yes --allow-downgrades install libsqlite3-0=3.16.2-5+deb9u1
     - apt-get --yes install sqlite3
     - poetry env use 3.11
-    - poetry lock --regenerate
+    #- poetry lock --regenerate
     - poetry install
     - poetry run ruff check opsicommon tests
     - poetry run mypy opsicommon tests
@@ -129,7 +129,7 @@ apidoc:
     - ssh-add <(echo "$BLOG_PUBLISH_PRIVATE_KEY")
   script:
     - poetry env use 3.11
-    - poetry lock --regenerate
+    #- poetry lock --regenerate
     - poetry install
     - poetry run poetry run opsi-dev-cli apidoc makehtml --output python-opsi-common
     - ssh -o StrictHostKeyChecking=no "root@docker1.ext.uib.gmbh" "mkdir -p /var/lib/docker/volumes/docs_nginx_data/_data/python-docs"
@@ -139,7 +139,7 @@ uibpypi:
   stage: publish
   script:
     - poetry env use 3.11
-    - poetry lock --regenerate
+    #- poetry lock --regenerate
     - poetry install
     - opsi-dev-tool -l info --uib-pypi-publish
   only:
