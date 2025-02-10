@@ -23,13 +23,7 @@ from collections import OrderedDict
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import (
-	Any,
-	Callable,
-	Generator,
-	Literal,
-	overload,
-)
+from typing import Any, Callable, Generator, Literal, overload
 
 import attr
 
@@ -74,6 +68,9 @@ OPSI_MODULE_STATE_OVER_LIMIT = "over_limit"
 OPSI_MODULE_STATE_CLOSE_TO_LIMIT = "close_to_limit"
 
 OPSI_MODULE_IDS = (
+	"basic",
+	"professional",
+	"enterprise",
 	"custom_ca",
 	"directory-connector",
 	"dynamic_depot",
