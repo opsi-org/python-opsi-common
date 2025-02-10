@@ -223,7 +223,7 @@ def set_rights(start_path: str | Path = "/") -> None:
 			# Sub path of start_path
 			permissions_to_process.append(permissions[path])
 		elif not os.path.relpath(start_path, path).startswith(".."):
-			if not parent or len(parent.path) < len(path):
+			if not parent or len(str(parent.path)) < len(path):
 				parent = permissions[path]
 
 	if parent:
