@@ -755,13 +755,13 @@ class OpsiLicensePool:
 			for bundled_module_id in OPSI_MODULE_BUNDLES.get(lic.module_id, tuple()):
 				bundled_modules[bundled_module_id] = modules[lic.module_id]
 
+		if not modules["2fa"]["available"] and modules["vpn"]["available"]:
+			modules["2fa"] = modules["vpn"].copy()
+
 		for bundled_module_id, bundled_module_info in bundled_modules.items():
 			if mod_info := modules.get(bundled_module_id):
 				if not mod_info["available"] or mod_info["client_number"] < bundled_module_info["client_number"]:
 					modules[bundled_module_id] = bundled_module_info.copy()
-
-		if not modules["2fa"]["available"] and modules["vpn"]["available"]:
-			modules["2fa"] = modules["vpn"].copy()
 
 		for module_id, info in modules.items():
 			if module_id not in enabled_module_ids:
