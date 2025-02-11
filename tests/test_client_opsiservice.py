@@ -1025,15 +1025,19 @@ def test_proxy(tmp_path: Path) -> None:
 		return res
 
 	proxy_port = 18181
-	with run_proxy(proxy_port) as proxy_server, http_test_server(
-		generate_cert=True, log_file=server_log_file, response_headers={"server": "opsiconfd 4.3.1.0 (uvicorn)"}
-	) as server, mock.patch("opsicommon.client.opsiservice.ServiceClient.no_proxy_addresses", no_proxy_addresses):
+	with (
+		run_proxy(proxy_port) as proxy_server,
+		http_test_server(
+			generate_cert=True, log_file=server_log_file, response_headers={"server": "opsiconfd 4.3.1.0 (uvicorn)"}
+		) as server,
+		mock.patch("opsicommon.client.opsiservice.ServiceClient.no_proxy_addresses", no_proxy_addresses),
+	):
 		# Proxy must not be used (no_proxy_addresses)
 		with mock.patch(
 			"opsicommon.client.opsiservice.ServiceClient.no_proxy_addresses", ["::1", "127.0.0.1", "ip6-localhost", "localhost", local_ip]
 		):
 			with ServiceClient(
-				f"https://{local_ip}:{server.port}", proxy_url=f"http://localhost:{server.port+1}", verify="accept_all", connect_timeout=2
+				f"https://{local_ip}:{server.port}", proxy_url=f"http://localhost:{server.port + 1}", verify="accept_all", connect_timeout=2
 			) as client:
 				client.connect()
 				client.connect_messagebus()
@@ -1378,7 +1382,7 @@ def test_request_exceptions() -> None:
 
 def test_multi_address() -> None:
 	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
-		with ServiceClient((f"https://127.0.0.1:{server.port+1}", f"https://127.0.0.1:{server.port}"), verify="accept_all") as client:
+		with ServiceClient((f"https://127.0.0.1:{server.port + 1}", f"https://127.0.0.1:{server.port}"), verify="accept_all") as client:
 			client.connect()
 			assert client.connected
 			assert client.base_url == f"https://127.0.0.1:{server.port}"
@@ -1805,7 +1809,7 @@ def test_timeouts() -> None:
 	listener = MyConnectionListener()
 
 	with http_test_server(generate_cert=True, response_delay=3) as server:
-		with ServiceClient(f"https://127.0.0.1:{server.port+1}", connect_timeout=4) as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port + 1}", connect_timeout=4) as client:
 			client.register_connection_listener(listener)
 			with pytest.raises(OpsiServiceConnectionError):
 				client.connect()

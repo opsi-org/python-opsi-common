@@ -68,6 +68,7 @@ OPSI_MODULE_STATE_OVER_LIMIT = "over_limit"
 OPSI_MODULE_STATE_CLOSE_TO_LIMIT = "close_to_limit"
 
 OPSI_MODULE_IDS = (
+	"2fa",
 	"custom_ca",
 	"directory-connector",
 	"dynamic_depot",
@@ -92,11 +93,10 @@ OPSI_MODULE_IDS = (
 	"wim-capture",
 	"win-vhd",
 	"vpn",
-	"2fa",
 )
 
 OPSI_MODULE_BUNDLES = {
-	"basic": {
+	"basic": (
 		"directory-connector",
 		"linux_agent",
 		"license_management",
@@ -105,8 +105,9 @@ OPSI_MODULE_BUNDLES = {
 		"userroles",
 		"secureboot",
 		"wim-capture",
-	},
-	"professional": {
+	),
+	"professional": (
+		"2fa",
 		"directory-connector",
 		"linux_agent",
 		"license_management",
@@ -115,9 +116,9 @@ OPSI_MODULE_BUNDLES = {
 		"userroles",
 		"wim-capture",
 		"vpn",
+	),
+	"enterprise": (
 		"2fa",
-	},
-	"enterprise": {
 		"custom_ca",
 		"directory-connector",
 		"letsencrypt",
@@ -133,8 +134,7 @@ OPSI_MODULE_BUNDLES = {
 		"userroles",
 		"wim-capture",
 		"vpn",
-		"2fa",
-	},
+	),
 }
 
 OPSI_OBSOLETE_MODULE_IDS = (
@@ -652,6 +652,7 @@ class OpsiLicensePool:
 		for lic in self._licenses.values():
 			if lic.is_signature_valid():
 				module_ids.add(lic.module_id)
+				module_ids.update(OPSI_MODULE_BUNDLES.get(lic.module_id, tuple()))
 		return sorted(list(module_ids))
 
 	def get_licenses(
@@ -734,6 +735,7 @@ class OpsiLicensePool:
 			else:
 				modules[module_id] = {"available": False, "state": OPSI_MODULE_STATE_UNLICENSED, "license_ids": [], "client_number": 0}
 
+		bundled_modules = {}
 		for lic in self.get_licenses(valid_only=True, at_date=at_date):
 			if lic.module_id not in modules:
 				modules[lic.module_id] = {"client_number": 0, "license_ids": []}
@@ -750,6 +752,17 @@ class OpsiLicensePool:
 				modules[lic.module_id]["client_number"] += lic.client_number
 			modules[lic.module_id]["client_number"] = min(modules[lic.module_id]["client_number"], OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED)
 
+			for bundled_module_id in OPSI_MODULE_BUNDLES.get(lic.module_id, tuple()):
+				bundled_modules[bundled_module_id] = modules[lic.module_id]
+
+		for bundled_module_id, bundled_module_info in bundled_modules.items():
+			if mod_info := modules.get(bundled_module_id):
+				if not mod_info["available"] or mod_info["client_number"] < bundled_module_info["client_number"]:
+					modules[bundled_module_id] = bundled_module_info.copy()
+
+		if not modules["2fa"]["available"] and modules["vpn"]["available"]:
+			modules["2fa"] = modules["vpn"].copy()
+
 		for module_id, info in modules.items():
 			if module_id not in enabled_module_ids:
 				info["state"] = OPSI_MODULE_STATE_UNLICENSED
@@ -760,8 +773,6 @@ class OpsiLicensePool:
 				client_number = client_numbers["linux"]
 			elif module_id == "macos_agent":
 				client_number = client_numbers["macos"]
-			# elif module_id == "vpn":
-			# client_number = client_numbers["vpn"]
 
 			usage_percent = 100
 			if info["client_number"] > 0:

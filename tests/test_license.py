@@ -1025,3 +1025,61 @@ def test_modules_file_and_license_file(tmp_path: Path) -> None:
 				assert state == OPSI_LICENSE_STATE_VALID
 			else:
 				assert state == OPSI_LICENSE_STATE_EXPIRED
+
+
+def test_license_module_bundle() -> None:
+	private_key, public_key = generate_key_pair(return_pem=False)
+
+	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
+		lic = dict(LIC1)
+		del lic["id"]
+		lic["module_id"] = "professional"
+		lic["type"] = OPSI_LICENSE_TYPE_STANDARD
+		lic["valid_from"] = "2000-01-01"
+		lic["valid_until"] = "9999-12-31"
+		lic["client_number"] = 20
+		lic1 = OpsiLicense(**lic)
+		lic1.sign(private_key)
+
+		lic["module_id"] = "sso"
+		lic["client_number"] = 30
+		lic2 = OpsiLicense(**lic)
+		lic2.sign(private_key)
+
+		lic["module_id"] = "vpn"
+		lic["client_number"] = 40
+		lic3 = OpsiLicense(**lic)
+		lic3.sign(private_key)
+
+		lic["module_id"] = "userroles"
+		lic["client_number"] = 10
+		lic4 = OpsiLicense(**lic)
+		lic4.sign(private_key)
+
+		olp = OpsiLicensePool()
+		olp.add_license(lic1, lic2, lic3, lic4)
+
+		expected_modules = {
+			"professional": 20,
+			"2fa": 20,
+			"directory-connector": 20,
+			"linux_agent": 20,
+			"license_management": 20,
+			"local_imaging": 20,
+			"monitoring": 20,
+			"userroles": 20,
+			"wim-capture": 20,
+			"vpn": 40,
+			"sso": 30,
+		}
+		for module_id, module_info in olp.get_modules().items():
+			if module_id in OPSI_FREE_MODULE_IDS:
+				assert module_info["state"] == OPSI_MODULE_STATE_FREE
+				assert module_info["client_number"] == OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
+				assert module_info["available"] is True
+			elif expected_client_number := expected_modules.get(module_id):
+				assert module_info["client_number"] == expected_client_number
+				assert module_info["state"] == OPSI_MODULE_STATE_LICENSED
+				assert module_info["available"] is True
+			else:
+				assert module_info["available"] is False

@@ -762,9 +762,7 @@ def test_product_name_can_be_very_long() -> None:
 	product = Product(id="new_prod", name="New Product for Tests", productVersion="1.0", packageVersion="1.0")
 
 	new_name = (
-		"This is a very long name with 128 characters to test the "
-		"creation of long product names that should work now but "
-		"were limited b4"
+		"This is a very long name with 128 characters to test the creation of long product names that should work now but were limited b4"
 	)
 
 	product.setName(new_name)

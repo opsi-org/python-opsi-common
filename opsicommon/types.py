@@ -360,7 +360,7 @@ def forceOpsiTimestamp(var: Any) -> str:
 		if not match:
 			raise ValueError(f"Bad opsi timestamp: {var}")
 		return f"{match.group(1)}-{match.group(2)}-{match.group(3)} 00:00:00"
-	return f"{match.group(1)}-{match.group(2)}-{match.group(3)}" f" {match.group(4)}:{match.group(5)}:{match.group(6)}"
+	return f"{match.group(1)}-{match.group(2)}-{match.group(3)} {match.group(4)}:{match.group(5)}:{match.group(6)}"
 
 
 def forceUsername(var: Any) -> str:
@@ -398,7 +398,7 @@ def forceHardwareAddress(var: Any) -> str:
 	if not match:
 		raise ValueError(f"Invalid hardware address: {var}")
 
-	return (f"{match.group(1)}:{match.group(2)}:{match.group(3)}:" f"{match.group(4)}:{match.group(5)}:{match.group(6)}").lower()
+	return (f"{match.group(1)}:{match.group(2)}:{match.group(3)}:{match.group(4)}:{match.group(5)}:{match.group(6)}").lower()
 
 
 def forceIPAddress(var: Any) -> str:

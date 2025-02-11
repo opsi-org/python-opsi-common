@@ -98,7 +98,7 @@ def test_timeouts() -> None:
 	with http_test_server(response_delay=3) as server:
 		start = time.time()
 		with pytest.raises(RConnectionError):
-			JSONRPCClient(f"http://localhost:{server.port+1}", connect_timeout=2)
+			JSONRPCClient(f"http://localhost:{server.port + 1}", connect_timeout=2)
 			assert round(time.time() - start) == 2
 
 		with pytest.raises(ReadTimeout):
@@ -113,11 +113,11 @@ def test_proxy(tmp_path: Path) -> None:
 	with http_test_server(log_file=log_file) as server:
 		# Proxy will not be used for localhost (JSONRPCClient.no_proxy_addresses)
 		with pytest.raises(RConnectionError):
-			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url=f"http://localhost:{server.port}", connect_timeout=2)
+			JSONRPCClient(f"http://localhost:{server.port + 1}", proxy_url=f"http://localhost:{server.port}", connect_timeout=2)
 
 		proxy_env = {"http_proxy": f"http://localhost:{server.port}", "https_proxy": f"http://localhost:{server.port}"}
 		with environment(proxy_env), pytest.raises(RConnectionError):
-			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url="system", connect_timeout=2)
+			JSONRPCClient(f"http://localhost:{server.port + 1}", proxy_url="system", connect_timeout=2)
 
 		JSONRPCClient.no_proxy_addresses = []
 		# Now proxy will be used for localhost
@@ -130,19 +130,19 @@ def test_proxy(tmp_path: Path) -> None:
 				("127.0.0.1", "localhost"),
 				("127.0.0.1", "127.0.0.1"),
 			):
-				JSONRPCClient(f"http://{host}:{server.port+1}", proxy_url=f"http://{proxy_host}:{server.port}", connect_timeout=2)
+				JSONRPCClient(f"http://{host}:{server.port + 1}", proxy_url=f"http://{proxy_host}:{server.port}", connect_timeout=2)
 
 				request = json.loads(log_file.read_text(encoding="utf-8"))
 				# print(request)
-				assert request.get("path") == f"http://{host}:{server.port+1}/rpc"
+				assert request.get("path") == f"http://{host}:{server.port + 1}/rpc"
 				os.remove(log_file)
 
-		proxy_env = {"http_proxy": f"http://localhost:{server.port}", "https_proxy": f"http://localhost:{server.port+2}", "no_proxy": ""}
+		proxy_env = {"http_proxy": f"http://localhost:{server.port}", "https_proxy": f"http://localhost:{server.port + 2}", "no_proxy": ""}
 		with environment(proxy_env):
-			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url="system", connect_timeout=2)
+			JSONRPCClient(f"http://localhost:{server.port + 1}", proxy_url="system", connect_timeout=2)
 			request = json.loads(log_file.read_text(encoding="utf-8"))
 			# print(request)
-			assert request.get("path") == f"http://localhost:{server.port+1}/rpc"
+			assert request.get("path") == f"http://localhost:{server.port + 1}/rpc"
 			os.remove(log_file)
 
 		proxy_env = {"http_proxy": "http://should-not-be-used", "https_proxy": "http://should-not-be-used"}
@@ -161,16 +161,16 @@ def test_proxy_legacy(tmp_path: Path) -> None:
 		JSONRPCClient.no_proxy_addresses = []
 		proxy_env = {"http_proxy": "should-not-be-used", "https_proxy": "should-not-be-used"}
 
-		JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url=f"localhost:{server.port}", connect_timeout=2)
+		JSONRPCClient(f"http://localhost:{server.port + 1}", proxy_url=f"localhost:{server.port}", connect_timeout=2)
 		request = json.loads(log_file.read_text(encoding="utf-8"))
-		assert request.get("path") == f"http://localhost:{server.port+1}/rpc"
+		assert request.get("path") == f"http://localhost:{server.port + 1}/rpc"
 		os.remove(log_file)
 
-		proxy_env = {"http_proxy": f"localhost:{server.port}", "https_proxy": f"localhost:{server.port+2}", "no_proxy": ""}
+		proxy_env = {"http_proxy": f"localhost:{server.port}", "https_proxy": f"localhost:{server.port + 2}", "no_proxy": ""}
 		with environment(proxy_env):
-			JSONRPCClient(f"http://localhost:{server.port+1}", proxy_url="system", connect_timeout=2)
+			JSONRPCClient(f"http://localhost:{server.port + 1}", proxy_url="system", connect_timeout=2)
 			request = json.loads(log_file.read_text(encoding="utf-8"))
-			assert request.get("path") == f"http://localhost:{server.port+1}/rpc"
+			assert request.get("path") == f"http://localhost:{server.port + 1}/rpc"
 			os.remove(log_file)
 
 

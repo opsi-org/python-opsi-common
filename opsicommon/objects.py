@@ -1117,7 +1117,7 @@ class BoolConfig(Config):
 		Config.setDefaultValues(self, defaultValues)
 
 	def __str__(self) -> str:
-		return f"<{self.getType()}(id='{self.id}', description='{self.description}', " f"defaultValues={self.defaultValues})>"
+		return f"<{self.getType()}(id='{self.id}', description='{self.description}', defaultValues={self.defaultValues})>"
 
 
 Config.sub_classes["BoolConfig"] = BoolConfig
