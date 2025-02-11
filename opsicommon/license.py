@@ -68,9 +68,6 @@ OPSI_MODULE_STATE_OVER_LIMIT = "over_limit"
 OPSI_MODULE_STATE_CLOSE_TO_LIMIT = "close_to_limit"
 
 OPSI_MODULE_IDS = (
-	"basic",
-	"professional",
-	"enterprise",
 	"custom_ca",
 	"directory-connector",
 	"dynamic_depot",
@@ -80,6 +77,7 @@ OPSI_MODULE_IDS = (
 	"linux_agent",
 	"local_imaging",
 	"macos_agent",
+	"message_of_the_day",
 	"monitoring",
 	"mysql_backend",
 	"roaming_profiles",
@@ -94,7 +92,50 @@ OPSI_MODULE_IDS = (
 	"wim-capture",
 	"win-vhd",
 	"vpn",
+	"2fa",
 )
+
+OPSI_MODULE_BUNDLES = {
+	"basic": {
+		"directory-connector",
+		"linux_agent",
+		"license_management",
+		"local_imaging",
+		"monitoring",
+		"userroles",
+		"secureboot",
+		"wim-capture",
+	},
+	"professional": {
+		"directory-connector",
+		"linux_agent",
+		"license_management",
+		"local_imaging",
+		"monitoring",
+		"userroles",
+		"wim-capture",
+		"vpn",
+		"2fa",
+	},
+	"enterprise": {
+		"custom_ca",
+		"directory-connector",
+		"letsencrypt",
+		"license_management",
+		"linux_agent",
+		"local_imaging",
+		"macos_agent",
+		"message_of_the_day",
+		"monitoring",
+		"scalability1",
+		"secureboot",
+		"sso",
+		"userroles",
+		"wim-capture",
+		"vpn",
+		"2fa",
+	},
+}
 
 OPSI_OBSOLETE_MODULE_IDS = (
 	"dynamic_depot",

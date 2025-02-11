@@ -31,6 +31,7 @@ from opsicommon.license import (
 	OPSI_LICENSE_STATE_VALID,
 	OPSI_LICENSE_TYPE_CORE,
 	OPSI_LICENSE_TYPE_STANDARD,
+	OPSI_MODULE_BUNDLES,
 	OPSI_MODULE_IDS,
 	OPSI_MODULE_STATE_CLOSE_TO_LIMIT,
 	OPSI_MODULE_STATE_FREE,
@@ -100,6 +101,10 @@ def test_constants() -> None:
 		assert module in OPSI_MODULE_IDS
 	for module in OPSI_OBSOLETE_MODULE_IDS:
 		assert module in OPSI_MODULE_IDS
+	for modules in OPSI_MODULE_BUNDLES.values():
+		for module in modules:
+			assert module in OPSI_MODULE_IDS
+			assert module not in OPSI_OBSOLETE_MODULE_IDS
 
 
 def test_generate_key_pair() -> None:
@@ -264,12 +269,10 @@ def test_opsi_license_to_from_dict() -> None:
 def test_opsi_license_hash() -> None:
 	lic = OpsiLicense(**LIC1)
 	assert lic.get_hash(hex_digest=True) == (
-		"48f66b80da530eede6dda641d25a5716aabc3515873890b40cfdc53263e6bb30"
-		"145b5558c384b8c94fbcd6b33ce57edafd5b65489b6da07b58dcf75a9c352cea"
+		"48f66b80da530eede6dda641d25a5716aabc3515873890b40cfdc53263e6bb30145b5558c384b8c94fbcd6b33ce57edafd5b65489b6da07b58dcf75a9c352cea"
 	)
 	assert lic.get_hash(digest=True) == bytes.fromhex(
-		"48f66b80da530eede6dda641d25a5716aabc3515873890b40cfdc53263e6bb30"
-		"145b5558c384b8c94fbcd6b33ce57edafd5b65489b6da07b58dcf75a9c352cea"
+		"48f66b80da530eede6dda641d25a5716aabc3515873890b40cfdc53263e6bb30145b5558c384b8c94fbcd6b33ce57edafd5b65489b6da07b58dcf75a9c352cea"
 	)
 
 
