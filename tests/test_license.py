@@ -1061,7 +1061,7 @@ def test_license_module_bundle() -> None:
 
 		expected_modules = {
 			"professional": 20,
-			"2fa": 20,
+			"2fa": 40,
 			"directory-connector": 20,
 			"linux_agent": 20,
 			"license_management": 20,
