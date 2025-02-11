@@ -724,7 +724,7 @@ class OpsiLicensePool:
 		enabled_module_ids = self.enabled_module_ids
 		client_numbers = self.client_numbers
 		modules: dict[str, dict[str, Any]] = {}
-		for module_id in OPSI_MODULE_IDS:
+		for module_id in list(OPSI_MODULE_BUNDLES) + list(OPSI_MODULE_IDS):
 			if module_id in OPSI_FREE_MODULE_IDS:
 				modules[module_id] = {
 					"available": True,

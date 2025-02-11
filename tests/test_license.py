@@ -433,7 +433,7 @@ def test_opsi_license_pool_relevant_dates() -> None:
 
 		for at_date in dates:
 			modules = olp.get_modules(at_date=at_date)
-			assert sorted(OPSI_MODULE_IDS) == sorted(modules)
+			assert sorted(list(OPSI_MODULE_IDS) + list(OPSI_MODULE_BUNDLES)) == sorted(modules)
 
 			assert modules["treeview"]["available"]
 			assert modules["treeview"]["state"] == OPSI_MODULE_STATE_FREE
