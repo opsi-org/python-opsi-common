@@ -66,6 +66,10 @@ if TYPE_CHECKING:
 OBJECT_CLASSES: dict[str, Type[TBaseObject]] = {}
 BaseObject: Type[TBaseObject] | None = None
 
+PATH_PLACEHOLDERS = {
+	"{OPSICLIENTD_LOG_FILE_PATH}": "/var/log/opsi/opsiclientd.log",
+}
+
 logger = get_logger("opsicommon.general")
 
 
@@ -561,3 +565,12 @@ def compress_data(
 		1000 * (compress_end - compress_start),
 	)
 	return data
+
+
+def replace_placeholders(input_string: str, placeholders: dict[str, str]) -> str:
+	"""
+	Replace placeholders in the input string with the values from the placeholders dictionary.
+	"""
+	for placeholder, replacement in placeholders.items():
+		input_string = input_string.replace(placeholder, replacement)
+	return input_string
