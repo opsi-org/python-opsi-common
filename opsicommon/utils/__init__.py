@@ -66,9 +66,6 @@ if TYPE_CHECKING:
 OBJECT_CLASSES: dict[str, Type[TBaseObject]] = {}
 BaseObject: Type[TBaseObject] | None = None
 
-PATH_PLACEHOLDERS = {
-	"{OPSICLIENTD_LOG_FILE_PATH}": "/var/log/opsi-client-agent/opsiclientd.log",
-}
 
 logger = get_logger("opsicommon.general")
 

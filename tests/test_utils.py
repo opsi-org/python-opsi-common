@@ -21,7 +21,6 @@ from opsicommon.logging import LEVEL_TO_OPSI_LEVEL, LOG_WARNING, StreamHandler, 
 from opsicommon.objects import Product
 from opsicommon.system.info import is_linux
 from opsicommon.utils import (
-	PATH_PLACEHOLDERS,
 	Singleton,
 	_msgspec_json_decode,
 	_msgspec_json_encode,
@@ -348,10 +347,6 @@ def test_compress_decompress(compression: Literal["lz4", "deflate", "gz", "gzip"
 
 
 def test_replace_placeholders() -> None:
-	input_string = "This is a test string with some placeholders: {placeholder1}, {placeholder2} and {OPSICLIENTD_LOG_FILE_PATH}"
-	placeholders1 = {"{placeholder1}": "value1", "{placeholder2}": "value2"}
-	placeholders = {**placeholders1, **PATH_PLACEHOLDERS}
-	assert (
-		replace_placeholders(input_string, placeholders)
-		== "This is a test string with some placeholders: value1, value2 and /var/log/opsi-client-agent/opsiclientd.log"
-	)
+	input_string = "This is a test string with some placeholders: {placeholder1}, {placeholder2}"
+	placeholders = {"{placeholder1}": "value1", "{placeholder2}": "value2"}
+	assert replace_placeholders(input_string, placeholders) == "This is a test string with some placeholders: value1, value2"
