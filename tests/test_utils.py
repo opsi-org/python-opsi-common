@@ -38,6 +38,7 @@ from opsicommon.utils import (
 	msgpack_decode,
 	msgpack_encode,
 	prepare_proxy_environment,
+	replace_placeholders,
 	retry,
 	timestamp,
 	unix_timestamp,
@@ -343,3 +344,9 @@ def test_compress_decompress(compression: Literal["lz4", "deflate", "gz", "gzip"
 	data = random.randbytes(50_000)
 	comp_data = compress_data(data=data, compression=compression)
 	assert decompress_data(data=comp_data, compression=compression) == data
+
+
+def test_replace_placeholders() -> None:
+	input_string = "This is a test string with some placeholders: {placeholder1}, {placeholder2}"
+	placeholders = {"{placeholder1}": "value1", "{placeholder2}": "value2"}
+	assert replace_placeholders(input_string, placeholders) == "This is a test string with some placeholders: value1, value2"
