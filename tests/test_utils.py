@@ -353,5 +353,5 @@ def test_replace_placeholders() -> None:
 	placeholders = {**placeholders1, **PATH_PLACEHOLDERS}
 	assert (
 		replace_placeholders(input_string, placeholders)
-		== "This is a test string with some placeholders: value1, value2 and /var/log/opsi/opsiclientd.log"
+		== "This is a test string with some placeholders: value1, value2 and /var/log/opsi-client-agent/opsiclientd.log"
 	)
