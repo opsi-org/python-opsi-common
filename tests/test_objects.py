@@ -229,7 +229,7 @@ def test_object_classes() -> None:
 		AuditSoftwareToLicensePool("sname", "1.0", "sub", "en", "x64", "licpool1"),
 		SoftwareLicenseToLicensePool("lic1", "licpool1", "123123213"),
 		LicenseOnClient("lic1", "licpool1", "client.dom.tld", "123", "notes"),
-		AuditSoftware("sname", "1.0", "sub", "en", "x64", "sw1", "disp1", "1.0", 10000),
+		AuditSoftware("sname", "1.0", "sub", "en", "x64", "sw1", "disp1", "1.0", 10000, False),
 		AuditSoftwareOnClient(
 			"sname",
 			"1.0",

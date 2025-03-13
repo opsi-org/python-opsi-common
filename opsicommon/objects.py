@@ -2822,6 +2822,7 @@ class AuditSoftware(Entity):
 		windowsDisplayName: str | None = None,
 		windowsDisplayVersion: str | None = None,
 		installSize: int | None = None,
+		isOperatingSystem: bool = False,
 	):
 		self.windowsSoftwareId: str | None = None
 		self.windowsDisplayName: str | None = None
@@ -2832,6 +2833,7 @@ class AuditSoftware(Entity):
 		self.setSubVersion(subVersion)
 		self.setLanguage(language)
 		self.setArchitecture(architecture)
+		self.setIsOperatingSystem(isOperatingSystem)
 
 		if windowsSoftwareId is not None:
 			self.setWindowsSoftwareId(windowsSoftwareId)
@@ -2906,6 +2908,12 @@ class AuditSoftware(Entity):
 
 	def setInstallSize(self, installSize: int) -> None:
 		self.installSize = forceInt(installSize)
+
+	def getIsOperatingSystem(self) -> bool:
+		return self.isOperatingSystem
+
+	def setIsOperatingSystem(self, isOperatingSystem: bool) -> None:
+		self.isOperatingSystem = forceBool(isOperatingSystem)
 
 
 Entity.sub_classes["AuditSoftware"] = AuditSoftware
