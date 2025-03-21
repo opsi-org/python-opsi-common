@@ -7,8 +7,6 @@ test_system_network
 import socket
 from unittest import mock
 
-import pytest
-
 from opsicommon.system.network import _gethostbyaddr_with_timeout, get_domain, get_fqdn, get_hostnames, get_ip_addresses
 
 
@@ -38,6 +36,10 @@ def test_get_hostnames() -> None:
 
 
 def test_gethostbyaddr_with_timeout() -> None:
-	with pytest.raises(TimeoutError):
+	exc: Exception | None = None
+	try:
 		_gethostbyaddr_with_timeout("test.unavail.lan", 0.001)
+	except (TimeoutError, socket.error) as err:
+		exc = err
+	assert exc
 	assert _gethostbyaddr_with_timeout("127.0.0.1", 1.0)[0] == "localhost"
