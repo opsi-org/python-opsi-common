@@ -1,12 +1,15 @@
 [Package]
 version = "1337"
-depends = [{ package="mshotfix", condition=">=", version="202301-1" }, { package="hwaudit" }]
+depends = [
+	{ package = "mshotfix", condition = ">=", version = "202301-1" },
+	{ package = "hwaudit" },
+]
 
 [Product]
 type = "LocalbootProduct"
 id = "localboot_new"
 name = "localboot new"
-description = """this is a localboot new test package"""
+description = """this is a localboot new test package (installs to c:\\program files\\localboot_new)"""
 advice = """use the new one"""
 version = "42.0"
 priority = 0
