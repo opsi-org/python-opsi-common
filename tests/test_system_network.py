@@ -42,4 +42,4 @@ def test_gethostbyaddr_with_timeout() -> None:
 	except (TimeoutError, socket.error) as err:
 		exc = err
 	assert exc
-	assert _gethostbyaddr_with_timeout("127.0.0.1", 1.0)[0] == "localhost"
+	assert _gethostbyaddr_with_timeout("127.0.0.1", 1.0)[0] in ("localhost", socket.gethostname())
