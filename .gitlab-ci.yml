@@ -1,4 +1,4 @@
-image: docker.uib.gmbh/opsi/dev/pybuilder:deb9-py3.13
+image: docker.uib.gmbh/opsi/dev/pybuilder:deb9-py3.11
 
 stages:
   - test
@@ -9,12 +9,12 @@ pytest-darwin:
   #when: manual
   stage: test
   tags:
-    - catalina-py313-x64
+    - catalina-py311-x64
   script:
     - curl -o opsi-dev-tools.tar.gz "$OPSIDEVTOOLS_URL_DARWIN_X64"
     - tar -xvf opsi-dev-tools.tar.gz
     - poetry --version
-    - poetry env use 3.13
+    - poetry env use 3.11
     - poetry cache clear --all --quiet uibpypi
     #- poetry lock --regenerate
     - poetry install
@@ -34,12 +34,12 @@ pytest-windows:
   #when: manual
   stage: test
   tags:
-    - win10-py313-x86
+    - win10-py311-x86
   script:
     - Invoke-WebRequest -UseBasicParsing -Uri "$OPSIDEVTOOLS_URL_WINDOWS_X86" -OutFile opsi-dev-tools.zip
     - Expand-Archive opsi-dev-tools.zip -DestinationPath .
     - .\opsi-dev-tool.exe --self-install
-    - $pythonPath = py -3.13 -c "import sys; print(sys.executable)"
+    - $pythonPath = py -3.11 -c "import sys; print(sys.executable)"
     - poetry --version
     - poetry env use $pythonPath
     - poetry cache clear --all --quiet uibpypi
@@ -64,6 +64,7 @@ pytest-linux:
     - apt update
     - apt --yes install zstd # need zstd for packaging tests
     - poetry --version
+    - poetry env use 3.11
     - poetry cache clear --all --quiet uibpypi
     #- poetry lock --regenerate
     - poetry install

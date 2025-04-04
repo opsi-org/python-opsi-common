@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 import zstandard
 
-from opsicommon.utils import json_decode, msgpack_decode
 from opsicommon.objects import ProductDependency
 from opsicommon.package import PackageDependency
 from opsicommon.package.repo_meta import (
@@ -24,6 +23,7 @@ from opsicommon.package.repo_meta import (
 	RepoMetaProductDependency,
 )
 from opsicommon.types import Architecture, OperatingSystem
+from opsicommon.utils import json_decode, msgpack_decode
 
 TEST_REPO = Path() / "tests/data/repo_meta"
 
