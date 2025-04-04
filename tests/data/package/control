@@ -6,7 +6,7 @@ depends: mshotfix (>= 202301-1), hwaudit
 type: localboot
 id: localboot_new
 name: localboot new
-description: this is a localboot new test package
+description: this is a localboot new test package (installs to c:\program files\localboot_new)
 advice: use the new one
 version: 42.0
 priority: 0

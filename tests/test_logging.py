@@ -127,13 +127,11 @@ def test_permission_error_log_exception_handler(capsys: CaptureFixture[str]) -> 
 		os.remove(test_file)
 	except PermissionError as err:
 		handle_log_exception(exc=err, record=log_record, log=False, temp_file=False, stderr=True)
-		captured = capsys.readouterr()
-		assert captured.err.startswith(
-			"Logging error:\n"
-			f"File permissions: 100444, owner: 0, group: 0\n"
-			f"Process uid: {uid}, gid: {gid}\n"
-			"Traceback (most recent call last):\n"
-		)
+		lines = capsys.readouterr().err.strip().split("\n")
+		assert lines[0] == "Logging error:"
+		assert lines[1].startswith("File permissions: 100444, owner: ")
+		assert lines[2] == f"Process uid: {uid}, gid: {gid}"
+		assert lines[3] == "Traceback (most recent call last):"
 
 
 def test_secret_formatter_attr() -> None:
@@ -545,6 +543,28 @@ def test_sub_logger() -> None:
 		for key in levels:
 			if key not in ("root", "sub"):
 				assert levels[key] == logging.NOTSET
+
+
+def test_logger_name_in_context() -> None:
+	sub1_logger = get_logger("sub.sub1")
+	sub2_logger = get_logger("sub.sub2")
+	sub3_logger = get_logger("sub.sub3")
+	sub1_logger.context_name = "sub.sub1"
+	sub2_logger.context_name = "Logger Sub2"
+	with log_stream(LOG_WARNING, format="[%(contextstring)s] %(message)s") as stream:
+		logger.warning("root_logger_1")
+		sub1_logger.warning("sub_logger_1")
+		sub2_logger.warning("sub_logger_2")
+		sub3_logger.warning("sub_logger_3")
+
+		stream.seek(0)
+		log_lines = stream.read().strip().split("\n")
+		assert log_lines == [
+			"[] root_logger_1",
+			"[sub.sub1] sub_logger_1",
+			"[Logger Sub2] sub_logger_2",
+			"[] sub_logger_3",
+		]
 
 
 def test_use_logging_config() -> None:

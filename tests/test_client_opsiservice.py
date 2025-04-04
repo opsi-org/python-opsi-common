@@ -48,6 +48,7 @@ from opsicommon.client.opsiservice import (
 	MIN_VERSION_MESSAGEBUS,
 	MIN_VERSION_MSGPACK,
 	MIN_VERSION_SESSION_API,
+	RPC_TIMEOUTS_DEFAULT,
 	UIB_OPSI_CA,
 	BackendManager,
 	DAVFileInfo,
@@ -68,6 +69,7 @@ from opsicommon.client.opsiservice import (
 	ServiceConnectionListener,
 	ServiceVerificationFlags,
 	WebSocketApp,
+	get_rpc_timeout,
 	get_service_client,
 )
 from opsicommon.exceptions import (
@@ -1023,15 +1025,19 @@ def test_proxy(tmp_path: Path) -> None:
 		return res
 
 	proxy_port = 18181
-	with run_proxy(proxy_port) as proxy_server, http_test_server(
-		generate_cert=True, log_file=server_log_file, response_headers={"server": "opsiconfd 4.3.1.0 (uvicorn)"}
-	) as server, mock.patch("opsicommon.client.opsiservice.ServiceClient.no_proxy_addresses", no_proxy_addresses):
+	with (
+		run_proxy(proxy_port) as proxy_server,
+		http_test_server(
+			generate_cert=True, log_file=server_log_file, response_headers={"server": "opsiconfd 4.3.1.0 (uvicorn)"}
+		) as server,
+		mock.patch("opsicommon.client.opsiservice.ServiceClient.no_proxy_addresses", no_proxy_addresses),
+	):
 		# Proxy must not be used (no_proxy_addresses)
 		with mock.patch(
 			"opsicommon.client.opsiservice.ServiceClient.no_proxy_addresses", ["::1", "127.0.0.1", "ip6-localhost", "localhost", local_ip]
 		):
 			with ServiceClient(
-				f"https://{local_ip}:{server.port}", proxy_url=f"http://localhost:{server.port+1}", verify="accept_all", connect_timeout=2
+				f"https://{local_ip}:{server.port}", proxy_url=f"http://localhost:{server.port + 1}", verify="accept_all", connect_timeout=2
 			) as client:
 				client.connect()
 				client.connect_messagebus()
@@ -1376,7 +1382,7 @@ def test_request_exceptions() -> None:
 
 def test_multi_address() -> None:
 	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.1.0.1 (uvicorn)"}) as server:
-		with ServiceClient((f"https://127.0.0.1:{server.port+1}", f"https://127.0.0.1:{server.port}"), verify="accept_all") as client:
+		with ServiceClient((f"https://127.0.0.1:{server.port + 1}", f"https://127.0.0.1:{server.port}"), verify="accept_all") as client:
 			client.connect()
 			assert client.connected
 			assert client.base_url == f"https://127.0.0.1:{server.port}"
@@ -1803,7 +1809,7 @@ def test_timeouts() -> None:
 	listener = MyConnectionListener()
 
 	with http_test_server(generate_cert=True, response_delay=3) as server:
-		with ServiceClient(f"https://127.0.0.1:{server.port+1}", connect_timeout=4) as client:
+		with ServiceClient(f"https://127.0.0.1:{server.port + 1}", connect_timeout=4) as client:
 			client.register_connection_listener(listener)
 			with pytest.raises(OpsiServiceConnectionError):
 				client.connect()
@@ -2295,9 +2301,11 @@ def test_messagebus_jsonrpc() -> None:
 				assert res == list(_params or [])
 
 			delay = 3.0
+			get_rpc_timeout.cache_clear()
 			with mock.patch("opsicommon.client.opsiservice.RPC_TIMEOUTS", {"test": 1}):
 				with pytest.raises(OpsiServiceTimeoutError):
 					res = messagebus.jsonrpc("test")
+			get_rpc_timeout.cache_clear()
 
 			rpc_error = {"code": 0, "message": "error_message", "data": {"class": "BackendPermissionDeniedError", "details": "details"}}
 			with pytest.raises(BackendPermissionDeniedError) as err:
@@ -2606,3 +2614,11 @@ def test_permission_error_ca_cert_file_lock() -> None:
 				_lock_file(file, exclusive=True)
 				client.connect()
 				assert attempts == 3
+
+
+@pytest.mark.parametrize(
+	("method", "timeout"),
+	[("hostControlSafe_fireEvent", 10.0), ("depot_installPackage", 4 * 3600.0), ("backend_getInterface", float(RPC_TIMEOUTS_DEFAULT))],
+)
+def test_get_rpc_timeout(method: str, timeout: float) -> None:
+	assert get_rpc_timeout(method) == timeout

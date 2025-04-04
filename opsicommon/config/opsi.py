@@ -12,7 +12,7 @@ import socket
 from functools import lru_cache
 from pathlib import Path
 from shutil import chown
-from subprocess import PIPE, Popen, CalledProcessError, TimeoutExpired
+from subprocess import PIPE, CalledProcessError, Popen, TimeoutExpired
 from threading import Lock
 from typing import Any
 from urllib.parse import urlparse
@@ -127,9 +127,11 @@ def get_host_key(server_role: str) -> str:
 			],
 			stdin=PIPE,
 			stdout=PIPE,
-			stderr=PIPE
+			stderr=PIPE,
 		) as proc:
-			out = proc.communicate(input=f"[client]\nuser={mysql_conf['username']}\npassword={mysql_conf['password']}\n".encode(), timeout=5)
+			out = proc.communicate(
+				input=f"[client]\nuser={mysql_conf['username']}\npassword={mysql_conf['password']}\n".encode(), timeout=5
+			)
 			if proc.returncode != 0:
 				return ""
 			return out[0].decode().strip()

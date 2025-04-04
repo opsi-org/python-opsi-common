@@ -6,6 +6,7 @@
 system.network
 """
 
+import concurrent.futures
 import ipaddress
 import socket
 from typing import Any, Generator
@@ -64,6 +65,15 @@ def get_domain() -> str:
 	return ".".join(get_fqdn().split(".")[1:])
 
 
+def _gethostbyaddr_with_timeout(address: str, timeout: float) -> tuple[str, list[str], list[str]]:
+	with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+		future = executor.submit(socket.gethostbyaddr, address)
+		try:
+			return future.result(timeout=timeout)
+		except concurrent.futures.TimeoutError:
+			raise TimeoutError(f"DNS lookup for {address} timed out after {timeout} seconds")
+
+
 def get_hostnames() -> set[str]:
 	names = {"localhost", "ip6-localhost", "ip6-loopback"}
 	try:
@@ -72,10 +82,10 @@ def get_hostnames() -> set[str]:
 		logger.info("Failed to get fqdn: %s", err)
 	for addr in get_ip_addresses():
 		try:
-			(hostname, aliases, _addr) = socket.gethostbyaddr(addr["address"])
+			(hostname, aliases, _addr) = _gethostbyaddr_with_timeout(addr["address"], timeout=0.1)
 			names.add(hostname)
 			for alias in aliases:
 				names.add(alias)
-		except socket.error as err:
+		except (socket.error, TimeoutError) as err:
 			logger.info("No hostname for %s: %s", addr, err)
 	return names

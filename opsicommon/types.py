@@ -142,7 +142,7 @@ _LICENSE_CONTRACT_ID_REGEX = re.compile(r"^[a-z0-9][a-z0-9-_. :]*$")
 _SOFTWARE_LICENSE_ID_REGEX = re.compile(r"^[a-z0-9][a-z0-9-_. :]*$")
 _LICENSE_POOL_ID_REGEX = re.compile(r"^[a-z0-9][a-z0-9-_. :]*$")
 _LANGUAGE_CODE_REGEX = re.compile(r"^([a-z]{2,3})[-_]?([a-z]{4})?[-_]?([a-z]{2})?$")
-_ARCHITECTURE_REGEX = re.compile(r"^(x86|x64)$")
+_ARCHITECTURE_REGEX = re.compile(r"^(x86|x64|arm64|all)$")
 
 
 class OperatingSystem(StrEnum):
@@ -360,7 +360,7 @@ def forceOpsiTimestamp(var: Any) -> str:
 		if not match:
 			raise ValueError(f"Bad opsi timestamp: {var}")
 		return f"{match.group(1)}-{match.group(2)}-{match.group(3)} 00:00:00"
-	return f"{match.group(1)}-{match.group(2)}-{match.group(3)}" f" {match.group(4)}:{match.group(5)}:{match.group(6)}"
+	return f"{match.group(1)}-{match.group(2)}-{match.group(3)} {match.group(4)}:{match.group(5)}:{match.group(6)}"
 
 
 def forceUsername(var: Any) -> str:
@@ -398,7 +398,7 @@ def forceHardwareAddress(var: Any) -> str:
 	if not match:
 		raise ValueError(f"Invalid hardware address: {var}")
 
-	return (f"{match.group(1)}:{match.group(2)}:{match.group(3)}:" f"{match.group(4)}:{match.group(5)}:{match.group(6)}").lower()
+	return (f"{match.group(1)}:{match.group(2)}:{match.group(3)}:{match.group(4)}:{match.group(5)}:{match.group(6)}").lower()
 
 
 def forceIPAddress(var: Any) -> str:
@@ -604,9 +604,7 @@ def forceObjectClass(var: Any, objectClass: Type[BaseObjectT]) -> BaseObjectT:
 
 	if isinstance(var, str) and var.startswith("{"):
 		if not from_json:
-			from opsicommon.objects import (
-				from_json,
-			)
+			from opsicommon.objects import from_json
 
 		try:
 			return from_json(var)  # type: ignore[misc]
@@ -615,9 +613,7 @@ def forceObjectClass(var: Any, objectClass: Type[BaseObjectT]) -> BaseObjectT:
 
 	if isinstance(var, dict):
 		if not get_object_type:
-			from opsicommon.objects import (
-				get_object_type,
-			)
+			from opsicommon.objects import get_object_type
 		try:
 			_class = objectClass
 			if "type" in var:

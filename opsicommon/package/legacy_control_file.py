@@ -453,7 +453,7 @@ class LegacyControlFile:
 		lines.append(f"priority: {self.product.getPriority() or '0'}")
 		lines.append(f"licenseRequired: {self.product.getLicenseRequired()}")
 		if self.product.getProductClassIds() is not None:
-			lines.append(f'productClasses: {", ".join(self.product.getProductClassIds())}')
+			lines.append(f"productClasses: {', '.join(self.product.getProductClassIds())}")
 		lines.append(f"setupScript: {self.product.getSetupScript() or ''}")
 		lines.append(f"uninstallScript: {self.product.getUninstallScript() or ''}")
 		lines.append(f"updateScript: {self.product.getUpdateScript() or ''}")
@@ -469,7 +469,7 @@ class LegacyControlFile:
 
 		if self.product.getWindowsSoftwareIds():
 			lines.append("[Windows]")
-			lines.append(f'softwareIds: {", ".join(self.product.getWindowsSoftwareIds())}')
+			lines.append(f"softwareIds: {', '.join(self.product.getWindowsSoftwareIds())}")
 			lines.append("")
 
 		for dependency in self.productDependencies:

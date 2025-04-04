@@ -20,16 +20,7 @@ import tempfile
 import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass
-from logging import (
-	NOTSET,
-	FileHandler,
-	Formatter,
-	Handler,
-	LogRecord,
-	NullHandler,
-	PlaceHolder,
-	StreamHandler,
-)
+from logging import NOTSET, FileHandler, Formatter, Handler, LogRecord, NullHandler, PlaceHolder, StreamHandler
 from logging.handlers import RotatingFileHandler
 from traceback import format_stack, format_tb
 from typing import IO, TYPE_CHECKING, Any, Generator
@@ -56,12 +47,22 @@ from .constants import (
 if TYPE_CHECKING:
 	from rich.console import Console
 
-context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("context", default={})
+_context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("context", default={})
+
+_logger_context_names: dict[str, str] = {}
 
 
 class OPSILogger(logging.Logger):
 	def __init__(self, name: str, level: int | str = NOTSET) -> None:
 		super().__init__(name, level)
+
+	@property
+	def context_name(self) -> str:
+		return _logger_context_names.get(self.name, "")
+
+	@context_name.setter
+	def context_name(self, value: str) -> None:
+		_logger_context_names[self.name] = value
 
 	def secret(self, msg: Any, *args: Any, **kwargs: Any) -> None:
 		"""
@@ -294,7 +295,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		:returns: Context for currently active thread/task.
 		:rtype: Dict
 		"""
-		return context.get()
+		return _context.get()
 
 	def set_filter(self, filter_dict: dict[str, Any] | None = None) -> None:
 		"""
@@ -336,8 +337,9 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		:rtype: bool
 		"""
 		if not getattr(record, "context", None):
-			record.context = context.get()  # type: ignore[attr-defined]
+			record.context = _context.get()  # type: ignore[attr-defined]
 			record.context["logger"] = record.name  # type: ignore[attr-defined]
+
 		for filter_key, filter_values in self.filter_dict.items():
 			record_value = record.context.get(filter_key)  # type: ignore[attr-defined]
 			# Filter out record if key not present or value not in filter values
@@ -357,8 +359,6 @@ class ContextSecretFormatter(Formatter):
 	2. It can replace secret strings specified to a SecretFilter by a
 	        replacement string, thus censor passwords etc.
 	"""
-
-	logger_name_in_context_string = False
 
 	def __init__(self, orig_formatter: Formatter) -> None:
 		"""
@@ -409,10 +409,10 @@ class ContextSecretFormatter(Formatter):
 		:rytpe: str
 		"""
 
-		context_ = getattr(record, "context", None)
-		if context_:
-			record.contextstring = ",".join(
-				[str(v) for k, v in context_.items() if self.logger_name_in_context_string or k != "logger"]  # type: ignore[attr-defined]
+		if context_ := getattr(record, "context", None):
+			logger_name = _logger_context_names.get(record.name) or ""
+			record.contextstring = ",".join(  # type: ignore[attr-defined]
+				[logger_name if k == "logger" else str(v) for k, v in context_.items() if logger_name or k != "logger"]
 			)
 
 		msg = self.orig_formatter.format(record)
@@ -842,7 +842,7 @@ def log_context(new_context: dict[str, Any]) -> Generator[None, None, None]:
 		yield
 	finally:
 		if token is not None:
-			context.reset(token)
+			_context.reset(token)
 
 
 def set_context(new_context: dict[str, Any]) -> contextvars.Token:
@@ -858,7 +858,7 @@ def set_context(new_context: dict[str, Any]) -> contextvars.Token:
 	:rtype: contextvars.Token
 	"""
 	if isinstance(new_context, dict):
-		return context.set(new_context)
+		return _context.set(new_context)
 	return None
 
 
@@ -1036,6 +1036,8 @@ def reset_logging() -> None:
 	remove_all_handlers()
 	logging.root.setLevel(logging.WARNING)
 	_logging_state.reset()
+	_logger_context_names.clear()
+	context_filter.set_filter(None)
 	logging_config(stderr_level=logging.WARNING)
 
 

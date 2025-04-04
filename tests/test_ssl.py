@@ -78,33 +78,109 @@ def test_create_x509_name() -> None:
 
 @pytest.mark.linux
 @pytest.mark.parametrize(
-	"distro_id, distro_like, expected_path, expected_cmd, exc",
+	"distro_id, distro_like, expected_ca_cert_path, expected_ca_cert_update_cmd, expected_custom_ca_certs_path, expected_exception",
 	(
-		("centos", "", "/etc/pki/ca-trust/source/anchors", "update-ca-trust", None),
-		("somedist", "abc xyz rhel", "/etc/pki/ca-trust/source/anchors", "update-ca-trust", None),
-		("debian", "", "/usr/local/share/ca-certificates", "update-ca-certificates", None),
-		("", "ubuntu", "/usr/local/share/ca-certificates", "update-ca-certificates", None),
-		("sles", "sles", "/usr/share/pki/trust/anchors", "update-ca-certificates", None),
-		("suse", "", "/usr/share/pki/trust/anchors", "update-ca-certificates", None),
-		("oracle", "", "/usr/share/pki/ca-trust-source/anchors", "update-ca-trust", None),
-		("unknown", "", "", "", RuntimeError),
-		("", "", "", "", RuntimeError),
-		(None, None, "", "", RuntimeError),
+		(
+			"centos",
+			"",
+			"/etc/pki/tls/certs/ca-bundle.crt",
+			["update-ca-trust"],
+			"/etc/pki/ca-trust/source/anchors",
+			None,
+		),
+		(
+			"somedist",
+			"abc xyz rhel",
+			"/etc/pki/tls/certs/ca-bundle.crt",
+			["update-ca-trust"],
+			"/etc/pki/ca-trust/source/anchors",
+			None,
+		),
+		(
+			"debian",
+			"",
+			"/etc/ssl/certs/ca-certificates.crt",
+			["update-ca-certificates"],
+			"/usr/local/share/ca-certificates",
+			None,
+		),
+		(
+			"",
+			"ubuntu",
+			"/etc/ssl/certs/ca-certificates.crt",
+			["update-ca-certificates"],
+			"/usr/local/share/ca-certificates",
+			None,
+		),
+		(
+			"sles",
+			"sles",
+			"/etc/ssl/ca-bundle.pem",
+			["update-ca-certificates"],
+			"/usr/share/pki/trust/anchors",
+			None,
+		),
+		(
+			"suse",
+			"",
+			"/etc/ssl/ca-bundle.pem",
+			["update-ca-certificates"],
+			"/usr/share/pki/trust/anchors",
+			None,
+		),
+		(
+			"oracle",
+			"",
+			"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+			["update-ca-trust"],
+			"/usr/share/pki/ca-trust-source/anchors",
+			None,
+		),
+		(
+			"unknown",
+			"",
+			"",
+			"",
+			"",
+			RuntimeError,
+		),
+		(
+			"",
+			"",
+			"",
+			"",
+			"",
+			RuntimeError,
+		),
+		(
+			None,
+			None,
+			"",
+			"",
+			"",
+			RuntimeError,
+		),
 	),
 )
-def test_get_cert_path_and_cmd(
-	distro_id: str, distro_like: str, expected_path: str, expected_cmd: str, exc: Optional[Type[Exception]]
+def test_get_system_ca_cert_info(
+	distro_id: str,
+	distro_like: str,
+	expected_ca_cert_path: str,
+	expected_ca_cert_update_cmd: list[str],
+	expected_custom_ca_certs_path: str,
+	expected_exception: Optional[Type[Exception]],
 ) -> None:
-	from opsicommon.ssl.linux import (
-		_get_cert_path_and_cmd,
-	)
+	from opsicommon.ssl.linux import get_system_ca_cert_info
 
 	with mock.patch("distro.id", lambda: distro_id), mock.patch("distro.like", lambda: distro_like):
-		if exc:
-			with pytest.raises(exc):
-				_get_cert_path_and_cmd()
+		if expected_exception:
+			with pytest.raises(expected_exception):
+				get_system_ca_cert_info()
 		else:
-			assert _get_cert_path_and_cmd() == (expected_path, expected_cmd)
+			info = get_system_ca_cert_info()
+			assert info.custom_ca_certs_path == Path(expected_custom_ca_certs_path)
+			assert info.ca_cert_path == Path(expected_ca_cert_path)
+			assert info.ca_cert_update_cmd == expected_ca_cert_update_cmd
 
 
 # pyright: reportMissingModuleSource=false
@@ -128,11 +204,8 @@ def test_create_ca() -> None:
 	assert name_constraints.value.permitted_subtrees[2].value == "localhost"
 
 	try:
-		from OpenSSL.crypto import (  # type: ignore[import-untyped]
-			FILETYPE_ASN1,
-			X509,
-			dump_certificate,
-		)
+		from OpenSSL.crypto import FILETYPE_ASN1  # type: ignore[import-untyped]
+		from OpenSSL.crypto import X509, dump_certificate
 
 		openssl_x509 = X509.from_cryptography(ca_cert)
 		assert ca_cert.fingerprint(hashes.SHA1()).hex().upper() == openssl_x509.digest("sha1").decode("ascii").replace(":", "")

@@ -114,6 +114,10 @@ RPC_TIMEOUTS = {
 	"depot_createMd5SumFile": 3600,
 	"depot_createZsyncFile": 3600,
 }
+RPC_TIMEOUTS_DEFAULT = 300
+RPC_TIMEOUTS_REGEX = {
+	re.compile("^hostControl"): 10,
+}
 
 _DEFAULT_HTTPS_PORT = 4447
 
@@ -159,6 +163,16 @@ logger = get_logger("opsicommon.general")
 @lru_cache
 def get_opsi_config() -> OpsiConfig:
 	return OpsiConfig(upgrade_config=False)
+
+
+@lru_cache
+def get_rpc_timeout(method: str) -> float:
+	if method in RPC_TIMEOUTS:
+		return float(RPC_TIMEOUTS[method])
+	for regex, timeout in RPC_TIMEOUTS_REGEX.items():
+		if regex.match(method):
+			return float(timeout)
+	return float(RPC_TIMEOUTS_DEFAULT)
 
 
 class ServiceVerificationFlags(str, Enum):
@@ -911,7 +925,7 @@ class ServiceClient:
 							f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])',
 							locals=exec_locals,
 						)
-				setattr(instance, method_name, MethodType(exec_locals[method_name] if exec_locals else eval(method_name), self))
+				setattr(instance, method_name, MethodType(exec_locals[method_name] if exec_locals else eval(method_name), self))  # type: ignore[arg-type]
 			except Exception as err:
 				logger.error("Failed to create instance method '%s': %s", method, err)
 
@@ -1519,7 +1533,7 @@ class ServiceClient:
 			data = gzip.compress(data)
 
 		if not read_timeout:
-			read_timeout = float(RPC_TIMEOUTS.get(method, 300))
+			read_timeout = get_rpc_timeout(method)
 
 		logger.info(
 			"JSONRPC request to %s: id=%r, method=%s, Content-Type=%s, Content-Encoding=%s, timeout=%r",
@@ -1932,7 +1946,7 @@ class Messagebus(Thread):
 			params = tuple(params)
 		msg = JSONRPCRequestMessage(sender="*", channel="service:config:jsonrpc", method=method, params=params)
 		self.send_message(msg)
-		timeout = float(RPC_TIMEOUTS.get(method, 300))
+		timeout = get_rpc_timeout(method)
 		res = self.wait_for_jsonrpc_response_message(rpc_id=msg.rpc_id, timeout=timeout)
 		if not return_result_only:
 			return {"jsonrpc": "2.0", "id": res.rpc_id, "result": res.result, "error": res.error}

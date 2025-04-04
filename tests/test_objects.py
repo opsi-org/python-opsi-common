@@ -229,7 +229,7 @@ def test_object_classes() -> None:
 		AuditSoftwareToLicensePool("sname", "1.0", "sub", "en", "x64", "licpool1"),
 		SoftwareLicenseToLicensePool("lic1", "licpool1", "123123213"),
 		LicenseOnClient("lic1", "licpool1", "client.dom.tld", "123", "notes"),
-		AuditSoftware("sname", "1.0", "sub", "en", "x64", "sw1", "disp1", "1.0", 10000),
+		AuditSoftware("sname", "1.0", "sub", "en", "x64", "sw1", "disp1", "1.0", 10000, False),
 		AuditSoftwareOnClient(
 			"sname",
 			"1.0",
@@ -762,9 +762,7 @@ def test_product_name_can_be_very_long() -> None:
 	product = Product(id="new_prod", name="New Product for Tests", productVersion="1.0", packageVersion="1.0")
 
 	new_name = (
-		"This is a very long name with 128 characters to test the "
-		"creation of long product names that should work now but "
-		"were limited b4"
+		"This is a very long name with 128 characters to test the creation of long product names that should work now but were limited b4"
 	)
 
 	product.setName(new_name)

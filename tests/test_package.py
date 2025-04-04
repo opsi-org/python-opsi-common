@@ -100,7 +100,7 @@ def test_load_control(form: str) -> None:
 	print_info(package)
 	assert package.product.id == "localboot_new"
 	assert package.product.name == "localboot new"
-	assert package.product.description == "this is a localboot new test package"
+	assert package.product.description == r"this is a localboot new test package (installs to c:\program files\localboot_new)"
 	assert package.product.advice == "use the new one"
 	assert package.product.productVersion == "42.0"
 	assert package.product.packageVersion == "1337"
