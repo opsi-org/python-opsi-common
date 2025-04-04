@@ -923,7 +923,8 @@ class ServiceClient:
 					with warnings.catch_warnings():
 						exec(
 							f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])',
-							locals=exec_locals,
+							None,
+							exec_locals,
 						)
 				setattr(instance, method_name, MethodType(exec_locals[method_name] if exec_locals else eval(method_name), self))  # type: ignore[arg-type]
 			except Exception as err:
