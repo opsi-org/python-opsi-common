@@ -65,6 +65,7 @@ if is_windows():
 			sp_env.update(env or {})
 
 			process = PtyProcess.spawn(shlex.split(shell), dimensions=(rows, cols), env=sp_env, cwd=cwd)
+			process.fileobj.setblocking(True)  # To counteract socket.setdefaulttimeout(60)
 		except Exception as err:
 			raise RuntimeError(f"Failed to start pty with shell {shell!r}: {err}") from err
 
@@ -264,6 +265,7 @@ class Terminal:
 				await self._send_message(message)
 		except TimeoutError as err:
 			logger.info("Terminal timed out: %s", err)
+			logger.debug(err, exc_info=True)
 		except (IOError, EOFError) as err:
 			logger.debug("Terminal IO error: %s", err)
 			if not self._closing:
