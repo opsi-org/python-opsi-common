@@ -12,7 +12,7 @@ import socket
 from functools import lru_cache
 from pathlib import Path
 from shutil import chown
-from subprocess import PIPE, Popen, CalledProcessError, TimeoutExpired
+from subprocess import PIPE, CalledProcessError, Popen, TimeoutExpired
 from threading import Lock
 from typing import Any
 from urllib.parse import urlparse
