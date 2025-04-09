@@ -12,6 +12,7 @@ import fnmatch
 import os
 import re
 import subprocess
+import sys
 import tarfile
 import time
 from abc import ABC
@@ -216,7 +217,10 @@ def untar(tar: tarfile.TarFile, destination: Path, file_pattern: str | None = No
 			logger.debug("Member does not match file pattern %r: %r", file_pattern, member.name)
 			continue
 		logger.debug("Extracting member: %r", member.name)
-		tar.extract(member, path=destination)
+		if sys.version_info.minor >= 12:
+			tar.extract(member, path=destination, filter="fully_trusted")
+		else:
+			tar.extract(member, path=destination)
 		extracted_members += 1
 
 	if file_pattern and not extracted_members:
