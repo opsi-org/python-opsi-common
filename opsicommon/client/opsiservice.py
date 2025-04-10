@@ -1048,11 +1048,16 @@ class ServiceClient:
 							try:
 								if platform.system().lower() in ("linux", "darwin") and os.geteuid() == 0:  # we are running as root/sudo
 									sudo_user = os.getenv("SUDO_USER")  # get the original user we are running as
-									for name, command in webbrowser._browsers.items():  # type: ignore[attr-defined]
-										if command[1] is not None:
-											logger.debug("Patching webbrowser command: %s to be run as user", command[1])
-											# patch browser commands to be run as user, because root may not be allowed to open windows
-											webbrowser._browsers[name][1] = ["sudo", "-u", sudo_user] + command[1]  # type: ignore[attr-defined]
+									if sudo_user:
+										for name, command in webbrowser._browsers.items():  # type: ignore[attr-defined]
+											if command[1] is not None:
+												logger.debug("Patching webbrowser command: %s to be run as user", command[1])
+												# patch browser commands to be run as user, because root may not be allowed to open windows
+												webbrowser._browsers[name][1] = ["sudo", "-u", sudo_user] + command[1]  # type: ignore[attr-defined]
+									else:
+										logger.warning(
+											"Could not get SUDO_USER environment variable, running as root and may not be allowed to open browser"
+										)
 								webbrowser.open(url)
 							except Exception as err:
 								raise OpsiServiceAuthenticationError(f"SSO failed: failed to open browser: {err}") from err
