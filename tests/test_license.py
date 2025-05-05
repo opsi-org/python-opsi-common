@@ -39,6 +39,7 @@ from opsicommon.license import (
 	OPSI_MODULE_STATE_OVER_LIMIT,
 	OPSI_MODULE_STATE_UNLICENSED,
 	OPSI_OBSOLETE_MODULE_IDS,
+	OPSI_STAGING_MODULE_IDS,
 	OpsiLicense,
 	OpsiLicenseFile,
 	OpsiLicensePool,
@@ -433,7 +434,7 @@ def test_opsi_license_pool_relevant_dates() -> None:
 
 		for at_date in dates:
 			modules = olp.get_modules(at_date=at_date)
-			assert sorted(list(OPSI_MODULE_IDS) + list(OPSI_MODULE_BUNDLES)) == sorted(modules)
+			assert sorted([m for m in OPSI_MODULE_IDS if m not in OPSI_STAGING_MODULE_IDS] + list(OPSI_MODULE_BUNDLES)) == sorted(modules)
 
 			assert modules["treeview"]["available"]
 			assert modules["treeview"]["state"] == OPSI_MODULE_STATE_FREE

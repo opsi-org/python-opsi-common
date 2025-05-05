@@ -156,6 +156,8 @@ OPSI_FREE_MODULE_IDS = (
 	"vista",
 )
 
+OPSI_STAGING_MODULE_IDS = ("background_install",)
+
 logger = get_logger("opsicommon.license")
 
 
@@ -733,7 +735,7 @@ class OpsiLicensePool:
 					"license_ids": [],
 					"client_number": OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED,
 				}
-			else:
+			elif module_id not in OPSI_STAGING_MODULE_IDS:
 				modules[module_id] = {"available": False, "state": OPSI_MODULE_STATE_UNLICENSED, "license_ids": [], "client_number": 0}
 
 		bundled_modules = {}
