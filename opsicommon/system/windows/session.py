@@ -1,7 +1,8 @@
-# -*- coding: utf-8 -*-
+# opsicommon is part of the desktop management solution opsi http://www.opsi.org
+# Copyright (c) 2020-2025 uib GmbH <info@uib.de>
+# This code is owned by the uib GmbH, Mainz, Germany (uib.de). All rights reserved.
+# License: AGPL-3.0-only
 
-# Copyright (c) uib GmbH <info@uib.de>
-# License: AGPL-3.0
 """
 system.windows.session
 """
@@ -13,14 +14,12 @@ from typing import Iterable
 import win32ts  # type: ignore[import-not-found,import-untyped]
 
 
-# pylint: disable=c-extension-no-member
 class WtsProtocol(Enum):
 	CONSOLE = win32ts.WTS_PROTOCOL_TYPE_CONSOLE
 	CITRIX = win32ts.WTS_PROTOCOL_TYPE_ICA
 	RDP = win32ts.WTS_PROTOCOL_TYPE_RDP
 
 
-# pylint: disable=c-extension-no-member
 class WtsState(Enum):
 	ACTIVE = win32ts.WTSActive
 	CONNECTED = win32ts.WTSConnected

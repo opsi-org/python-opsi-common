@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
+# opsicommon is part of the desktop management solution opsi http://www.opsi.org
+# Copyright (c) 2020-2025 uib GmbH <info@uib.de>
+# This code is owned by the uib GmbH, Mainz, Germany (uib.de). All rights reserved.
+# License: AGPL-3.0-only
 
-# Copyright (c) uib GmbH <info@uib.de>
-# License: AGPL-3.0
 """
 logging
 """
-# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
@@ -957,8 +957,7 @@ def get_all_handlers(handler_type: type | tuple[type, ...] | None = None, handle
 				if (
 					(not isinstance(_handler, NullHandler))
 					and (
-						not isinstance(handler_type, tuple)
-						or type(_handler) in handler_type  # exact type needed, not subclass pylint: disable=unidiomatic-typecheck
+						not isinstance(handler_type, tuple) or type(_handler) in handler_type  # exact type needed, not subclass
 					)
 					and (not handler_name or _handler.name == handler_name)
 				):

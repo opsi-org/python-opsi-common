@@ -1,6 +1,8 @@
-package:
-  name: python3-opsi-common
-  type: poetry
-  depends:
-    - python3-colorlog
-    - python3-psutil
+project:
+  licenses:
+    - license: AGPL-3.0-only
+      header: |
+        opsicommon is part of the desktop management solution opsi http://www.opsi.org
+        Copyright (c) 2020-{year} uib GmbH <info@uib.de>
+        This code is owned by the uib GmbH, Mainz, Germany (uib.de). All rights reserved.
+        License: {license}
