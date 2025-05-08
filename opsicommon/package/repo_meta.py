@@ -31,6 +31,7 @@ logger = get_logger("opsicommon.package")
 @dataclass
 class RepoMetaRepository:
 	name: str = "opsi package repository"
+	num_allowed_versions: int = 1
 
 
 class RepoMetaMetadataFileType(StrEnum):
@@ -60,6 +61,14 @@ class RepoMetaPackageCompatibility:
 			raise ValueError(f"Invalid compatibility string: {data!r} (<os>-<arch> needed)")
 		# operating system may contain "-" like opsi-local-image
 		return RepoMetaPackageCompatibility(os=OperatingSystem("-".join(os_arch[:-1])), arch=Architecture(os_arch[-1]))
+
+	def __hash__(self) -> int:
+		return hash(self.os) ^ hash(self.arch)
+
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, RepoMetaPackageCompatibility):
+			raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
+		return self.os == other.os and self.arch == other.arch
 
 
 @dataclass
@@ -148,6 +157,7 @@ class RepoMetaPackage:
 		data["description"] = opsi_package.product.description
 		data["product_dependencies"] = [RepoMetaProductDependency.from_product_dependency(d) for d in opsi_package.product_dependencies]
 		data["package_dependencies"] = [RepoMetaPackageDependency.from_package_dependency(d) for d in opsi_package.package_dependencies]
+		data["release_date"] = datetime.now(tz=timezone.utc)
 
 		return RepoMetaPackage(**data)
 
@@ -184,6 +194,9 @@ class RepoMetaPackage:
 				if not isinstance(value, list):
 					value = [value]
 				for val in value:
+					if attribute == "compatibility":
+						# asdict recursively creates dicts from dataclasses
+						val = RepoMetaPackageCompatibility.from_dict(val)
 					if val not in cur_value:
 						cur_value.append(val)
 				setattr(self, attribute, cur_value)
@@ -207,7 +220,9 @@ class RepoMetaPackageCollection:
 			self.add_package(directory, package_file, num_allowed_versions=0, add_callback=add_callback)
 		logger.info("Finished scanning opsi packages")
 
-	def limit_versions(self, name: str, num_allowed_versions: int = 1) -> None:
+	def limit_versions(self, name: str, num_allowed_versions: int | None = None) -> None:
+		if num_allowed_versions is None:
+			num_allowed_versions = self.repository.num_allowed_versions
 		versions = list(self.packages[name].keys())
 		keep_versions = sorted(versions, key=packver.parse, reverse=True)[:num_allowed_versions]
 		for version in versions:
@@ -220,7 +235,7 @@ class RepoMetaPackageCollection:
 		directory: Path,
 		package_file: Path,
 		*,
-		num_allowed_versions: int = 1,
+		num_allowed_versions: int | None = None,
 		url: list[str] | str | None = None,
 		compatibility: list[RepoMetaPackageCompatibility] | None = None,
 		add_callback: Callable | None = None,
@@ -232,13 +247,23 @@ class RepoMetaPackageCollection:
 		elif isinstance(url, list):
 			url = [str(entry).replace("\\", "/") for entry in url]  # Cannot instantiate PosixPath on windows
 
-		if add_callback and not callable(add_callback):
-			raise ValueError("add_callback must be callable")
-
 		package = RepoMetaPackage.from_package_file(package_file=package_file, url=url)
-		package.release_date = datetime.now(tz=timezone.utc)
 		package.compatibility = compatibility or None
+
+		self.add_package_meta(package, add_callback=add_callback, num_allowed_versions=num_allowed_versions)
+		return package
+
+	def add_package_meta(
+		self,
+		package: RepoMetaPackage,
+		add_callback: Callable | None = None,
+		num_allowed_versions: int | None = None,
+	) -> None:
+		if num_allowed_versions is None:
+			num_allowed_versions = self.repository.num_allowed_versions
 		if add_callback:
+			if not callable(add_callback):
+				raise ValueError("add_callback must be callable")
 			add_callback(package)
 
 		# Key only consists of only product id (otw11 revision 03.05.)
@@ -258,7 +283,6 @@ class RepoMetaPackageCollection:
 		# num_allowed_versions = 0 means unlimited
 		if num_allowed_versions and len(self.packages[package.product_id]) > num_allowed_versions:
 			self.limit_versions(package.product_id, num_allowed_versions)
-		return package
 
 	def remove_package(self, name: str, version: str) -> None:
 		if name in self.packages and version in self.packages[name]:
