@@ -67,7 +67,7 @@ class RepoMetaPackageCompatibility:
 
 	def __eq__(self, other: object) -> bool:
 		if not isinstance(other, RepoMetaPackageCompatibility):
-			raise TypeError(f"Cannot compare {type(self)} with {type(other)}")
+			return False
 		return self.os == other.os and self.arch == other.arch
 
 
