@@ -529,7 +529,7 @@ class ServiceClient:
 		return self._address_index
 
 	@address_index.setter
-	def address_index(self, address_index) -> None:
+	def address_index(self, address_index: int) -> None:
 		if address_index >= len(self._addresses):
 			address_index = 0
 
