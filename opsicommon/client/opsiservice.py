@@ -605,7 +605,7 @@ class ServiceClient:
 
 	def service_is_opsiclientd(self) -> bool:
 		addr = urlparse(self._addresses[self._address_index])
-		return addr.hostname in ("127.0.0.1", "localhost") and addr.port == 4441
+		return self.is_local_address(self._addresses[self._address_index]) and addr.port == 4441
 
 	@property
 	def verify(self) -> list[ServiceVerificationFlags]:
@@ -947,7 +947,6 @@ class ServiceClient:
 
 		if self._connect_lock.locked():
 			return
-		logger.debug("service_is_opsiclientd: %r", self.service_is_opsiclientd())
 
 		self.disconnect()
 		with self._connect_lock:
@@ -957,6 +956,8 @@ class ServiceClient:
 			headers: dict[str, str] = {"x-opsi-mfa-otp": self.totp} if self.totp else {}
 			for address_index in range(len(self._addresses)):
 				self._address_index = address_index
+				logger.info("Connecting to service %r (opsiclientd: %r)", self.base_url, self.service_is_opsiclientd())
+
 				ca_cert_file = self.ca_cert_file
 				ca_cert_file_exists = ca_cert_file and ca_cert_file.exists()
 

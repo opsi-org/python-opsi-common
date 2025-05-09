@@ -168,6 +168,26 @@ def test_is_local_address(service_address: str, expected_is_local: bool) -> None
 
 
 @pytest.mark.parametrize(
+	"service_address, expected_service_is_opsiclientd",
+	(
+		("localhost", False),
+		("localhost:4441", True),
+		("localhost:443", False),
+		("username:password@localhost:4441", True),
+		("https://localhost", False),
+		("https://localhost:4441", True),
+		("https://[::1]:4441", True),
+		("[::1]:4441", True),
+		("[::1]", False),
+		(["ip6-localhost:4441", "https://10.10.1.1"], True),
+		(["https://10.10.1.1", "ip6-localhost:4441"], False),
+	),
+)
+def test_service_is_opsiclientd(service_address: str | list[str], expected_service_is_opsiclientd: bool) -> None:
+	assert ServiceClient(service_address).service_is_opsiclientd() == expected_service_is_opsiclientd
+
+
+@pytest.mark.parametrize(
 	"service_address, expected_path",
 	(
 		("localhost", "opsi/services/localhost_4447/ca-certs.pem"),
