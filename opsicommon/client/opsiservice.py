@@ -227,6 +227,11 @@ class ServiceConnectionListener(ABC):
 		Called when a connection to the service failed.
 		"""
 
+	def address_changed(self, service_client: ServiceClient, address: str) -> None:
+		"""
+		Called when the address of the service changed.
+		"""
+
 	@contextmanager
 	def register(self, service_client: ServiceClient) -> Generator[None, None, None]:
 		"""
@@ -271,7 +276,6 @@ class KeyPasswordHTTPAdapter(HTTPAdapter):
 		super().__init__()
 
 	def init_poolmanager(self, *args: Any, **kwargs: Any) -> None:
-		print("===>>>> init_poolmanager")
 		if self.key_password:
 			kwargs["key_password"] = self.key_password
 		super().init_poolmanager(*args, **kwargs)  # type: ignore[no-untyped-call]
@@ -520,6 +524,43 @@ class ServiceClient:
 	def addresses(self) -> Iterable[str] | str | None:
 		return self._addresses
 
+	@property
+	def address_index(self) -> int:
+		return self._address_index
+
+	@address_index.setter
+	def address_index(self, address_index) -> None:
+		if address_index >= len(self._addresses):
+			address_index = 0
+
+		current_index = self._address_index
+		self._address_index = address_index
+
+		if not self._addresses:
+			return
+
+		new_address = self._addresses[self._address_index]
+
+		logger.debug("Now using service address: %r", new_address)
+		addr, path = self.normalize_service_address(new_address)
+
+		path = path.rstrip("/")
+		if path and path != "/rpc":
+			self._jsonrpc_path = path
+
+		service_hostname = urlparse(addr).hostname or ""
+
+		self._session = prepare_proxy_environment(
+			service_hostname,
+			self._proxy_url,
+			no_proxy_addresses=self.no_proxy_addresses,
+			session=self._session,
+		)
+
+		if self._address_index != current_index:
+			for listener in self._listener:
+				listener.address_changed(self, new_address)
+
 	@staticmethod
 	def normalize_service_address(address: str) -> tuple[str, str]:
 		scheme = "https"
@@ -563,45 +604,33 @@ class ServiceClient:
 		return f"{scheme}://{auth}{host}:{port}", path
 
 	def set_addresses(self, address: Iterable[str] | str | None) -> None:
+		current_addresses = list(self._addresses)
 		self._addresses = []
-		self._address_index = 0
-		if not address:
-			return
+		if address:
+			for addr in [address] if isinstance(address, str) else address:
+				addr, path = self.normalize_service_address(addr)
+				url = urlparse(addr)
+				if url.username is not None:
+					if self.username and self.username != url.username:
+						raise ValueError("Different usernames supplied")
+					self.username = url.username
 
-		for addr in [address] if isinstance(address, str) else address:
-			addr, path = self.normalize_service_address(addr)
-			url = urlparse(addr)
+				if url.password is not None:
+					if self.password and self.password != url.password:
+						raise ValueError("Different passwords supplied")
+					self.password = url.password
 
-			if url.username is not None:
-				if self.username and self.username != url.username:
-					raise ValueError("Different usernames supplied")
-				self.username = url.username
+				self._addresses.append(f"{addr}{path}")
 
-			if url.password is not None:
-				if self.password and self.password != url.password:
-					raise ValueError("Different passwords supplied")
-				self.password = url.password
-
-			path = path.rstrip("/")
-			if path and path != "/rpc":
-				self._jsonrpc_path = path
-
-			self._addresses.append(addr)
-
-		service_hostname = urlparse(self.base_url).hostname or ""
-
-		self._session = prepare_proxy_environment(
-			service_hostname,
-			self._proxy_url,
-			no_proxy_addresses=self.no_proxy_addresses,
-			session=self._session,
-		)
+		if current_addresses != self._addresses:
+			self._address_index = -1
+			self.address_index = 0
 
 	@property
 	def base_url(self) -> str:
 		if not self._addresses:
 			raise ValueError("Service address undefined")
-		return self._addresses[self._address_index]
+		return self.normalize_service_address(self._addresses[self._address_index])[0]
 
 	def service_is_opsiclientd(self) -> bool:
 		addr = urlparse(self._addresses[self._address_index])
@@ -955,7 +984,7 @@ class ServiceClient:
 
 			headers: dict[str, str] = {"x-opsi-mfa-otp": self.totp} if self.totp else {}
 			for address_index in range(len(self._addresses)):
-				self._address_index = address_index
+				self.address_index = address_index
 				logger.info("Connecting to service %r (opsiclientd: %r)", self.base_url, self.service_is_opsiclientd())
 
 				ca_cert_file = self.ca_cert_file
@@ -1085,7 +1114,7 @@ class ServiceClient:
 						)
 					break
 				except OpsiServiceError as err:
-					if self._address_index >= len(self._addresses) - 1:
+					if self.address_index >= len(self._addresses) - 1:
 						for listener in self._listener:
 							CallbackThread(listener.connection_failed, service_client=self, exception=err).start()
 						raise
@@ -1125,7 +1154,10 @@ class ServiceClient:
 						if timez == "UTC":
 							# Parsing UTC dates only
 							loc = locale.getlocale()
-							locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
+							try:
+								locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
+							except locale.Error as err:
+								logger.debug("Failed to set locale: %s, continuing with locale %r", err, loc)
 							try:
 								server_dt = datetime.strptime(times, "%a, %d %b %Y %H:%M:%S").replace(tzinfo=timezone.utc)
 							finally:

@@ -129,7 +129,7 @@ HMUfpIBvFSDJ3gyICh3WZlXi/EjJKSZp4A==
 class MyConnectionListener(ServiceConnectionListener):
 	def __init__(self) -> None:
 		super().__init__()
-		self.events: list[tuple[str, ServiceClient, Exception | None]] = []
+		self.events: list[tuple[str, ServiceClient, Exception | str | None]] = []
 
 	def connection_open(self, service_client: ServiceClient) -> None:
 		self.events.append(("open", service_client, None))
@@ -142,6 +142,9 @@ class MyConnectionListener(ServiceConnectionListener):
 
 	def connection_closed(self, service_client: ServiceClient) -> None:
 		self.events.append(("closed", service_client, None))
+
+	def address_changed(self, service_client: ServiceClient, address: str) -> None:
+		self.events.append(("address_changed", service_client, address))
 
 
 @pytest.mark.parametrize(
@@ -320,16 +323,32 @@ def test_set_addresses() -> None:
 	assert service_client.ca_cert_file is None
 
 	for verify in ("opsi_ca", "uib_opsi_ca"):
+		listener = MyConnectionListener()
 		service_client = ServiceClient(["https://opsiserver:4447", "https://opsiserver2:4447"], verify=verify)
+		service_client.register_connection_listener(listener)
+
+		assert listener.events == []
 		assert service_client.base_url == "https://opsiserver:4447"
 		assert service_client.ca_cert_file == user_conf_path / "opsi/services/opsiserver_4447/ca-certs.pem"
 
-		service_client._address_index += 1
+		service_client.address_index += 1
 		assert service_client.base_url == "https://opsiserver2:4447"
 		assert service_client.ca_cert_file == user_conf_path / "opsi/services/opsiserver2_4447/ca-certs.pem"
+		assert listener.events == [
+			("address_changed", service_client, "https://opsiserver2:4447"),
+		]
+		listener.events = []
 
 		service_client.set_addresses("localhost")
 		assert service_client.base_url == "https://localhost:4447"
+		assert listener.events == [
+			("address_changed", service_client, "https://localhost:4447"),
+		]
+
+		listener.events = []
+		service_client.set_addresses("localhost")
+		assert service_client.base_url == "https://localhost:4447"
+		assert listener.events == []
 
 	service_client = ServiceClient()
 	with pytest.raises(ValueError):
