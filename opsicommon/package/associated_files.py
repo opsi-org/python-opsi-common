@@ -58,7 +58,7 @@ def create_package_content_file(base_dir: Path) -> Path:
 					entry_type, size, additional = handle_directory(path)
 				else:
 					entry_type, size, additional = handle_file(path)
-				filename = str(path.relative_to(base_dir)).replace("'", "\\'")
+				filename = str(path.relative_to(base_dir).as_posix()).replace("'", "\\'")
 				lines.append(f"{entry_type} '{filename}' {size} {additional}")
 			except Exception as err:
 				logger.error(err, exc_info=True)
