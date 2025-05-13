@@ -1132,9 +1132,6 @@ class ServiceClient:
 							CallbackThread(listener.connection_failed, service_client=self, exception=err).start()
 						raise
 
-			# Do not use self.connected to not fire connection listeners yet
-			self._connected = True
-
 			if "server" in response.headers:
 				self.server_name = response.headers["server"]
 				match = re.search(r"^opsi\D+([\d\.]+)", self.server_name)
@@ -1200,32 +1197,31 @@ class ServiceClient:
 					logger.error("Failed to fetch CA certs: %s", err, exc_info=True)
 					raise OpsiServiceVerificationError(f"Failed to fetch CA certs: {err}") from err
 
-		if self.jsonrpc_create_methods:
-			try:
-				self.jsonrpc_interface = self.jsonrpc("backend_getInterface")
-			except Exception as err:
-				logger.error("Failed to get interface description: %s", err, exc_info=True)
+			if self.jsonrpc_create_methods:
+				try:
+					self.jsonrpc_interface = self.jsonrpc("backend_getInterface", assert_connected=False)
+				except Exception as err:
+					logger.error("Failed to get interface description: %s", err, exc_info=True)
 
-			self._jsonrpc_method_params = {}
-			for method in self.jsonrpc_interface:
-				self._jsonrpc_method_params[method["name"]] = {}
-				def_idx = 0
-				for param in method["params"]:
-					default = None
-					if param[0] == "*":
-						param = param.lstrip("*")
-						if method["defaults"]:
-							try:
-								default = method["defaults"][def_idx]
-							except IndexError:
-								pass
-						def_idx += 1
-					self._jsonrpc_method_params[method["name"]][param] = default
+				self._jsonrpc_method_params = {}
+				for method in self.jsonrpc_interface:
+					self._jsonrpc_method_params[method["name"]] = {}
+					def_idx = 0
+					for param in method["params"]:
+						default = None
+						if param[0] == "*":
+							param = param.lstrip("*")
+							if method["defaults"]:
+								try:
+									default = method["defaults"][def_idx]
+								except IndexError:
+									pass
+							def_idx += 1
+						self._jsonrpc_method_params[method["name"]][param] = default
 
-			self.create_jsonrpc_methods()
+				self.create_jsonrpc_methods()
 
 		# Fire connection established event
-		self._connected = False
 		self.connected = True
 
 	def disconnect(self) -> None:
@@ -1351,6 +1347,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
+		assert_connected: bool = True,
 	) -> Response: ...
 
 	@overload
@@ -1365,6 +1362,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
+		assert_connected: bool = True,
 	) -> RequestsResponse: ...
 
 	@overload
@@ -1379,6 +1377,7 @@ class ServiceClient:
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
+		assert_connected: bool = True,
 	) -> RequestsResponse | Response: ...
 
 	def request(
@@ -1392,8 +1391,10 @@ class ServiceClient:
 		data: bytes | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = False,
+		assert_connected: bool = True,
 	) -> Response | RequestsResponse:
-		self.assert_connected()
+		if assert_connected:
+			self.assert_connected()
 		response = self._request(
 			method=method,
 			path=path,
@@ -1417,6 +1418,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
+		assert_connected: bool = True,
 	) -> Response: ...
 
 	@overload
@@ -1429,6 +1431,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
+		assert_connected: bool = True,
 	) -> RequestsResponse: ...
 
 	@overload
@@ -1441,6 +1444,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
+		assert_connected: bool = True,
 	) -> RequestsResponse | Response: ...
 
 	def get(
@@ -1452,6 +1456,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = False,
+		assert_connected: bool = True,
 	) -> Response | RequestsResponse:
 		return self.request(
 			"GET",
@@ -1461,6 +1466,7 @@ class ServiceClient:
 			read_timeout=read_timeout,
 			allow_status_codes=allow_status_codes,
 			raw_response=raw_response,
+			assert_connected=assert_connected,
 		)
 
 	@overload
@@ -1474,6 +1480,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[False] = ...,
+		assert_connected: bool = True,
 	) -> Response: ...
 
 	@overload
@@ -1487,6 +1494,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: Literal[True],
+		assert_connected: bool = True,
 	) -> RequestsResponse: ...
 
 	@overload
@@ -1500,6 +1508,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = ...,
+		assert_connected: bool = True,
 	) -> RequestsResponse | Response: ...
 
 	def post(
@@ -1512,6 +1521,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = False,
+		assert_connected: bool = True,
 	) -> Response | RequestsResponse:
 		return self.request(
 			"POST",
@@ -1522,6 +1532,7 @@ class ServiceClient:
 			data=data,
 			allow_status_codes=allow_status_codes,
 			raw_response=raw_response,
+			assert_connected=assert_connected,
 		)
 
 	def jsonrpc(
@@ -1533,6 +1544,7 @@ class ServiceClient:
 		read_timeout: float | None = None,
 		return_result_only: bool = True,
 		create_objects: bool | None = None,
+		assert_connected: bool = True,
 	) -> Any:
 		params = params or []
 		if isinstance(params, tuple):
@@ -1608,6 +1620,7 @@ class ServiceClient:
 			connect_timeout=connect_timeout,
 			read_timeout=read_timeout,
 			allow_status_codes=allow_status_codes,  # type: ignore[arg-type]
+			assert_connected=assert_connected,
 		)
 		data = response.content
 		content_type = response.headers.get("Content-Type", "")
