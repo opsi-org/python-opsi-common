@@ -46,9 +46,8 @@ import lz4.frame  # type: ignore[import,no-redef]
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from packaging import version
-from requests import HTTPError
+from requests import HTTPError, Session
 from requests import Response as RequestsResponse
-from requests import Session
 from requests.adapters import HTTPAdapter
 from requests.cookies import RequestsCookieJar
 from requests.exceptions import SSLError, Timeout
@@ -703,7 +702,16 @@ class ServiceClient:
 
 	@connected.setter
 	def connected(self, connected: bool) -> None:
+		if self._connected == connected:
+			return
+
 		self._connected = connected
+		if not self._connected:
+			self.server_version = version.parse("0")
+			self.server_name = ""
+			self._messagebus_available = False
+		for listener in self._listener:
+			CallbackThread(listener.connection_established if self._connected else listener.connection_closed, service_client=self).start()
 
 	def _update_auth(self) -> None:
 		if not self._username and not self._password:
@@ -1124,6 +1132,7 @@ class ServiceClient:
 							CallbackThread(listener.connection_failed, service_client=self, exception=err).start()
 						raise
 
+			# Do not use self.connected to not fire connection listeners yet
 			self._connected = True
 
 			if "server" in response.headers:
@@ -1215,13 +1224,13 @@ class ServiceClient:
 
 			self.create_jsonrpc_methods()
 
-		for listener in self._listener:
-			CallbackThread(listener.connection_established, service_client=self).start()
+		# Fire connection established event
+		self._connected = False
+		self.connected = True
 
 	def disconnect(self) -> None:
-		self.disconnect_messagebus()
-		was_connected = self._connected
 		if self._connected:
+			self.disconnect_messagebus()
 			try:
 				if self.server_version >= MIN_VERSION_SESSION_API:
 					self.post("/session/logout", connect_timeout=3.0, read_timeout=3.0)
@@ -1234,16 +1243,9 @@ class ServiceClient:
 		except Exception:
 			pass
 
-		self._connected = False
-		self.server_version = version.parse("0")
-		self.server_name = ""
-		self._messagebus_available = False
+		self.connected = False
 
-		if was_connected:
-			for listener in self._listener:
-				CallbackThread(listener.connection_closed, service_client=self).start()
-
-	def _assert_connected(self) -> None:
+	def assert_connected(self) -> None:
 		with self._connect_lock:
 			if self._connected:
 				return
@@ -1391,7 +1393,7 @@ class ServiceClient:
 		allow_status_codes: Iterable[int] | None = None,
 		raw_response: bool = False,
 	) -> Response | RequestsResponse:
-		self._assert_connected()
+		self.assert_connected()
 		response = self._request(
 			method=method,
 			path=path,
@@ -1667,7 +1669,7 @@ class ServiceClient:
 
 	def delete(self, path: str) -> None:
 		logger.info("Deleting '%s'", path)
-		self._assert_connected()
+		self.assert_connected()
 		self._request(
 			method="DELETE",
 			path=path,
@@ -1680,7 +1682,7 @@ class ServiceClient:
 
 		with UploadFile(source, progress_callback) as upload_file:
 			logger.info("Uploading '%s' to '%s' (size: %d)", source, path, upload_file.file_size)
-			self._assert_connected()
+			self.assert_connected()
 			self._request(
 				method="PUT",
 				path=path,
@@ -1702,7 +1704,7 @@ class ServiceClient:
 				self.download(content.path, destination / current.name, progress_callback=progress_callback)
 		else:
 			logger.info("Downloading '%s' to '%s' (size: %d)", current.path, destination / current.name, current.size)
-			self._assert_connected()
+			self.assert_connected()
 			response = self._request(method="GET", path=current.path)  # stream=True is set implicitely
 			with (destination / current.name).open("wb") as dest_file:
 				position = 0
@@ -1714,7 +1716,7 @@ class ServiceClient:
 
 	def webdav_content(self, path: str, include_base_path: bool = False) -> list[DAVFileInfo]:
 		path = "/" + path.strip("/")
-		self._assert_connected()
+		self.assert_connected()
 		response = self._request(
 			method="PROPFIND",
 			path=path + "/",
@@ -1731,10 +1733,10 @@ class ServiceClient:
 
 	@property
 	def messagebus_available(self) -> bool:
-		self._assert_connected()
+		self.assert_connected()
 		return self._messagebus_available
 
-	def _assert_messagebus_connected(self) -> None:
+	def assert_messagebus_connected(self) -> None:
 		if not self.messagebus_available:
 			raise RuntimeError(f"Messagebus not available (connected to: {self.server_name})")
 		with self._messagebus_connect_lock:
@@ -1742,7 +1744,7 @@ class ServiceClient:
 				self._messagebus.connect()
 
 	def connect_messagebus(self) -> Messagebus:
-		self._assert_messagebus_connected()
+		self.assert_messagebus_connected()
 		return self._messagebus
 
 	def disconnect_messagebus(self) -> None:
