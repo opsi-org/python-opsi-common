@@ -75,11 +75,7 @@ from opsicommon.client.opsiservice import (
 	get_rpc_timeout,
 	get_service_client,
 )
-from opsicommon.exceptions import (
-	BackendAuthenticationError,
-	BackendPermissionDeniedError,
-	OpsiRpcError,
-)
+from opsicommon.exceptions import BackendAuthenticationError, BackendPermissionDeniedError, OpsiRpcError
 from opsicommon.logging import use_logging_config
 from opsicommon.messagebus.message import (
 	ChannelSubscriptionEventMessage,
@@ -1514,7 +1510,10 @@ def test_messagebus_reconnect() -> None:
 
 				rpc_id = 10
 				server.restart(new_cert=True)
-				time.sleep(10)
+				time.sleep(2)
+				assert client.messagebus.connected is False
+				assert client.connected is False
+				time.sleep(8)
 				# Should resubscribe to channels except session channels
 				assert client.messagebus._subscribed_channels == [
 					"chan4",

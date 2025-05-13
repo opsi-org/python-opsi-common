@@ -46,8 +46,9 @@ import lz4.frame  # type: ignore[import,no-redef]
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from packaging import version
-from requests import HTTPError, Session
+from requests import HTTPError
 from requests import Response as RequestsResponse
+from requests import Session
 from requests.adapters import HTTPAdapter
 from requests.cookies import RequestsCookieJar
 from requests.exceptions import SSLError, Timeout
@@ -699,6 +700,10 @@ class ServiceClient:
 	@property
 	def connected(self) -> bool:
 		return self._connected
+
+	@connected.setter
+	def connected(self, connected: bool) -> None:
+		self._connected = connected
 
 	def _update_auth(self) -> None:
 		if not self._username and not self._password:
@@ -1875,6 +1880,9 @@ class Messagebus(Thread):
 	def _on_close(self, websocket: WebSocket, close_status_code: int, close_message: str) -> None:
 		logger.info("Websocket closed with status_code=%r and message=%r", close_status_code, close_message)
 		self._connected = False
+		if self._should_be_connected:
+			self._client.connected = False
+
 		if close_status_code == 1013:
 			# Try again later
 			self._next_connect_wait = 60
