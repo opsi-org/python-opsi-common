@@ -20,7 +20,7 @@ from opsicommon.types import forceFqdn
 logger = get_logger("opsicommon.general")
 
 
-def get_ip_addresses() -> Generator[dict[str, Any], None, None]:
+def get_ip_addresses(*, include_link_local: bool = True) -> Generator[dict[str, Any], None, None]:
 	for interface, snics in psutil.net_if_addrs().items():
 		for snic in snics:
 			family = None
@@ -34,8 +34,10 @@ def get_ip_addresses() -> Generator[dict[str, Any], None, None]:
 			ip_address = None
 			try:
 				ip_address = ipaddress.ip_address(snic.address.split("%")[0])
+				if (not include_link_local) and ip_address.is_link_local:
+					continue
 			except ValueError:
-				logger.warning("Unrecognised ip address: %r", snic.address)
+				logger.warning("Unrecognized IP address: %r", snic.address)
 				continue
 
 			yield {"family": family, "interface": interface, "address": snic.address, "ip_address": ip_address}
@@ -81,7 +83,7 @@ def get_hostnames() -> set[str]:
 		names.add(get_fqdn())
 	except RuntimeError as err:
 		logger.info("Failed to get fqdn: %s", err)
-	for addr in get_ip_addresses():
+	for addr in get_ip_addresses(include_link_local=False):
 		try:
 			(hostname, aliases, _addr) = _gethostbyaddr_with_timeout(addr["address"], timeout=0.1)
 			names.add(hostname)
