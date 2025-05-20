@@ -9,3 +9,24 @@ This file is part of opsi - https://www.opsi.org
 
 CONNECTION_USER_CHANNEL = "@"
 CONNECTION_SESSION_CHANNEL = "$"
+EVENT_TYPES = (
+	"app_state_changed",
+	"config_created",
+	"config_deleted",
+	"config_updated",
+	"configState_created",
+	"configState_deleted",
+	"configState_updated",
+	"host_connected",
+	"host_created",
+	"host_deleted",
+	"host_disconnected",
+	"host_updated",
+	"log_updated",
+	"productOnClient_created",
+	"productOnClient_deleted",
+	"productOnClient_updated",
+	"test",
+	"user_connected",
+	"user_disconnected",
+)
