@@ -46,8 +46,9 @@ import lz4.frame  # type: ignore[import,no-redef]
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from packaging import version
-from requests import HTTPError, Session
+from requests import HTTPError
 from requests import Response as RequestsResponse
+from requests import Session
 from requests.adapters import HTTPAdapter
 from requests.cookies import RequestsCookieJar
 from requests.exceptions import SSLError, Timeout
@@ -1868,10 +1869,6 @@ class Messagebus(Thread):
 	def connected(self) -> bool:
 		return self._connected
 
-	@property
-	def websocket_connected(self) -> bool:
-		return bool(self._app and self._app.sock and self._app.sock.connected)
-
 	def _on_open(self, websocket: WebSocket) -> None:
 		logger.debug("Websocket opened")
 		if not self._connected:
@@ -2034,7 +2031,7 @@ class Messagebus(Thread):
 		await asyncio.get_event_loop().run_in_executor(None, self.send_message, message)
 
 	def send_message(self, message: Message) -> None:
-		if not self._app:
+		if not self.connected:
 			raise RuntimeError("Messagebus not connected")
 		logger.debug("Sending message: %r", message)
 		data = message.to_msgpack()
