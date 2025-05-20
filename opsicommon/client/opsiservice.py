@@ -2033,6 +2033,8 @@ class Messagebus(Thread):
 	def send_message(self, message: Message) -> None:
 		if not self.connected:
 			raise RuntimeError("Messagebus not connected")
+		if not self._app:
+			raise RuntimeError("WebSocketApp not initialized")
 		logger.debug("Sending message: %r", message)
 		data = message.to_msgpack()
 		if self.compression == "lz4":
