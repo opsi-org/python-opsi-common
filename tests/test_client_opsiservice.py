@@ -85,6 +85,7 @@ from opsicommon.messagebus.message import (
 	JSONRPCResponseMessage,
 	Message,
 	MessageType,
+	TraceRequestMessage,
 	timestamp,
 )
 from opsicommon.objects import OpsiClient
@@ -1486,20 +1487,28 @@ def test_messagebus_reconnect() -> None:
 			)
 			handler.ws_send_message(lz4.frame.compress(smsg.to_msgpack(), compression_level=0, block_linked=True))
 
-	with http_test_server(
-		generate_cert=True,
-		ws_connect_callback=ws_connect_callback,
-		ws_message_callback=ws_message_callback,
-		response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"},
-	) as server:
+	with (
+		http_test_server(
+			generate_cert=True,
+			ws_connect_callback=ws_connect_callback,
+			ws_message_callback=ws_message_callback,
+			response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"},
+		) as server,
+		use_logging_config(stderr_level=5),
+	):
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			client.messagebus.reconnect_wait_min = 5
 			client.messagebus.reconnect_wait_max = 5
 			listener = MBListener()
 
 			with listener.register(client.messagebus):
-				client.connect_messagebus()
+				assert client.messagebus.connected is False
+				assert client.connected is False
+
+				client.connect_messagebus()  # This will also "connect" the client
 				time.sleep(3)
+				assert client.messagebus.connected is True
+				assert client.connected is True
 				assert client.messagebus._subscribed_channels == [
 					"chan1",
 					"chan2",
@@ -1507,13 +1516,19 @@ def test_messagebus_reconnect() -> None:
 					"session:11111111-1111-1111-1111-111111111111",
 					"session:22222222-2222-2222-2222-222222222222",
 				]
+				client.messagebus.send_message(TraceRequestMessage(sender="@", channel="service:worker:test:1"))
 
+				# Test reconnect on connection lost
 				rpc_id = 10
 				server.restart(new_cert=True)
 				time.sleep(2)
 				assert client.messagebus.connected is False
 				assert client.connected is False
+				with pytest.raises(RuntimeError, match=".*Messagebus not connected.*"):
+					client.messagebus.send_message(TraceRequestMessage(sender="@", channel="service:worker:test:1"))
 				time.sleep(8)
+				assert client.messagebus.connected is True
+				assert client.connected is True
 				# Should resubscribe to channels except session channels
 				assert client.messagebus._subscribed_channels == [
 					"chan4",
@@ -1522,9 +1537,32 @@ def test_messagebus_reconnect() -> None:
 					"chan2",
 					"chan3",
 				]
+				client.messagebus.send_message(TraceRequestMessage(sender="@", channel="service:worker:test:1"))
+
+				# Test manual disconnect and reconnect
+				client.disconnect()
+				time.sleep(2)
+				assert client.messagebus.connected is False
+				assert client.connected is False
+				with pytest.raises(RuntimeError, match=".*Messagebus not connected.*"):
+					client.messagebus.send_message(TraceRequestMessage(sender="@", channel="service:worker:test:1"))
+
+				client.connect_messagebus()
+				time.sleep(5)
+				assert client.messagebus.connected is True
+				assert client.connected is True
+				# Should resubscribe to channels except session channels
+				assert client.messagebus._subscribed_channels == [
+					"chan4",
+					"session:33333333-3333-3333-3333-333333333333",
+					"chan1",
+					"chan2",
+					"chan3",
+				]
+				client.messagebus.send_message(TraceRequestMessage(sender="@", channel="service:worker:test:1"))
 
 			print("messages", listener.messages)
-			expected_messages = 6 + 3  # 6 * JSONRPCResponseMessage + 3 * ChannelSubscriptionEventMessage
+			expected_messages = 3 + 9  # 3 * ChannelSubscriptionEventMessage + 9 * JSONRPCResponseMessage
 			assert len(listener.messages) == expected_messages
 			rpc_ids = [int(m.rpc_id) for m in listener.messages if hasattr(m, "rpc_id")]  # type: ignore[attr-defined]
 			assert all((rpc_id in rpc_ids for rpc_id in [1, 2, 3, 11, 12, 13]))

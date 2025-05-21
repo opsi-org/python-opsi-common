@@ -703,16 +703,18 @@ class ServiceClient:
 
 	@connected.setter
 	def connected(self, connected: bool) -> None:
-		if self._connected == connected:
-			return
-
+		changed = self._connected != connected
 		self._connected = connected
 		if not self._connected:
 			self.server_version = version.parse("0")
 			self.server_name = ""
 			self._messagebus_available = False
-		for listener in self._listener:
-			CallbackThread(listener.connection_established if self._connected else listener.connection_closed, service_client=self).start()
+
+		if changed:
+			for listener in self._listener:
+				CallbackThread(
+					listener.connection_established if self._connected else listener.connection_closed, service_client=self
+				).start()
 
 	def _update_auth(self) -> None:
 		if not self._username and not self._password:
@@ -976,15 +978,13 @@ class ServiceClient:
 
 	@contextmanager
 	def connection(self, connect_messagebus: bool = False) -> Generator[None, None, None]:
-		self.connect()
-		if connect_messagebus:
-			self.connect_messagebus()
+		self.connect(connect_messagebus=connect_messagebus)
 		try:
 			yield
 		finally:
 			self.stop()
 
-	def connect(self) -> None:
+	def connect(self, connect_messagebus: bool = False) -> None:
 		if not self._addresses:
 			raise OpsiServiceConnectionError("Service address undefined")
 
@@ -1225,9 +1225,12 @@ class ServiceClient:
 		# Fire connection established event
 		self.connected = True
 
+		if connect_messagebus:
+			self.connect_messagebus()
+
 	def disconnect(self) -> None:
+		self.disconnect_messagebus()
 		if self._connected:
-			self.disconnect_messagebus()
 			try:
 				if self.server_version >= MIN_VERSION_SESSION_API:
 					self.post("/session/logout", connect_timeout=3.0, read_timeout=3.0)
@@ -1844,6 +1847,7 @@ class Messagebus(Thread):
 		self._should_stop = Event()
 		self._should_be_connected = False
 		self._connected = False
+		self._client_was_connected_on_connection_lost = False
 		self._connected_result = Event()
 		self._connect_exception: Exception | None = None
 		self._disconnected_result = Event()
@@ -1865,16 +1869,28 @@ class Messagebus(Thread):
 		# from websocket import enableTrace
 		# enableTrace(True)
 
+	def __str__(self) -> str:
+		return f"Messagebus(id={self.id}, connected={self.connected})"
+
+	__repr__ = __str__
+
 	@property
 	def connected(self) -> bool:
 		return self._connected
 
+	@property
+	def id(self) -> str:
+		return str(id(self))
+
 	def _on_open(self, websocket: WebSocket) -> None:
-		logger.debug("Websocket opened")
+		logger.debug("Websocket opened (id=%r)", self.id)
 		if not self._connected:
-			logger.notice("Connected to opsi messagebus")
+			logger.notice("Connected to opsi messagebus (id=%r)", self.id)
 		self._next_connect_wait = 0.0
 		self._connected = True
+		if self._client_was_connected_on_connection_lost:
+			self._client._connected = True
+		self._client_was_connected_on_connection_lost = False
 		self._connected_result.set()
 
 		for listener in self._listener:
@@ -1883,17 +1899,24 @@ class Messagebus(Thread):
 
 	def _on_error(self, websocket: WebSocket, error: Exception) -> None:
 		status_code = getattr(error, "status_code", 0)
-		logger.warning("Websocket error: %d - %s", status_code, error)
+		logger.warning("Websocket error: %d - %s (id=%r)", status_code, error, self.id)
 		self._connect_exception = error
 		self._connected_result.set()
 		for listener in self._listener:
 			self._run_listener_callback(listener, "messagebus_connection_failed", messagebus=self, exception=error)
 
 	def _on_close(self, websocket: WebSocket, close_status_code: int, close_message: str) -> None:
-		logger.info("Websocket closed with status_code=%r and message=%r", close_status_code, close_message)
+		logger.info(
+			"Websocket closed with status_code=%r and message=%r, (should_be_connected=%r, id=%r)",
+			close_status_code,
+			close_message,
+			self._should_be_connected,
+			self.id,
+		)
 		self._connected = False
-		if self._should_be_connected:
-			self._client.connected = False
+		if self._should_be_connected and self._client.connected:
+			self._client._connected = False
+			self._client_was_connected_on_connection_lost = True
 
 		if close_status_code == 1013:
 			# Try again later
@@ -1917,7 +1940,7 @@ class Messagebus(Thread):
 			self._run_listener_callback(listener, "messagebus_connection_closed", messagebus=self)
 
 	def _on_message(self, websocket: WebSocket, message: bytes) -> None:
-		logger.debug("Websocket message received")
+		logger.debug("Websocket message received (id=%r)", self.id)
 		try:
 			if self.compression == "lz4":
 				message = lz4.frame.decompress(message)
@@ -1953,14 +1976,14 @@ class Messagebus(Thread):
 					continue
 				self._run_listener_callback(listener, callback, message=msg)
 		except Exception as err:
-			logger.error("Failed to process websocket message: %s", err, exc_info=True)
+			logger.error("Failed to process websocket message: %s (id=%r)", err, self.id, exc_info=True)
 
 	def _on_ping(self, websocket: WebSocket, message: bytes) -> None:
-		logger.debug("Ping message received")
+		logger.debug("Ping message received (id=%r)", self.id)
 		# We do not need to send a pong, the websocket library will do that for us
 
 	def _on_pong(self, websocket: WebSocket, message: bytes) -> None:
-		logger.debug("Pong message received")
+		logger.debug("Pong message received (id=%r)", self.id)
 
 	def register_messagebus_listener(self, listener: MessagebusListener) -> None:
 		with self._listener_lock:
@@ -1982,7 +2005,7 @@ class Messagebus(Thread):
 			else:
 				callback(**kwargs)
 		except Exception as err:
-			logger.error("Error running callback %r on listener %r: %s", callback_name, listener, err, exc_info=True)
+			logger.error("Error running callback %r on listener %r: %s (id=%r)", callback_name, listener, err, self.id, exc_info=True)
 
 	def wait_for_jsonrpc_response_message(self, rpc_id: str | int, timeout: float | None = None) -> JSONRPCResponseMessage:
 		class JSONRPCResponseListener(MessagebusListener):
@@ -2032,10 +2055,10 @@ class Messagebus(Thread):
 
 	def send_message(self, message: Message) -> None:
 		if not self.connected:
-			raise RuntimeError("Messagebus not connected")
+			raise RuntimeError(f"Messagebus not connected (id={self.id})")
 		if not self._app:
-			raise RuntimeError("WebSocketApp not initialized")
-		logger.debug("Sending message: %r", message)
+			raise RuntimeError(f"WebSocketApp not initialized (id={self.id})")
+		logger.debug("Sending message: %r (id=%r)", message, self.id)
 		data = message.to_msgpack()
 		if self.compression == "lz4":
 			data = lz4.frame.compress(data, compression_level=0, block_linked=True)
@@ -2043,7 +2066,7 @@ class Messagebus(Thread):
 			self._app.send(data, ABNF.OPCODE_BINARY)
 
 	def connect(self, wait: bool = True) -> None:
-		logger.debug("Messagebus.connect")
+		logger.debug("Messagebus.connect (id=%r)", self.id)
 		if self._should_be_connected:
 			return
 		if not self._client.addresses:
@@ -2052,7 +2075,7 @@ class Messagebus(Thread):
 		self._connected_result.clear()
 		self._should_be_connected = True
 		if not self.is_alive():
-			logger.debug("Starting thread")
+			logger.debug("Starting thread (id=%r)", self.id)
 			self.start()
 		if wait:
 			logger.debug("Waiting for connected result (timeout=%r)", self._connect_timeout)
@@ -2164,9 +2187,10 @@ class Messagebus(Thread):
 			self._run_listener_callback(listener, "messagebus_connection_open", messagebus=self)
 
 		logger.debug(
-			"Websocket connection params: sslopt=%r, "
+			"Websocket connection params (id=%r): sslopt=%r, "
 			"proxy_type=%r, http_proxy_host=%r, http_proxy_port=%r, http_proxy_auth=%r, http_no_proxy=%r, "
 			"connect_timeout=%r, ping_interval=%r, ping_timeout=%r",
+			self.id,
 			sslopt,
 			proxy_type,
 			http_proxy_host,
@@ -2194,30 +2218,32 @@ class Messagebus(Thread):
 		)
 
 	def _disconnect(self) -> None:
-		logger.notice("Disconnecting from opsi messagebus")
+		logger.notice("Disconnecting from opsi messagebus (id=%r)", self.id)
 		self._disconnected_result.clear()
 		self._connect_attempt = 0
+		self._should_be_connected = False
 		if self._app and self._app.sock:
 			try:
 				self._app.close()  # type: ignore[attr-defined]
 			except Exception as err:
 				logger.error(err, exc_info=True)
+		self._app = None
 		self._connected = False
 		self._disconnected_result.set()
 
 	def run(self) -> None:
 		for var in self._context:
 			var.set(self._context[var])
-		logger.debug("Messagebus thread started")
+		logger.debug("Messagebus thread started (id=%r)", self.id)
 		try:
 			while not self._should_stop.wait(1):
 				if self._should_be_connected and not self._connected:
 					if self._next_connect_wait:
-						logger.info("Waiting %d seconds before reconnect", self._next_connect_wait)
+						logger.info("Waiting %d seconds before reconnect (id=%r)", self._next_connect_wait, self.id)
 						for _ in range(round(self._next_connect_wait)):
 							if self._should_stop.wait(1):
 								return
-					logger.debug("Calling _connect()")
+					logger.debug("Calling _connect() (id=%r)", self.id)
 					# Call of _connect() will block until the connection is lost
 					self._connect()
 		except Exception as err:
