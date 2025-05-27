@@ -46,9 +46,8 @@ import lz4.frame  # type: ignore[import,no-redef]
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from packaging import version
-from requests import HTTPError
+from requests import HTTPError, Session
 from requests import Response as RequestsResponse
-from requests import Session
 from requests.adapters import HTTPAdapter
 from requests.cookies import RequestsCookieJar
 from requests.exceptions import SSLError, Timeout
@@ -411,8 +410,8 @@ class ServiceClient:
 		self.new_host_key: str | None = None
 		self.jsonrpc_create_objects = bool(jsonrpc_create_objects)
 		self.jsonrpc_create_methods = bool(jsonrpc_create_methods)
-		self.jsonrpc_interface: list[dict[str, Any]] = []
 		self._jsonrpc_path = "/rpc"
+		self._jsonrpc_interface: dict[str, dict[str, Any]] = {}
 		self._jsonrpc_method_params: dict[str, dict[str, Any]] = {}
 		self._messagebus_available = False
 		self._connected = False
@@ -640,6 +639,24 @@ class ServiceClient:
 	@property
 	def verify(self) -> list[ServiceVerificationFlags]:
 		return self._verify
+
+	@property
+	def jsonrpc_interface(self) -> list[dict[str, Any]]:
+		"""
+		Returns the JSON-RPC interface as received from the service.
+		"""
+		return self._jsonrpc_interface.values()
+
+	def get_jsonrpc_method(self, method: str) -> dict[str, Any]:
+		"""
+		Returns the JSON-RPC method interface for the given method name.
+		:param method: The name of the JSON-RPC method.
+		:raises ValueError: If the method is not found in the JSON-RPC interface.
+		"""
+		method_interface = self._jsonrpc_interface.get(method)
+		if not method_interface:
+			raise ValueError(f"Method {method!r} not found in JSON-RPC interface")
+		return method_interface
 
 	@staticmethod
 	@lru_cache
@@ -913,7 +930,7 @@ class ServiceClient:
 		return OpsiCaState.UNAVAILABLE
 
 	def create_jsonrpc_methods(self, instance: Any = None) -> None:
-		if self.jsonrpc_interface is None:
+		if self._jsonrpc_interface is None:
 			raise ValueError("Interface description not available")
 
 		instance = instance or self
@@ -924,9 +941,8 @@ class ServiceClient:
 		def backend_exit(self: ServiceClient) -> None:
 			return self.disconnect()
 
-		for method in self.jsonrpc_interface:
+		for method_name, method in self._jsonrpc_interface.items():
 			try:
-				method_name = method["name"]
 				exec_locals: dict[str, object] = {}
 
 				if method_name not in ("backend_getInterface", "backend_exit"):
@@ -1198,27 +1214,27 @@ class ServiceClient:
 					logger.error("Failed to fetch CA certs: %s", err, exc_info=True)
 					raise OpsiServiceVerificationError(f"Failed to fetch CA certs: {err}") from err
 
+			self._jsonrpc_method_params = {}
+			self._jsonrpc_interface = {}
 			if self.jsonrpc_create_methods:
 				try:
-					self.jsonrpc_interface = self.jsonrpc("backend_getInterface", assert_connected=False)
+					for method in self.jsonrpc("backend_getInterface", assert_connected=False):
+						self._jsonrpc_interface[method["name"]] = method
+						self._jsonrpc_method_params[method["name"]] = {}
+						def_idx = 0
+						for param in method["params"]:
+							default = None
+							if param[0] == "*":
+								param = param.lstrip("*")
+								if method["defaults"]:
+									try:
+										default = method["defaults"][def_idx]
+									except IndexError:
+										pass
+								def_idx += 1
+							self._jsonrpc_method_params[method["name"]][param] = default
 				except Exception as err:
 					logger.error("Failed to get interface description: %s", err, exc_info=True)
-
-				self._jsonrpc_method_params = {}
-				for method in self.jsonrpc_interface:
-					self._jsonrpc_method_params[method["name"]] = {}
-					def_idx = 0
-					for param in method["params"]:
-						default = None
-						if param[0] == "*":
-							param = param.lstrip("*")
-							if method["defaults"]:
-								try:
-									default = method["defaults"][def_idx]
-								except IndexError:
-									pass
-							def_idx += 1
-						self._jsonrpc_method_params[method["name"]][param] = default
 
 				self.create_jsonrpc_methods()
 
@@ -1606,7 +1622,7 @@ class ServiceClient:
 			read_timeout = get_rpc_timeout(method)
 
 		logger.info(
-			"JSONRPC request to %s: id=%r, method=%s, Content-Type=%s, Content-Encoding=%s, timeout=%r",
+			"JSON-RPC request to %s: id=%r, method=%s, Content-Type=%s, Content-Encoding=%s, timeout=%r",
 			self.base_url,
 			rpc_id,
 			method,
@@ -2042,7 +2058,7 @@ class Messagebus(Thread):
 			return {"jsonrpc": "2.0", "id": res.rpc_id, "result": res.result, "error": res.error}
 
 		if res.error:
-			logger.debug("JSONRPC-response contains error: %s", res.error)
+			logger.debug("JSON-RPC-response contains error: %s", res.error)
 			error_cls: Type[Exception] = OpsiRpcError
 			if res.error["data"]["class"] in ("BackendPermissionDeniedError", "OpsiServicePermissionError"):
 				error_cls = OpsiServicePermissionError

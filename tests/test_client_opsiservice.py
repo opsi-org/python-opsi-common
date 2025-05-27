@@ -2039,7 +2039,12 @@ def test_jsonrpc_interface(tmp_path: Path) -> None:
 			server.response_body = json.dumps({"jsonrpc": "2.0", "result": interface}).encode("utf-8")
 			server.response_headers["Content-Type"] = "application/json"
 			client.connect()
+			assert sorted(client._jsonrpc_interface) == sorted(m["name"] for m in interface)
 			assert len(client.jsonrpc_interface) == 3
+			for method in interface:
+				assert client.get_jsonrpc_method(method["name"]) == method
+			with pytest.raises(ValueError, match="Method 'invalid' not found in JSON-RPC interface"):
+				client.get_jsonrpc_method("invalid")
 			with pytest.raises(ValueError, match="Method 'invalid' not found in interface description"):
 				client.jsonrpc(method="invalid", params={"arg1": "test"})
 			with pytest.raises(ValueError, match="Invalid param 'invalid' for method 'test_method'"):
