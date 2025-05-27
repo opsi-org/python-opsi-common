@@ -645,7 +645,7 @@ class ServiceClient:
 		"""
 		Returns the JSON-RPC interface as received from the service.
 		"""
-		return self._jsonrpc_interface.values()
+		return list(self._jsonrpc_interface.values())
 
 	def get_jsonrpc_method(self, method: str) -> dict[str, Any]:
 		"""
