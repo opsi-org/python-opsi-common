@@ -25,7 +25,7 @@ import warnings
 import webbrowser
 from abc import ABC
 from base64 import b64encode
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from contextvars import copy_context
 from dataclasses import astuple, dataclass
 from datetime import datetime, timezone
@@ -46,8 +46,9 @@ import lz4.frame  # type: ignore[import,no-redef]
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from packaging import version
-from requests import HTTPError, Session
+from requests import HTTPError
 from requests import Response as RequestsResponse
+from requests import Session
 from requests.adapters import HTTPAdapter
 from requests.cookies import RequestsCookieJar
 from requests.exceptions import SSLError, Timeout
@@ -817,16 +818,16 @@ class ServiceClient:
 				logger.error("Failed to load cert %r: %s", match.group(1), err, exc_info=True)
 		return certs
 
-	def read_ca_cert_file(self) -> list[x509.Certificate]:
+	def read_ca_cert_file(self, with_lock: bool = True) -> list[x509.Certificate]:
 		ca_cert_file = self.ca_cert_file
 		if not ca_cert_file:
 			raise OpsiServiceError("No CA cert file defined")
-		with self._ca_cert_lock:
+		with self._ca_cert_lock if with_lock else nullcontext():
 			with open(ca_cert_file, "r", encoding="utf-8") as file:
 				with lock_file(file=file, exclusive=False, timeout=5.0):
 					return self.certs_from_pem(file.read())
 
-	def write_ca_cert_file(self, certs: list[x509.Certificate], force: bool = False) -> None:
+	def write_ca_cert_file(self, certs: list[x509.Certificate], *, force: bool = False, with_lock: bool = True) -> None:
 		ca_cert_file = self.ca_cert_file
 
 		if not force and str(ca_cert_file) == OPSI_CA_CERT_FILE:
@@ -837,7 +838,7 @@ class ServiceClient:
 		if not ca_cert_file:
 			raise OpsiServiceError("No CA cert file defined")
 
-		with self._ca_cert_lock:
+		with self._ca_cert_lock if with_lock else nullcontext():
 			ca_cert_file.parent.mkdir(parents=True, exist_ok=True)
 			certs_pem = []
 			subjects = []
@@ -877,43 +878,44 @@ class ServiceClient:
 		self.write_ca_cert_file(ca_certs, force=force_write_ca_cert_file)
 
 	def handle_uib_opsi_ca_in_cert_file(self, action: Literal["add", "remove"]) -> None:
-		ca_cert_file = self.ca_cert_file
-		if not ca_cert_file:
-			raise OpsiServiceError("No CA cert file defined")
-		uib_opsi_ca_cn = self._uib_opsi_ca_cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value
-		found = False
-		ca_certs = []
-		for cert in self.get_opsi_ca_certs():
-			if cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value == uib_opsi_ca_cn:
-				found = True
-			else:
-				ca_certs.append(cert)
+		with self._ca_cert_lock:
+			ca_cert_file = self.ca_cert_file
+			if not ca_cert_file:
+				raise OpsiServiceError("No CA cert file defined")
+			uib_opsi_ca_cn = self._uib_opsi_ca_cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value
+			found = False
+			ca_certs = []
+			for cert in self.get_opsi_ca_certs(with_lock=False):
+				if cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value == uib_opsi_ca_cn:
+					found = True
+				else:
+					ca_certs.append(cert)
 
-		if action == "remove":
-			if found:
-				logger.info("Removing uib opsi CA from cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
-			else:
-				logger.info(
-					"uib opsi CA not found in cert file '%s', nothing to remove (%d certificates total)", ca_cert_file, len(ca_certs)
-				)
-				return
+			if action == "remove":
+				if found:
+					logger.info("Removing uib opsi CA from cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
+				else:
+					logger.info(
+						"uib opsi CA not found in cert file '%s', nothing to remove (%d certificates total)", ca_cert_file, len(ca_certs)
+					)
+					return
 
-		elif action == "add":
-			ca_certs.extend(self.certs_from_pem(UIB_OPSI_CA))
-			if found:
-				logger.info("Updating uib opsi CA in cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
-			else:
-				logger.info("Adding uib opsi CA to cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
+			elif action == "add":
+				ca_certs.extend(self.certs_from_pem(UIB_OPSI_CA))
+				if found:
+					logger.info("Updating uib opsi CA in cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
+				else:
+					logger.info("Adding uib opsi CA to cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
 
-		self.write_ca_cert_file(ca_certs)
+			self.write_ca_cert_file(ca_certs, with_lock=False)
 
-	def get_opsi_ca_certs(self) -> list[x509.Certificate]:
+	def get_opsi_ca_certs(self, with_lock: bool = True) -> list[x509.Certificate]:
 		ca_certs: list[x509.Certificate] = []
 		ca_cert_file = self.ca_cert_file
 		if not ca_cert_file or not ca_cert_file.exists() or ca_cert_file.stat().st_size == 0:
 			return ca_certs
 		try:
-			ca_certs = self.read_ca_cert_file()
+			ca_certs = self.read_ca_cert_file(with_lock=with_lock)
 		except Exception as err:
 			logger.warning(err, exc_info=True)
 		return ca_certs
