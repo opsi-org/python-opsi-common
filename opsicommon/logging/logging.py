@@ -448,14 +448,14 @@ class SecretFilter(metaclass=Singleton):
 	of secrets which can be used by the ContextSecretFormatter.
 	"""
 
-	def __init__(self, min_length: int = 6):
+	def __init__(self, min_length: int = 5):
 		"""
 		SecretFilter constructor.
 
 		This constructor initializes the minimal length of secrets.
-		If no value is provided, the default is 6 (characters long).
+		If no value is provided, the default is 5 (characters long).
 
-		:param min_length: Minimal length of a secret string (Default: 6).
+		:param min_length: Minimal length of a secret string (Default: 5).
 		:type min_length: int
 		"""
 		self._min_length = min_length
