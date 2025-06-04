@@ -24,26 +24,19 @@ from collections import OrderedDict
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable, Generator, Literal, overload
+from typing import TYPE_CHECKING, Any, Callable, Generator, Literal, overload
 
 import attr
+from Crypto.Hash import MD5, SHA3_512
+from Crypto.Signature import pss
+from Crypto.Util.number import bytes_to_long
 
 from opsicommon.logging import get_logger
 from opsicommon.utils import json_decode, json_encode
 
-try:
-	# PyCryptodome from pypi installs into Crypto
-	from Crypto.Hash import MD5, SHA3_512
+if TYPE_CHECKING:
+	# RSA import is slow
 	from Crypto.PublicKey import RSA
-	from Crypto.Signature import pss
-	from Crypto.Util.number import bytes_to_long
-except (ImportError, OSError):
-	# python3-pycryptodome installs into Cryptodome
-	from Cryptodome.Hash import MD5, SHA3_512  # type: ignore[import,no-redef]
-	from Cryptodome.PublicKey import RSA  # type: ignore[import,no-redef]
-	from Cryptodome.Signature import pss  # type: ignore[import,no-redef]
-	from Cryptodome.Util.number import bytes_to_long  # type: ignore[import,no-redef]
-
 
 OPSI_CLIENT_INACTIVE_AFTER = 365
 
@@ -185,6 +178,9 @@ def generate_key_pair(return_pem: Literal[False], bits: int = 2048) -> tuple[RSA
 
 
 def generate_key_pair(return_pem: bool = False, bits: int = 2048) -> tuple[str, str] | tuple[RSA.RsaKey, RSA.RsaKey]:
+	# RSA import is slow, lazy import
+	from Crypto.PublicKey import RSA
+
 	key = RSA.generate(bits=bits)
 	if not return_pem:
 		return key, key.publickey()
@@ -193,6 +189,9 @@ def generate_key_pair(return_pem: bool = False, bits: int = 2048) -> tuple[str, 
 
 @lru_cache(maxsize=None)
 def get_signature_public_key_schema_version_1() -> RSA.RsaKey:
+	# RSA import is slow, lazy import
+	from Crypto.PublicKey import RSA
+
 	data = base64.decodebytes(
 		b"AAAAB3NzaC1yc2EAAAADAQABAAABAQCAD/I79Jd0eKwwfuVwh5B2z+S8aV0C5suItJa18RrYip+d4P0ogzqoCfOoVWtDo"
 		b"jY96FDYv+2d73LsoOckHCnuh55GA0mtuVMWdXNZIE8Avt/RzbEoYGo/H0weuga7I8PuQNC/nyS8w3W8TH4pt+ZCjZZoX8"
@@ -214,6 +213,9 @@ def get_signature_public_key_schema_version_1() -> RSA.RsaKey:
 
 @lru_cache(maxsize=None)
 def get_signature_public_key_schema_version_2() -> RSA.RsaKey:
+	# RSA import is slow, lazy import
+	from Crypto.PublicKey import RSA
+
 	return RSA.import_key(
 		"-----BEGIN PUBLIC KEY-----\n"
 		"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqTWmFj6m6O3gO676GStL\n"
@@ -461,6 +463,9 @@ class OpsiLicense:
 		if self.schema_version < 2:
 			raise NotImplementedError("Signing for schema_version < 2 not implemented")
 		if isinstance(private_key, str):
+			# RSA import is slow, lazy import
+			from Crypto.PublicKey import RSA
+
 			private_key = RSA.import_key(private_key.encode("ascii"))
 		self.signature = pss.new(private_key).sign(self.get_hash())  # type: ignore[arg-type]
 
