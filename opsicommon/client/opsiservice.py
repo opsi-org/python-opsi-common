@@ -1281,6 +1281,7 @@ class ServiceClient:
 		*,
 		headers: dict[str, str] | None = None,
 		connect_timeout: float | None = None,
+		write_timeout: float | None = None,
 		read_timeout: float | None = None,
 		data: bytes | UploadFile | None = None,
 		verify: str | bool | None = None,
@@ -1291,6 +1292,8 @@ class ServiceClient:
 
 		if connect_timeout is None:
 			connect_timeout = self._connect_timeout
+		if write_timeout is None:
+			write_timeout = 0
 		if read_timeout is None:
 			read_timeout = self._read_timeout
 
@@ -1305,7 +1308,9 @@ class ServiceClient:
 					url=self._get_url(path),
 					headers=headers,
 					data=data,
-					timeout=(connect_timeout, read_timeout),
+					# Unfortunately, requests / urllib3 does not support separate connect and write timeouts
+					# See https://github.com/urllib3/urllib3/issues/857
+					timeout=(connect_timeout + write_timeout, read_timeout),
 					stream=True,
 					verify=verify,
 				)
@@ -1724,7 +1729,7 @@ class ServiceClient:
 				path=path,
 				data=upload_file,
 				headers={"Content-Type": "binary/octet-stream", "Content-Length": str(upload_file.file_size)},
-				read_timeout=24 * 3600,  # 24 hours
+				write_timeout=24 * 3600,  # 24 hours
 				allow_status_codes=(200, 201),
 			)
 
