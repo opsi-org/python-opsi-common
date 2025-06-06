@@ -1,96 +1,85 @@
-[build-system]
-requires = ["poetry>=1.4"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry]
+[project]
 name = "python-opsi-common"
 version = "4.3.30.4"
 description = "The opsi python common library"
-homepage = "https://www.opsi.org"
-license = "AGPL-3.0"
-maintainers = ["uib GmbH <info@uib.de>"]
-authors = ["uib GmbH <info@uib.de>"]
-[[tool.poetry.packages]]
-include = "opsicommon"
+readme = "README.md"
+license = "AGPL-3.0-only"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+	"aiofiles>=24.1",
+	"annotated-types>=0.7",
+	"cffi>=1.17",
+	"colorlog>=6.6",
+	"cryptography>=42.0",
+	"distro>=1.6",
+	"lz4>=4.0",
+	"mailbits>=0.2",
+	"msgpack>=1.0",
+	"packaging>=24.1",
+	"psutil>=5.8",
+	"ptyprocess>=0.7",
+	"pycryptodome>=3.10",
+	"pydantic>=2.9",
+	"pydantic-core>=2.20",
+	"pyzsync>=1.0",
+	"requests>=2.26",
+	"rich>=13.8",
+	"tomlkit>=0.13",
+	"websocket-client>=1.4",
+	"zstandard>=0.21",
+	"msgspec>=0.19; platform_system != 'Windows'",
+	"pywin32>=308; platform_system == 'Windows'",
+	"pywinpty>=2.0; platform_system == 'Windows'",
+	"wmi>=1.5; platform_system == 'Windows'",
+]
 
-[[tool.poetry.source]]
-name = "uibpypi"
-url = "http://pypi.uib.gmbh:8080/simple"
-priority = "primary"
+[[project.authors]]
+name = "uib GmbH"
+email = "info@uib.de"
 
-[[tool.poetry.source]]
-name = "PyPI"
-priority = "supplemental"
+[[project.maintainers]]
+name = "uib GmbH"
+email = "info@uib.de"
+
+[project.urls]
+Homepage = "https://www.opsi.org"
+
+[dependency-groups]
+dev = [
+	"hypothesis>=6.111",
+	"mypy>=1.14",
+	"perflint>=0.7",
+	"pproxy>=2.7",
+	"pytest>=7.0",
+	"pytest-asyncio>=0.24",
+	"pytest-cov>=4.0",
+	"pyupgrade>=3.0",
+	"ruff>=0.6",
+	"types-aiofiles>=24.1",
+	"types-orjson>=3.6",
+	"types-psutil>=6.0",
+	"types-requests>=2.32",
+
+]
+
+[tool.uv]
+extra-index-url = ["https://pypi.uib.gmbh/simple"]
+index-strategy = "unsafe-best-match"
+package = true
 
 [tool.ruff]
 line-length = 140
+
+[tool.ruff.format]
+indent-style = "tab"
 
 [tool.mypy]
 disallow_untyped_calls = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 
-[tool.poetry.dependencies]
-python = ">=3.11,<3.14"
-aiofiles = ">=24.1"
-annotated-types = ">=0.7"
-cffi = ">=1.17"
-colorlog = ">=6.6"
-cryptography = ">=42.0"
-distro = ">=1.6"
-lz4 = ">=4.0"
-mailbits = ">=0.2"
-msgpack = ">=1.0"
-packaging = ">=24.1"
-psutil = ">=5.8"
-ptyprocess = ">=0.7"
-pycryptodome = ">=3.10"
-pydantic = ">=2.9"
-pydantic-core = ">=2.20"
-pyzsync = ">=1.0"
-requests = ">=2.26"
-rich = ">=13.8"
-tomlkit = ">=0.13"
-websocket-client = ">=1.4"
-zstandard = ">=0.21"
-
-[[tool.poetry.dependencies.msgspec]]
-platform = "linux"
-version = ">=0.19"
-
-[[tool.poetry.dependencies.msgspec]]
-platform = "darwin"
-version = ">=0.19"
-
-[tool.ruff.format]
-indent-style = "tab"
-
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 
-[tool.poetry.dependencies.pywin32]
-platform = "win32"
-version = ">=308"
-
-[tool.poetry.dependencies.pywinpty]
-platform = "win32"
-version = ">=2.0"
-
-[tool.poetry.dependencies.wmi]
-platform = "win32"
-version = ">=1.5"
-
-[tool.poetry.group.dev.dependencies]
-hypothesis = ">=6.111"
-mypy = ">=1.14"
-perflint = ">=0.7"
-pproxy = ">=2.7"
-pytest = ">=7.0"
-pytest-asyncio = ">=0.24"
-pytest-cov = ">=4.0"
-pyupgrade = ">=3.0"
-ruff = ">=0.6"
-types-aiofiles = ">=24.1"
-types-orjson = ">=3.6"
-types-psutil = ">=6.0"
-types-requests = ">=2.32"
+[tool.setuptools.packages.find]
+include = ["opsicommon", "opsicommon.*"]
