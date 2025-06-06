@@ -134,6 +134,7 @@ publish-uib-pypi:
   script:
     - export UV_PYTHON="3.13"
     - export UV_PYTHON_PREFERENCE="only-managed"
+    - curl -sS "${OPSIDEVTOOLS_INSTALLER_URL_LINUX_X64}" | sh
     - uv self update
     - uv sync --frozen
     - uv run opsi-dev-cli -l info pypi publish --url https://pypi.uib.gmbh --overwrite
