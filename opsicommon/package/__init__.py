@@ -65,8 +65,9 @@ class OpsiPackage:
 	Basic class for opsi packages.
 	"""
 
+	product: Product
+
 	def __init__(self, package_archive: Path | None = None, temp_dir: Path | None = None) -> None:
-		self.product: Product
 		self.product_properties: list[ProductProperty] = []
 		self.product_dependencies: list[ProductDependency] = []
 		self.package_dependencies: list[PackageDependency] = []
@@ -200,8 +201,10 @@ class OpsiPackage:
 		return f"{self.product.id}_{self.product.productVersion}-{self.product.packageVersion}.opsi"
 
 	def generate_control_file_legacy(self, control_file: Path) -> None:
+		if not self.product:
+			raise ValueError("Product information is missing. Cannot generate control file.")
 		legacy_control_file = LegacyControlFile()
-		legacy_control_file.product = self.product
+		legacy_control_file.product = self.product  # type: ignore[assignment]
 		legacy_control_file.productDependencies = self.product_dependencies
 		legacy_control_file.productProperties = self.product_properties
 		legacy_control_file.packageDependencies = [asdict(pdep) for pdep in self.package_dependencies]

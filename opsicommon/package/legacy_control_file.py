@@ -258,18 +258,16 @@ class LegacyControlFile:
 							if not value.strip().startswith(("{", "[")):
 								raise ValueError("Not trying to read json string because value does not start with { or [")
 							value = from_json(value.strip())
-							# Remove duplicates
-							value = forceUniqueList(value)
 						except Exception as err:
-							logger.trace("Failed to read json string '%s': %s", value.strip(), err)  # type: ignore
+							value = str(value)
+							logger.trace("Failed to read json string '%s': %s", value.strip(), err)
 							value = value.replace("\n", "")
 							value = value.replace("\t", "")
 							if not (sectionType == "productproperty" and option == "default"):
 								value = [v.strip() for v in value.split(",")]
-
-							# Remove duplicates
 							value = [v for v in forceList(value) if v not in ("", None)]
-							value = forceUniqueList(value)
+						# Remove duplicates
+						value = forceUniqueList(value)
 
 					if isinstance(value, str):
 						value = value.rstrip()
@@ -330,8 +328,8 @@ class LegacyControlFile:
 		self.product = Class(
 			id=product.get("id"),  # type: ignore
 			name=product.get("name"),  # type: ignore
-			productVersion=productVersion,
-			packageVersion=packageVersion,
+			productVersion=productVersion,  # type: ignore
+			packageVersion=packageVersion,  # type: ignore
 			licenseRequired=product.get("licenserequired"),  # type: ignore
 			setupScript=product.get("setupscript"),  # type: ignore
 			uninstallScript=product.get("uninstallscript"),  # type: ignore
@@ -344,7 +342,7 @@ class LegacyControlFile:
 			advice=product.get("advice"),  # type: ignore
 			productClassIds=product.get("productclasses"),  # type: ignore
 			windowsSoftwareIds=self._sections.get("windows", [{}])[0].get("softwareids", []),  # type: ignore
-			changelog=self._sections.get("changelog"),
+			changelog=self._sections.get("changelog"),  # type: ignore
 		)
 		if isinstance(self.product, NetbootProduct) and product.get("pxeconfigtemplate") is not None:  # type: ignore
 			self.product.setPxeConfigTemplate(product.get("pxeconfigtemplate"))  # type: ignore
@@ -389,9 +387,9 @@ class LegacyControlFile:
 				productId=self.product.getId(),  # type: ignore
 				productVersion=self.product.getProductVersion(),  # type: ignore
 				packageVersion=self.product.getPackageVersion(),  # type: ignore
-				propertyId=productProperty.get("name", ""),
-				description=productProperty.get("description", ""),
-				defaultValues=productProperty.get("default", []),
+				propertyId=productProperty.get("name", ""),  # type: ignore
+				description=productProperty.get("description", ""),  # type: ignore
+				defaultValues=productProperty.get("default", []),  # type: ignore
 			)
 		)
 		if isinstance(self.productProperties[-1], UnicodeProductProperty):
@@ -454,7 +452,7 @@ class LegacyControlFile:
 		lines.append(f"priority: {self.product.getPriority() or '0'}")
 		lines.append(f"licenseRequired: {self.product.getLicenseRequired()}")
 		if self.product.getProductClassIds() is not None:
-			lines.append(f"productClasses: {', '.join(self.product.getProductClassIds())}")
+			lines.append(f"productClasses: {', '.join(self.product.getProductClassIds())}")  # type: ignore
 		lines.append(f"setupScript: {self.product.getSetupScript() or ''}")
 		lines.append(f"uninstallScript: {self.product.getUninstallScript() or ''}")
 		lines.append(f"updateScript: {self.product.getUpdateScript() or ''}")
@@ -470,7 +468,7 @@ class LegacyControlFile:
 
 		if self.product.getWindowsSoftwareIds():
 			lines.append("[Windows]")
-			lines.append(f"softwareIds: {', '.join(self.product.getWindowsSoftwareIds())}")
+			lines.append(f"softwareIds: {', '.join(self.product.getWindowsSoftwareIds())}")  # type: ignore
 			lines.append("")
 
 		for dependency in self.productDependencies:

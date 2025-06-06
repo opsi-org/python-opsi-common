@@ -423,9 +423,9 @@ class ServiceClient:
 		self._ca_cert_lock = Lock()
 		self._listener: list[ServiceConnectionListener] = []
 		self._service_unavailable: OpsiServiceUnavailableError | None = None
-		self._username = None
-		self._password = None
-		self._totp = None
+		self._username: str | None = None
+		self._password: str | None = None
+		self._totp: str | None = None
 		self._sso = sso
 
 		self._uib_opsi_ca_cert = x509.load_pem_x509_certificate(UIB_OPSI_CA.encode("ascii"))

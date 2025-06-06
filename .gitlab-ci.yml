@@ -136,6 +136,6 @@ publish-uib-pypi:
     - export UV_PYTHON_PREFERENCE="only-managed"
     - uv self update
     - uv sync --frozen
-    - opsi-dev-cli -l info pypi publish --url https://pypi.uib.gmbh --overwrite
+    - uv run opsi-dev-cli -l info pypi publish --url https://pypi.uib.gmbh --overwrite
   only:
     - tags

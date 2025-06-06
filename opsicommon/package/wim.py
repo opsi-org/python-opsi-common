@@ -177,6 +177,7 @@ def wim_info(wim_file: Path | str) -> WIMInfo:
 			elif attr_type is list[str]:
 				val = cast(Any, val.split(" "))
 			else:
+				assert callable(attr_type)
 				val = attr_type(val)
 			data[attr] = val
 

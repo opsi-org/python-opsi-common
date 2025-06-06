@@ -567,7 +567,7 @@ def create_archive_internal(
 				progress.set_completed(total_size)
 		return
 
-	with ProgressTarFile.open(name=str(archive), mode=mode, dereference=dereference, progress=progress) as tar_object:  # type: ignore[call-arg]
+	with ProgressTarFile.open(name=str(archive), mode=mode, dereference=dereference, progress=progress) as tar_object:  # type: ignore[call-arg,call-overload]
 		for file in files:
 			tar_object.add(file.path, arcname=file.archive_path, filter=set_tarinfo)
 			if progress:
