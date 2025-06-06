@@ -1278,6 +1278,7 @@ class ServiceClient:
 		self,
 		method: str,
 		path: str,
+		*,
 		headers: dict[str, str] | None = None,
 		connect_timeout: float | None = None,
 		read_timeout: float | None = None,
@@ -1723,6 +1724,7 @@ class ServiceClient:
 				path=path,
 				data=upload_file,
 				headers={"Content-Type": "binary/octet-stream", "Content-Length": str(upload_file.file_size)},
+				read_timeout=24 * 3600,  # 24 hours
 				allow_status_codes=(200, 201),
 			)
 
@@ -1740,7 +1742,11 @@ class ServiceClient:
 		else:
 			logger.info("Downloading '%s' to '%s' (size: %d)", current.path, destination / current.name, current.size)
 			self.assert_connected()
-			response = self._request(method="GET", path=current.path)  # stream=True is set implicitely
+			response = self._request(
+				method="GET",
+				path=current.path,
+				read_timeout=24 * 3600,  # 24 hours
+			)
 			with (destination / current.name).open("wb") as dest_file:
 				position = 0
 				for chunk in response.iter_content(chunk_size=8192):
