@@ -55,13 +55,18 @@ def get_fqdn() -> str:
 			if addr.family not in (socket.AF_INET, socket.AF_INET6) or addr.address in ("127.0.0.1", "::1"):
 				continue
 			try:
-				fqdn = socket.getfqdn(addr.address)
-				if fqdn != addr.address:
-					return forceFqdn(fqdn.lower())
-			except (socket.error, ValueError):
+				(hostname, aliases, _addr) = _gethostbyaddr_with_timeout(addr.address, timeout=0.1)
+				aliases.insert(0, hostname)
+				for name in aliases:
+					if "." in name and name != addr.address:
+						try:
+							return forceFqdn(name.lower())
+						except ValueError:
+							continue
+			except (socket.error, ValueError, TimeoutError):
 				pass
 
-	raise RuntimeError("Failed to get fqdn")
+	raise RuntimeError("Failed to get FQDN")
 
 
 def get_domain() -> str:
