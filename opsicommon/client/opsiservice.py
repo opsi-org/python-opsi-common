@@ -1022,7 +1022,7 @@ class ServiceClient:
 				ca_cert_file = self.ca_cert_file
 				ca_cert_file_exists = ca_cert_file and ca_cert_file.exists()
 
-				if ServiceVerificationFlags.ACCEPT_ALL in self._verify:
+				if ServiceVerificationFlags.ACCEPT_ALL in self._verify or self.service_is_opsiclientd():
 					self._session.verify = False
 				elif ca_cert_file:
 					self._session.verify = str(self.ca_cert_file)
