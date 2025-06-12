@@ -30,6 +30,7 @@ __all__ = (
 	"OpsiBackupFileNotFound",
 	"OpsiBadRpcError",
 	"OpsiServiceConnectionError",
+	"OpsiServiceConnectionRefusedError",
 	"OpsiError",
 	"OpsiProductOrderingError",
 	"OpsiRpcError",
@@ -81,6 +82,10 @@ class OpsiServiceError(OpsiError):
 		super().__init__(message)
 		self.status_code = status_code
 		self.content = content
+
+
+class OpsiServiceConnectionRefusedError(OpsiServiceError):
+	ExceptionShortDescription = "Opsi service connection refused error"
 
 
 class OpsiServiceAuthenticationError(OpsiServiceError):

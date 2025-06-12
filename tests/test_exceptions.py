@@ -44,6 +44,7 @@ from opsicommon.exceptions import (  # noqa: E402,F401
 	OpsiRpcError,
 	OpsiServiceAuthenticationError,
 	OpsiServiceConnectionError,
+	OpsiServiceConnectionRefusedError,
 	OpsiServiceTimeoutError,
 	OpsiServiceVerificationError,
 	RepositoryError,
