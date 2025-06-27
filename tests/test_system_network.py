@@ -21,6 +21,7 @@ def test_get_network_info() -> None:
 	assert any(route.is_default for route in network_info.routes)
 	assert any(interface.is_loopback for interface in network_info.interfaces)
 	assert any(not interface.is_loopback for interface in network_info.interfaces)
+	assert all(interface.mac_address == "00:00:00:00:00:00" for interface in network_info.interfaces if interface.is_loopback)
 
 
 def test_get_fqdn() -> None:

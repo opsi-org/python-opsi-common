@@ -30,8 +30,9 @@ class NetworkInterface:
 	family: int  # socket.AF_INET or socket.AF_INET6
 	name: str
 	address: ipaddress.IPv4Address | ipaddress.IPv6Address
-	netmask: ipaddress.IPv4Network | ipaddress.IPv6Network | None = None
+	netmask: ipaddress.IPv4Address | ipaddress.IPv6Address | None = None
 	broadcast: ipaddress.IPv4Address | ipaddress.IPv6Address | None = None
+	mac_address: str | None = None
 	is_loopback: bool = False
 	is_link_local: bool = False
 
@@ -94,8 +95,9 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 			continue
 
 	for iface_name in netifaces.interfaces():
+		if_addresses = netifaces.ifaddresses(iface_name)
 		for family in (socket.AF_INET, socket.AF_INET6):
-			for info in netifaces.ifaddresses(iface_name).get(family, []):
+			for info in if_addresses.get(family, []):
 				try:
 					address = ipaddress.ip_address(info["addr"].split("%")[0])
 					if (not include_link_local) and address.is_link_local:
@@ -110,6 +112,7 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 						address=address,
 						netmask=ipaddress.ip_network(info["netmask"]) if "netmask" in info else None,
 						broadcast=ipaddress.ip_address(info["broadcast"]) if "broadcast" in info else None,
+						mac_address=if_addresses.get(netifaces.AF_LINK, [{}])[0].get("addr"),
 						is_loopback=address.is_loopback,
 						is_link_local=address.is_link_local,
 					)
