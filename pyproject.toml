@@ -33,6 +33,7 @@ dependencies = [
 	"wmi>=1.5; platform_system == 'Windows'",
 	"netifaces>=0.11.0",
 	"types-netifaces>=0.11.0.20241025",
+	"dnspython>=2.7.0",
 ]
 
 [[project.authors]]

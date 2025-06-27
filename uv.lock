@@ -284,6 +284,15 @@ wheels = [
 ]
 
 [[package]]
+name = "dnspython"
+version = "2.7.0"
+source = { registry = "https://pypi.uib.gmbh/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/4a/263763cb2ba3816dd94b08ad3a33d5fdae34ecb856678773cc40a3605829/dnspython-2.7.0.tar.gz", hash = "sha256:ce9c432eda0dc91cf618a5cedf1a4e142651196bbcd2c80e89ed5a907e5cfaf1", size = 345197, upload-time = "2024-10-05T20:14:59.362Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/68/1b/e0a87d256e40e8c888847551b20a017a6b98139178505dc7ffb96f04e954/dnspython-2.7.0-py3-none-any.whl", hash = "sha256:b4c34b7d10b51bcc3a5071e7b8dee77939f1e878477eeecc965e9835f63c6c86", size = 313632, upload-time = "2024-10-05T20:14:57.687Z" },
+]
+
+[[package]]
 name = "hypothesis"
 version = "6.135.1"
 source = { registry = "https://pypi.uib.gmbh/simple" }
@@ -780,7 +789,7 @@ wheels = [
 
 [[package]]
 name = "python-opsi-common"
-version = "4.3.31.3"
+version = "4.3.32.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
@@ -789,6 +798,7 @@ dependencies = [
     { name = "colorlog" },
     { name = "cryptography" },
     { name = "distro" },
+    { name = "dnspython" },
     { name = "lz4" },
     { name = "mailbits" },
     { name = "msgpack" },
@@ -837,6 +847,7 @@ requires-dist = [
     { name = "colorlog", specifier = ">=6.6" },
     { name = "cryptography", specifier = ">=42.0" },
     { name = "distro", specifier = ">=1.6" },
+    { name = "dnspython", specifier = ">=2.7.0" },
     { name = "lz4", specifier = ">=4.0" },
     { name = "mailbits", specifier = ">=0.2" },
     { name = "msgpack", specifier = ">=1.0" },

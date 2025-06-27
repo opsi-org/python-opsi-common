@@ -13,6 +13,7 @@ import socket
 from dataclasses import dataclass, field
 
 import netifaces
+from dns.resolver import Resolver
 
 from opsicommon.logging import get_logger
 from opsicommon.types import forceFqdn
@@ -26,11 +27,12 @@ class NetworkInterface:
 	Network interface information.
 	"""
 
-	family: int
+	family: int  # socket.AF_INET or socket.AF_INET6
 	name: str
 	address: ipaddress.IPv4Address | ipaddress.IPv6Address
 	netmask: ipaddress.IPv4Network | ipaddress.IPv6Network | None = None
 	broadcast: ipaddress.IPv4Address | ipaddress.IPv6Address | None = None
+	is_loopback: bool = False
 	is_link_local: bool = False
 
 
@@ -40,7 +42,7 @@ class NetworkRoute:
 	Network route information.
 	"""
 
-	family: int
+	family: int  # socket.AF_INET or socket.AF_INET6
 	interface_name: str
 	gateway: ipaddress.IPv4Address | ipaddress.IPv6Address
 	destination: ipaddress.IPv4Network | ipaddress.IPv6Network | None = None
@@ -48,19 +50,29 @@ class NetworkRoute:
 
 
 @dataclass
-class NetworkInformation:
+class DNSNameserver:
+	"""
+	DNS nameserver information.
+	"""
+
+	family: int  # socket.AF_INET or socket.AF_INET6
+	address: ipaddress.IPv4Address | ipaddress.IPv6Address
+
+
+@dataclass
+class NetworkInfo:
 	"""
 	Network information.
 	"""
 
 	interfaces: list[NetworkInterface] = field(default_factory=list)
 	routes: list[NetworkRoute] = field(default_factory=list)
+	dns_nameservers: list[DNSNameserver] = field(default_factory=list)
 
 
-def get_network_info(*, include_link_local: bool = True) -> NetworkInformation:
-	network_info = NetworkInformation()
+def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
+	network_info = NetworkInfo()
 	default_gw = netifaces.gateways().get("default")
-
 	if default_gw:
 		for family, info in default_gw.items():
 			network_info.routes.append(
@@ -72,8 +84,17 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInformation:
 				)
 			)
 
+	for nameserver in Resolver().nameservers:
+		try:
+			address = ipaddress.ip_address(nameserver)
+			network_info.dns_nameservers.append(
+				DNSNameserver(address=address, family=socket.AF_INET6 if address.version == 6 else socket.AF_INET)
+			)
+		except ValueError:
+			continue
+
 	for iface_name in netifaces.interfaces():
-		for family in (netifaces.AF_INET, netifaces.AF_INET6):
+		for family in (socket.AF_INET, socket.AF_INET6):
 			for info in netifaces.ifaddresses(iface_name).get(family, []):
 				try:
 					address = ipaddress.ip_address(info["addr"].split("%")[0])
@@ -89,6 +110,7 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInformation:
 						address=address,
 						netmask=ipaddress.ip_network(info["netmask"]) if "netmask" in info else None,
 						broadcast=ipaddress.ip_address(info["broadcast"]) if "broadcast" in info else None,
+						is_loopback=address.is_loopback,
 						is_link_local=address.is_link_local,
 					)
 				)
@@ -142,4 +164,5 @@ def get_hostnames() -> set[str]:
 					names.add(alias)
 		except (socket.error, TimeoutError) as err:
 			logger.info("No hostname for %s: %s", addr, err)
+	return names
 	return names
