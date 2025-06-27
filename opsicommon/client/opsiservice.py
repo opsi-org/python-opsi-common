@@ -75,7 +75,7 @@ from opsicommon.server import get_opsiconfd_config
 from opsicommon.ssl.common import load_key, x509_name_to_dict
 from opsicommon.system import lock_file, set_system_datetime
 from opsicommon.system.info import is_windows
-from opsicommon.system.network import get_hostnames, get_ip_addresses
+from opsicommon.system.network import get_hostnames, get_network_info
 from opsicommon.types import forceHostId, forceOpsiHostKey
 from opsicommon.utils import json_decode, json_encode, msgpack_decode, msgpack_encode, prepare_proxy_environment
 
@@ -669,7 +669,7 @@ class ServiceClient:
 		host = url.hostname.lower().replace("[", "").replace("]", "")
 		return (
 			host in ("0000:0000:0000:0000:0000:0000:0000:0001", "127.0.0.1", "localhost", "ip6-localhost", "ip6-loopback")
-			or host in [a["ip_address"].exploded for a in get_ip_addresses()]
+			or host in [interface.address.exploded for interface in get_network_info().interfaces]
 			or host in get_hostnames()
 		)
 
