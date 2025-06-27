@@ -85,7 +85,13 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 				)
 			)
 
-	for nameserver in Resolver().nameservers:
+	nameservers = []
+	try:
+		nameservers = Resolver().nameservers
+	except Exception as err:
+		logger.warning("Failed to get nameservers from Resolver: %s", err)
+
+	for nameserver in nameservers:
 		try:
 			address = ipaddress.ip_address(str(nameserver))
 			network_info.dns_nameservers.append(
