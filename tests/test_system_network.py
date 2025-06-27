@@ -35,11 +35,13 @@ def test_get_fqdn() -> None:
 
 
 def test_get_domain() -> None:
-	assert get_domain()
+	with mock.patch("socket.getfqdn", lambda x=None: "hostname.domain.org"):
+		assert get_domain() == "domain.org"
 
 
 def test_get_hostnames() -> None:
 	hostnames = get_hostnames()
+	print(hostnames)
 	assert "localhost" in hostnames
 
 
