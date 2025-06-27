@@ -74,7 +74,7 @@ class NetworkInfo:
 def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 	network_info = NetworkInfo()
 	default_gw = netifaces.gateways().get("default")
-	if default_gw:
+	if default_gw and isinstance(default_gw, dict):
 		for family, info in default_gw.items():
 			network_info.routes.append(
 				NetworkRoute(
@@ -87,7 +87,7 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 
 	for nameserver in Resolver().nameservers:
 		try:
-			address = ipaddress.ip_address(nameserver)
+			address = ipaddress.ip_address(str(nameserver))
 			network_info.dns_nameservers.append(
 				DNSNameserver(address=address, family=socket.AF_INET6 if address.version == 6 else socket.AF_INET)
 			)
@@ -97,9 +97,9 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 	for iface_name in netifaces.interfaces():
 		if_addresses = netifaces.ifaddresses(iface_name)
 		for family in (socket.AF_INET, socket.AF_INET6):
-			for info in if_addresses.get(family, []):
+			for if_info in if_addresses.get(family, []):
 				try:
-					address = ipaddress.ip_address(info["addr"].split("%")[0])
+					address = ipaddress.ip_address(if_info["addr"].split("%")[0])
 					if (not include_link_local) and address.is_link_local:
 						continue
 				except ValueError:
@@ -110,8 +110,8 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 						family=family,
 						name=iface_name,
 						address=address,
-						netmask=ipaddress.ip_network(info["netmask"]) if "netmask" in info else None,
-						broadcast=ipaddress.ip_address(info["broadcast"]) if "broadcast" in info else None,
+						netmask=ipaddress.ip_address(ipaddress.ip_network(if_info["netmask"]).netmask) if "netmask" in if_info else None,
+						broadcast=ipaddress.ip_address(if_info["broadcast"]) if "broadcast" in if_info else None,
 						mac_address=if_addresses.get(netifaces.AF_LINK, [{}])[0].get("addr"),
 						is_loopback=address.is_loopback,
 						is_link_local=address.is_link_local,
