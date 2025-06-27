@@ -506,6 +506,12 @@ wheels = [
 ]
 
 [[package]]
+name = "netifaces"
+version = "0.11.0"
+source = { registry = "https://pypi.uib.gmbh/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/91/86a6eac449ddfae239e93ffc1918cf33fd9bab35c04d1e963b311e347a73/netifaces-0.11.0.tar.gz", hash = "sha256:043a79146eb2907edf439899f262b3dfe41717d34124298ed281139a8b93ca32", size = 30106, upload-time = "2021-05-31T08:33:02.506Z" }
+
+[[package]]
 name = "packaging"
 version = "25.0"
 source = { registry = "https://pypi.uib.gmbh/simple" }
@@ -774,7 +780,7 @@ wheels = [
 
 [[package]]
 name = "python-opsi-common"
-version = "4.3.31.0"
+version = "4.3.31.3"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
@@ -787,6 +793,7 @@ dependencies = [
     { name = "mailbits" },
     { name = "msgpack" },
     { name = "msgspec", marker = "sys_platform != 'win32'" },
+    { name = "netifaces" },
     { name = "packaging" },
     { name = "psutil" },
     { name = "ptyprocess" },
@@ -799,6 +806,7 @@ dependencies = [
     { name = "requests" },
     { name = "rich" },
     { name = "tomlkit" },
+    { name = "types-netifaces" },
     { name = "websocket-client" },
     { name = "wmi", marker = "sys_platform == 'win32'" },
     { name = "zstandard" },
@@ -833,6 +841,7 @@ requires-dist = [
     { name = "mailbits", specifier = ">=0.2" },
     { name = "msgpack", specifier = ">=1.0" },
     { name = "msgspec", marker = "sys_platform != 'win32'", specifier = ">=0.19" },
+    { name = "netifaces", specifier = ">=0.11.0" },
     { name = "packaging", specifier = ">=24.1" },
     { name = "psutil", specifier = ">=5.8" },
     { name = "ptyprocess", specifier = ">=0.7" },
@@ -845,6 +854,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.26" },
     { name = "rich", specifier = ">=13.8" },
     { name = "tomlkit", specifier = ">=0.13" },
+    { name = "types-netifaces", specifier = ">=0.11.0.20241025" },
     { name = "websocket-client", specifier = ">=1.4" },
     { name = "wmi", marker = "sys_platform == 'win32'", specifier = ">=1.5" },
     { name = "zstandard", specifier = ">=0.21" },
@@ -1049,6 +1059,15 @@ source = { registry = "https://pypi.uib.gmbh/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/64/6e/fac4ffc896cb3faf2ac5d23747b65dd8bae1d9ee23305d1a3b12111c3989/types_aiofiles-24.1.0.20250606.tar.gz", hash = "sha256:48f9e26d2738a21e0b0f19381f713dcdb852a36727da8414b1ada145d40a18fe", size = 14364, upload-time = "2025-06-06T03:09:26.515Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/71/de/f2fa2ab8a5943898e93d8036941e05bfd1e1f377a675ee52c7c307dccb75/types_aiofiles-24.1.0.20250606-py3-none-any.whl", hash = "sha256:e568c53fb9017c80897a9aa15c74bf43b7ee90e412286ec1e0912b6e79301aee", size = 14276, upload-time = "2025-06-06T03:09:25.662Z" },
+]
+
+[[package]]
+name = "types-netifaces"
+version = "0.11.0.20241025"
+source = { registry = "https://pypi.uib.gmbh/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/72/6b9d2bc6a0709c071687bd29afdf9069db64c751df647475c761cfca6841/types-netifaces-0.11.0.20241025.tar.gz", hash = "sha256:0877b98a80e53e08dcb0e2d562772f6d0c4eee8bd0e1101a1ee78d17a88c3c8d", size = 2688, upload-time = "2024-10-25T02:45:03.523Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b0/ea/503f8bc06ab9903e0302d9b94f10d3fb8f599353874cb7e8b6d2fd453079/types_netifaces-0.11.0.20241025-py3-none-any.whl", hash = "sha256:b760315d043acbb1f96232094ab05751f1cec9863df09cd95f533bd1aaee6da8", size = 3023, upload-time = "2024-10-25T02:45:02.462Z" },
 ]
 
 [[package]]

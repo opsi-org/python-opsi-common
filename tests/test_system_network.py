@@ -10,12 +10,16 @@ test_system_network
 import socket
 from unittest import mock
 
-from opsicommon.system.network import _gethostbyaddr_with_timeout, get_domain, get_fqdn, get_hostnames, get_ip_addresses
+from opsicommon.system.network import _gethostbyaddr_with_timeout, get_domain, get_fqdn, get_hostnames, get_network_info
 
 
-def test_get_ip_addresses() -> None:
-	addr = list(get_ip_addresses())
-	assert addr
+def test_get_network_info() -> None:
+	network_info = get_network_info(include_link_local=True)
+	assert network_info.interfaces
+	assert network_info.routes
+	assert any(route.is_default for route in network_info.routes)
+	assert any(interface.is_link_local for interface in network_info.interfaces)
+	assert any(not interface.is_link_local for interface in network_info.interfaces)
 
 
 def test_get_fqdn() -> None:
