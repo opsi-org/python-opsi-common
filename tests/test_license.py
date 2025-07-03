@@ -1070,6 +1070,7 @@ def test_license_module_bundle() -> None:
 			"local_imaging": 20,
 			"monitoring": 20,
 			"userroles": 20,
+			"scalability_light": 20,
 			"wim-capture": 20,
 			"vpn": 40,
 			"sso": 30,
