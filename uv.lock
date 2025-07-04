@@ -789,12 +789,11 @@ wheels = [
 
 [[package]]
 name = "python-opsi-common"
-version = "4.3.32.0"
+version = "4.3.33.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
     { name = "annotated-types" },
-    { name = "cffi" },
     { name = "colorlog" },
     { name = "cryptography" },
     { name = "distro" },
@@ -843,7 +842,6 @@ dev = [
 requires-dist = [
     { name = "aiofiles", specifier = ">=24.1" },
     { name = "annotated-types", specifier = ">=0.7" },
-    { name = "cffi", specifier = ">=1.17" },
     { name = "colorlog", specifier = ">=6.6" },
     { name = "cryptography", specifier = ">=42.0" },
     { name = "distro", specifier = ">=1.6" },

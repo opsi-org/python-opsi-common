@@ -8,7 +8,6 @@ requires-python = ">=3.11,<3.14"
 dependencies = [
 	"aiofiles>=24.1",
 	"annotated-types>=0.7",
-	"cffi>=1.17",
 	"colorlog>=6.6",
 	"cryptography>=42.0",
 	"distro>=1.6",
