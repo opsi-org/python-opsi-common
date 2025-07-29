@@ -43,7 +43,7 @@ def get_system_uuid() -> str:
 	raise RuntimeError("Failed to find UUID in Win32_ComputerSystemProduct")
 
 
-def _lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: float = 5.0) -> None:
+def _lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: float = 5.0, lock_method: None = None) -> None:
 	lock_flags = win32con.LOCKFILE_FAIL_IMMEDIATELY | (win32con.LOCKFILE_EXCLUSIVE_LOCK if exclusive else 0)
 	start = time()
 	while True:

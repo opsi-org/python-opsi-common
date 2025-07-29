@@ -10,6 +10,7 @@ This file is part of opsi - https://www.opsi.org
 import getpass
 import multiprocessing
 import os
+import platform
 import queue
 import shutil
 import subprocess
@@ -17,25 +18,19 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Literal
 from unittest import mock
 from uuid import UUID
 
 import pytest
 
-from opsicommon.system import (
-	ensure_not_already_running,
-	get_system_uuid,
-	lock_file,
-	set_system_datetime,
-)
+from opsicommon.system import ensure_not_already_running, get_system_uuid, lock_file, set_system_datetime
 
 
 @pytest.mark.linux
 @pytest.mark.not_in_docker
 def test_get_user_sessions_linux() -> None:
-	from opsicommon.system import (
-		get_user_sessions,
-	)
+	from opsicommon.system import get_user_sessions
 
 	username = os.environ.get("SUDO_USER", getpass.getuser())
 	usernames = [sess.username for sess in get_user_sessions()]
@@ -46,9 +41,7 @@ def test_get_user_sessions_linux() -> None:
 def test_get_user_sessions_linux_mock() -> None:
 	import psutil  # type: ignore[import]
 
-	from opsicommon.system import (
-		get_user_sessions,
-	)
+	from opsicommon.system import get_user_sessions
 
 	with mock.patch(
 		"psutil.users",
@@ -60,10 +53,7 @@ def test_get_user_sessions_linux_mock() -> None:
 @pytest.mark.linux
 @pytest.mark.not_in_docker
 def test_run_process_in_session_linux() -> None:
-	from opsicommon.system import (
-		get_user_sessions,
-		run_process_in_session,
-	)
+	from opsicommon.system import get_user_sessions, run_process_in_session
 
 	username = getpass.getuser()
 	for session in get_user_sessions():
@@ -102,9 +92,7 @@ def test_ensure_not_already_running_child_process_linux(tmpdir: Path) -> None:
 @pytest.mark.linux
 @pytest.mark.admin_permissions
 def test_drop_privileges() -> None:
-	from opsicommon.system.linux import (
-		drop_privileges,
-	)
+	from opsicommon.system.linux import drop_privileges
 
 	username = getpass.getuser()
 	drop_privileges(username)
@@ -141,11 +129,21 @@ def test_get_system_uuid() -> None:
 
 
 class Task:  # type: ignore
-	def __init__(self, task_id: int, file: Path, res_queue: queue.Queue, exclusive: bool, timeout: float, wait: float) -> None:
+	def __init__(
+		self,
+		task_id: int,
+		file: Path,
+		res_queue: queue.Queue,
+		exclusive: bool,
+		timeout: float,
+		lock_method: Literal["flock", "lockf"] | None,
+		wait: float,
+	) -> None:
 		self.task_id = task_id
 		self.file = file
 		self.exclusive = exclusive
 		self.timeout = timeout
+		self.lock_method = lock_method
 		self.wait = wait
 		self.res_queue = res_queue
 
@@ -154,7 +152,7 @@ class Task:  # type: ignore
 		result: str | Exception | None = None
 		try:
 			with open(self.file, "a+", encoding="utf8") as test_fh:
-				with lock_file(test_fh, exclusive=self.exclusive, timeout=self.timeout):
+				with lock_file(test_fh, exclusive=self.exclusive, timeout=self.timeout, lock_method=self.lock_method):
 					test_fh.seek(0)
 					data = test_fh.read()
 					if self.exclusive:
@@ -169,35 +167,63 @@ class Task:  # type: ignore
 
 
 class ThreadTask(threading.Thread):
-	def __init__(self, task_id: int, file: Path, res_queue: queue.Queue, exclusive: bool, timeout: float, wait: float) -> None:
+	def __init__(
+		self,
+		task_id: int,
+		file: Path,
+		res_queue: queue.Queue,
+		exclusive: bool,
+		timeout: float,
+		lock_method: Literal["flock", "lockf"] | None,
+		wait: float,
+	) -> None:
 		threading.Thread.__init__(self)
-		self.task = Task(task_id, file, res_queue, exclusive, timeout, wait)
+		self.task = Task(task_id, file, res_queue, exclusive, timeout, lock_method, wait)
 
 	def run(self) -> None:
 		self.task.run()
 
 
 class MultiprocessTask(multiprocessing.Process):
-	def __init__(self, task_id: int, file: Path, res_queue: queue.Queue, exclusive: bool, timeout: float, wait: float) -> None:
+	def __init__(
+		self,
+		task_id: int,
+		file: Path,
+		res_queue: queue.Queue,
+		exclusive: bool,
+		timeout: float,
+		lock_method: Literal["flock", "lockf"] | None,
+		wait: float,
+	) -> None:
 		multiprocessing.Process.__init__(self)
-		self.task = Task(task_id, file, res_queue, exclusive, timeout, wait)
+		self.task = Task(task_id, file, res_queue, exclusive, timeout, lock_method, wait)
 
 	def run(self) -> None:
 		self.task.run()
 
 
 @pytest.mark.parametrize(
-	"task_type",
-	(ThreadTask, MultiprocessTask),
+	"task_type, lock_method",
+	# (ThreadTask, MultiprocessTask),
+	(
+		(MultiprocessTask, "flock"),
+		(ThreadTask, "flock"),
+		(MultiprocessTask, "lockf"),
+	)
+	if platform.system() == "Linux"
+	else (
+		(MultiprocessTask, None),
+		(ThreadTask, None),
+	),
 )
-def test_lock_file(tmp_path: Path, task_type: type) -> None:
+def test_lock_file(tmp_path: Path, task_type: type, lock_method: Literal["flock", "lockf"] | None) -> None:
 	test_file = tmp_path / "test.bin"
 	res_queue: queue.Queue | multiprocessing.Queue = queue.Queue() if task_type == ThreadTask else multiprocessing.Queue()
 
 	# Exclusive lock / write lock
 	num_tasks = 10
 	tasks = [
-		task_type(task_id=task_id, file=test_file, res_queue=res_queue, exclusive=True, timeout=1.0, wait=3.0)
+		task_type(task_id=task_id, file=test_file, res_queue=res_queue, exclusive=True, timeout=1.0, lock_method=lock_method, wait=3.0)
 		for task_id in range(num_tasks)
 	]
 	for task in tasks:
@@ -222,7 +248,7 @@ def test_lock_file(tmp_path: Path, task_type: type) -> None:
 	# Shared lock / read lock
 	num_tasks = 10
 	tasks = [
-		task_type(task_id=task_id, file=test_file, res_queue=res_queue, exclusive=False, timeout=1.0, wait=3.0)
+		task_type(task_id=task_id, file=test_file, res_queue=res_queue, exclusive=False, timeout=1.0, lock_method=lock_method, wait=3.0)
 		for task_id in range(num_tasks)
 	]
 	for task in tasks:

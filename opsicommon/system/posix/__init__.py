@@ -8,9 +8,9 @@ This file is part of opsi - https://www.opsi.org
 """
 
 from contextlib import contextmanager
-from fcntl import LOCK_EX, LOCK_NB, LOCK_SH, LOCK_UN, flock
+from fcntl import LOCK_EX, LOCK_NB, LOCK_SH, LOCK_UN, flock, lockf
 from time import sleep, time
-from typing import IO, BinaryIO, Generator, TextIO
+from typing import IO, BinaryIO, Generator, Literal, TextIO
 
 from opsicommon.logging import get_logger
 
@@ -20,17 +20,24 @@ logger = get_logger()
 
 
 @contextmanager
-def lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: float = 5.0) -> Generator[None, None, None]:
+def lock_file(
+	file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: float = 5.0, lock_method: Literal["flock", "lockf"] | None = None
+) -> Generator[None, None, None]:
 	"""
-	An exclusive or write lock gives a process exclusive access for writing to the specified part of the file.
-	While a write lock is in place, no other process can lock that part of the file.
-	A shared or read lock prohibits any other process from requesting a write lock on the file.
+	Lock a file using either flock or lockf.
+	:param file: The file to lock.
+	:param exclusive: If True, acquire an exclusive lock; otherwise, a shared lock.
+	:param timeout: Maximum time to wait for the lock in seconds.
+	:param lock_method: Use "flock" (default) for fcntl.flock or "lockf" for fcntl.lockf.
+	:raises TimeoutError: If the lock cannot be acquired within the specified timeout.
+	:raises ValueError: If an invalid lock_method is specified.
 	"""
 	lock_flags = LOCK_NB | (LOCK_EX if exclusive else LOCK_SH)
 	start = time()
+	lock_meth = lockf if lock_method == "lockf" else flock
 	while True:
 		try:
-			flock(file, lock_flags)
+			lock_meth(file, lock_flags)
 			break
 		except (IOError, BlockingIOError):
 			if time() >= start + timeout:
@@ -40,4 +47,4 @@ def lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: fl
 		yield
 		file.flush()
 	finally:
-		flock(file, LOCK_UN)
+		lock_meth(file, LOCK_UN)
