@@ -22,15 +22,11 @@ SYSTEM = platform.system().lower()
 
 
 if SYSTEM == "linux":
-	from .linux import (
-		get_system_uuid,
-		get_user_sessions,
-		run_process_in_session,
-		set_system_datetime,
-	)
+	from .linux import get_system_uuid, get_user_sessions, run_process_in_session, set_system_datetime
 	from .posix import lock_file
 elif SYSTEM == "windows":
-	from .windows import get_system_uuid, lock_file, set_system_datetime
+	from .windows import lock_file  # type: ignore[assignment]
+	from .windows import get_system_uuid, set_system_datetime
 elif SYSTEM == "darwin":
 	from .darwin import get_system_uuid, set_system_datetime
 	from .posix import lock_file
@@ -75,6 +71,9 @@ def ensure_not_already_running(process_name: Optional[str] = None) -> None:
 					break
 	except Exception as err:
 		logger.debug("Check for running processes failed: %s", err)
+
+	if other_pid:
+		raise RuntimeError(f"Another '{process_name}' process is running (pids: {other_pid} / {our_pid}).")
 
 	if other_pid:
 		raise RuntimeError(f"Another '{process_name}' process is running (pids: {other_pid} / {our_pid}).")
