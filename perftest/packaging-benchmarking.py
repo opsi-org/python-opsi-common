@@ -60,7 +60,7 @@ def time_tar_create(work_dir: Path, method: Callable, compression: str | None = 
 			shutil.copy(archive, Path() / method.__name__ / str(compression))
 		archive.unlink(missing_ok=True)
 
-	print(f"method: {method.__name__}, compression: {compression}, progress: {progress}, size: {(size/1_000_000):.1f} MB")
+	print(f"method: {method.__name__}, compression: {compression}, progress: {progress}, size: {(size / 1_000_000):.1f} MB")
 	print(f"mean:\t{statistics.mean(timings):.2f}ms")
 	print(f"stdev:\t{statistics.stdev(timings):.2f}ms")
 	print(f"min:\t{min(timings):.2f}ms")
@@ -88,7 +88,7 @@ def time_tar_extract(archive: Path, method: Callable, compression: str | None = 
 			method(archive, temp_dir, progress_listener=ProgressListener() if progress else None)
 			timings.append((datetime.now() - start).microseconds / 1000)
 
-	print(f"method: {method.__name__}, compression: {compression}, progress: {progress}, size: {(size/1_000_000):.1f} MB")
+	print(f"method: {method.__name__}, compression: {compression}, progress: {progress}, size: {(size / 1_000_000):.1f} MB")
 	print(f"mean:\t{statistics.mean(timings):.2f}ms")
 	print(f"stdev:\t{statistics.stdev(timings):.2f}ms")
 	print(f"min:\t{min(timings):.2f}ms")

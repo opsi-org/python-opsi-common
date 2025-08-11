@@ -9,7 +9,9 @@ system.network
 
 import concurrent.futures
 import ipaddress
+import os
 import socket
+import subprocess
 from dataclasses import dataclass, field
 
 import netifaces
@@ -133,6 +135,16 @@ def get_fqdn() -> str:
 		return forceFqdn(fqdn.lower())
 	except Exception as err:
 		logger.debug("Failed to get FQDN by socket.getfqdn(): %s - %s", fqdn, err)
+
+	if os.name == "posix":
+		logger.debug("Trying to get FQDN by running hostname -f")
+		try:
+			proc = subprocess.run(["hostname", "-f"], capture_output=True, text=True, check=False, timeout=0.1)
+			logger.debug("hostname -f returned: %s (exit code %d)", proc.stdout.strip(), proc.returncode)
+			if proc.returncode == 0:
+				return forceFqdn(proc.stdout.strip())
+		except Exception as err:
+			logger.debug("Failed to get FQDN by running hostname -f: %s", err)
 
 	for hostname in get_hostnames():
 		if "." in hostname:
