@@ -55,9 +55,12 @@ from requests.exceptions import SSLError, Timeout
 from requests.structures import CaseInsensitiveDict
 from urllib3 import HTTPSConnectionPool
 from urllib3.exceptions import InsecureRequestWarning
-from websocket import WebSocket, WebSocketApp  # type: ignore[import]
+from websocket import WebSocket, WebSocketApp
+from websocket import _core as websocket_core
+from websocket import _handshake as websocket_handshake
+from websocket import _http as websocket_http
 from websocket import setdefaulttimeout as websocket_setdefaulttimeout
-from websocket._abnf import ABNF  # type: ignore[import]
+from websocket._abnf import ABNF
 
 from opsicommon.logging import get_logger, secret_filter
 from opsicommon.logging.constants import TRACE
@@ -160,6 +163,29 @@ kGOsCMSImzajpmtonx3ccPgSOyEWyoEaGij6u80QtFkj9g==
 
 
 logger = get_logger("opsicommon.general")
+
+
+def websocket_dump(title: str, message: str) -> None:
+	if not logger.isEnabledFor(TRACE):
+		return
+	logger.trace(f"--- {title} ---")
+	logger.trace(message)
+	logger.trace("-----------------------")
+
+
+def websocket_trace(msg: str) -> None:
+	logger.trace(msg)
+
+
+def isEnabledForTrace() -> bool:
+	return logger.isEnabledFor(TRACE)
+
+
+websocket_handshake.dump = websocket_dump
+websocket_http.dump = websocket_dump
+websocket_http.trace = websocket_trace
+websocket_core.trace = websocket_trace
+websocket_core.isEnabledForTrace = isEnabledForTrace
 
 
 @lru_cache

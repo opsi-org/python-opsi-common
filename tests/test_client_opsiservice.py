@@ -35,6 +35,7 @@ from warnings import catch_warnings, simplefilter
 import lz4.frame  # type: ignore[import]
 
 from opsicommon.logging import logger
+from opsicommon.logging.constants import LOG_TRACE
 
 with catch_warnings():
 	simplefilter("ignore")
@@ -97,6 +98,8 @@ from opsicommon.testing.helpers import (  # type: ignore[import]
 	http_test_server,
 	opsi_config,
 )
+
+from .helpers import log_stream
 
 GLOBALSIGN_ROOT_CA = """
 -----BEGIN CERTIFICATE-----
@@ -857,6 +860,18 @@ def test_cookie_handling(tmp_path: Path) -> None:
 			req3 = json.loads(lines[2])
 			assert req3["headers"]["Upgrade"] == "websocket"
 			assert unquote(req3["headers"].get("Cookie")) == session_cookie
+
+
+def test_websocket_trace_logging(tmp_path: Path) -> None:
+	with http_test_server(generate_cert=True, response_headers={"server": "opsiconfd 4.2.1.0 (uvicorn)"}) as server:
+		with log_stream(LOG_TRACE, format="%(opsilevel)s %(message)s") as stream:
+			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+				client.connect_messagebus()
+
+				stream.seek(0)
+				log = stream.read()
+				assert "--- request header ---" in log
+				assert "--- response header ---" in log
 
 
 def test_totp(tmp_path: Path) -> None:
