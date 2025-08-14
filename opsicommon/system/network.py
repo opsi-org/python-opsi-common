@@ -75,7 +75,9 @@ class NetworkInfo:
 
 def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 	network_info = NetworkInfo()
-	default_gw = netifaces.gateways().get("default")
+	gateways = netifaces.gateways()
+	logger.debug("Gateways: %s", gateways)
+	default_gw = gateways.get("default")
 	if default_gw and isinstance(default_gw, dict):
 		for family, info in default_gw.items():
 			network_info.routes.append(
@@ -90,6 +92,7 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 	nameservers = []
 	try:
 		nameservers = [str(x) for x in Resolver().nameservers]
+		logger.debug("Nameservers from Resolver: %s", nameservers)
 	except Exception as err:
 		logger.warning("Failed to get nameservers from Resolver: %s", err)
 
@@ -102,7 +105,9 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 		except ValueError:
 			continue
 
-	for iface_name in netifaces.interfaces():
+	ifaces = netifaces.interfaces()
+	logger.debug("Network interfaces: %s", ifaces)
+	for iface_name in ifaces:
 		if_addresses = netifaces.ifaddresses(iface_name)
 		for family in (socket.AF_INET, socket.AF_INET6):
 			for if_info in if_addresses.get(family, []):
