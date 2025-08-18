@@ -46,9 +46,8 @@ import lz4.frame  # type: ignore[import,no-redef]
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from packaging import version
-from requests import HTTPError
+from requests import HTTPError, Session
 from requests import Response as RequestsResponse
-from requests import Session
 from requests.adapters import HTTPAdapter
 from requests.cookies import RequestsCookieJar
 from requests.exceptions import SSLError, Timeout
@@ -2276,7 +2275,6 @@ class Messagebus(Thread):
 		logger.notice("Disconnecting from opsi messagebus (id=%r)", self.id)
 		self._disconnected_result.clear()
 		self._connect_attempt = 0
-		self._should_be_connected = False
 		if self._app and self._app.sock:
 			try:
 				self._app.close()  # type: ignore[attr-defined]
