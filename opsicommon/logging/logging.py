@@ -766,6 +766,7 @@ def use_logging_config(
 	stderr_level: int | None = None,
 	stderr_format: str | None = None,
 	stderr_file: IO | Console | None = None,
+	log_file: str | None = None,
 	file_level: int | None = None,
 	file_format: str | None = None,
 ) -> Generator[None, None, None]:
@@ -775,7 +776,7 @@ def use_logging_config(
 	orig_logging_state = dict(_logging_state.__dict__)
 	try:
 		logging_config(
-			stderr_level=stderr_level, stderr_format=stderr_format, stderr_file=stderr_file, file_level=file_level, file_format=file_format
+			stderr_level=stderr_level, stderr_format=stderr_format, stderr_file=stderr_file, file_level=file_level, file_format=file_format, log_file=log_file,
 		)
 		yield
 	finally:
