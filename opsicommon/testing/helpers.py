@@ -33,6 +33,7 @@ from socketserver import BaseServer, ThreadingMixIn
 from tempfile import NamedTemporaryFile
 from typing import Any, Callable, Generator
 from urllib.parse import urlsplit, urlunsplit
+from xml.etree.ElementTree import Element, SubElement, tostring
 
 import lz4  # type: ignore[import]
 from psutil import Process
@@ -448,12 +449,49 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 
 		if self.server.response_status:
 			self.send_response(self.server.response_status[0], self.server.response_status[1])
-		else:
-			self.send_response(207, "Multi-Status")
 
 		response = b""
 		if self.server.response_body:
+			self.send_response(207, "Multi-Status")
 			response = self.server.response_body
+		elif self.server.serve_directory:
+			path = self.translate_path(self.path.rstrip("/"))
+
+			if not os.path.exists(path):
+				self.send_response(404, "Not Found")
+			else:
+				self.send_response(207, "Multi-Status")
+
+				multistatus: Element = Element("d:multistatus", {"xmlns:d": "DAV:"})
+
+				def add_response(parent: Element, href: str, is_collection: bool) -> None:
+					response = SubElement(parent, "d:response")
+					SubElement(response, "d:href").text = href
+
+					propstat = SubElement(response, "d:propstat")
+					prop = SubElement(propstat, "d:prop")
+
+					resourcetype = SubElement(prop, "d:resourcetype")
+					if is_collection:
+						SubElement(resourcetype, "d:collection")
+					else:
+						SubElement(prop, "d:getcontentlength").text = str(os.path.getsize(path))
+					SubElement(propstat, "d:status").text = "HTTP/1.1 200 OK"
+
+				is_collection = os.path.isdir(path)
+				add_response(multistatus, self.path, is_collection=is_collection)
+
+				if is_collection:
+					for entry in os.listdir(path):
+						entry_path = os.path.join(path, entry)
+						href = self.path + entry
+						if os.path.isdir(entry_path):
+							href += "/"
+						add_response(multistatus, href, is_collection=os.path.isdir(entry_path))
+
+				self.send_header("Content-Type", "application/xml")
+				response = tostring(multistatus, encoding="utf-8", method="xml")
+
 		self.send_header("Content-Length", str(len(response)))
 		self.end_headers()
 		self.wfile.write(response)
