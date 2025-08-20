@@ -1758,17 +1758,20 @@ class ServiceClient:
 				allow_status_codes=(200, 201),
 			)
 
-	def download(self, source: str, destination: Path, *, progress_callback: Callable | None = None) -> None:
+	def download(
+		self, source: str, destination: Path, *, preserve_source_dir: bool = True, progress_callback: Callable | None = None
+	) -> None:
 		contents = self.webdav_content(source, include_base_path=True)
 		if not contents:
 			raise FileNotFoundError(f"File/Directory not found: {source}")
 		current = contents[0]
 		if current.type == "dir":
-			logger.info("Creating directory '%s'", destination / current.name)
+			dest_dir = destination / current.name if preserve_source_dir else destination
+			logger.info("Creating directory '%s'", dest_dir)
 			(destination / current.name).mkdir(exist_ok=True)
-			logger.debug("recursing to subpaths %s of %s", [content.name for content in contents], source)
+			logger.debug("Recursing to subpaths %s of %s", [content.name for content in contents], source)
 			for content in contents[1:]:
-				self.download(content.path, destination / current.name, progress_callback=progress_callback)
+				self.download(content.path, dest_dir, preserve_source_dir=True, progress_callback=progress_callback)
 		else:
 			logger.info("Downloading '%s' to '%s' (size: %d)", current.path, destination / current.name, current.size)
 			self.assert_connected()
