@@ -1162,7 +1162,7 @@ class ServiceClient:
 					else:
 						response = self._request(
 							method="HEAD",
-							path=self._jsonrpc_path,
+							path="/",
 							headers=headers,
 							connect_timeout=self._connect_timeout,
 							read_timeout=self._connect_timeout,
