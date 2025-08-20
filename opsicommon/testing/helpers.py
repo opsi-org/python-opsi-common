@@ -447,14 +447,8 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 			if self.server.request_callback(self, request_info):
 				return None
 
-		if self.server.response_status:
-			self.send_response(self.server.response_status[0], self.server.response_status[1])
-
-		response = b""
-		if self.server.response_body:
-			self.send_response(207, "Multi-Status")
-			response = self.server.response_body
-		elif self.server.serve_directory:
+		response = self.server.response_body or b""
+		if self.server.serve_directory:
 			path = self.translate_path(self.path.rstrip("/"))
 
 			if not os.path.exists(path):
@@ -490,7 +484,13 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 						add_response(multistatus, href, is_collection=os.path.isdir(entry_path))
 
 				self.send_header("Content-Type", "application/xml")
-				response = tostring(multistatus, encoding="utf-8", method="xml")
+				if not response:
+					response = tostring(multistatus, encoding="utf-8", method="xml")
+		else:
+			if self.server.response_status:
+				self.send_response(self.server.response_status[0], self.server.response_status[1])
+			else:
+				self.send_response(207, "Multi-Status")
 
 		self.send_header("Content-Length", str(len(response)))
 		self.end_headers()
