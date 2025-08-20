@@ -1863,7 +1863,7 @@ DAV_PROPFIND_RESPONSE = """<?xml version="1.0" encoding="utf-8"?>
 
 def test_webdav_content() -> None:
 	def request_callback(handler: HTTPTestServerRequestHandler, request: dict) -> bool:
-		if request["path"] == "/rpc":
+		if request["path"] in ("/", "/rpc"):
 			handler.set_response_status(200, "OK")
 			handler.set_response_headers({"server": "opsiconfd 4.3.0.0 (uvicorn)", "Content-Type": "application/json"})
 		elif request["path"] == "/depot/testdir/":
@@ -2211,7 +2211,7 @@ def test_backend_manager_and_get_service_client(tmp_path: Path) -> None:
 
 	def request_callback(handler: HTTPTestServerRequestHandler, request: dict) -> bool:
 		# print(request["path"])
-		if request["path"] == "/rpc":
+		if request["path"] in ("/", "/rpc"):
 			handler.set_response_status(200, "OK")
 			handler.set_response_headers({"server": "opsiconfd 4.3.0.0 (uvicorn)", "Content-Type": "application/json"})
 			if request["method"] != "HEAD":
