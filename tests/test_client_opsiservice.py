@@ -92,12 +92,7 @@ from opsicommon.messagebus.message import (
 from opsicommon.objects import OpsiClient
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
 from opsicommon.system.info import is_macos, is_windows
-from opsicommon.testing.helpers import (  # type: ignore[import]
-	HTTPTestServerRequestHandler,
-	environment,
-	http_test_server,
-	opsi_config,
-)
+from opsicommon.testing.helpers import HTTPTestServerRequestHandler, environment, http_test_server, opsi_config  # type: ignore[import]
 
 from .helpers import log_stream
 
@@ -1144,7 +1139,7 @@ def test_proxy(tmp_path: Path) -> None:
 			assert len(proxy_server.get_and_clear_requests()) == len(requests)
 
 			assert requests[0]["method"] == "HEAD"
-			assert requests[0]["path"] == "/rpc"
+			assert requests[0]["path"] == "/"
 
 			assert requests[1]["method"] == "GET"
 			assert requests[1]["path"] == "/messagebus/v1?compression=lz4"
