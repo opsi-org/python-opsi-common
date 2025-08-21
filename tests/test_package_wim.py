@@ -568,6 +568,7 @@ def test_wim_info() -> None:
 		assert info.version == 68864
 		assert len(info.images) == 2
 		for image in info.images:
+			assert image.windows_info
 			assert image.windows_info.architecture == "x86_64"
 			assert image.windows_info.product_name == "Microsoft® Windows® Operating System"
 			assert image.windows_info.edition_id == "WindowsPE"
