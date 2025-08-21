@@ -61,7 +61,6 @@ class WIMImageWindowsInfo:
 	edition_id: str
 	installation_type: str
 	product_type: str
-	product_suite: str
 	languages: list[str]
 	default_language: str
 	system_root: str
@@ -70,6 +69,7 @@ class WIMImageWindowsInfo:
 	build: int
 	service_pack_build: int
 	service_pack_level: int
+	product_suite: str | None = None
 	hal: str | None = None
 
 

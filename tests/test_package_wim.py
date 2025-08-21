@@ -399,6 +399,74 @@ WIMBoot compatible:     no
 """
 
 
+WIM_INFO_WINPE = """
+WIM Information:
+----------------
+Path:           /var/lib/opsi/depot/win10-x64/installfiles/sources/boot.wim
+GUID:           0xb88b1859ce8ec4439a00cddb45d1a3ac
+Version:        68864
+Image Count:    2
+Compression:    LZX
+Chunk Size:     32768 bytes
+Part Number:    1/1
+Boot Index:     2
+Size:           272122522 bytes
+Attributes:     Relative path junction
+
+Available Images:
+-----------------
+Index:                  1
+Name:                   Microsoft Windows PE (x64)
+Description:            Microsoft Windows PE (x64)
+Directory Count:        3292
+File Count:             14348
+Total Bytes:            1459721171
+Hard Link Bytes:        589269424
+Creation Time:          Fri Jul 10 15:45:49 2015 UTC
+Last Modification Time: Fri Jul 10 16:32:44 2015 UTC
+Architecture:           x86_64
+Product Name:           Microsoft® Windows® Operating System
+Edition ID:             WindowsPE
+Installation Type:      WindowsPE
+Product Type:           WinNT
+Languages:              de-DE
+Default Language:       de-DE
+System Root:            WINDOWS
+Major Version:          10
+Minor Version:          0
+Build:                  10240
+Service Pack Build:     16384
+Service Pack Level:     0
+Flags:                  9
+WIMBoot compatible:     no
+
+Index:                  2
+Name:                   Microsoft Windows Setup (x64)
+Description:            Microsoft Windows Setup (x64)
+Directory Count:        3317
+File Count:             14771
+Total Bytes:            1643001841
+Hard Link Bytes:        666470678
+Creation Time:          Fri Jul 10 15:46:04 2015 UTC
+Last Modification Time: Fri Jul 10 16:32:45 2015 UTC
+Architecture:           x86_64
+Product Name:           Microsoft® Windows® Operating System
+Edition ID:             WindowsPE
+Installation Type:      WindowsPE
+Product Type:           WinNT
+Languages:              de-DE
+Default Language:       de-DE
+System Root:            WINDOWS
+Major Version:          10
+Minor Version:          0
+Build:                  10240
+Service Pack Build:     16384
+Service Pack Level:     0
+Flags:                  2
+WIMBoot compatible:     no
+"""
+
+
 def test_wim_info() -> None:
 	class Proc:
 		stdout = WIM_INFO_WIN10
@@ -490,6 +558,21 @@ def test_wim_info() -> None:
 		assert info.guid == "ce35b4fd1961994d840f371c26c44d93"
 		assert info.version == 68864
 		assert len(info.images) == 10
+
+	Proc.stdout = WIM_INFO_WINPE
+
+	with patch("opsicommon.package.wim.run", PropertyMock(return_value=Proc())):
+		info = wim_info("fake.wim")
+		assert info
+		assert info.guid == "b88b1859ce8ec4439a00cddb45d1a3ac"
+		assert info.version == 68864
+		assert len(info.images) == 2
+		for image in info.images:
+			assert image.windows_info.architecture == "x86_64"
+			assert image.windows_info.product_name == "Microsoft® Windows® Operating System"
+			assert image.windows_info.edition_id == "WindowsPE"
+			assert image.windows_info.installation_type == "WindowsPE"
+			assert image.windows_info.product_type == "WinNT"
 
 
 @pytest.mark.skipif(WIMLIB_MISSING, reason=WIMLIB_ERROR)
