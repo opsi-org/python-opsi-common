@@ -11,7 +11,7 @@ As an example this contains classes for hosts, products, configurations.
 
 from __future__ import annotations
 
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 from functools import lru_cache
@@ -3463,7 +3463,7 @@ def serialize(obj: Any, deep: bool = False) -> Any:
 		return obj.serialize()
 	if not deep:
 		return obj
-	if is_dataclass(obj):
+	if hasattr(type(obj), "__dataclass_fields__"):
 		return {k: serialize(v, deep) for k, v in asdict(obj).items()}
 	if isinstance(obj, dict):
 		return {k: serialize(v, deep) for k, v in obj.items()}
