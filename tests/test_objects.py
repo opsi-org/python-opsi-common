@@ -8,6 +8,8 @@ test_objects
 """
 
 import json
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any, Dict, Optional, Type
 
 import pytest
@@ -559,6 +561,20 @@ def test_serialize() -> None:
 	res = product1.serialize()
 	_hash["ident"] = product1.getIdent("str")
 	assert _hash == res
+
+	class TestEnum(StrEnum):
+		VAL1 = "value1"
+
+	@dataclass
+	class TestDataclass:
+		attr1: str
+		attr2: int
+		attr3: bool
+		attr4: TestEnum
+
+	assert serialize([TestDataclass("test", 123, True, TestEnum.VAL1)], deep=True) == [
+		{"attr1": "test", "attr2": 123, "attr3": True, "attr4": "value1"}
+	]
 
 
 @pytest.mark.parametrize(
