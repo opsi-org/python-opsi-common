@@ -1406,7 +1406,7 @@ def test_request_exceptions() -> None:
 
 			server.response_status = (503, "Unavail")
 			server.response_headers["Retry-After"] = "invalid"
-			now = time.time()
+			now = time.monotonic()
 			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
 				client.get("/")
 			# 60 = default value
@@ -1414,7 +1414,7 @@ def test_request_exceptions() -> None:
 
 			client._service_unavailable = None
 			server.response_headers["Retry-After"] = "-1"
-			now = time.time()
+			now = time.monotonic()
 			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
 				client.get("/")
 			# 1 = min
@@ -1422,7 +1422,7 @@ def test_request_exceptions() -> None:
 
 			client._service_unavailable = None
 			server.response_headers["Retry-After"] = "999999"
-			now = time.time()
+			now = time.monotonic()
 			with pytest.raises(OpsiServiceUnavailableError) as exc_info:
 				client.get("/")
 			# 7200 = max
