@@ -1312,7 +1312,7 @@ class ServiceClient:
 		verify: str | bool | None = None,
 		allow_status_codes: Iterable[int] | None = None,
 	) -> RequestsResponse:
-		if self._service_unavailable and self._service_unavailable.until and self._service_unavailable.until >= time.time():
+		if self._service_unavailable and self._service_unavailable.until and self._service_unavailable.until >= time.monotonic():
 			raise self._service_unavailable
 
 		if connect_timeout is None:
@@ -1373,7 +1373,7 @@ class ServiceClient:
 					except ValueError:
 						pass
 					self._service_unavailable = OpsiServiceUnavailableError(
-						str(err), status_code=err.response.status_code, content=err.response.text, until=time.time() + retry_after
+						str(err), status_code=err.response.status_code, content=err.response.text, until=time.monotonic() + retry_after
 					)
 					raise self._service_unavailable from err
 
@@ -1663,7 +1663,7 @@ class ServiceClient:
 			headers.get("Content-Encoding", ""),
 			read_timeout,
 		)
-		start_time = time.time()
+		start_time = time.monotonic()
 
 		allow_status_codes = (200, 500) if return_result_only else ...
 		response = self.post(  # type: ignore[call-overload]  # ellipsis -> object
@@ -1685,7 +1685,7 @@ class ServiceClient:
 			method,
 			content_type,
 			content_encoding,
-			(time.time() - start_time),
+			(time.monotonic() - start_time),
 		)
 
 		# gzip and deflate transfer-encodings are automatically decoded
