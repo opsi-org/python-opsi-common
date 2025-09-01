@@ -1160,9 +1160,10 @@ class ServiceClient:
 							if not response.json():
 								raise OpsiServiceAuthenticationError("SSO failed")
 					else:
+						# Check permission to access JSON-RPC API
 						response = self._request(
 							method="HEAD",
-							path="/",
+							path=self._jsonrpc_path,
 							headers=headers,
 							connect_timeout=self._connect_timeout,
 							read_timeout=self._connect_timeout,
