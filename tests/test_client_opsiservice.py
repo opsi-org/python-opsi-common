@@ -1139,7 +1139,7 @@ def test_proxy(tmp_path: Path) -> None:
 			assert len(proxy_server.get_and_clear_requests()) == len(requests)
 
 			assert requests[0]["method"] == "HEAD"
-			assert requests[0]["path"] == "/"
+			assert requests[0]["path"] == "/rpc"
 
 			assert requests[1]["method"] == "GET"
 			assert requests[1]["path"] == "/messagebus/v1?compression=lz4"
