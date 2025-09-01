@@ -2272,7 +2272,7 @@ def test_backend_manager_and_get_service_client(tmp_path: Path) -> None:
 						backend = BackendManager(username="user", password="pass")
 					reqs = [json.loads(req) for req in log_file.read_text(encoding="utf-8").strip().split("\n")]
 					assert reqs[0]["method"] == "HEAD"
-					assert reqs[0]["path"] == "/"
+					assert reqs[0]["path"] == "/rpc"
 					encoded_auth = reqs[0]["headers"]["Authorization"][6:]  # Stripping "Basic "
 					auth = base64.decodebytes(encoded_auth.encode("ascii")).decode("utf-8")
 					assert auth == "user:pass"
