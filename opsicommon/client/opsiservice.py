@@ -808,7 +808,7 @@ class ServiceClient:
 		cookies = self._session.cookies.items()
 		if not cookies:
 			return None
-		return f"{cookies[0][0]}={cookies[0][1]}"
+		return f"{cookies[-1][0]}={cookies[-1][1]}"
 
 	@session_cookie.setter
 	def session_cookie(self, session_cookie: str | None) -> None:
@@ -1176,6 +1176,11 @@ class ServiceClient:
 						for listener in self._listener:
 							CallbackThread(listener.connection_failed, service_client=self, exception=err).start()
 						raise
+
+			cookies = self._session.cookies.items()
+			if cookies and len(cookies) > 1:
+				logger.debug("Multiple cookies stored, using the last one: %s", cookies[-1])
+				self.session_cookie = f"{cookies[-1][0]}={cookies[-1][1]}"
 
 			if "server" in response.headers:
 				self.server_name = response.headers["server"]
