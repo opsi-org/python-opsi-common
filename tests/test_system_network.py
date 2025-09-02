@@ -19,6 +19,7 @@ def test_get_network_info() -> None:
 	assert network_info.interfaces
 	assert network_info.routes
 	assert network_info.dns_nameservers
+	assert network_info.search_domains
 	assert any(route.is_default for route in network_info.routes)
 	assert any(interface.is_loopback for interface in network_info.interfaces)
 	assert any(not interface.is_loopback for interface in network_info.interfaces)

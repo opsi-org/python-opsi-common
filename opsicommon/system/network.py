@@ -71,9 +71,11 @@ class NetworkInfo:
 	interfaces: list[NetworkInterface] = field(default_factory=list)
 	routes: list[NetworkRoute] = field(default_factory=list)
 	dns_nameservers: list[DNSNameserver] = field(default_factory=list)
+	search_domains: list[str] = field(default_factory=list)
 
 
 def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
+	# res.search[0].to_unicode(omit_final_dot=True)
 	network_info = NetworkInfo()
 	gateways = netifaces.gateways()
 	logger.debug("Gateways: %s", gateways)
@@ -91,7 +93,9 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 
 	nameservers = []
 	try:
-		nameservers = [str(x) for x in Resolver().nameservers]
+		resolver = Resolver()
+		network_info.search_domains = [s.to_unicode(omit_final_dot=True) for s in resolver.search]
+		nameservers = [str(x) for x in resolver.nameservers]
 		logger.debug("Nameservers from Resolver: %s", nameservers)
 	except Exception as err:
 		logger.warning("Failed to get nameservers from Resolver: %s", err)
