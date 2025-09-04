@@ -34,6 +34,7 @@ class NetworkInterface:
 	address: ipaddress.IPv4Address | ipaddress.IPv6Address
 	netmask: ipaddress.IPv4Address | ipaddress.IPv6Address | None = None
 	broadcast: ipaddress.IPv4Address | ipaddress.IPv6Address | None = None
+	prefixlen: int | None = None
 	mac_address: str | None = None
 	is_loopback: bool = False
 	is_link_local: bool = False
@@ -122,13 +123,19 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 				except ValueError:
 					continue
 
+				network_address = (
+					ipaddress.ip_network(f"{if_info['addr']}/{if_info['netmask'].split('/')[-1]}", strict=False)
+					if "netmask" in if_info
+					else None
+				)
 				network_info.interfaces.append(
 					NetworkInterface(
 						family=family,
 						name=iface_name,
 						address=address,
-						netmask=ipaddress.ip_address(if_info["netmask"].split("/")[0]) if "netmask" in if_info else None,
-						broadcast=ipaddress.ip_address(if_info["broadcast"]) if "broadcast" in if_info else None,
+						netmask=network_address.netmask if network_address else None,
+						broadcast=network_address.broadcast_address if network_address else None,
+						prefixlen=network_address.prefixlen if network_address else None,
 						mac_address=if_addresses.get(netifaces.AF_LINK, [{}])[0].get("addr"),
 						is_loopback=address.is_loopback,
 						is_link_local=address.is_link_local,

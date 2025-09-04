@@ -17,6 +17,9 @@ from opsicommon.system.network import _gethostbyaddr_with_timeout, get_domain, g
 
 def test_get_network_info() -> None:
 	network_info = get_network_info(include_link_local=True)
+	import pprint
+
+	pprint.pprint(network_info)
 	assert network_info.interfaces
 	assert network_info.routes
 	assert network_info.dns_nameservers
@@ -25,8 +28,8 @@ def test_get_network_info() -> None:
 	assert any(interface.is_loopback for interface in network_info.interfaces)
 	assert any(not interface.is_loopback for interface in network_info.interfaces)
 	for interface in network_info.interfaces:
-		if interface.netmask and interface.broadcast:
-			network = ip_network(f"{interface.address}/{interface.netmask}", strict=False)
+		if interface.prefixlen and interface.broadcast:
+			network = ip_network(f"{interface.address}/{interface.prefixlen}", strict=False)
 			assert interface.broadcast == network.broadcast_address
 	if platform.system() == "Linux":
 		# TODO: Currently not working on Windows and macOS, needs further investigation
