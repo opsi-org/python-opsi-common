@@ -9,6 +9,7 @@ test_system_network
 
 import platform
 import socket
+from ipaddress import ip_network
 from unittest import mock
 
 from opsicommon.system.network import _gethostbyaddr_with_timeout, get_domain, get_fqdn, get_hostnames, get_network_info
@@ -23,6 +24,10 @@ def test_get_network_info() -> None:
 	assert any(route.is_default for route in network_info.routes)
 	assert any(interface.is_loopback for interface in network_info.interfaces)
 	assert any(not interface.is_loopback for interface in network_info.interfaces)
+	for interface in network_info.interfaces:
+		if interface.netmask and interface.broadcast:
+			network = ip_network(f"{interface.address}/{interface.netmask}", strict=False)
+			assert interface.broadcast == network.broadcast_address
 	if platform.system() == "Linux":
 		# TODO: Currently not working on Windows and macOS, needs further investigation
 		assert all(interface.mac_address == "00:00:00:00:00:00" for interface in network_info.interfaces if interface.is_loopback)
