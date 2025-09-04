@@ -95,7 +95,11 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 	nameservers = []
 	try:
 		resolver = Resolver()
-		network_info.search_domains = [s.to_unicode(omit_final_dot=True) for s in resolver.search]
+		network_info.search_domains = []
+		for search_domain in resolver.search:
+			search_domain_str = search_domain.to_unicode().strip(". ")
+			if search_domain_str and search_domain_str not in network_info.search_domains:
+				network_info.search_domains.append(search_domain_str)
 		nameservers = [str(x) for x in resolver.nameservers]
 		logger.debug("Nameservers from Resolver: %s", nameservers)
 	except Exception as err:
