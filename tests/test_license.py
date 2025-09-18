@@ -1035,13 +1035,9 @@ def test_license_module_bundle() -> None:
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
 		lic = dict(LIC1)
 		del lic["id"]
-		lic["module_id"] = "professional"
+		lic["valid_from"] = "2030-01-01"
+		lic["valid_until"] = "2040-12-31"
 		lic["type"] = OPSI_LICENSE_TYPE_STANDARD
-		lic["valid_from"] = "2000-01-01"
-		lic["valid_until"] = "9999-12-31"
-		lic["client_number"] = 20
-		lic1 = OpsiLicense(**lic)
-		lic1.sign(private_key)
 
 		lic["module_id"] = "sso"
 		lic["client_number"] = 30
@@ -1049,40 +1045,61 @@ def test_license_module_bundle() -> None:
 		lic2.sign(private_key)
 
 		lic["module_id"] = "vpn"
-		lic["client_number"] = 40
+		lic["client_number"] = 30
 		lic3 = OpsiLicense(**lic)
 		lic3.sign(private_key)
 
 		lic["module_id"] = "userroles"
-		lic["client_number"] = 10
+		lic["client_number"] = 30
 		lic4 = OpsiLicense(**lic)
 		lic4.sign(private_key)
+
+		lic["valid_from"] = "2035-01-01"
+		lic["valid_until"] = "2045-12-31"
+		lic["module_id"] = "professional"
+		lic["client_number"] = 20
+		lic1 = OpsiLicense(**lic)
+		lic1.sign(private_key)
 
 		olp = OpsiLicensePool()
 		olp.add_license(lic1, lic2, lic3, lic4)
 
-		expected_modules = {
-			"professional": 20,
-			"2fa": 40,
-			"directory-connector": 20,
-			"linux_agent": 20,
-			"license_management": 20,
-			"local_imaging": 20,
-			"monitoring": 20,
-			"userroles": 20,
-			"scalability_light": 20,
-			"wim-capture": 20,
-			"vpn": 40,
-			"sso": 30,
-		}
-		for module_id, module_info in olp.get_modules().items():
+		for module_id, module_info in olp.get_modules(at_date=date.fromisoformat("2036-01-01")).items():
 			if module_id in OPSI_FREE_MODULE_IDS:
 				assert module_info["state"] == OPSI_MODULE_STATE_FREE
 				assert module_info["client_number"] == OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED
 				assert module_info["available"] is True
-			elif expected_client_number := expected_modules.get(module_id):
-				assert module_info["client_number"] == expected_client_number
-				assert module_info["state"] == OPSI_MODULE_STATE_LICENSED
+			elif module_id in ("sso", "vpn", "userroles"):
 				assert module_info["available"] is True
+				assert module_info["state"] == OPSI_MODULE_STATE_LICENSED
+				if module_id in OPSI_MODULE_BUNDLES["professional"]:
+					assert module_info["client_number"] == 50
+				else:
+					assert module_info["client_number"] == 30
+			elif module_id in OPSI_MODULE_BUNDLES["professional"] or module_id == "professional":
+				assert module_info["available"] is True
+				assert module_info["state"] == OPSI_MODULE_STATE_LICENSED
+				assert module_info["client_number"] == 20
 			else:
 				assert module_info["available"] is False
+
+
+def test_real_files() -> None:
+	"""This is for manual testing with real license files only."""
+	license_file_path = Path("license_test_files")
+	if not license_file_path.is_dir():
+		return
+	pool = OpsiLicensePool(license_file_path=license_file_path)
+	pool.load()
+	print("\n=== Licenses ===")
+	for license in sorted(pool.licenses, key=lambda lic: (lic.get_state(), lic.module_id)):
+		print(f"ID: {license.id} - Module: {license.module_id} ({license.client_number}) - State: {license.get_state()}")
+
+	print("\n=== Modules ===")
+	modules = []
+	for module_id, info in pool.get_modules().items():
+		info["module_id"] = module_id
+		modules.append(info)
+
+	for info in sorted(modules, key=lambda m: (m["state"], m["module_id"])):
+		print(f"Module: {info['module_id']} - State: {info['state']} - Client Number: {info['client_number']} - IDs: {info['license_ids']}")

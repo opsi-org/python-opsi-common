@@ -746,33 +746,25 @@ class OpsiLicensePool:
 			elif module_id not in OPSI_STAGING_MODULE_IDS:
 				modules[module_id] = {"available": False, "state": OPSI_MODULE_STATE_UNLICENSED, "license_ids": [], "client_number": 0}
 
-		bundled_modules = {}
 		for lic in self.get_licenses(valid_only=True, at_date=at_date):
-			if lic.module_id not in modules:
-				modules[lic.module_id] = {"client_number": 0, "license_ids": []}
-			elif modules[lic.module_id]["state"] == OPSI_MODULE_STATE_FREE:
-				continue
-
-			modules[lic.module_id]["available"] = True
-			modules[lic.module_id]["state"] = OPSI_MODULE_STATE_LICENSED
-			modules[lic.module_id]["license_ids"].append(lic.id)
-			modules[lic.module_id]["license_ids"].sort()
-			if lic.type == OPSI_LICENSE_TYPE_CORE:
-				modules[lic.module_id]["client_number"] = max(modules[lic.module_id]["client_number"], lic.client_number)
-			else:
-				modules[lic.module_id]["client_number"] += lic.client_number
-			modules[lic.module_id]["client_number"] = min(modules[lic.module_id]["client_number"], OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED)
-
-			for bundled_module_id in OPSI_MODULE_BUNDLES.get(lic.module_id, tuple()):
-				bundled_modules[bundled_module_id] = modules[lic.module_id]
+			module_ids = [lic.module_id] + list(OPSI_MODULE_BUNDLES.get(lic.module_id, ()))
+			for module_id in module_ids:
+				if module_id not in modules:
+					modules[module_id] = {"available": False, "state": OPSI_MODULE_STATE_UNLICENSED, "license_ids": [], "client_number": 0}
+				if modules[module_id]["state"] == OPSI_MODULE_STATE_FREE:
+					continue
+				modules[module_id]["available"] = True
+				modules[module_id]["state"] = OPSI_MODULE_STATE_LICENSED
+				modules[module_id]["license_ids"].append(lic.id)
+				modules[module_id]["license_ids"].sort()
+				if lic.type == OPSI_LICENSE_TYPE_CORE:
+					modules[module_id]["client_number"] = max(modules[module_id]["client_number"], lic.client_number)
+				else:
+					modules[module_id]["client_number"] += lic.client_number
+				modules[module_id]["client_number"] = min(modules[module_id]["client_number"], OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED)
 
 		if not modules["2fa"]["available"] and modules["vpn"]["available"]:
 			modules["2fa"] = modules["vpn"].copy()
-
-		for bundled_module_id, bundled_module_info in bundled_modules.items():
-			if mod_info := modules.get(bundled_module_id):
-				if not mod_info["available"] or mod_info["client_number"] < bundled_module_info["client_number"]:
-					modules[bundled_module_id] = bundled_module_info.copy()
 
 		for module_id, info in modules.items():
 			if module_id not in enabled_module_ids:
