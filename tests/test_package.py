@@ -202,6 +202,18 @@ def test_control_multiline_description() -> None:
 			assert string in result.splitlines()
 
 
+def test_control_toml_keep_formatting() -> None:
+	test_file = TEST_DATA / "control-keep-formatting.toml"
+	test_file.read_text(encoding="utf-8")
+	package = OpsiPackage()
+	package.parse_control_file(test_file)
+	with make_temp_dir() as temp_dir:
+		package.generate_control_file(temp_dir / "control.toml")
+		data = (temp_dir / "control.toml").read_text(encoding="utf-8")
+		print(data)
+		assert data == test_file.read_text(encoding="utf-8")
+
+
 def test_control_multiline_description_property() -> None:
 	package = OpsiPackage()
 	package.parse_control_file(TEST_DATA / "control.toml")

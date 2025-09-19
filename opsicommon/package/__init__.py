@@ -215,25 +215,25 @@ class OpsiPackage:
 			self.parse_control_file_legacy(control_file)
 			return
 
-		data_dict = tomlkit.loads(control_file.read_text()).unwrap()
+		doc = tomlkit.loads(control_file.read_text()).unwrap()
 		# changelog key in changelog section... better idea?
-		self.changelog = data_dict.get("changelog", {}).get("changelog")
-		self.product = create_product(data_dict)
+		self.changelog = doc.get("changelog", {}).get("changelog")
+		self.product = create_product(doc)
 		self.package_dependencies = [
 			PackageDependency(package=str(pdep["package"]), version=pdep.get("version"), condition=pdep.get("condition"))
-			for pdep in create_package_dependencies(data_dict["Package"].get("depends", []))
+			for pdep in create_package_dependencies(doc["Package"].get("depends", []))
 		]
 		self.product_dependencies = create_product_dependencies(
-			data_dict["Product"]["id"],
-			data_dict["Product"]["version"],
-			data_dict["Package"]["version"],
-			data_dict.get("ProductDependency", []),
+			doc["Product"]["id"],
+			doc["Product"]["version"],
+			doc["Package"]["version"],
+			doc.get("ProductDependency", []),
 		)
 		self.product_properties = create_product_properties(
-			data_dict["Product"]["id"],
-			data_dict["Product"]["version"],
-			data_dict["Package"]["version"],
-			data_dict.get("ProductProperty", []),
+			doc["Product"]["id"],
+			doc["Product"]["version"],
+			doc["Package"]["version"],
+			doc.get("ProductProperty", []),
 		)
 
 	def generate_control_file(self, control_file: Path) -> None:
@@ -241,7 +241,7 @@ class OpsiPackage:
 			self.generate_control_file_legacy(control_file)
 			return
 
-		data_dict = tomlkit.document()
+		doc = tomlkit.document()
 
 		def _remove_none_values(dictionary: dict) -> dict:
 			result = {}
@@ -250,18 +250,22 @@ class OpsiPackage:
 					result[key] = value
 			return result
 
-		data_dict["Package"] = {
+		doc["Package"] = {
 			"version": self.product.getPackageVersion(),
 			"depends": [_remove_none_values(asdict(pdep)) for pdep in self.package_dependencies],
 		}
-		data_dict["Product"] = dictify_product(self.product)
+		doc["Product"] = dictify_product(self.product)
+		if isinstance(doc["Product"], dict) and "pxeConfigTemplate" in doc["Product"]:
+			doc["Product"]["pxeConfigTemplate"] = tomlkit.string(str(doc["Product"]["pxeConfigTemplate"]), multiline=True)
+
 		if self.product_properties:
-			data_dict["ProductProperty"] = dictify_product_properties(self.product_properties)
+			doc["ProductProperty"] = dictify_product_properties(self.product_properties)
 		if self.product_dependencies:
-			data_dict["ProductDependency"] = dictify_product_dependencies(self.product_dependencies)
+			doc["ProductDependency"] = dictify_product_dependencies(self.product_dependencies)
 		if self.product.getChangelog() is not None:
 			(control_file.parent / "changelog.txt").write_text(self.changelog.strip(), encoding="utf-8")
-		control_file.write_text(tomlkit.dumps(data_dict))
+
+		control_file.write_text(tomlkit.dumps(doc))
 
 	def get_dirs(self, base_dir: Path, custom_name: str | None, custom_only: bool) -> dict[PACKAGE_DIR_TYPES, list[Path]]:
 		"""

@@ -1,0 +1,46 @@
+[Package]
+version = "3"
+depends = []
+
+[Product]
+type = "NetbootProduct"
+id = "memtest86"
+name = "Memtest86+"
+description = """Memtest86+ is a stand-alone memory tester for x86 and x86-64 architecture computers.
+It provides a more thorough memory check than that provided by BIOS memory tests.
+Memtest86+ can be loaded and run either directly by a PC BIOS (legacy or UEFI) or via an intermediate bootloader that supports the Linux 16-bit, 32-bit, 64-bit, or EFI handover boot protocol.
+It should work on any Pentium class or later 32-bit or 64-bit x86 CPU."""
+version = "7.20"
+priority = 0
+licenseRequired = false
+productClasses = []
+setupScript = "dummy.py"
+windowsSoftwareIds = []
+pxeConfigTemplate = """if [ "$grub_platform" = "efi" ]; then
+    menuentry 'Starting MemTest86+ EFI' {
+        linux (${bootsrc})/opsi/memtest86/memtest64.efi {{ product_property_states.cmdline() }}
+    }
+else
+    menuentry 'Starting MemTest86+ BIOS' {
+        linux (${bootsrc})/opsi/memtest86/memtest64.bin {{ product_property_states.cmdline() }}
+    }
+fi
+"""
+
+[[ProductProperty]]
+type = "UnicodeProductProperty"
+name = "console"
+description = """activate MMIO UART console.
+Use the format: `<x>,<y>`
+Where x is the MMIO stride (reg. width):
+mmio = 8-bit MMIO
+mmio16 = 16-bit MMIO
+mmio32 = 32-bit MMIO
+and y is the MMIO address in hex. with 0x prefix (eg: 0xFEDC9000)
+"""
+default = [""]
+values = [
+    "",
+]
+multivalue = false
+editable = true

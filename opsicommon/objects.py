@@ -1509,9 +1509,7 @@ class NetbootProduct(Product):
 	def setPxeConfigTemplate(self, pxeConfigTemplate: str) -> None:
 		self.pxeConfigTemplate = None
 		if pxeConfigTemplate:
-			self.pxeConfigTemplate = forceFilename(pxeConfigTemplate)
-		else:
-			self.pxeConfigTemplate = None
+			self.pxeConfigTemplate = pxeConfigTemplate
 
 
 Product.sub_classes["NetbootProduct"] = NetbootProduct
