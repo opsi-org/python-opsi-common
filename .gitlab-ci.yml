@@ -34,8 +34,8 @@ pytest-windows:
   script:
     - $Env:UV_PYTHON_INSTALL_DIR = "c:\\uv\\python"
     - $Env:UV_CACHE_DIR = "c:\\uv\\cache"
-    - $Env:UV_PYTHON = ((uv python list --managed-python --all-arches | findstr 3.13 | findstr "\-x86\-" | findstr /v freethreaded) -split ' ')[0]
     - $Env:UV_PYTHON_PREFERENCE = "only-managed"
+    - $Env:UV_PYTHON = ((uv python list | findstr 3.13 | findstr "\-x86\-" | findstr /v freethreaded) -split ' ')[0]
     - irm "${OPSIDEVTOOLS_INSTALLER_URL_WINDOWS_X86}" | iex
     - uv sync --frozen
     - uv run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_windows1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests\\test_logging.py tests
