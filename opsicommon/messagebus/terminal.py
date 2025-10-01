@@ -87,6 +87,15 @@ if is_windows():
 		return (process.pid, read, write, process.setwinsize, close)
 else:
 
+	def _preexec_fn() -> None:
+		try:
+			# Close all running asyncio loops in the child
+			import asyncio
+
+			asyncio.get_event_loop().close()
+		except Exception:
+			pass
+
 	def start_pty(
 		shell: str,
 		rows: int | None = DEFAULT_ROWS,
@@ -108,7 +117,7 @@ else:
 			sp_env["TERM"] = "xterm-256color"
 		sp_env["SHELL"] = argv[0]
 		try:
-			proc = PtyProcess.spawn(argv, dimensions=(rows, cols), env=sp_env, cwd=cwd)
+			proc = PtyProcess.spawn(argv, dimensions=(rows, cols), env=sp_env, cwd=cwd, preexec_fn=_preexec_fn)
 		except Exception as err:
 			raise RuntimeError(f"Failed to start pty with shell {shell!r}: {err}") from err
 		return (proc.pid, proc.read, proc.write, proc.setwinsize, proc.terminate)
