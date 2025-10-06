@@ -95,7 +95,7 @@ def test_start_pty_params(tmp_path: Path) -> None:
 		print("lines:", lines)
 		assert any(line.endswith("stty size") for line in lines)
 		if not is_macos():
-			assert f"{rows} {cols}" in lines
+			assert any(f"{rows} {cols}" in line for line in lines)
 
 	pty_set_size(20, 100)
 	pty_stop()

@@ -185,16 +185,13 @@ class Terminal:
 		sp_env["OPSI_TERMINAL_ID"] = self.terminal_id
 		start_time = monotonic()
 		# start_pty must be called in the main thread, because it uses os.forkpty() internally
-		try:
-			(
-				self._pty_pid,
-				self._pty_read,
-				self._pty_write,
-				self._pty_set_size,
-				self._pty_stop,
-			) = start_pty(shell, self.rows, self.cols, self._cwd, sp_env)
-		except Exception as err:
-			raise RuntimeError(f"Failed to start pty: {err}") from err
+		(
+			self._pty_pid,
+			self._pty_read,
+			self._pty_write,
+			self._pty_set_size,
+			self._pty_stop,
+		) = start_pty(shell, self.rows, self.cols, self._cwd, sp_env)
 		logger.info("PTY started in %.3f seconds with pid %r", monotonic() - start_time, self._pty_pid)
 		await self._start_manager()
 		await self._send_open_event()
