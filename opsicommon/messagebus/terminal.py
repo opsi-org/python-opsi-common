@@ -10,11 +10,11 @@ This file is part of opsi - https://www.opsi.org
 from __future__ import annotations
 
 import shlex
-from asyncio import Task, get_running_loop, sleep, wait_for
+from asyncio import Task, get_running_loop, sleep
 from contextlib import nullcontext
 from pathlib import Path
 from threading import Lock
-from time import time
+from time import monotonic
 from typing import Callable
 
 from psutil import AccessDenied, NoSuchProcess, Process
@@ -87,15 +87,6 @@ if is_windows():
 		return (process.pid, read, write, process.setwinsize, close)
 else:
 
-	def _preexec_fn() -> None:
-		try:
-			# Close all running asyncio loops in the child
-			import asyncio
-
-			asyncio.get_event_loop().close()
-		except Exception:
-			pass
-
 	def start_pty(
 		shell: str,
 		rows: int | None = DEFAULT_ROWS,
@@ -117,7 +108,7 @@ else:
 			sp_env["TERM"] = "xterm-256color"
 		sp_env["SHELL"] = argv[0]
 		try:
-			proc = PtyProcess.spawn(argv, dimensions=(rows, cols), env=sp_env, cwd=cwd, preexec_fn=_preexec_fn)
+			proc = PtyProcess.spawn(argv, dimensions=(rows, cols), env=sp_env, cwd=cwd)
 		except Exception as err:
 			raise RuntimeError(f"Failed to start pty with shell {shell!r}: {err}") from err
 		return (proc.pid, proc.read, proc.write, proc.setwinsize, proc.terminate)
@@ -147,7 +138,7 @@ class Terminal:
 		if default_shell:
 			self._default_shell = default_shell
 		self._loop = get_running_loop()
-		self._last_usage = time()
+		self._last_usage = monotonic()
 		self._cwd = str(Path.home())
 		self._pty_pid: int | None = None
 		self._pty_read: Callable | None = None
@@ -182,17 +173,18 @@ class Terminal:
 		if terminal_open_request.rows == self.rows and terminal_open_request.cols == self.cols:
 			await self.set_size(terminal_open_request.rows - 1, terminal_open_request.cols)
 		await self.set_size(terminal_open_request.rows, terminal_open_request.cols)
-		self._last_usage = time()
+		self._last_usage = monotonic()
 		await self._send_open_event()
 
 	async def start(self) -> None:
 		shell = self._terminal_open_request.shell or self._default_shell
 		if not shell:
 			raise RuntimeError("No shell specified")
-		logger.debug("Calling start_pty with loop %s", self._loop)
+		logger.debug("Calling start_pty")
 		sp_env = self._terminal_open_request.env or {}
 		sp_env["OPSI_TERMINAL_ID"] = self.terminal_id
-		future = self._loop.run_in_executor(None, start_pty, shell, self.rows, self.cols, self._cwd, sp_env)
+		start_time = monotonic()
+		# start_pty must be called in the main thread, because it uses os.forkpty() internally
 		try:
 			(
 				self._pty_pid,
@@ -200,17 +192,17 @@ class Terminal:
 				self._pty_write,
 				self._pty_set_size,
 				self._pty_stop,
-			) = await wait_for(future, 10.0)
-		except TimeoutError as err:
-			raise RuntimeError("Failed to start pty: timed out") from err
-		logger.debug("pty started")
+			) = start_pty(shell, self.rows, self.cols, self._cwd, sp_env)
+		except Exception as err:
+			raise RuntimeError(f"Failed to start pty: {err}") from err
+		logger.info("PTY started in %.3f seconds with pid %r", monotonic() - start_time, self._pty_pid)
 		await self._start_manager()
 		await self._send_open_event()
 		await self._start_reader()
 
 	async def _manager(self) -> None:
 		while not self._closing:
-			if time() - self._last_usage > self.idle_timeout:
+			if monotonic() - self._last_usage > self.idle_timeout:
 				logger.info("Terminal idle timeout")
 				await self.close()
 				break
@@ -268,7 +260,7 @@ class Terminal:
 				logger.trace(data)
 				if self._closing:
 					break
-				self._last_usage = time()
+				self._last_usage = monotonic()
 				message = TerminalDataReadMessage(
 					sender=self._sender, channel=self._response_channel, terminal_id=self.terminal_id, data=data
 				)
@@ -288,7 +280,7 @@ class Terminal:
 			await self.close()
 
 	async def process_message(self, message: TerminalDataWriteMessage | TerminalResizeRequestMessage | TerminalCloseRequestMessage) -> None:
-		self._last_usage = time()
+		self._last_usage = monotonic()
 		if isinstance(message, TerminalDataWriteMessage):
 			if not self._closing and self._pty_write:
 				# Do not wait for completion to minimize rtt
