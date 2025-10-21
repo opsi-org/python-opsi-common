@@ -10,10 +10,11 @@ This file is part of opsi - https://www.opsi.org
 from __future__ import annotations
 
 import shlex
-from asyncio import Task, get_running_loop, sleep
+import time
+from asyncio import Event, Task, get_running_loop, sleep
 from contextlib import nullcontext
 from pathlib import Path
-from threading import Lock
+from threading import Lock, Thread
 from time import monotonic
 from typing import Callable
 
@@ -121,6 +122,7 @@ class Terminal:
 	max_rows = 100
 	max_cols = 300
 	idle_timeout = 8 * 3600
+	fork_delay = 0.0
 
 	def __init__(
 		self,
@@ -149,6 +151,8 @@ class Terminal:
 		self._close_event_send = False
 		self._manager_task: Task | None = None
 		self._pty_reader_task: Task | None = None
+		self._pty_started_event = Event()
+		self._pty_exception: Exception | None = None
 		self._set_size(terminal_open_request.rows, terminal_open_request.cols)
 
 	@property
@@ -177,27 +181,52 @@ class Terminal:
 		await self._send_open_event()
 
 	async def start(self) -> None:
+		self._pty_started_event.clear()
 		shell = self._terminal_open_request.shell or self._default_shell
 		if not shell:
 			raise RuntimeError("No shell specified")
 		logger.debug("Calling start_pty")
 		sp_env = self._terminal_open_request.env or {}
 		sp_env["OPSI_TERMINAL_ID"] = self.terminal_id
-		start_time = monotonic()
-		# start_pty must be called in the main thread, because it uses os.forkpty() internally
-		(
-			self._pty_pid,
-			self._pty_read,
-			self._pty_write,
-			self._pty_set_size,
-			self._pty_stop,
-		) = start_pty(shell, self.rows, self.cols, self._cwd, sp_env)
-		logger.info("PTY started in %.3f seconds with pid %r", monotonic() - start_time, self._pty_pid)
+
+		def _start_pty() -> None:
+			if self.fork_delay > 0:
+				time.sleep(self.fork_delay)
+			try:
+				(
+					self._pty_pid,
+					self._pty_read,
+					self._pty_write,
+					self._pty_set_size,
+					self._pty_stop,
+				) = start_pty(shell, self.rows, self.cols, self._cwd, sp_env)
+			except Exception as err:
+				self._pty_exception = err
+			self._pty_started_event.set()
+
+		Thread(target=_start_pty, name="start_pty_thread").start()
+
 		await self._start_manager()
-		await self._send_open_event()
 		await self._start_reader()
 
 	async def _manager(self) -> None:
+		await self._pty_started_event.wait()
+		if self._pty_exception:
+			logger.error("Failed to start pty: %s", self._pty_exception, exc_info=self._pty_exception)
+			terminal_error = TerminalErrorMessage(
+				sender=self._sender,
+				channel=self._response_channel,
+				ref_id=self._terminal_open_request.id,
+				terminal_id=self.terminal_id,
+				error=Error(message=f"Failed to create new terminal: {self._pty_exception}"),
+			)
+			await self._send_message(terminal_error)
+			await self.close()
+			return
+
+		logger.info("PTY started with pid %r", self._pty_pid)
+		await self._send_open_event()
+
 		while not self._closing:
 			if monotonic() - self._last_usage > self.idle_timeout:
 				logger.info("Terminal idle timeout")
@@ -244,6 +273,11 @@ class Terminal:
 	async def _pty_reader(self) -> None:
 		pty_reader_block_size = self.pty_reader_block_size
 		try:
+			# Wait for pty to start
+			await self._pty_started_event.wait()
+			if self._pty_exception:
+				return
+
 			while self._pty_read and not self._closing:
 				logger.trace("Read from pty")
 				try:

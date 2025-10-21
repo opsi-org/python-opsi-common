@@ -329,25 +329,30 @@ async def test_multiple_terminals() -> None:
 
 
 async def test_stop_running_terminals() -> None:
-	message_sender = MessageSender()
+	fork_delay_original = Terminal.fork_delay
+	Terminal.fork_delay = 3.0
+	try:
+		message_sender = MessageSender()
 
-	terminal_id = str(uuid.uuid4())
-	shell = "timeout /t 10" if is_windows() else "sleep 10"
+		terminal_id = str(uuid.uuid4())
+		shell = "timeout /t 10" if is_windows() else "sleep 10"
 
-	terminal_open_request = TerminalOpenRequestMessage(
-		sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, shell=shell
-	)
-	await process_messagebus_message(terminal_open_request, send_message=message_sender.send_message)
+		terminal_open_request = TerminalOpenRequestMessage(
+			sender="client", back_channel="back_channel", channel="channel", terminal_id=terminal_id, shell=shell
+		)
+		await process_messagebus_message(terminal_open_request, send_message=message_sender.send_message)
 
-	messages = await message_sender.wait_for_messages(count=1)
-	assert len(messages) == 1
-	assert isinstance(messages[0], TerminalOpenEventMessage)
+		messages = await message_sender.wait_for_messages(count=1)
+		assert len(messages) == 1
+		assert isinstance(messages[0], TerminalOpenEventMessage)
 
-	assert len(terminals) == 1
-	assert terminals[terminal_open_request.terminal_id]
+		assert len(terminals) == 1
+		assert terminals[terminal_open_request.terminal_id]
 
-	await stop_running_terminals()
+		await stop_running_terminals()
 
-	messages = await message_sender.wait_for_messages(count=1)
-	assert isinstance(messages[-1], TerminalCloseEventMessage)
-	assert messages[-1].terminal_id == terminal_id
+		messages = await message_sender.wait_for_messages(count=1)
+		assert isinstance(messages[-1], TerminalCloseEventMessage)
+		assert messages[-1].terminal_id == terminal_id
+	finally:
+		Terminal.fork_delay = fork_delay_original
