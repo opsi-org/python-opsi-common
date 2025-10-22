@@ -10,6 +10,7 @@ This file is part of opsi - https://www.opsi.org
 import os
 import re
 import socket
+from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
 from shutil import chown
@@ -172,7 +173,7 @@ class OpsiConfig(metaclass=Singleton):
 
 	def __init__(self, upgrade_config: bool = True) -> None:
 		self._config_file_mtime = 0.0
-		self._config: dict[str, Any] = self.default_config
+		self._config: dict[str, Any] = deepcopy(self.default_config)
 		self._config_file_read = False
 		self._upgrade_config = upgrade_config
 		self._upgrade_done = False
