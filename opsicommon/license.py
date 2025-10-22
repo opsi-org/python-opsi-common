@@ -342,6 +342,10 @@ class OpsiLicense:
 			if not attribute.startswith("_") and isinstance(value, str) and value.strip() == "":
 				setattr(self, attribute, None)
 
+	def module_ids(self) -> set[str]:
+		"""Return list of module IDs provided by this license."""
+		return {self.module_id} | set(OPSI_MODULE_BUNDLES.get(self.module_id, ()))
+
 	def set_license_pool(self, license_pool: OpsiLicensePool) -> None:
 		self._license_pool = license_pool
 
@@ -448,10 +452,11 @@ class OpsiLicense:
 			return OPSI_LICENSE_STATE_INVALID_SIGNATURE
 
 		if self.type == OPSI_LICENSE_TYPE_CORE and self._license_pool:
+			module_ids = self.module_ids()
 			for lic in self._license_pool.get_licenses(
 				exclude_ids=[self.id], valid_only=True, test_revoked=False, types=[OPSI_LICENSE_TYPE_STANDARD], at_date=at_date
 			):
-				if lic.type != OPSI_LICENSE_TYPE_CORE and lic.module_id == self.module_id:
+				if lic.type != OPSI_LICENSE_TYPE_CORE and lic.module_ids().intersection(module_ids):
 					return OPSI_LICENSE_STATE_REPLACED_BY_NON_CORE
 		if test_revoked and self._license_pool and self.id in self._license_pool.get_revoked_license_ids(at_date=at_date):
 			return OPSI_LICENSE_STATE_REVOKED
@@ -662,8 +667,7 @@ class OpsiLicensePool:
 		module_ids = set(OPSI_FREE_MODULE_IDS)
 		for lic in self._licenses.values():
 			if lic.is_signature_valid():
-				module_ids.add(lic.module_id)
-				module_ids.update(OPSI_MODULE_BUNDLES.get(lic.module_id, tuple()))
+				module_ids.update(lic.module_ids())
 		return sorted(list(module_ids))
 
 	def get_licenses(
@@ -746,9 +750,11 @@ class OpsiLicensePool:
 			elif module_id not in OPSI_STAGING_MODULE_IDS:
 				modules[module_id] = {"available": False, "state": OPSI_MODULE_STATE_UNLICENSED, "license_ids": [], "client_number": 0}
 
-		for lic in self.get_licenses(valid_only=True, at_date=at_date):
-			module_ids = [lic.module_id] + list(OPSI_MODULE_BUNDLES.get(lic.module_id, ()))
-			for module_id in module_ids:
+		for lic in sorted(
+			self.get_licenses(valid_only=True, at_date=at_date), key=lambda li: 1 if li.type == OPSI_LICENSE_TYPE_CORE else 0
+		):
+			# Process CORE licenses last
+			for module_id in lic.module_ids():
 				if module_id not in modules:
 					modules[module_id] = {"available": False, "state": OPSI_MODULE_STATE_UNLICENSED, "license_ids": [], "client_number": 0}
 				if modules[module_id]["state"] == OPSI_MODULE_STATE_FREE:
@@ -758,7 +764,8 @@ class OpsiLicensePool:
 				modules[module_id]["license_ids"].append(lic.id)
 				modules[module_id]["license_ids"].sort()
 				if lic.type == OPSI_LICENSE_TYPE_CORE:
-					modules[module_id]["client_number"] = max(modules[module_id]["client_number"], lic.client_number)
+					if modules[module_id]["client_number"] < lic.client_number:
+						modules[module_id]["client_number"] = lic.client_number
 				else:
 					modules[module_id]["client_number"] += lic.client_number
 				modules[module_id]["client_number"] = min(modules[module_id]["client_number"], OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED)

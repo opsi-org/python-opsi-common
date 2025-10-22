@@ -840,6 +840,37 @@ def test_license_do_not_add_core_client_numbers() -> None:
 		assert modules["scalability1"]["available"] is True
 
 
+def test_license_module_professional_replaces_basic() -> None:
+	private_key, public_key = generate_key_pair(return_pem=False)
+
+	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
+		lic = dict(LIC1)
+		del lic["id"]
+
+		lic["module_id"] = "basic"
+		lic["type"] = OPSI_LICENSE_TYPE_CORE
+		lic["valid_from"] = "2000-01-01"
+		lic["valid_until"] = "9999-12-31"
+		lic["client_number"] = 20
+		lic1 = OpsiLicense(**lic)
+		lic1.sign(private_key)
+
+		lic["module_id"] = "professional"
+		lic["type"] = OPSI_LICENSE_TYPE_STANDARD
+		lic["client_number"] = 30
+		lic2 = OpsiLicense(**lic)
+		lic2.sign(private_key)
+
+		olp = OpsiLicensePool()
+		olp.add_license(lic1, lic2)
+
+		modules = olp.get_modules(at_date=date.fromisoformat("2000-01-01"))
+		for module in OPSI_MODULE_BUNDLES["professional"]:
+			assert modules[module]["client_number"] == 30
+			assert modules[module]["state"] == OPSI_MODULE_STATE_LICENSED
+			assert modules[module]["available"] is True
+
+
 def test_license_state_revoked() -> None:
 	olp = OpsiLicensePool(license_file_path="tests/data/license")
 	olp.load()
