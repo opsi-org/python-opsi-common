@@ -1235,6 +1235,7 @@ class ServiceClient:
 								server_dt.strftime("%Y-%m-%d %H:%M:%S %Z"),
 							)
 							set_system_datetime(server_dt)
+							logger.notice("System time is now %r", datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z"))
 					else:
 						logger.debug("Not parsing non UTC date header: %s", response.headers["date"])
 				except Exception as err:
