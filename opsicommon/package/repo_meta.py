@@ -225,11 +225,13 @@ class RepoMetaPackageCollection:
 		if num_allowed_versions is None:
 			num_allowed_versions = self.repository.num_allowed_versions
 		versions = list(self.packages[name].keys())
-		keep_versions = sorted(versions, key=packver.parse, reverse=True)[:num_allowed_versions]
+		real_versions = set([version.split("~")[0] for version in versions])  # ignore prelease and custom suffixes
+		keep_versions = sorted(real_versions, key=packver.parse, reverse=True)[:num_allowed_versions]
 		for version in versions:
-			if version not in keep_versions:
+			if version.split("~")[0] not in keep_versions:
 				logger.debug("Removing %s %s as limit is %s", name, version, num_allowed_versions)
 				del self.packages[name][version]
+		# Caution: with custom packages the result will likely contain more than num_allowed_versions entries with multiple of them corresponding to the same version
 
 	def add_package(
 		self,
@@ -249,6 +251,8 @@ class RepoMetaPackageCollection:
 			url = [str(entry).replace("\\", "/") for entry in url]  # Cannot instantiate PosixPath on windows
 
 		package = RepoMetaPackage.from_package_file(package_file=package_file, url=url)
+		# Do not trust package content for version, as custom versions are not reflected there
+		package.package_version = package_file.name.split(".opsi")[0].split("-")[-1]
 		package.compatibility = compatibility or None
 
 		self.add_package_meta(package, add_callback=add_callback, num_allowed_versions=num_allowed_versions)
