@@ -24,6 +24,7 @@ from opsicommon.package.repo_meta import (
 	RepoMetaPackageCompatibility,
 	RepoMetaPackageDependency,
 	RepoMetaProductDependency,
+	RepoMetaRepository,
 )
 from opsicommon.types import Architecture, OperatingSystem
 from opsicommon.utils import json_decode, msgpack_decode
@@ -330,3 +331,42 @@ def test_repo_meta_package_collection_remove_package(tmp_path: Path) -> None:
 
 	package_collection.remove_package("localboot_new", "2.0-1")
 	assert "localboot_new" not in package_collection.packages
+
+
+def test_repo_meta_package_collection_custom(tmp_path: Path) -> None:
+	repository_dir = tmp_path / "repository-dir"
+	shutil.copytree(TEST_REPO, repository_dir)
+	shutil.copy(repository_dir / "localboot_new_1.0-1.opsi", repository_dir / "localboot_new_1.0-1~custom.opsi")
+	shutil.copy(repository_dir / "localboot_new_2.0-1.opsi", repository_dir / "localboot_new_2.0-1~custom.opsi")
+	shutil.copy(repository_dir / "localboot_new_42.0-1337.opsi", repository_dir / "localboot_new_42.0-1337~custom.opsi")
+
+	package_collection = RepoMetaPackageCollection(repository=RepoMetaRepository(name="repo", num_allowed_versions=2))
+
+	# Check if update adds new package and deletes other entries for same package
+	compatibility = [RepoMetaPackageCompatibility(os=OperatingSystem.WINDOWS, arch=Architecture.ALL)]
+
+	def add_callback(package_meta: RepoMetaPackage) -> None:
+		package_meta.compatibility = compatibility
+
+	package_collection.add_package(repository_dir, repository_dir / "localboot_new_1.0-1.opsi", add_callback=add_callback)
+	package_collection.add_package(repository_dir, repository_dir / "localboot_new_1.0-1~custom.opsi", add_callback=add_callback)
+	assert len(package_collection.packages["localboot_new"]) == 2
+	print(package_collection.packages["localboot_new"])
+	assert package_collection.packages["localboot_new"]["1.0-1"]
+	assert package_collection.packages["localboot_new"]["1.0-1~custom"]
+
+	package_collection.add_package(repository_dir, repository_dir / "localboot_new_2.0-1.opsi", add_callback=add_callback)
+	package_collection.add_package(repository_dir, repository_dir / "localboot_new_2.0-1~custom.opsi", add_callback=add_callback)
+	assert len(package_collection.packages["localboot_new"]) == 4
+	assert package_collection.packages["localboot_new"]["1.0-1"]
+	assert package_collection.packages["localboot_new"]["1.0-1~custom"]
+	assert package_collection.packages["localboot_new"]["2.0-1"]
+	assert package_collection.packages["localboot_new"]["2.0-1~custom"]
+
+	package_collection.add_package(repository_dir, repository_dir / "localboot_new_42.0-1337.opsi", add_callback=add_callback)
+	package_collection.add_package(repository_dir, repository_dir / "localboot_new_42.0-1337~custom.opsi", add_callback=add_callback)
+	assert len(package_collection.packages["localboot_new"]) == 4
+	assert package_collection.packages["localboot_new"]["2.0-1"]
+	assert package_collection.packages["localboot_new"]["2.0-1~custom"]
+	assert package_collection.packages["localboot_new"]["42.0-1337"]
+	assert package_collection.packages["localboot_new"]["42.0-1337~custom"]
