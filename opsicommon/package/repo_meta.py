@@ -16,7 +16,6 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Callable, Generator
 
-import packaging.version as packver
 import zstandard
 
 from opsicommon.logging import get_logger
@@ -24,7 +23,7 @@ from opsicommon.objects import ProductDependency
 from opsicommon.package import OpsiPackage, PackageDependency
 from opsicommon.system import lock_file
 from opsicommon.types import Architecture, OperatingSystem
-from opsicommon.utils import json_decode, json_encode, msgpack_decode, msgpack_encode
+from opsicommon.utils import json_decode, json_encode, msgpack_decode, msgpack_encode, LegacyVersion
 
 logger = get_logger("opsicommon.package")
 
@@ -226,7 +225,7 @@ class RepoMetaPackageCollection:
 			num_allowed_versions = self.repository.num_allowed_versions
 		versions = list(self.packages[name].keys())
 		real_versions = set([version.split("~")[0] for version in versions])  # ignore prelease and custom suffixes
-		keep_versions = sorted(real_versions, key=packver.parse, reverse=True)[:num_allowed_versions]
+		keep_versions = sorted(real_versions, key=LegacyVersion, reverse=True)[:num_allowed_versions]  # Need legacyversion for 1.0or2.0 like versions
 		for version in versions:
 			if version.split("~")[0] not in keep_versions:
 				logger.debug("Removing %s %s as limit is %s", name, version, num_allowed_versions)
