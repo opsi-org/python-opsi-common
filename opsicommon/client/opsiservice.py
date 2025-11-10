@@ -884,7 +884,7 @@ class ServiceClient:
 
 	def fetch_ca_certs(self, *, skip_verify: bool = False, force_write_ca_cert_file: bool = False) -> None:
 		verify = False if skip_verify else self._session.verify
-		logger.info("Fetching opsi CA from service (verify=%s)", verify)
+		logger.info("Fetching OPSI CA from service (verify=%s)", verify)
 
 		pem_name = "ca-certs.pem" if self.server_version >= MIN_VERSION_CA_CERTS else "opsi-ca-cert.pem"
 		try:
@@ -918,19 +918,19 @@ class ServiceClient:
 
 			if action == "remove":
 				if found:
-					logger.info("Removing uib opsi CA from cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
+					logger.info("Removing UIB OPSI CA from cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
 				else:
 					logger.info(
-						"uib opsi CA not found in cert file '%s', nothing to remove (%d certificates total)", ca_cert_file, len(ca_certs)
+						"UIB OPSI CA not found in cert file '%s', nothing to remove (%d certificates total)", ca_cert_file, len(ca_certs)
 					)
 					return
 
 			elif action == "add":
 				ca_certs.extend(self.certs_from_pem(UIB_OPSI_CA))
 				if found:
-					logger.info("Updating uib opsi CA in cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
+					logger.info("Updating UIB OPSI CA in cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
 				else:
-					logger.info("Adding uib opsi CA to cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
+					logger.info("Adding UIB OPSI CA to cert file '%s' (%d certificates total)", ca_cert_file, len(ca_certs))
 
 			self.write_ca_cert_file(ca_certs, with_lock=False)
 
@@ -1949,7 +1949,7 @@ class Messagebus(Thread):
 	def _on_open(self, websocket: WebSocket) -> None:
 		logger.debug("Websocket opened (id=%r)", self.id)
 		if not self._connected:
-			logger.notice("Connected to opsi messagebus (id=%r)", self.id)
+			logger.notice("Connected to OPSI messagebus (id=%r)", self.id)
 		self._next_connect_wait = 0.0
 		self._connected = True
 		if self._client_was_connected_on_connection_lost:
@@ -2179,7 +2179,7 @@ class Messagebus(Thread):
 				logger.warning("Timed out after 5 seconds while waiting for disconnect result")
 
 	def _connect(self) -> None:
-		logger.notice("Connecting to opsi messagebus")
+		logger.notice("Connecting to OPSI messagebus")
 		if self._connected:
 			self._disconnect()
 		self._connect_attempt += 1
@@ -2282,7 +2282,7 @@ class Messagebus(Thread):
 		)
 
 	def _disconnect(self) -> None:
-		logger.notice("Disconnecting from opsi messagebus (id=%r)", self.id)
+		logger.notice("Disconnecting from OPSI messagebus (id=%r)", self.id)
 		self._disconnected_result.clear()
 		self._connect_attempt = 0
 		if self._app and self._app.sock:

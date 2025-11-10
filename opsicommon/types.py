@@ -359,7 +359,7 @@ def forceOpsiTimestamp(var: Any) -> str:
 	if not match:
 		match = re.search(_OPSI_DATE_REGEX, var)
 		if not match:
-			raise ValueError(f"Bad opsi timestamp: {var}")
+			raise ValueError(f"Bad OPSI timestamp: {var}")
 		return f"{match.group(1)}-{match.group(2)}-{match.group(3)} 00:00:00"
 	return f"{match.group(1)}-{match.group(2)}-{match.group(3)} {match.group(4)}:{match.group(5)}:{match.group(6)}"
 
@@ -457,7 +457,7 @@ def forceUrl(var: Any) -> str:
 def forceOpsiHostKey(var: Any) -> str:
 	var = forceStringLower(var)
 	if not re.search(_OPSI_HOST_KEY_REGEX, var):
-		raise ValueError(f"Bad opsi host key: {var}")
+		raise ValueError(f"Bad OPSI host key: {var}")
 	return var
 
 

@@ -111,7 +111,7 @@ def create_product(data_dict: dict[str, Any]) -> Product:
 		return NetbootProduct(data_dict["Product"]["id"], data_dict["Product"]["version"], data_dict["Package"]["version"], **kwargs)
 	if data_dict["Product"]["type"] in ("localboot", "LocalbootProduct"):
 		return LocalbootProduct(data_dict["Product"]["id"], data_dict["Product"]["version"], data_dict["Package"]["version"], **kwargs)
-	raise RuntimeError(f"Unknown opsi package type {data_dict['Product']['type']}")
+	raise RuntimeError(f"Unknown OPSI package type {data_dict['Product']['type']}")
 
 
 def dictify_product(product: Product) -> dict[str, Any]:

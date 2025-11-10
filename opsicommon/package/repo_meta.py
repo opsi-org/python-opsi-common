@@ -31,7 +31,7 @@ logger = get_logger("opsicommon.package")
 
 @dataclass
 class RepoMetaRepository:
-	name: str = "opsi package repository"
+	name: str = "OPSI package repository"
 	num_allowed_versions: int = 1
 
 
@@ -215,11 +215,11 @@ class RepoMetaPackageCollection:
 	def scan_packages(self, directory: Path, add_callback: Callable | None = None) -> None:
 		if add_callback and not callable(add_callback):
 			raise ValueError("add_callback must be callable")
-		logger.notice("Scanning opsi packages in %s", directory)
+		logger.notice("Scanning OPSI packages in %s", directory)
 		for package_file in directory.rglob("*.opsi"):
 			# Allow multiple versions for the same product in full scan
 			self.add_package(directory, package_file, num_allowed_versions=0, add_callback=add_callback)
-		logger.info("Finished scanning opsi packages")
+		logger.info("Finished scanning OPSI packages")
 
 	def limit_versions(self, name: str, num_allowed_versions: int | None = None) -> None:
 		if num_allowed_versions is None:
