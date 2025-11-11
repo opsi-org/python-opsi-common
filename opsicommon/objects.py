@@ -533,11 +533,19 @@ class User(Entity):
 		lastLogin: str | None = None,
 		mfaState: str | None = None,
 		otpSecret: str | None = None,
+		passwordHash: str | None = None,
+		encryptedPassword: str | None = None,
+		tokenHash: str | None = None,
+		groups: list[str] | None = None,
 	) -> None:
 		self.created: str | None = None
 		self.lastLogin: str | None = None
 		self.mfaState: str | None = None
 		self.otpSecret: str | None = None
+		self.passwordHash: str | None = None
+		self.encryptedPassword: str | None = None
+		self.tokenHash: str | None = None
+		self.groups: list[str] | None = None
 
 		self.setId(id)
 		if created is not None:
@@ -548,6 +556,14 @@ class User(Entity):
 			self.setMfaState(mfaState)
 		if otpSecret is not None:
 			self.setOtpSecret(otpSecret)
+		if passwordHash is not None:
+			self.setPasswordHash(passwordHash)
+		if encryptedPassword is not None:
+			self.setEncryptedPassword(encryptedPassword)
+		if tokenHash is not None:
+			self.setTokenHash(tokenHash)
+		if groups is not None:
+			self.setGroups(groups)
 
 	def setDefaults(self) -> None:
 		Entity.setDefaults(self)
@@ -555,6 +571,8 @@ class User(Entity):
 			self.setCreated(timestamp())
 		if self.mfaState is None:
 			self.mfaState = "inactive"
+		if self.groups is None:
+			self.groups = []
 
 	def getId(self) -> str:
 		return self.id
@@ -585,6 +603,30 @@ class User(Entity):
 
 	def setOtpSecret(self, otpSecret: str) -> None:
 		self.otpSecret = otpSecret
+
+	def getPasswordHash(self) -> str | None:
+		return self.passwordHash
+
+	def setPasswordHash(self, passwordHash: str) -> None:
+		self.passwordHash = passwordHash
+
+	def getEncryptedPassword(self) -> str | None:
+		return self.encryptedPassword
+
+	def setEncryptedPassword(self, encryptedPassword: str) -> None:
+		self.encryptedPassword = encryptedPassword
+
+	def getTokenHash(self) -> str | None:
+		return self.tokenHash
+
+	def setTokenHash(self, tokenHash: str) -> None:
+		self.tokenHash = tokenHash
+
+	def getGroups(self) -> list[str] | None:
+		return self.groups
+
+	def setGroups(self, groups: list[str]) -> None:
+		self.groups = list(set(forceStringList(groups)))
 
 
 Entity.sub_classes["User"] = User
