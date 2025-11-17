@@ -120,7 +120,7 @@ RPC_TIMEOUTS = {
 }
 RPC_TIMEOUTS_DEFAULT = 300
 RPC_TIMEOUTS_REGEX = {
-	re.compile("^hostControl"): 10,
+	re.compile("^hostControl"): 60,
 }
 
 _DEFAULT_HTTPS_PORT = 4447
