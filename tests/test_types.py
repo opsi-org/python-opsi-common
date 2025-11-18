@@ -17,6 +17,9 @@ import pytest
 
 from opsicommon.objects import Host, OpsiClient, ProductOnClient
 from opsicommon.types import (
+	Architecture,
+	FirmwareType,
+	OperatingSystem,
 	args,
 	forceActionProgress,
 	forceActionRequest,
@@ -695,6 +698,27 @@ def test_force_language_code_raises_exception_on_invalid_code() -> None:
 )
 def test_forcing_returns_lowercase(architecture: str, expected: str) -> None:
 	assert expected == forceArchitecture(architecture)
+
+
+def test_architecture() -> None:
+	assert Architecture("amd64") == Architecture.X64
+	assert Architecture("x64") == Architecture.X64
+	assert Architecture("x86_64") == Architecture.X64
+	assert Architecture("x86") == Architecture.X86
+	assert Architecture("arm64").inf_value == "arm64"
+	assert Architecture("amd64").inf_value == "amd64"
+	assert Architecture("x64").inf_value == "amd64"
+
+
+def test_firmware_type() -> None:
+	assert FirmwareType("UEFI") == FirmwareType.UEFI
+	assert FirmwareType("BIOS") == FirmwareType.BIOS
+
+
+def test_operating_system() -> None:
+	assert OperatingSystem("Windows") == OperatingSystem.WINDOWS
+	assert OperatingSystem("Linux") == OperatingSystem.LINUX
+	assert OperatingSystem("MacOS") == OperatingSystem.MACOS
 
 
 def test_force_time_fails_if_no_time_given() -> None:

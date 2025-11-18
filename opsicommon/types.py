@@ -152,12 +152,50 @@ class OperatingSystem(StrEnum):
 	LINUX = "linux"
 	OPSI_LOCAL_IMAGE = "opsi-local-image"
 
+	@classmethod
+	def _missing_(cls, value: object) -> OperatingSystem:
+		value = str(value).lower()
+		for member in cls:
+			if member.value == value:
+				return member
+		raise ValueError(f"{value!r} is not a valid {cls.__name__}")
+
 
 class Architecture(StrEnum):
-	ALL = "all"
 	X86 = "x86"
 	X64 = "x64"
+	IA64 = "ia64"
+	ARM = "arm"
 	ARM64 = "arm64"
+
+	@classmethod
+	def _missing_(cls, value: object) -> Architecture:
+		value = str(value).lower()
+		if value in ("x86_64", "amd64"):
+			value = "x64"
+		for member in cls:
+			if member.value == value:
+				return member
+		raise ValueError(f"{value!r} is not a valid {cls.__name__}")
+
+	@property
+	def inf_value(self) -> str:
+		if self == Architecture.X64:
+			return "amd64"
+		return self.value
+
+
+class FirmwareType(StrEnum):
+	BIOS = "BIOS"
+	UEFI = "UEFI"
+
+	@classmethod
+	def _missing_(cls, value: object) -> FirmwareType:
+		value = str(value).upper()
+		for member in cls:
+			if member.value == value:
+				return member
+		raise ValueError(f"{value!r} is not a valid {cls.__name__}")
 
 
 def forceList(var: Any) -> list[Any]:
