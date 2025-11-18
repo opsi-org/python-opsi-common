@@ -127,6 +127,7 @@ OPSI_MODULE_BUNDLES = {
 		"macos_agent",
 		"message_of_the_day",
 		"monitoring",
+		"opsi_auth",
 		"scalability1",
 		"secureboot",
 		"sso",
