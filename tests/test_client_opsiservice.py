@@ -2712,7 +2712,12 @@ def test_permission_error_ca_cert_file_lock() -> None:
 
 @pytest.mark.parametrize(
 	("method", "timeout"),
-	[("hostControlSafe_fireEvent", 10.0), ("depot_installPackage", 4 * 3600.0), ("backend_getInterface", float(RPC_TIMEOUTS_DEFAULT))],
+	[
+		("hostControlSafe_fireEvent", 60.0),
+		("hostControl_uptime", 60.0),
+		("depot_installPackage", 4 * 3600.0),
+		("backend_getInterface", float(RPC_TIMEOUTS_DEFAULT)),
+	],
 )
 def test_get_rpc_timeout(method: str, timeout: float) -> None:
 	assert get_rpc_timeout(method) == timeout
