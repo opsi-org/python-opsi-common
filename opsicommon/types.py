@@ -167,6 +167,7 @@ class Architecture(StrEnum):
 	IA64 = "ia64"
 	ARM = "arm"
 	ARM64 = "arm64"
+	ALL = "all"
 
 	@classmethod
 	def _missing_(cls, value: object) -> Architecture:
