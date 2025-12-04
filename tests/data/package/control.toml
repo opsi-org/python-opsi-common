@@ -34,6 +34,15 @@ values = ["a", "b"]
 default = ["a"]
 
 [[ProductProperty]]
+type = "UnicodeProductProperty"
+name = "propname2"
+multivalue = true
+editable = false
+description = "this is an other property"
+values = ["x", "y", "z"]
+default = []
+
+[[ProductProperty]]
 type = "BoolProductProperty"
 name = "boolprop"
 multivalue = false

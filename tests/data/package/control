@@ -42,6 +42,15 @@ values: ["a","b"]
 default: ["a"]
 
 [ProductProperty]
+type: unicode
+name: propname2
+multivalue: True
+editable: False
+description: this is an other property
+values: ["x","y","z"]
+default: []
+
+[ProductProperty]
 type: bool
 name: boolprop
 description: this is a bool property

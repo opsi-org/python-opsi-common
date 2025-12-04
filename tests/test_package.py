@@ -109,7 +109,7 @@ def test_load_control(form: str) -> None:
 	assert package.product.packageVersion == "1337"
 	assert not package.product.licenseRequired
 	assert package.product.priority == 0
-	assert len(package.product_properties) == 2
+	assert len(package.product_properties) == 3
 	for prop in package.product_properties:
 		if prop.propertyId == "propname":
 			assert prop.description == r"this is a dummy property (the\directory)"
@@ -118,6 +118,13 @@ def test_load_control(form: str) -> None:
 			assert prop.defaultValues == ["a"]
 			assert prop.possibleValues
 			assert set(prop.possibleValues) == {"a", "b"}
+		elif prop.propertyId == "propname2":
+			assert prop.description == "this is an other property"
+			assert prop.multiValue is True
+			assert prop.editable is False
+			assert prop.defaultValues == []
+			assert prop.possibleValues
+			assert set(prop.possibleValues) == {"x", "y", "z"}
 		elif prop.propertyId == "boolprop":
 			assert prop.description == "this is a bool property"
 			assert prop.multiValue is False

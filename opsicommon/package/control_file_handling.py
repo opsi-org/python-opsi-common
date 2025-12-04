@@ -87,7 +87,7 @@ def create_product_properties(pid: str, prod_v: str, pack_v: str, props: list[di
 			kwargs.update(
 				{
 					"possibleValues": prop.get("values", []),
-					"editable": [prop.get("editable", not prop.get("values", []))],
+					"editable": prop.get("editable", not prop.get("values", [])),
 					"multiValue": prop.get("multivalue"),
 				}
 			)
