@@ -74,46 +74,50 @@ async def test_file_upload(tmp_path: Path) -> None:
 
 	# Create the upload directory and try again
 	upload_path.mkdir()
-	file_upload_request = FileUploadRequestMessage(
-		sender=sender,
-		channel=channel,
-		content_type="text/plain",
-		name=test_file.name,
-		size=file_size,
-		destination_dir=str(upload_path),
-	)
-	await process_messagebus_message(
-		file_upload_request, send_message=message_sender.send_message, sender="test_res_sender", back_channel="test_res_channel"
-	)
 
-	messages = await message_sender.wait_for_messages(count=1)
-	assert isinstance(messages[0], FileUploadResponseMessage)
-	assert messages[0].sender == "test_res_sender"
-	assert messages[0].back_channel == "test_res_channel"
-	assert messages[0].file_id == file_upload_request.file_id
-	assert messages[0].path == str(upload_path / test_file.name)
+	for overwrite in (True, False, True):
+		print("Upload with overwrite =", overwrite)
+		file_upload_request = FileUploadRequestMessage(
+			sender=sender,
+			channel=channel,
+			content_type="text/plain",
+			name=test_file.name,
+			size=file_size,
+			destination_dir=str(upload_path),
+			overwrite=overwrite,
+		)
+		await process_messagebus_message(
+			file_upload_request, send_message=message_sender.send_message, sender="test_res_sender", back_channel="test_res_channel"
+		)
 
-	with test_file.open("rb") as file:
-		chunk_number = 0
-		data_pos = 0
-		while data := file.read(chunk_size):
-			data_pos += len(data)
-			chunk_number += 1
-			file_chunk_message = FileChunkMessage(
-				sender=sender,
-				channel=channel,
-				file_id=file_upload_request.file_id,
-				number=chunk_number,
-				data=data,
-				last=data_pos == file_size,
-			)
-			await process_messagebus_message(file_chunk_message, send_message=message_sender.send_message)
+		messages = await message_sender.wait_for_messages(count=1)
+		assert isinstance(messages[0], FileUploadResponseMessage)
+		assert messages[0].sender == "test_res_sender"
+		assert messages[0].back_channel == "test_res_channel"
+		assert messages[0].file_id == file_upload_request.file_id
+		assert messages[0].path == str(upload_path / (test_file.name + ("" if overwrite else ".1")))
 
-	messages = await message_sender.wait_for_messages(count=1)
-	assert len(messages) == 1
-	assert isinstance(messages[0], FileUploadResultMessage)
+		with test_file.open("rb") as file:
+			chunk_number = 0
+			data_pos = 0
+			while data := file.read(chunk_size):
+				data_pos += len(data)
+				chunk_number += 1
+				file_chunk_message = FileChunkMessage(
+					sender=sender,
+					channel=channel,
+					file_id=file_upload_request.file_id,
+					number=chunk_number,
+					data=data,
+					last=data_pos == file_size,
+				)
+				await process_messagebus_message(file_chunk_message, send_message=message_sender.send_message)
 
-	await wait_for_get_file_transfers_empty()
+		messages = await message_sender.wait_for_messages(count=1)
+		assert len(messages) == 1
+		assert isinstance(messages[0], FileUploadResultMessage)
+
+		await wait_for_get_file_transfers_empty()
 
 
 async def test_upload_chunk_timeout(tmp_path: Path) -> None:

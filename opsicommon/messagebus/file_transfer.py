@@ -173,11 +173,17 @@ class FileUpload(FileTransfer):
 			if not self._file_path.is_relative_to(destination_path):
 				raise ValueError("Invalid name")
 
-			orig_name = self._file_path.name
-			ext = 0
-			while self._file_path.exists():
-				ext += 1
-				self._file_path = self._file_path.with_name(f"{orig_name}.{ext}")
+			if self._file_path.exists():
+				if self._file_request.overwrite:
+					logger.debug("Overwriting existing file %s", self._file_path)
+					self._file_path.unlink()
+				else:
+					orig_name = self._file_path.name
+					ext = 0
+					while self._file_path.exists():
+						ext += 1
+						self._file_path = self._file_path.with_name(f"{orig_name}.{ext}")
+
 			self._file_path.touch()
 			self._file_path.chmod(0o660)
 

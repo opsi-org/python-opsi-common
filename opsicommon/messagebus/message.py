@@ -483,6 +483,7 @@ class FileUploadRequestMessage(FileTransferMessage):
 	name: str | None = None
 	size: int | None = None
 	destination_dir: str | None = None
+	overwrite: bool = False
 	terminal_id: str | None = None
 
 
