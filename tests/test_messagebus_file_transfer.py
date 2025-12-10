@@ -23,8 +23,8 @@ from opsicommon.messagebus.file_transfer import (
 from opsicommon.messagebus.message import (
 	FileChunkMessage,
 	FileDownloadAbortRequestMessage,
+	FileDownloadInformationMessage,
 	FileDownloadRequestMessage,
-	FileDownloadResponseMessage,
 	FileTransferErrorMessage,
 	FileUploadRequestMessage,
 	FileUploadResponseMessage,
@@ -253,7 +253,7 @@ async def test_file_download(tmp_path: Path) -> None:
 	)
 
 	messages = await message_sender.wait_for_messages(count=1, true_count=True)
-	assert isinstance(messages[0], FileDownloadResponseMessage)
+	assert isinstance(messages[0], FileDownloadInformationMessage)
 	assert messages[0].sender == res_sender
 	assert messages[0].back_channel == res_channel
 	assert messages[0].size == test_file_size
@@ -303,7 +303,7 @@ async def test_file_download_follow(tmp_path: Path) -> None:
 	await process_messagebus_message(file_follow_request, send_message=message_sender.send_message, sender=sender, back_channel=channel)
 
 	messages = await message_sender.wait_for_messages(count=1, true_count=True)
-	assert isinstance(messages[0], FileDownloadResponseMessage)
+	assert isinstance(messages[0], FileDownloadInformationMessage)
 	assert messages[0].sender == sender
 	assert messages[0].back_channel == channel
 	assert messages[0].size is None

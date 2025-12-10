@@ -23,8 +23,8 @@ from opsicommon.messagebus.message import (
 	Error,
 	FileChunkMessage,
 	FileDownloadAbortRequestMessage,
+	FileDownloadInformationMessage,
 	FileDownloadRequestMessage,
-	FileDownloadResponseMessage,
 	FileTransferErrorMessage,
 	FileTransferMessage,
 	FileUploadRequestMessage,
@@ -285,7 +285,7 @@ class FileDownload(FileTransfer):
 
 		self._manager_task = self._loop.create_task(self._manager())
 
-		message = FileDownloadResponseMessage(
+		message = FileDownloadInformationMessage(
 			sender=self._sender,
 			channel=self._response_channel,
 			file_id=self._file_id,
