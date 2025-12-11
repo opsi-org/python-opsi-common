@@ -1833,6 +1833,7 @@ class ServiceClient:
 		self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
 	) -> bool | None:
 		self.stop()
+		return None
 
 
 class MessagebusListener(ABC):
