@@ -34,7 +34,6 @@ from ipaddress import IPv6Address, ip_address
 from pathlib import Path
 from random import randint
 from threading import Event, Lock, Thread
-from traceback import TracebackException
 from types import MethodType, TracebackType
 from typing import TYPE_CHECKING, Any, BinaryIO, Callable, Generator, Iterable, Literal, Type, cast, overload
 from urllib.parse import quote, unquote, urlparse
@@ -1830,7 +1829,9 @@ class ServiceClient:
 	def __enter__(self) -> "ServiceClient":
 		return self
 
-	def __exit__(self, exc_type: Exception, exc_value: TracebackException, traceback: TracebackType) -> None:
+	def __exit__(
+		self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
+	) -> bool | None:
 		self.stop()
 
 
