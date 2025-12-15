@@ -277,9 +277,9 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		This constructor initializes a ContextFilter instance with an
 		empty dictionary as context.
 
-		:param filter_dict: Dictionary that must be present in record context
+		:param filter_dict: dictionary that must be present in record context
 		        in order to accept the LogRecord.
-		:type filter_dict: Dict
+		:type filter_dict: dict
 		"""
 		super().__init__()
 		self.filter_dict: dict[str, Any] = {}
@@ -293,7 +293,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		looks up the context stored for it and returns it.
 
 		:returns: Context for currently active thread/task.
-		:rtype: Dict
+		:rtype: dict
 		"""
 		return _context.get()
 
@@ -307,7 +307,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 
 		:param filter_dict: Value that must be present in record context
 		        in order to accept the LogRecord.
-		:type filter_dict: Dict
+		:type filter_dict: dict
 		"""
 		if filter_dict is None:
 			self.filter_dict = {}
@@ -735,6 +735,7 @@ def logging_config(
 		and stderr_file
 		and not stderr_is_rich_console
 		and hasattr(stderr_file, "isatty")
+		and callable(stderr_file.isatty)
 		and not stderr_file.isatty()
 	):
 		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")
@@ -776,7 +777,12 @@ def use_logging_config(
 	orig_logging_state = dict(_logging_state.__dict__)
 	try:
 		logging_config(
-			stderr_level=stderr_level, stderr_format=stderr_format, stderr_file=stderr_file, file_level=file_level, file_format=file_format, log_file=log_file,
+			stderr_level=stderr_level,
+			stderr_format=stderr_format,
+			stderr_file=stderr_file,
+			file_level=file_level,
+			file_format=file_format,
+			log_file=log_file,
 		)
 		yield
 	finally:
@@ -805,9 +811,9 @@ def set_format(
 	:type stderr_format: str
 	:param datefmt: Date format for logging. If omitted, a default dateformat is used.
 	:type datefmt: str
-	:param log_colors: Dictionary of colors for different log levels.
+	:param log_colors: dictionary of colors for different log levels.
 	        If omitted, a default Color dictionary is used.
-	:type log_colors: Dict
+	:type log_colors: dict
 	"""
 	for handler_type in (StreamHandler, FileHandler, RotatingFileHandler, RichConsoleHandler):
 		fmt = stderr_format if handler_type is StreamHandler or handler_type is RichConsoleHandler else file_format
@@ -846,7 +852,7 @@ def log_context(new_context: dict[str, Any]) -> Generator[None, None, None]:
 			_context.reset(token)
 
 
-def set_context(new_context: dict[str, Any]) -> contextvars.Token:
+def set_context(new_context: dict[str, Any]) -> contextvars.Token | None:
 	"""
 	Sets a context.
 
@@ -881,9 +887,9 @@ def set_filter(filter_dict: dict[str, Any] | None) -> None:
 	Records are only allowed to pass if their context contains
 	this specific dictionary. None means, every record can pass.
 
-	:param filter_dict: Dictionary that must be present in record
+	:param filter_dict: dictionary that must be present in record
 	        context in order to accept the LogRecord.
-	:type filter_dict: Dict
+	:type filter_dict: dict
 	"""
 	add_context_filter_to_loggers()
 	context_filter.set_filter(filter_dict)
@@ -930,8 +936,8 @@ def get_all_loggers() -> list[logging.Logger | logging.RootLogger]:
 	        This method requests all Logger instances registered at
 	        logging.Logger.manager.loggerDict and returns them as a list.
 	not
-	        :returns: List containing all loggers (including root)
-	        :rtype: List
+	        :returns: list containing all loggers (including root)
+	        :rtype: list
 	"""
 	return [logging.root] + [lg for lg in logging.Logger.manager.loggerDict.values() if not isinstance(lg, PlaceHolder)]
 
@@ -946,8 +952,8 @@ def get_all_handlers(handler_type: type | tuple[type, ...] | None = None, handle
 	:param handler_type: If not None, return only handlers of specified type.
 	:type handler_type: class
 
-	:returns: List containing all handlers (of specified type) of all loggers.
-	:rtype: List
+	:returns: list containing all handlers (of specified type) of all loggers.
+	:rtype: list
 	"""
 	handlers = []
 	if handler_type and not isinstance(handler_type, tuple):
@@ -973,7 +979,7 @@ def remove_all_handlers(handler_type: type | None = None, handler_name: str | No
 	This method iterates over all loggers. All assigned handlers
 	(of a given type or all) are removed.
 
-	:param handler_type: Type of handlers that should be removed.
+	:param handler_type: type of handlers that should be removed.
 	:type handler_type: class
 	"""
 	for _logger in get_all_loggers():
@@ -1053,5 +1059,5 @@ def get_logger(name: str | None = None) -> OPSILogger:
 	return _logger  # type: ignore[return-value]
 
 
-logging.getLogger = get_logger
+logging.getLogger = get_logger  # type: ignore[invalid-assignment]
 logging_config(stderr_level=logging.WARNING)

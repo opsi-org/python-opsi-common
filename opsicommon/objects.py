@@ -237,7 +237,7 @@ class BaseObject:
 		return self._is_generated_default
 
 	@classmethod
-	def fromHash(cls: Type[BaseObjectT], _hash: dict[str, Any]) -> BaseObjectT:
+	def fromHash(cls: type[BaseObjectT], _hash: dict[str, Any]) -> BaseObjectT:
 		if cls.copy_from_hash:
 			_hash = _hash.copy()
 		_cls = cls
@@ -315,7 +315,7 @@ class BaseObject:
 
 
 @lru_cache()
-def mandatory_constructor_args(_class: Type[BaseObject]) -> list[str]:
+def mandatory_constructor_args(_class: type[BaseObject]) -> list[str]:
 	cache_key = _class.__name__  # type: ignore[attr-defined]
 	spec = getfullargspec(_class.__init__)  # type: ignore[misc]
 	args = spec.args
@@ -331,7 +331,7 @@ def mandatory_constructor_args(_class: Type[BaseObject]) -> list[str]:
 
 
 @lru_cache()
-def get_ident_attributes(_class: Type[BaseObject]) -> tuple[str, ...]:
+def get_ident_attributes(_class: type[BaseObject]) -> tuple[str, ...]:
 	ident_attributes = tuple(mandatory_constructor_args(_class))  # type: ignore[arg-type]
 	if "hardwareClass" in ident_attributes:
 		ident_attributes = tuple([a for a in ident_attributes if a != "hardwareClass"])
@@ -339,12 +339,12 @@ def get_ident_attributes(_class: Type[BaseObject]) -> tuple[str, ...]:
 
 
 @lru_cache()
-def get_foreign_id_attributes(_class: Type[BaseObject]) -> Any:
+def get_foreign_id_attributes(_class: type[BaseObject]) -> Any:
 	return _class.foreign_id_attributes
 
 
 @lru_cache()
-def get_possible_class_attributes(_class: Type[BaseObject]) -> set[str]:
+def get_possible_class_attributes(_class: type[BaseObject]) -> set[str]:
 	"""
 	Returns the possible attributes of a class.
 	"""
@@ -364,11 +364,11 @@ def get_possible_class_attributes(_class: Type[BaseObject]) -> set[str]:
 
 
 @lru_cache()
-def get_backend_method_prefix(_class: Type[BaseObject]) -> Any:
+def get_backend_method_prefix(_class: type[BaseObject]) -> Any:
 	return _class.backend_method_prefix
 
 
-def decode_ident(_class: Type[BaseObject], _hash: dict[str, Any]) -> dict[str, Any]:
+def decode_ident(_class: type[BaseObject], _hash: dict[str, Any]) -> dict[str, Any]:
 	if "ident" not in _hash:
 		return _hash
 

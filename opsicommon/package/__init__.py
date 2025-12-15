@@ -256,7 +256,7 @@ class OpsiPackage:
 		}
 		doc["Product"] = dictify_product(self.product)
 		if isinstance(doc["Product"], dict) and "pxeConfigTemplate" in doc["Product"]:
-			doc["Product"]["pxeConfigTemplate"] = tomlkit.string(str(doc["Product"]["pxeConfigTemplate"]), multiline=True)
+			doc["Product"]["pxeConfigTemplate"] = tomlkit.string(str(doc["Product"]["pxeConfigTemplate"]), multiline=True)  # type: ignore[invalid-assignment]
 
 		if self.product_properties:
 			doc["ProductProperty"] = dictify_product_properties(self.product_properties)
@@ -281,16 +281,15 @@ class OpsiPackage:
 		dir_names_found = []
 		for extension in (f".{custom_name}", ""):
 			possible_control_dirs.append(f"OPSI{extension}")
-			for dir_type_str in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
-				dir_path = base_dir / f"{dir_type_str}{extension}"
+			for dir_type in ("OPSI", "CLIENT_DATA", "SERVER_DATA"):
+				dir_path = base_dir / f"{dir_type}{extension}"
 				if dir_path.is_dir():
-					dir_type = cast(PACKAGE_DIR_TYPES, dir_type_str)
 					dir_names_found.append(dir_path.name)
 					cur_dir_paths = dirs.get(dir_type, [])
 					if not extension and custom_only:
 						# With custom only the default CLIENT_DATA and SERVER_DATA directories are skipped
 						# The default OPSI directory must only be used if no custom directory is found
-						if cur_dir_paths or dir_type_str != "OPSI":
+						if cur_dir_paths or dir_type != "OPSI":
 							continue
 					dirs[dir_type] = cur_dir_paths + [dir_path]
 					if extension:

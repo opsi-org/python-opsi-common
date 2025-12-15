@@ -35,7 +35,7 @@ from typing import Any, Callable, Generator
 from urllib.parse import urlsplit, urlunsplit
 from xml.etree.ElementTree import Element, SubElement, tostring
 
-import lz4  # type: ignore[import]
+import lz4.frame
 from psutil import Process
 
 from opsicommon.config.opsi import OpsiConfig
@@ -265,7 +265,8 @@ class HTTPTestServerRequestHandler(SimpleHTTPRequestHandler):
 		if self.server.response_body:
 			response = self.server.response_body
 		elif "json" in self.headers.get("Content-Type", "") or "msgpack" in self.headers.get("Content-Type", ""):
-			response = json_encode({"id": request["id"], "result": []})
+			assert isinstance(request, dict)
+			response = json_encode({"id": request.get("id"), "result": []})
 		else:
 			response = b""
 

@@ -35,7 +35,7 @@ from pathlib import Path
 from random import randint
 from threading import Event, Lock, Thread
 from types import MethodType, TracebackType
-from typing import TYPE_CHECKING, Any, BinaryIO, Callable, Generator, Iterable, Literal, Type, cast, overload
+from typing import TYPE_CHECKING, Any, BinaryIO, Callable, Generator, Iterable, Literal, overload
 from urllib.parse import quote, unquote, urlparse
 from uuid import uuid4
 from xml.etree import ElementTree
@@ -178,11 +178,11 @@ def isEnabledForTrace() -> bool:
 	return logger.isEnabledFor(TRACE)
 
 
-websocket_handshake.dump = websocket_dump
-websocket_http.dump = websocket_dump
-websocket_http.trace = websocket_trace
-websocket_core.trace = websocket_trace
-websocket_core.isEnabledForTrace = isEnabledForTrace
+websocket_handshake.dump = websocket_dump  # type: ignore[invalid-assignment]]
+websocket_http.dump = websocket_dump  # type: ignore[invalid-assignment]]
+websocket_http.trace = websocket_trace  # type: ignore[invalid-assignment]]
+websocket_core.trace = websocket_trace  # type: ignore[invalid-assignment]]
+websocket_core.isEnabledForTrace = isEnabledForTrace  # type: ignore[invalid-assignment]]
 
 
 @lru_cache
@@ -320,7 +320,7 @@ class UploadFile:
 			self.progress_callback(0, self.file_size)
 		return self
 
-	def __exit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType) -> None:
+	def __exit__(self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None) -> None:
 		if self._file_handle:
 			self._file_handle.close()
 
@@ -1052,7 +1052,7 @@ class ServiceClient:
 				else:
 					self._session.verify = True
 
-				verify = cast(bool | str, self._session.verify)
+				verify = self._session.verify
 				logger.debug(
 					"ca_cert_file: '%s', exists: %r, verify_flags: %r, session.verify: %r, verify: %r",
 					ca_cert_file,
@@ -1685,7 +1685,7 @@ class ServiceClient:
 			logger.trace("Decompressing data with lz4")
 			data = lz4.frame.decompress(data)
 
-		error_cls: Type[Exception] | None = None
+		error_cls: type[Exception] | None = None
 		error_msg = None
 		if response.status_code != 200:
 			error_msg = response.reason
@@ -2095,7 +2095,7 @@ class Messagebus(Thread):
 
 		if res.error:
 			logger.debug("JSON-RPC-response contains error: %s", res.error)
-			error_cls: Type[Exception] = OpsiRpcError
+			error_cls: type[Exception] = OpsiRpcError
 			if res.error["data"]["class"] in ("BackendPermissionDeniedError", "OpsiServicePermissionError"):
 				error_cls = OpsiServicePermissionError
 			raise error_cls(res.error["message"])
@@ -2139,7 +2139,7 @@ class Messagebus(Thread):
 			if self._connect_exception:
 				status_code = getattr(self._connect_exception, "status_code", 0)
 				headers = getattr(self._connect_exception, "headers", {})
-				cls: Type[OpsiServiceError] = OpsiServiceConnectionError
+				cls: type[OpsiServiceError] = OpsiServiceConnectionError
 				if status_code == 401:
 					cls = OpsiServiceAuthenticationError
 				elif status_code == 403:

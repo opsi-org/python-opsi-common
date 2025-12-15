@@ -20,7 +20,7 @@ import sys
 import time
 import types
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Callable, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Callable
 from uuid import UUID
 
 from opsicommon.logging import get_logger
@@ -349,7 +349,7 @@ def forceDict(var: Any) -> dict:
 	raise ValueError(f"Not a dict '{var}'")
 
 
-def forceTime(var: Any) -> Union[time.struct_time, datetime.datetime]:
+def forceTime(var: Any) -> time.struct_time | datetime.datetime:
 	"""
 	Convert `var` to a time.struct_time.
 
@@ -603,7 +603,7 @@ def forceActionRequest(var: Any) -> str:
 	var = forceStringLower(var)
 	if var:
 		if var == "undefined":
-			var = None
+			var = "none"
 		elif var not in ("setup", "uninstall", "update", "always", "once", "custom", "none"):
 			raise ValueError(f"Bad action request: '{var}'")
 	return var
@@ -617,7 +617,7 @@ def forceActionProgress(var: Any) -> str:
 	return forceUnicode(var)
 
 
-def forceActionResult(var: Any) -> Optional[str]:
+def forceActionResult(var: Any) -> str | None:
 	var = forceStringLower(var)
 	if not var:
 		return None
@@ -626,7 +626,7 @@ def forceActionResult(var: Any) -> Optional[str]:
 	return var
 
 
-def forceRequirementType(var: Any) -> Optional[str]:
+def forceRequirementType(var: Any) -> str | None:
 	var = forceStringLower(var)
 	if not var:
 		return None
@@ -635,7 +635,7 @@ def forceRequirementType(var: Any) -> Optional[str]:
 	return var
 
 
-def forceObjectClass(var: Any, objectClass: Type[BaseObjectT]) -> BaseObjectT:
+def forceObjectClass(var: Any, objectClass: type[BaseObjectT]) -> BaseObjectT:
 	global get_object_type
 	global from_json
 
@@ -670,7 +670,7 @@ def forceObjectClass(var: Any, objectClass: Type[BaseObjectT]) -> BaseObjectT:
 	raise ValueError(f"{var!r} is not a {objectClass}")
 
 
-def forceObjectClassList(var: Any, objectClass: Type[BaseObjectT]) -> list[BaseObjectT]:
+def forceObjectClassList(var: Any, objectClass: type[BaseObjectT]) -> list[BaseObjectT]:
 	return [forceObjectClass(element, objectClass) for element in forceList(var)]
 
 
@@ -829,8 +829,8 @@ def args(*vars: Any, **typeVars: Any) -> Callable:
 	"""
 	vars_list = list(vars)
 
-	def wrapper(cls: Type) -> Any:
-		def new(typ: Type, *args: Any, **kwargs: Any) -> Any:
+	def wrapper(cls: type) -> Any:
+		def new(typ: type, *args: Any, **kwargs: Any) -> Any:
 			if getattr(cls, "__base__", None) in (object, None):
 				obj = object.__new__(typ)  # Suppress deprecation warning
 			else:

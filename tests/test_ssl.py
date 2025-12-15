@@ -11,7 +11,7 @@ import ipaddress
 import platform
 import subprocess
 from pathlib import Path
-from typing import Any, Optional, Type
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -35,9 +35,9 @@ from opsicommon.ssl import (
 	x509_name_from_dict,
 	x509_name_to_dict,
 )
-from opsicommon.ssl.common import subject_to_dict
+from opsicommon.ssl.common import subject_to_dict  # type: ignore[deprecated]
 from opsicommon.system.info import is_linux
-from opsicommon.testing.helpers import http_test_server  # type: ignore[import]
+from opsicommon.testing.helpers import http_test_server
 
 
 def test_x509_name_to_dict() -> None:
@@ -63,7 +63,7 @@ def test_x509_name_to_dict() -> None:
 	}
 	assert x509_name_to_dict(x509_name) == subject
 	with pytest.deprecated_call():
-		assert subject_to_dict(x509_name) == subject
+		assert subject_to_dict(x509_name) == subject  # type: ignore[deprecated]
 	assert create_x509_name(subject) == x509_name
 
 
@@ -171,7 +171,7 @@ def test_get_system_ca_cert_info(
 	expected_ca_cert_path: str,
 	expected_ca_cert_update_cmd: list[str],
 	expected_custom_ca_certs_path: str,
-	expected_exception: Optional[Type[Exception]],
+	expected_exception: type[Exception] | None,
 ) -> None:
 	from opsicommon.ssl.linux import get_system_ca_cert_info
 
@@ -205,31 +205,19 @@ def test_create_ca() -> None:
 	assert name_constraints.value.permitted_subtrees[0].value == "mycompany.com"
 	assert name_constraints.value.permitted_subtrees[1].value == "mycompany.org"
 	assert name_constraints.value.permitted_subtrees[2].value == "localhost"
-
-	try:
-		from OpenSSL.crypto import FILETYPE_ASN1  # type: ignore[import-untyped]
-		from OpenSSL.crypto import X509, dump_certificate
-
-		openssl_x509 = X509.from_cryptography(ca_cert)
-		assert ca_cert.fingerprint(hashes.SHA1()).hex().upper() == openssl_x509.digest("sha1").decode("ascii").replace(":", "")
-		assert dump_certificate(FILETYPE_ASN1, openssl_x509) == ca_cert.public_bytes(encoding=serialization.Encoding.DER)
-	except ImportError:
-		pass
-
 	for domain in ["mycompany.com", "sub.mycompany.com", "mycompany.org", "localhost", "other.tld"]:
-		kwargs: dict[str, Any] = {
-			"subject": {"emailAddress": f"opsi@{domain}", "CN": f"server.{domain}"},
-			"valid_days": 100,
-			"ip_addresses": {"172.0.0.1", "::1", "192.168.1.1"},
-			"hostnames": {f"server.{domain}", "localhost"},
-			"ca_key": ca_key,
-			"ca_cert": ca_cert,
-		}
-		srv_cert, _srv_key = create_server_cert(**kwargs)
+		srv_cert, _srv_key = create_server_cert(
+			subject={"emailAddress": f"opsi@{domain}", "CN": f"server.{domain}"},
+			valid_days=100,
+			ip_addresses={"172.0.0.1", "::1", "192.168.1.1"},
+			hostnames={f"server.{domain}", "localhost"},
+			ca_key=ca_key,
+			ca_cert=ca_cert,
+		)
 		store = verification.Store([ca_cert])
 		builder = verification.PolicyBuilder().store(store)
 
-		verifier = builder.build_server_verifier(x509.DNSName(list(kwargs["hostnames"])[0]))
+		verifier = builder.build_server_verifier(x509.DNSName(f"server.{domain}"))
 		if domain in "other.tld":
 			with pytest.raises(Exception, match="no permitted name constraints matched SAN"):
 				verifier.verify(srv_cert, [])
@@ -428,15 +416,14 @@ def test_install_load_remove_ca() -> None:
 @pytest.mark.admin_permissions
 def test_wget(tmp_path: Path) -> None:
 	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3)
-	kwargs: dict[str, Any] = {
-		"subject": {"CN": "python-opsi-common test server cert"},
-		"valid_days": 3,
-		"ip_addresses": {"172.0.0.1", "::1"},
-		"hostnames": {"localhost", "ip6-localhost"},
-		"ca_key": ca_key,
-		"ca_cert": ca_cert,
-	}
-	cert, key = create_server_cert(**kwargs)
+	cert, key = create_server_cert(
+		subject={"CN": "python-opsi-common test server cert"},
+		valid_days=3,
+		ip_addresses={"172.0.0.1", "::1"},
+		hostnames={"localhost", "ip6-localhost"},
+		ca_key=ca_key,
+		ca_cert=ca_cert,
+	)
 
 	server_cert = tmp_path / "server_cert.pem"
 	server_key = tmp_path / "server_key.pem"

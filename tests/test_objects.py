@@ -10,7 +10,7 @@ test_objects
 import json
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Dict, Optional, Type
+from typing import Any
 
 import pytest
 from pydantic_core import PydanticSerializationError
@@ -340,7 +340,7 @@ def test_get_possible_class_attributes() -> None:
 	}
 
 	class Test(Entity):
-		sub_classes: Dict[str, type] = {}
+		sub_classes: dict[str, type] = {}
 
 		def __init__(no_self: Any, arg: Any) -> None:
 			pass
@@ -380,7 +380,7 @@ def test_get_backend_method_prefix() -> None:
 		(ProductOnClient, {"ident": "product;LocalbootProduct;client1.dom.tld;invalid"}, None, ValueError),
 	),
 )
-def test_decode_ident(cls: Type, value: dict, expected: Optional[dict], exc: Optional[Type[Exception]]) -> None:
+def test_decode_ident(cls: type[BaseObject], value: dict, expected: dict | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			decode_ident(cls, value)
@@ -589,7 +589,7 @@ def test_serialize() -> None:
 		([1, "b", {"x": "y"}], None),
 	),
 )
-def test_serialize_deserialize(obj: Any, json_exc: Type[Exception] | None) -> None:
+def test_serialize_deserialize(obj: Any, json_exc: type[Exception] | None) -> None:
 	assert obj == deserialize(serialize(obj))
 	if json_exc:
 		with pytest.raises(json_exc):
@@ -786,13 +786,14 @@ def test_product_name_can_be_very_long() -> None:
 
 	product.setName(new_name)
 	name_from_prod = product.getName()
+	assert name_from_prod
 	assert new_name == name_from_prod
 	assert 128 == len(name_from_prod)
 
 
 @pytest.mark.parametrize("property_class", [ProductProperty, BoolProductProperty, UnicodeProductProperty])
 @pytest.mark.parametrize("required_attribute", ["description", "defaultValues"])
-def test_product_property_shows_optional_arguments_in_repr(property_class: Type, required_attribute: str) -> None:
+def test_product_property_shows_optional_arguments_in_repr(property_class: type, required_attribute: str) -> None:
 	additional_param = {required_attribute: [True]}
 	prod_prop = property_class("testprod", "1.0", "2", "myproperty", **additional_param)
 	rep = repr(prod_prop)
@@ -805,7 +806,7 @@ def test_product_property_shows_optional_arguments_in_repr(property_class: Type,
 @pytest.mark.parametrize("attribute_name", ["description"])
 @pytest.mark.parametrize("attribute_value", ["someText", "", None])
 def test_product_property_representation_shows_value_if_filled(
-	property_class: Type, attribute_name: str, attribute_value: Optional[str]
+	property_class: type, attribute_name: str, attribute_value: str | None
 ) -> None:
 	attrs = {attribute_name: attribute_value}
 	prod_prop = property_class("testprod", "1.0", "2", "myproperty", **attrs)
@@ -821,7 +822,7 @@ def test_product_property_representation_shows_value_if_filled(
 
 @pytest.mark.parametrize("property_class", [ProductProperty, UnicodeProductProperty])
 @pytest.mark.parametrize("required_attribute", ["multiValue", "editable", "possibleValues"])
-def test_product_property_shows_optional_arguments_in_repr2(property_class: Type, required_attribute: str) -> None:
+def test_product_property_shows_optional_arguments_in_repr2(property_class: type, required_attribute: str) -> None:
 	additional_param = {required_attribute: [True]}
 	prod_prop = property_class("testprod", "1.0", "2", "myproperty", **additional_param)
 	rep = repr(prod_prop)

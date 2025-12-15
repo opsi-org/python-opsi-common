@@ -15,7 +15,7 @@ import pwd
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Generator, List, Optional
+from typing import Generator
 
 import psutil  # type: ignore[import]
 
@@ -37,7 +37,7 @@ def set_system_datetime(utc_datetime: datetime) -> None:
 		) from err
 
 
-def get_user_sessions(username: Optional[str] = None, session_type: Optional[str] = None) -> Generator[Session, None, None]:
+def get_user_sessions(username: str | None = None, session_type: str | None = None) -> Generator[Session, None, None]:
 	for user in psutil.users():
 		if username is not None and user.name != username:
 			continue
@@ -61,7 +61,7 @@ def get_user_sessions(username: Optional[str] = None, session_type: Optional[str
 		yield Session(id=terminal, type=_type, username=user.name, started=user.started, login_pid=user.pid, terminal=terminal)
 
 
-def run_process_in_session(command: List[str], session_id: str, shell: bool = False, impersonate: bool = False) -> subprocess.Popen:
+def run_process_in_session(command: list[str], session_id: str, shell: bool = False, impersonate: bool = False) -> subprocess.Popen:
 	session = None
 	for sess in get_user_sessions():
 		if sess.id == session_id:

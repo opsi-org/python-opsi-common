@@ -295,7 +295,7 @@ class OpsiConfig(metaclass=Singleton):
 				conf = loads(data)
 				if "groups" in conf and isinstance(conf["groups"], dict):
 					# lowercase groups
-					conf["groups"] = {str(k).lower(): str(v).lower() for k, v in conf["groups"].items()}
+					conf["groups"]: dict[str, str] = {str(k).lower(): str(v).lower() for k, v in conf["groups"].items()}
 					if any([" " in name for name in conf["groups"].values()]):
 						raise ValueError("Group names do not allow spaces. Please remove spaces from group names in the config file.")
 				self._merge_config(self._config, conf)

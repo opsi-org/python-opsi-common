@@ -8,7 +8,7 @@ Testing behaviour of exceptions.
 """
 
 import time
-from typing import Generator, Type
+from typing import Generator
 
 import pytest
 from hypothesis import given, strategies
@@ -79,7 +79,7 @@ def exception_parameter(request: FixtureRequest) -> Generator[str, None, None]:
 
 
 @pytest.fixture
-def exception(exception_class: Type[Exception], exception_parameter: str) -> Generator[Exception, None, None]:
+def exception(exception_class: type[Exception], exception_parameter: str) -> Generator[Exception, None, None]:
 	yield exception_class(exception_parameter)
 
 
@@ -118,7 +118,7 @@ def test_opsi_product_ordering_error_ordering_is_accessible() -> None:
 	assert [3, 4, 5] == error.problematicRequirements
 
 
-def test_exception_is_sub_class_of_opsi_error(exception_class: Type[Exception]) -> None:
+def test_exception_is_sub_class_of_opsi_error(exception_class: type[Exception]) -> None:
 	with pytest.raises(OpsiError):
 		raise exception_class("message")
 

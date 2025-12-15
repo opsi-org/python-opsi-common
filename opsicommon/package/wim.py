@@ -175,7 +175,7 @@ def wim_info(wim_file: Path | str) -> WIMInfo:
 				mon = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec").index(tmp[1]) + 1
 				val = cast(Any, datetime.strptime(f"{mon} {tmp[2]}", "%m %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc))
 			elif attr_type is list[str]:
-				val = cast(Any, val.split(" "))
+				val = val.split(" ")
 			else:
 				assert callable(attr_type)
 				val = attr_type(val)

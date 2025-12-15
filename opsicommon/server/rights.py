@@ -12,7 +12,6 @@ import platform
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
 
 from opsicommon.config import OpsiConfig, get_opsiconfd_user
 from opsicommon.logging import get_logger
@@ -65,7 +64,7 @@ class FilePermission:
 			return -1
 		return self.groupname_to_gid(self.groupname)
 
-	def chmod(self, path: str | Path, stat_res: Optional[os.stat_result] = None) -> None:
+	def chmod(self, path: str | Path, stat_res: os.stat_result | None = None) -> None:
 		stat_res = stat_res or os.stat(path, follow_symlinks=False)
 		cur_mode = stat_res.st_mode & 0o7777
 		if cur_mode != self.file_permissions:
@@ -77,7 +76,7 @@ class FilePermission:
 					logger.debug("File is symlink '%s'. Target file '%s permissions will be changed.", path, Path(path).resolve())
 				os.chmod(path, self.file_permissions)
 
-	def chown(self, path: str | Path, stat_res: Optional[os.stat_result] = None) -> None:
+	def chown(self, path: str | Path, stat_res: os.stat_result | None = None) -> None:
 		stat_res = stat_res or os.stat(path, follow_symlinks=False)
 		# Unprivileged user cannot change file owner
 		uid = self.uid if _HAS_ROOT_RIGHTS else -1
@@ -100,7 +99,7 @@ class DirPermission(FilePermission):
 	correct_links: bool = False
 	modify_file_exe: bool = True
 
-	def chmod(self, path: str | Path, stat_res: Optional[os.stat_result] = None) -> None:
+	def chmod(self, path: str | Path, stat_res: os.stat_result | None = None) -> None:
 		stat_res = stat_res or os.stat(path, follow_symlinks=False)
 		if stat.S_ISLNK(stat_res.st_mode) and not self.correct_links:
 			return
@@ -125,7 +124,7 @@ class DirPermission(FilePermission):
 			logger.trace("%s: %o != %o", path, cur_mode, new_mode)
 			os.chmod(path, new_mode, follow_symlinks=not stat.S_ISLNK(stat_res.st_mode))
 
-	def chown(self, path: str | Path, stat_res: Optional[os.stat_result] = None) -> None:
+	def chown(self, path: str | Path, stat_res: os.stat_result | None = None) -> None:
 		stat_res = stat_res or os.stat(path, follow_symlinks=False)
 		if stat.S_ISLNK(stat_res.st_mode) and not self.correct_links:
 			return None

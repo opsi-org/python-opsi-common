@@ -98,7 +98,7 @@ class Message(BaseModel, ABC):
 	ref_id: str | None = None
 
 	@classmethod
-	def from_dict(cls: Type[MessageT], data: dict[str, Any]) -> MessageT:
+	def from_dict(cls: type[MessageT], data: dict[str, Any]) -> MessageT:
 		_cls = cls
 		if _cls is Message:
 			_type = data.get("type")
@@ -119,7 +119,7 @@ class Message(BaseModel, ABC):
 		return self.back_channel or self.sender
 
 	@classmethod
-	def from_msgpack(cls: Type[MessageT], data: bytes) -> MessageT:
+	def from_msgpack(cls: type[MessageT], data: bytes) -> MessageT:
 		return cls.from_dict(msgpack_decode(data))
 
 	def to_msgpack(self, none_values: bool = False) -> bytes:

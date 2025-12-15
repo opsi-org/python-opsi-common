@@ -10,7 +10,7 @@ This file is part of opsi - https://www.opsi.org
 from contextlib import contextmanager
 from datetime import datetime
 from time import sleep, time
-from typing import IO, BinaryIO, Generator, TextIO
+from typing import IO, BinaryIO, Generator, Literal, TextIO
 
 import pywintypes  # type: ignore[import]
 import win32api  # type: ignore[import]
@@ -64,7 +64,7 @@ def _unlock_file(file: TextIO | BinaryIO | IO) -> None:
 
 @contextmanager
 def lock_file(
-	file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: float = 5.0, lock_method: None = None
+	file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: float = 5.0, lock_method: Literal["flock", "lockf"] | None = None
 ) -> Generator[None, None, None]:
 	"""
 	An exclusive or write lock gives a process exclusive access for writing to the specified part of the file.

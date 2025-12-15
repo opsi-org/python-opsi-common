@@ -293,7 +293,8 @@ def extract_archive_internal(
 	with open(archive, "rb") as file:
 		file = ProgressFileWrapper(filesize=filesize, fileobj=file, progress=progress)  # type: ignore[assignment]
 		with zstandard.ZstdDecompressor().stream_reader(file) if is_zstd else nullcontext(file) as fileobj:  # type: ignore[attr-defined]
-			with tarfile.open(fileobj=fileobj, mode="r:" if is_zstd else "r") as tar_object:  # compression can be None, gz, bz2 or xz
+			# compression can be None, gz, bz2 or xz
+			with tarfile.open(fileobj=fileobj, mode="r:" if is_zstd else "r") as tar_object:  # type: ignore[no-matching-overload]
 				untar(tar_object, destination, file_pattern)
 
 
@@ -358,8 +359,8 @@ def get_archive_files(
 
 	:param base_dir: The base directory to search in.
 	:param follow_symlinks: Follow symlinks?
-	:param exclude_dirs: List of directory globs to exclude.
-	:param exclude_files: List of file globs to exclude.
+	:param exclude_dirs: list of directory globs to exclude.
+	:param exclude_files: list of file globs to exclude.
 	"""
 	if exclude_dirs is None:
 		exclude_dirs = ["/.svn", "/.git"]

@@ -10,7 +10,7 @@ This file is part of opsi - https://www.opsi.org
 import datetime
 import time
 from contextlib import nullcontext
-from typing import Any, Generator, Type
+from typing import Any, Generator
 from uuid import UUID
 
 import pytest
@@ -91,7 +91,7 @@ def opsi_client() -> OpsiClient:
 
 
 @pytest.mark.parametrize("cls", [Host, OpsiClient])
-def test_force_object_class_to_host_from_json(opsi_client: OpsiClient, cls: type) -> None:
+def test_force_object_class_to_host_from_json(opsi_client: OpsiClient, cls: type[Host | OpsiClient]) -> None:
 	assert isinstance(forceObjectClass(opsi_client.toJson(), cls), cls)
 
 
@@ -126,7 +126,7 @@ def test_forcing_object_class_from_invalid_json() -> None:
 
 
 @pytest.mark.parametrize("cls", [Host, OpsiClient])
-def test_force_object_class_from_hash(opsi_client: OpsiClient, cls: type) -> None:
+def test_force_object_class_from_hash(opsi_client: OpsiClient, cls: type[Host | OpsiClient]) -> None:
 	assert isinstance(forceObjectClass(opsi_client.toHash(), cls), cls)
 
 
@@ -359,7 +359,7 @@ def test_force_ip_address_fails_on_invalid_input(malformed_input: Any) -> None:
 		("192.168.1.1.2", None, ValueError),
 	),
 )
-def test_force_host_address(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
+def test_force_host_address(value: str, expected: str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceHostAddress(value)
@@ -375,7 +375,7 @@ def test_force_host_address(value: str, expected: str | None, exc: Type[Exceptio
 		("24", None, ValueError),
 	),
 )
-def test_force_netmask(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
+def test_force_netmask(value: str, expected: str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceNetmask(value)
@@ -485,7 +485,7 @@ def test_force_opsi_host_key_with_invalid_host_keys_raises_exceptions(host_key: 
 		("2 3 4", None, ValueError),
 	),
 )
-def test_force_product_version(version: str, expected: str | None, exc: Type[Exception] | None) -> None:
+def test_force_product_version(version: str, expected: str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductVersion(version)
@@ -498,7 +498,7 @@ def test_force_product_version(version: str, expected: str | None, exc: Type[Exc
 @pytest.mark.parametrize(
 	"version, expected, exc", ((["2.0", "2.1"], ["2.0", "2.1"], None), ("3.1k", ["3.1k"], None), (["1 1 1"], None, ValueError))
 )
-def test_force_product_version_list(version: list[str] | str, expected: list[str], exc: Type[Exception] | None) -> None:
+def test_force_product_version_list(version: list[str] | str, expected: list[str], exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductVersionList(version)
@@ -514,7 +514,7 @@ def test_force_product_version_list(version: list[str] | str, expected: list[str
 		("x_3_f", None, ValueError),
 	),
 )
-def test_force_package_version(version: int | str, expected: str | None, exc: Type[Exception] | None) -> None:
+def test_force_package_version(version: int | str, expected: str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forcePackageVersion(version)
@@ -525,7 +525,7 @@ def test_force_package_version(version: int | str, expected: str | None, exc: Ty
 
 
 @pytest.mark.parametrize("version, expected, exc", (([2, "2.1"], ["2", "2.1"], None), ("ver1", ["ver1"], None), ("___", None, ValueError)))
-def test_force_package_version_list(version: Any, expected: Any, exc: Type[Exception] | None) -> None:
+def test_force_package_version_list(version: Any, expected: Any, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forcePackageVersionList(version)
@@ -554,7 +554,7 @@ def test_force_product_id_with_invalid_product_id_raises_exceptions(product_id: 
 		("ööö", None, ValueError),
 	),
 )
-def test_force_product_id_list(value: Any, expected: Any, exc: Type[Exception] | None) -> None:
+def test_force_product_id_list(value: Any, expected: Any, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductIdList(value)
@@ -569,7 +569,7 @@ def test_force_product_id_list(value: Any, expected: Any, exc: Type[Exception] |
 		("xy-", None, ValueError),
 	),
 )
-def test_force_package_custom_name(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
+def test_force_package_custom_name(value: str, expected: str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forcePackageCustomName(value)
@@ -622,7 +622,7 @@ def test_force_action_request_returns_none_on_undefined() -> None:
 		("INVALID", None, ValueError),
 	),
 )
-def test_force_action_request_list(value: list[str] | str, expected: list[str] | str | None, exc: Type[Exception] | None) -> None:
+def test_force_action_request_list(value: list[str] | str, expected: list[str] | str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceActionRequestList(value)
@@ -642,7 +642,7 @@ def test_force_action_request_list(value: list[str] | str, expected: list[str] |
 		("-", None, ValueError),
 	),
 )
-def test_force_action_result(value: str | None, expected: str | None, exc: Type[Exception] | None) -> None:
+def test_force_action_result(value: str | None, expected: str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceActionResult(value)
@@ -653,7 +653,7 @@ def test_force_action_result(value: str | None, expected: str | None, exc: Type[
 @pytest.mark.parametrize(
 	"value, expected, exc", (("Before", "before", None), ("after", "after", None), ("", None, None), ("-", None, ValueError))
 )
-def test_force_requirement_type(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
+def test_force_requirement_type(value: str, expected: str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceRequirementType(value)
@@ -741,7 +741,7 @@ def test_force_time_returns_time_struct(time_info: Any) -> None:
 @pytest.mark.parametrize(
 	"value, expected, exc", (("0adf", "0ADF", None), ("012F", "012F", None), ("invalid", None, ValueError), ("INVA", None, ValueError))
 )
-def test_force_hardware_vendor_id(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
+def test_force_hardware_vendor_id(value: str, expected: str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceHardwareVendorId(value)
@@ -752,7 +752,7 @@ def test_force_hardware_vendor_id(value: str, expected: str | None, exc: Type[Ex
 @pytest.mark.parametrize(
 	"value, expected, exc", (("0adE", "0ADE", None), ("01aa", "01AA", None), ("----", None, ValueError), ("", None, ValueError))
 )
-def test_force_hardware_device_id(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
+def test_force_hardware_device_id(value: str, expected: str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceHardwareDeviceId(value)
@@ -798,7 +798,7 @@ def testforce_product_type_to_netboot_product(inp: str) -> None:
 
 
 @pytest.mark.parametrize("value, expected, exc", (("prop1", "prop1", None), ("PROP2", "prop2", None), ("inv alid", None, ValueError)))
-def test_force_product_property_id(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
+def test_force_product_property_id(value: str, expected: str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductPropertyId(value)
@@ -809,7 +809,7 @@ def test_force_product_property_id(value: str, expected: str | None, exc: Type[E
 @pytest.mark.parametrize(
 	"value, expected, exc", (("config.name", "config.name", None), ("CONF.NAme", "conf.name", None), ("not valid", None, ValueError))
 )
-def test_force_config_id(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
+def test_force_config_id(value: str, expected: str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceConfigId(value)
@@ -826,7 +826,7 @@ def test_force_config_id(value: str, expected: str | None, exc: Type[Exception] 
 		("ProductProperty", None, ValueError),
 	),
 )
-def test_force_product_property_type(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
+def test_force_product_property_type(value: str, expected: str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductPropertyType(value)
@@ -837,7 +837,7 @@ def test_force_product_property_type(value: str, expected: str | None, exc: Type
 @pytest.mark.parametrize(
 	"value, expected, exc", (("100", 100, None), (-101, -100, None), (1000, 100, None), (0.0, 0, None), ("high", None, ValueError))
 )
-def test_force_product_priority(value: int | float | str, expected: int | None, exc: Type[Exception] | None) -> None:
+def test_force_product_priority(value: int | float | str, expected: int | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductPriority(value)
@@ -855,7 +855,7 @@ def test_force_product_priority(value: int | float | str, expected: int | None, 
 		("other", None, ValueError),
 	),
 )
-def test_force_product_target_configuration(value: str, expected: str | None, exc: Type[Exception] | None) -> None:
+def test_force_product_target_configuration(value: str, expected: str | None, exc: type[Exception] | None) -> None:
 	if exc:
 		with pytest.raises(exc):
 			forceProductTargetConfiguration(value)
@@ -1008,13 +1008,13 @@ def test_force_float_fails_with_invalid_input(invalid_input: Any) -> None:
 		(123, None, ValueError),
 	),
 )
-def test_force_uuid(value: Any, expected_value: UUID | None, exception: Type[Exception] | None) -> None:
-	with pytest.raises(exception) if exception else nullcontext():  # type: ignore[attr-defined]
+def test_force_uuid(value: Any, expected_value: UUID | None, exception: type[Exception] | None) -> None:
+	with pytest.raises(exception) if exception else nullcontext():
 		value = forceUUID(value)
 	if not exception:
 		assert value == expected_value
 
-	with pytest.raises(exception) if exception else nullcontext():  # type: ignore[attr-defined]
+	with pytest.raises(exception) if exception else nullcontext():
 		value = forceUUIDString(value)
 	if not exception:
 		assert value == str(expected_value)

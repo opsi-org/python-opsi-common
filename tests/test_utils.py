@@ -57,7 +57,7 @@ def test_json_encode_decode() -> None:
 	now = datetime.datetime.now()
 	data = {"test": "value", "list": [1, 2, 3], "now": now}
 	encoded = json_encode(data)
-	data["now"] = data["now"].isoformat()  # type: ignore[attr-defined]
+	data["now"] = data["now"].isoformat()  # type: ignore[possibly-missing-attribute]
 	assert json_decode(encoded) == data
 
 
@@ -68,7 +68,7 @@ def test_msgpack_encode_decode() -> None:
 	now = datetime.datetime.now()
 	data = {"test": "value", "list": [1, 2, 3], "now": now}
 	encoded = msgpack_encode(data)
-	data["now"] = data["now"].isoformat()  # type: ignore[attr-defined]
+	data["now"] = data["now"].isoformat()  # type: ignore[possibly-missing-attribute]
 	assert msgpack_decode(encoded) == data
 
 
@@ -81,7 +81,7 @@ def test_msgpack_encode_decode_dataclass() -> None:
 
 	data = TestClass(id=1, result={"key1": "value1", "key2": ["listvalue1", "listvalue2"]})
 	encoded = msgpack_encode(data)
-	assert msgpack_decode(encoded) == asdict(data)
+	assert msgpack_decode(encoded) == asdict(data)  # type: ignore[no-matching-overload]
 
 
 @pytest.mark.parametrize(

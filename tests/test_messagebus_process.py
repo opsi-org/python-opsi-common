@@ -8,6 +8,7 @@ messagebus.process tests
 """
 
 import pytest
+
 from opsicommon.messagebus import CONNECTION_USER_CHANNEL
 from opsicommon.messagebus.message import (
 	ProcessDataReadMessage,
@@ -148,5 +149,6 @@ async def test_stop_running_processes() -> None:
 
 	messages = await message_sender.wait_for_messages(count=10, timeout=5, error_on_timeout=False)
 
-	assert isinstance(messages[-1], ProcessStopEventMessage)
-	assert messages[-1].exit_code != 0
+	process_stop_message = messages[-1]
+	assert isinstance(process_stop_message, ProcessStopEventMessage)
+	assert process_stop_message.exit_code != 0

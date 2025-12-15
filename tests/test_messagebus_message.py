@@ -412,7 +412,7 @@ def test_message_to_from_msgpack() -> None:
 		),
 	],
 )
-def test_message_types(message_class: Type[Message], attributes: Union[dict, None], exception: Union[Type[BaseException], None]) -> None:
+def test_message_types(message_class: type[Message], attributes: Union[dict, None], exception: Union[Type[BaseException], None]) -> None:
 	attributes = attributes or {}
 	if exception:
 		with pytest.raises(exception):

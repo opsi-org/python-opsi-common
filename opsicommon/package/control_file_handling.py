@@ -10,7 +10,7 @@ handling for opsi control files
 import re
 from typing import Any
 
-import tomlkit
+import tomlkit.items
 
 from opsicommon.objects import (
 	BoolProductProperty,

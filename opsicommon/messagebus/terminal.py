@@ -175,7 +175,7 @@ class Terminal:
 		self._terminal_open_request = terminal_open_request
 		# Resize to redraw screen
 		if terminal_open_request.rows == self.rows and terminal_open_request.cols == self.cols:
-			await self.set_size(terminal_open_request.rows - 1, terminal_open_request.cols)
+			await self.set_size((terminal_open_request.rows or 0) - 1, terminal_open_request.cols)
 		await self.set_size(terminal_open_request.rows, terminal_open_request.cols)
 		self._last_usage = monotonic()
 		await self._send_open_event()

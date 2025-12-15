@@ -16,13 +16,9 @@ from pathlib import Path
 from random import randbytes
 
 import requests
-import websocket  # type: ignore[import]
+import websocket
 
-from opsicommon.testing.helpers import (  # type: ignore[import]
-	HTTPTestServerRequestHandler,
-	environment,
-	http_test_server,
-)
+from opsicommon.testing.helpers import HTTPTestServerRequestHandler, environment, http_test_server
 
 
 def test_environment() -> None:

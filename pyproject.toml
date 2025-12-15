@@ -11,28 +11,27 @@ dependencies = [
 	"colorlog>=6.6",
 	"cryptography>=42.0",
 	"distro>=1.6",
+	"dnspython>=2.7.0",
 	"lz4>=4.0",
 	"mailbits>=0.2",
 	"msgpack>=1.0",
+	"msgspec>=0.19; platform_system != 'Windows'",
+	"netifaces>=0.11.0",
 	"packaging>=24.1",
 	"psutil>=5.8",
 	"ptyprocess>=0.7",
 	"pycryptodome>=3.10",
-	"pydantic>=2.9",
 	"pydantic-core>=2.20",
+	"pydantic>=2.9",
+	"pywin32>=308; platform_system == 'Windows'",
+	"pywinpty>=2.0; platform_system == 'Windows'",
 	"pyzsync>=1.0",
 	"requests>=2.26",
 	"rich>=13.8",
 	"tomlkit>=0.13",
 	"websocket-client>=1.4",
-	"zstandard>=0.21",
-	"msgspec>=0.19; platform_system != 'Windows'",
-	"pywin32>=308; platform_system == 'Windows'",
-	"pywinpty>=2.0; platform_system == 'Windows'",
 	"wmi>=1.5; platform_system == 'Windows'",
-	"netifaces>=0.11.0",
-	"types-netifaces>=0.11.0.20241025",
-	"dnspython>=2.7.0",
+	"zstandard>=0.21",
 ]
 
 [[project.authors]]
@@ -49,19 +48,19 @@ Homepage = "https://www.opsi.org"
 [dependency-groups]
 dev = [
 	"hypothesis>=6.111",
-	"mypy>=1.14",
 	"perflint>=0.7",
 	"pproxy>=2.7",
-	"pytest>=7.0",
 	"pytest-asyncio>=0.24",
 	"pytest-cov>=4.0",
+	"pytest>=7.0",
 	"pyupgrade>=3.0",
 	"ruff>=0.6",
+	"ty>=0.0.1a34",
 	"types-aiofiles>=24.1",
+	"types-netifaces>=0.11.0.20241025",
 	"types-orjson>=3.6",
 	"types-psutil>=6.0",
 	"types-requests>=2.32",
-
 ]
 
 [tool.uv]
@@ -74,11 +73,6 @@ line-length = 140
 
 [tool.ruff.format]
 indent-style = "tab"
-
-[tool.mypy]
-disallow_untyped_calls = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"

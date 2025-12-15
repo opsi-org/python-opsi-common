@@ -351,8 +351,9 @@ async def test_stop_running_terminals() -> None:
 
 		await stop_running_terminals()
 
-		messages = await message_sender.wait_for_messages(count=1)
-		assert isinstance(messages[-1], TerminalCloseEventMessage)
-		assert messages[-1].terminal_id == terminal_id
+		messages: list = await message_sender.wait_for_messages(count=1)
+		terminal_close_message = messages[-1]
+		assert isinstance(terminal_close_message, TerminalCloseEventMessage)
+		assert terminal_close_message.terminal_id == terminal_id
 	finally:
 		Terminal.fork_delay = fork_delay_original

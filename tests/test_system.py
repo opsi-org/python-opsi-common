@@ -30,7 +30,7 @@ from opsicommon.system import ensure_not_already_running, get_system_uuid, lock_
 @pytest.mark.linux
 @pytest.mark.not_in_docker
 def test_get_user_sessions_linux() -> None:
-	from opsicommon.system import get_user_sessions
+	from opsicommon.system import get_user_sessions  # type: ignore[possibly-missing-import]
 
 	username = os.environ.get("SUDO_USER", getpass.getuser())
 	usernames = [sess.username for sess in get_user_sessions()]
@@ -39,13 +39,13 @@ def test_get_user_sessions_linux() -> None:
 
 @pytest.mark.linux
 def test_get_user_sessions_linux_mock() -> None:
-	import psutil  # type: ignore[import]
+	import psutil
 
-	from opsicommon.system import get_user_sessions
+	from opsicommon.system import get_user_sessions  # type: ignore[possibly-missing-import]
 
 	with mock.patch(
 		"psutil.users",
-		lambda: [psutil._common.suser(name="mockuser", terminal="tty3", host="", started=time.time(), pid=str(os.getpid()))],
+		lambda: [psutil._common.suser(name="mockuser", terminal="tty3", host="", started=time.time(), pid=str(os.getpid()))],  # type: ignore[unresolved-attribute]
 	):
 		assert "mockuser" in [sess.username for sess in get_user_sessions()]
 
@@ -53,7 +53,7 @@ def test_get_user_sessions_linux_mock() -> None:
 @pytest.mark.linux
 @pytest.mark.not_in_docker
 def test_run_process_in_session_linux() -> None:
-	from opsicommon.system import get_user_sessions, run_process_in_session
+	from opsicommon.system import get_user_sessions, run_process_in_session  # type: ignore[possibly-missing-import]
 
 	username = getpass.getuser()
 	for session in get_user_sessions():
@@ -128,7 +128,7 @@ def test_get_system_uuid() -> None:
 	assert UUID(system_uuid)
 
 
-class Task:  # type: ignore
+class Task:
 	def __init__(
 		self,
 		task_id: int,

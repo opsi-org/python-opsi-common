@@ -17,7 +17,7 @@ import psutil
 import pytest
 
 from opsicommon.system.subprocess import patch_popen
-from opsicommon.utils import monkeypatch_subprocess_for_frozen
+from opsicommon.utils import monkeypatch_subprocess_for_frozen  # type: ignore[deprecated]
 
 from .helpers import environment
 
@@ -50,7 +50,7 @@ def test_ld_library_path(ld_library_path_orig: str, ld_library_path: str, execut
 	setattr(sys, "frozen", True)
 	try:
 		with pytest.deprecated_call():
-			monkeypatch_subprocess_for_frozen()
+			monkeypatch_subprocess_for_frozen()  # type: ignore[deprecated]
 		env_vars = {"_MEIPASS2": "/tmp/foobar", "_PYI_APPLICATION_HOME_DIR": "/tmp/foobar", "_PYI_LINUX_PROCESS_NAME": "frozen-proc"}
 		if ld_library_path_orig is not None:
 			env_vars["LD_LIBRARY_PATH_ORIG"] = ld_library_path_orig

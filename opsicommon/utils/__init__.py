@@ -65,7 +65,7 @@ if TYPE_CHECKING:
 	from opsicommon.objects import Product, ProductOnClient, ProductOnDepot
 
 OBJECT_CLASSES: dict[str, Type[TBaseObject]] = {}
-BaseObject: Type[TBaseObject] | None = None
+BaseObject: type[TBaseObject] | None = None
 
 
 logger = get_logger("opsicommon.general")
