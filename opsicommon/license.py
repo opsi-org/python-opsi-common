@@ -24,12 +24,12 @@ from collections import OrderedDict
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Generator, Literal, overload
+from typing import TYPE_CHECKING, Any, Callable, Generator, Literal, Self, cast, overload
 
-import attr
 from Crypto.Hash import MD5, SHA3_512
 from Crypto.Signature import pss
 from Crypto.Util.number import bytes_to_long
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from opsicommon.logging import get_logger
 from opsicommon.utils import json_decode, json_encode
@@ -160,12 +160,6 @@ OPSI_STAGING_MODULE_IDS = ("background_install",)
 logger = get_logger("opsicommon.license")
 
 
-def _str2date(value: str) -> date:
-	if isinstance(value, str):
-		return date.fromisoformat(value)
-	return value
-
-
 def _hexstr2bytes(value: str) -> bytes:
 	if isinstance(value, str):
 		if len(value) % 2:
@@ -247,141 +241,111 @@ def generate_license_id() -> str:
 	return str(uuid.uuid4())
 
 
-@attr.s(slots=True, auto_attribs=True, kw_only=True)
-class OpsiLicense:
-	id: str = attr.ib(factory=generate_license_id, validator=attr.validators.matches_re(OPSI_LICENCE_ID_REGEX))
+class OpsiLicense(BaseModel):
+	model_config = ConfigDict(arbitrary_types_allowed=True)
 
-	type: str = attr.ib(
-		default=OPSI_LICENSE_TYPE_STANDARD, validator=attr.validators.in_((OPSI_LICENSE_TYPE_CORE, OPSI_LICENSE_TYPE_STANDARD))
-	)
+	id: str = Field(pattern=OPSI_LICENCE_ID_REGEX, default_factory=generate_license_id)
 
-	schema_version: int = attr.ib(default=2, converter=int)
+	type: Literal["core", "standard"] = Field(default=OPSI_LICENSE_TYPE_STANDARD)
 
-	@schema_version.validator
-	def validate_schema_version(self, attribute: str, value: Any) -> None:
-		if not isinstance(value, int) or value <= 0:
-			raise ValueError(f"Invalid value for {attribute}", value)
+	schema_version: int = Field(default=2, ge=1)
 
-	opsi_version: str = attr.ib(default="4.2", validator=attr.validators.matches_re(r"^\d+\.\d+$"))
+	opsi_version: str = Field(default="4.2", pattern=r"^\d+\.\d+$")
 
-	customer_id: str = attr.ib(default=None)
+	customer_id: str | None = None
 
-	@customer_id.validator
-	def validate_customer_id(self, attribute: str, value: Any) -> None:
-		if self.schema_version > 1 and self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^[a-zA-Z0-9\-_]{3,}$", value):
-			raise ValueError(f"Invalid value for {attribute}", value)
+	customer_name: str | None = None
 
-	customer_name: str = attr.ib()
+	customer_address: str | None = None
 
-	@customer_name.validator
-	def validate_customer_name(self, attribute: str, value: Any) -> None:
-		if self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^\S.*\S$", value):
-			raise ValueError(f"Invalid value for {attribute}", value)
+	customer_unit: str | None = None
 
-	customer_address: str = attr.ib(default=None)
+	contract_id: str | None = None
 
-	@customer_address.validator
-	def validate_customer_address(self, attribute: str, value: Any) -> None:
-		if self.schema_version > 1 and self.type != OPSI_LICENSE_TYPE_CORE and not re.match(r"^\S.*\S$", value):
-			raise ValueError(f"Invalid value for {attribute}", value)
+	service_id: str | None = None
 
-	customer_unit: str = attr.ib(default=None)
+	module_id: str = Field(pattern=r"^[a-z0-9\-_]+$")
 
-	contract_id: str = attr.ib(default=None)
+	client_number: int = Field(ge=1)
 
-	service_id: str = attr.ib(
-		default=None,
-	)
+	issued_at: date = Field(default_factory=date.today)
 
-	@service_id.validator
-	def validate_service_id(self, attribute: str, value: Any) -> None:
-		if value is not None and not re.match(r"^[a-z0-9\-\.]+$", value):
-			raise ValueError(f"Invalid value for {attribute}", value)
+	valid_from: date = Field(default_factory=date.today)
 
-	module_id: str = attr.ib(validator=attr.validators.matches_re(r"^[a-z0-9\-_]+$"))
+	valid_until: date
 
-	client_number: int = attr.ib(converter=int, validator=attr.validators.instance_of(int))
+	revoked_ids: list[str] = Field(default_factory=list)
 
-	@client_number.validator
-	def validate_client_number(self, attribute: str, value: Any) -> None:
-		if value <= 0:
-			raise ValueError(f"Invalid value for {attribute}", value)
+	note: str | None = None
 
-	issued_at: date = attr.ib(factory=date.today, converter=_str2date, validator=attr.validators.instance_of(date))
+	additional_data: str | None = None
 
-	valid_from: date = attr.ib(factory=date.today, converter=_str2date, validator=attr.validators.instance_of(date))
+	signature: bytes | None = None
 
-	valid_until: date = attr.ib(converter=_str2date, validator=attr.validators.instance_of(date))
+	# Internal use only
+	license_pool: OpsiLicensePool | None = Field(exclude=True, default=None)
 
-	revoked_ids: list[str] = attr.ib(default=[])
+	checksum: str | None = Field(exclude=True, default=None)
 
-	@revoked_ids.validator
-	def validate_revoked_ids(self, attribute: str, value: Any) -> None:
-		if not isinstance(value, list):
-			raise ValueError(f"Invalid value for {attribute}", value)
-		for val in value:
-			if not OPSI_LICENCE_ID_REGEX.match(val):
-				raise ValueError(f"Invalid value for {attribute}", val)
+	cached_state: dict[str, str] = Field(exclude=True, default_factory=OrderedDict)
 
-	note: str = attr.ib(default=None)
+	cached_signature_valid: bool | None = Field(exclude=True, default=None)
 
-	additional_data: str = attr.ib(default=None)
+	@field_validator("signature", mode="before")
+	@classmethod
+	def validate_signature(cls, value: bytes) -> bytes:
+		if isinstance(value, str):
+			return _hexstr2bytes(value)
+		return value
 
-	signature: bytes = attr.ib(
-		default=None,
-		converter=_hexstr2bytes,
-	)
-
-	_license_pool: OpsiLicensePool = attr.ib(default=None)
-
-	_checksum: str = attr.ib(default=None)
-
-	_cached_state: dict[str, str] = attr.ib(default=OrderedDict())
-
-	_cached_signature_valid: bool | None = None
-
-	def __attrs_post_init__(self) -> None:
-		for attribute, value in attr.asdict(self).items():
-			if not attribute.startswith("_") and isinstance(value, str) and value.strip() == "":
-				setattr(self, attribute, None)
+	@model_validator(mode="after")
+	def validate_model(self) -> Self:
+		if self.type != OPSI_LICENSE_TYPE_CORE:
+			if self.schema_version > 1:
+				if not self.customer_id or not re.match(r"^[a-zA-Z0-9\-_]{3,}$", self.customer_id):
+					raise ValueError("Invalid customer_id")
+				if not self.customer_name or not re.match(r"^\S.*\S$", self.customer_name):
+					raise ValueError("Invalid customer_name")
+				if not self.customer_address or not re.match(r"^\S.*\S$", self.customer_address):
+					raise ValueError("Invalid customer_address")
+		if not self.customer_name:
+			self.customer_name = ""
+		if self.service_id and not re.match(r"^[a-z0-9\-.]+$", self.service_id):
+			raise ValueError("Invalid service_id")
+		for revoked_id in self.revoked_ids:
+			if not OPSI_LICENCE_ID_REGEX.match(revoked_id):
+				raise ValueError(f"Invalid revoked_id: {revoked_id}")
+		return self
 
 	def module_ids(self) -> set[str]:
 		"""Return list of module IDs provided by this license."""
 		return {self.module_id} | set(OPSI_MODULE_BUNDLES.get(self.module_id, ()))
 
 	def set_license_pool(self, license_pool: OpsiLicensePool) -> None:
-		self._license_pool = license_pool
+		self.license_pool = license_pool
 
 	def to_dict(self, serializable: bool = False, with_state: bool = False) -> dict:
-		res = attr.asdict(self)
-		del res["_license_pool"]
-		del res["_checksum"]
-		del res["_cached_state"]
-		del res["_cached_signature_valid"]
-		if with_state:
-			res["_state"] = self.get_state()
+		data = self.model_dump()
 		if serializable:
-			res["issued_at"] = str(res["issued_at"])
-			res["valid_from"] = str(res["valid_from"])
-			res["valid_until"] = str(res["valid_until"])
-			if res["signature"]:
-				res["signature"] = res["signature"].hex()
-		return res
+			data["issued_at"] = str(data["issued_at"])
+			data["valid_from"] = str(data["valid_from"])
+			data["valid_until"] = str(data["valid_until"])
+			if data["signature"]:
+				data["signature"] = data["signature"].hex()
+		if with_state:
+			data["_state"] = self.get_state()
+		return data
 
 	@classmethod
-	def from_dict(cls, data_dict: dict) -> OpsiLicense:
-		data_dict = dict(data_dict)
-		for attribute in list(data_dict):
-			if attribute.startswith("_"):
-				del data_dict[attribute]
-		return OpsiLicense(**data_dict)
+	def from_dict(cls, data: dict) -> "OpsiLicense":
+		return cls(**data)
 
 	def to_json(self, with_state: bool = False) -> bytes:
 		return json_encode(self.to_dict(serializable=True, with_state=with_state))
 
 	@classmethod
-	def from_json(cls, json_data: bytes) -> OpsiLicense:
-		return OpsiLicense.from_dict(json_decode(json_data))
+	def from_json(cls, json_data: bytes) -> "OpsiLicense":
+		return cls.from_dict(json_decode(json_data))
 
 	def _hash_base(self, with_signature: bool = True) -> bytes:
 		string = ""
@@ -395,13 +359,13 @@ class OpsiLicense:
 			string += f"{attribute}={json.dumps(value)}\n"
 		return string.encode("utf-8")
 
-	def get_checksum(self, with_signature: bool = True) -> str:
+	def getchecksum(self, with_signature: bool = True) -> str:
 		return f"{zlib.crc32(self._hash_base(with_signature)):x}"
 
 	def get_hash(self, digest: bool = False, hex_digest: bool = False) -> MD5.MD5Hash | SHA3_512.SHA3_512_Hash | str | bytes:
 		_hash: MD5.MD5Hash | SHA3_512.SHA3_512_Hash
 		if self.schema_version == 1:
-			_hash = MD5.new(self.additional_data.encode("utf-8"))
+			_hash = MD5.new((self.additional_data or "").encode("utf-8"))
 		else:
 			_hash = SHA3_512.new(self._hash_base(with_signature=False))
 
@@ -412,40 +376,40 @@ class OpsiLicense:
 		return _hash
 
 	def clear_cache(self) -> None:
-		self._cached_signature_valid = None
-		self._cached_state = OrderedDict()
+		self.cached_signature_valid = None
+		self.cached_state = OrderedDict()
 
 	def get_state(self, test_revoked: bool = True, at_date: date | None = None) -> str:
-		checksum = self.get_checksum(with_signature=True)
-		if checksum != self._checksum:
+		checksum = self.getchecksum(with_signature=True)
+		if checksum != self.checksum:
 			self.clear_cache()
-		self._checksum = checksum
+		self.checksum = checksum
 
-		if len(self._cached_state) >= MAX_STATE_CACHE_VALUES:
-			self._cached_state.popitem()
+		if len(self.cached_state) >= MAX_STATE_CACHE_VALUES:
+			self.cached_state.popitem()
 
 		cache_key = f"{test_revoked}{at_date}"
-		if cache_key not in self._cached_state:
-			self._cached_state[cache_key] = self._get_state(test_revoked=test_revoked, at_date=at_date)
-		return self._cached_state[cache_key]
+		if cache_key not in self.cached_state:
+			self.cached_state[cache_key] = self._get_state(test_revoked=test_revoked, at_date=at_date)
+		return self.cached_state[cache_key]
 
 	def is_signature_valid(self) -> bool:
-		if self._cached_signature_valid is None:
+		if self.cached_signature_valid is None:
 			_hash = self.get_hash()
 			public_key = get_signature_public_key(self.schema_version)
 			try:
 				if self.schema_version == 1:
 					h_int = int.from_bytes(_hash.digest(), "big")  # type: ignore[union-attr]
 					s_int = public_key._encrypt(int(self.signature.hex()))  # type: ignore[attr-defined]
-					self._cached_signature_valid = h_int == s_int
+					self.cached_signature_valid = h_int == s_int
 				else:
 					pss.new(public_key).verify(_hash, self.signature)  # type: ignore[arg-type]
-					self._cached_signature_valid = True
+					self.cached_signature_valid = True
 			except (ValueError, TypeError):
 				logger.warning("License %r has invalid signature", self.id)
-				self._cached_signature_valid = False
+				self.cached_signature_valid = False
 
-		return self._cached_signature_valid
+		return self.cached_signature_valid
 
 	def _get_state(self, test_revoked: bool = True, at_date: date | None = None) -> str:
 		if not at_date:
@@ -454,14 +418,14 @@ class OpsiLicense:
 		if not self.is_signature_valid():
 			return OPSI_LICENSE_STATE_INVALID_SIGNATURE
 
-		if self.type == OPSI_LICENSE_TYPE_CORE and self._license_pool:
+		if self.type == OPSI_LICENSE_TYPE_CORE and self.license_pool:
 			module_ids = self.module_ids()
-			for lic in self._license_pool.get_licenses(
+			for lic in self.license_pool.get_licenses(
 				exclude_ids=[self.id], valid_only=True, test_revoked=False, types=[OPSI_LICENSE_TYPE_STANDARD], at_date=at_date
 			):
 				if lic.type != OPSI_LICENSE_TYPE_CORE and lic.module_ids().intersection(module_ids):
 					return OPSI_LICENSE_STATE_REPLACED_BY_NON_CORE
-		if test_revoked and self._license_pool and self.id in self._license_pool.get_revoked_license_ids(at_date=at_date):
+		if test_revoked and self.license_pool and self.id in self.license_pool.get_revoked_license_ids(at_date=at_date):
 			return OPSI_LICENSE_STATE_REVOKED
 		if (self.valid_from - at_date).days > 0:
 			return OPSI_LICENSE_STATE_NOT_YET_VALID
@@ -520,17 +484,19 @@ class OpsiLicenseFile:
 		for license_id in sorted(self._licenses):
 			data = f"{data}[{license_id}]\n"
 			lic = self._licenses[license_id].to_dict(serializable=True)
-			for field in attr.fields(OpsiLicense):
-				value = lic.get(field.name)
-				if field.name.startswith("_") or field.name == "id":
+			for field_name, field in OpsiLicense.model_fields.items():
+				if field.exclude:
+					continue
+				value = lic.get(field_name)
+				if field_name.startswith("_") or field_name == "id":
 					continue
 				if value in (None, ""):
 					value = ""
-				elif field.name == "revoked_ids":
+				elif field_name == "revoked_ids":
 					value = ",".join(value)  # type: ignore[arg-type]
-				elif field.name in ("customer_name", "customer_address", "customer_unit", "note"):
+				elif field_name in ("customer_name", "customer_address", "customer_unit", "note"):
 					value = repr(value)[1:-1]
-				data = f"{data}{field.name} = {value}\n"
+				data = f"{data}{field_name} = {value}\n"
 			data = f"{data}\n"
 		return data
 
@@ -628,7 +594,7 @@ class OpsiLicensePool:
 		self.modules_file_path: str | None = str(modules_file_path) if modules_file_path else None
 		self.client_limit_warning_percent: int | None = client_limit_warning_percent
 		self.client_limit_warning_absolute: int | None = client_limit_warning_absolute
-		self._client_info: dict | Callable | None = client_info
+		self._client_info: dict[str, int] | Callable | None = client_info
 		self._licenses: dict[str, OpsiLicense] = {}
 		self._file_modification_dates: dict[str, float] = {}
 
@@ -653,11 +619,11 @@ class OpsiLicensePool:
 
 	@property
 	def client_numbers(self) -> dict[str, int]:
-		client_numbers = {}
+		client_numbers: dict[str, int] = {}
 		if callable(self._client_info):
 			client_numbers = self._client_info()
-		elif self._client_info:
-			client_numbers = dict(self._client_info)
+		elif isinstance(self._client_info, dict):
+			client_numbers = cast(dict[str, int], self._client_info)
 		client_numbers["all"] = 0
 		for client_type in ("windows", "linux", "macos"):
 			if client_type not in client_numbers:
@@ -721,7 +687,7 @@ class OpsiLicensePool:
 
 	def get_licenses_checksum(self) -> str:
 		data = zlib.crc32(
-			b"".join(sorted([lic.get_checksum(with_signature=False).encode("utf-8") for lic in self.get_licenses(valid_only=True)]))
+			b"".join(sorted([lic.getchecksum(with_signature=False).encode("utf-8") for lic in self.get_licenses(valid_only=True)]))
 		)
 		return f"{data:08x}"
 
@@ -806,8 +772,8 @@ class OpsiLicensePool:
 	def get_legacy_modules(self) -> dict[str, Any] | None:
 		for lic in self.get_licenses():
 			if lic.schema_version == 1:
-				modules = {"signature": lic.signature.hex()}
-				for line in lic.additional_data.split("\r\n"):
+				modules = {"signature": lic.signature.hex() if lic.signature else ""}
+				for line in (lic.additional_data or "").split("\r\n"):
 					if line.strip():
 						attribute, value = line.split("=", 1)
 						attribute = attribute.strip()
@@ -859,12 +825,12 @@ class OpsiLicensePool:
 		self._read_modules_file()
 
 
-_default_opsi_license_pool = None
+_default_opsilicense_pool = None
 
 
 def set_default_opsi_license_pool(pool: OpsiLicensePool | None) -> None:
-	global _default_opsi_license_pool
-	_default_opsi_license_pool = pool
+	global _default_opsilicense_pool
+	_default_opsilicense_pool = pool
 
 
 def get_default_opsi_license_pool(
@@ -874,14 +840,14 @@ def get_default_opsi_license_pool(
 	client_limit_warning_percent: int | None = 95,
 	client_limit_warning_absolute: int | None = 5,
 ) -> OpsiLicensePool:
-	global _default_opsi_license_pool
-	if not _default_opsi_license_pool:
-		_default_opsi_license_pool = OpsiLicensePool(
+	global _default_opsilicense_pool
+	if not _default_opsilicense_pool:
+		_default_opsilicense_pool = OpsiLicensePool(
 			license_file_path=license_file_path,
 			modules_file_path=modules_file_path,
 			client_info=client_info,
 			client_limit_warning_percent=client_limit_warning_percent,
 			client_limit_warning_absolute=client_limit_warning_absolute,
 		)
-		_default_opsi_license_pool.load()
-	return _default_opsi_license_pool
+		_default_opsilicense_pool.load()
+	return _default_opsilicense_pool

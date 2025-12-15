@@ -13,11 +13,12 @@ import shutil
 import time
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Type, Union
+from typing import Any
 from unittest import mock
 
 import pytest
 from Crypto.PublicKey import RSA
+from pydantic import ValidationError
 
 from opsicommon.license import (
 	MAX_STATE_CACHE_VALUES,
@@ -50,7 +51,7 @@ from opsicommon.license import (
 	set_default_opsi_license_pool,
 )
 
-LIC1: Dict[str, Any] = {
+LIC1: dict[str, Any] = {
 	"id": "1bf8e14c-1faf-4288-a468-d92e1ee2dd8b",
 	"type": "core",
 	"schema_version": 2,
@@ -73,7 +74,7 @@ LIC1: Dict[str, Any] = {
 }
 
 
-def _read_modules_file(modules_file: Union[Path, str]) -> Tuple[Dict[str, str], date, str, str]:
+def _read_modules_file(modules_file: Path | str) -> tuple[dict[str, str], date, str, str]:
 	modules = {}
 	expires = None
 	customer = None
@@ -179,7 +180,7 @@ def test_opsi_license_defaults() -> None:
 		customer_address="Mainz",
 		module_id="scalability1",
 		client_number=1000,
-		valid_until="2099-12-31",
+		valid_until=date.fromisoformat("2099-12-31"),
 	)
 	assert lic.id
 	assert lic.type == "standard"
@@ -213,9 +214,9 @@ def test_opsi_license_defaults() -> None:
 		("client_number", OPSI_LICENSE_CLIENT_NUMBER_UNLIMITED, None),
 		("client_number", -1, ValueError),
 		("issued_at", "2021-01-01", None),
-		("issued_at", "", ValueError),
+		("issued_at", "", ValidationError),
 		("valid_from", date.today(), None),
-		("valid_from", None, TypeError),
+		("valid_from", None, ValidationError),
 		("valid_until", OPSI_LICENSE_DATE_UNLIMITED, None),
 		("valid_until", "0000-00-00", ValueError),
 		("revoked_ids", ["a62e8266-5df8-41b3-bce3-6f69a81da9d0", "legacy_scalability1"], None),
@@ -227,8 +228,8 @@ def test_opsi_license_defaults() -> None:
 		("signature", bytes.fromhex("0102030405060708090a0b0c0d0e"), None),
 	),
 )
-def test_opsi_license_validation(attribute: str, value: Any, exception: Optional[Type]) -> None:
-	kwargs: Dict[str, Any] = {
+def test_opsi_license_validation(attribute: str, value: Any, exception: type | None) -> None:
+	kwargs: dict[str, Any] = {
 		"customer_id": "12345",
 		"customer_name": "uib GmbH",
 		"customer_address": "Mainz",
@@ -369,7 +370,7 @@ def test_opsi_license_pool_add_remove_license(tmp_path: Path) -> None:
 	assert len(licenses) == 25
 	for lic in licenses:
 		lic.get_state()
-		assert len(lic._cached_state) > 0
+		assert len(lic.cached_state) > 0
 
 	removed_lic = licenses.pop()
 	olp.remove_license(removed_lic)
@@ -378,19 +379,19 @@ def test_opsi_license_pool_add_remove_license(tmp_path: Path) -> None:
 	assert len(licenses) == 24
 	# Assert empty cache
 	for lic in licenses:
-		assert len(lic._cached_state) == 0
+		assert len(lic.cached_state) == 0
 
 	# Fill cache
 	for lic in licenses:
 		lic.get_state()
-		assert len(lic._cached_state) > 0
+		assert len(lic.cached_state) > 0
 
 	olp.add_license(removed_lic)
 	licenses = list(olp._licenses.values())
 	assert len(licenses) == 25
 	# Assert empty cache
 	for lic in licenses:
-		assert len(lic._cached_state) == 0
+		assert len(lic.cached_state) == 0
 
 
 def test_opsi_license_pool_licenses_checksum() -> None:
@@ -473,7 +474,7 @@ def test_licensing_info_and_cache() -> None:
 		timings = []
 		for num in range(3):
 			start = time.time()
-			info: Dict[str, Any] = {
+			info: dict[str, Any] = {
 				"client_numbers": olp.client_numbers,
 				"available_modules": [module_id for module_id, info in olp.get_modules().items() if info["available"]],
 				"licenses_checksum": olp.get_licenses_checksum(),
@@ -539,7 +540,7 @@ def test_license_state_client_number_warning_and_thresholds(
 ) -> None:
 	private_key, public_key = generate_key_pair(return_pem=False)
 
-	def client_info() -> Dict[str, int]:
+	def client_info() -> dict[str, int]:
 		return {"macos": 0, "linux": clients_linux, "windows": clients_total - clients_linux}
 
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
@@ -578,7 +579,7 @@ def test_future_warning() -> None:
 
 	clients = 100
 
-	def client_info() -> Dict[str, int]:
+	def client_info() -> dict[str, int]:
 		return {"macos": 0, "linux": 0, "windows": clients}
 
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
@@ -654,7 +655,7 @@ def test_license_state() -> None:
 def test_free_module_state() -> None:
 	private_key, public_key = generate_key_pair(return_pem=False)
 
-	def client_info() -> Dict[str, int]:
+	def client_info() -> dict[str, int]:
 		return {"macos": 0, "linux": 0, "windows": 1000}
 
 	with mock.patch("opsicommon.license.get_signature_public_key_schema_version_2", lambda: public_key):
@@ -702,7 +703,7 @@ def test_license_state_cache() -> None:
 		lic = OpsiLicense(**LIC1)
 		lic.sign(private_key)
 
-		assert len(lic._cached_state) == 0
+		assert len(lic.cached_state) == 0
 
 		lic.valid_from = date.today() - timedelta(days=10)
 		lic.valid_until = date.today() - timedelta(days=1)
@@ -710,10 +711,10 @@ def test_license_state_cache() -> None:
 
 		for num in range(1, MAX_STATE_CACHE_VALUES + 5):
 			assert lic.get_state(at_date=date.today() + timedelta(days=num)) == OPSI_LICENSE_STATE_EXPIRED
-			assert len(lic._cached_state) == min(MAX_STATE_CACHE_VALUES, num)
+			assert len(lic.cached_state) == min(MAX_STATE_CACHE_VALUES, num)
 
 		lic.clear_cache()
-		assert len(lic._cached_state) == 0
+		assert len(lic.cached_state) == 0
 
 		today = date.today()
 		start = time.perf_counter_ns()
@@ -729,7 +730,7 @@ def test_license_state_cache() -> None:
 			assert time_ns * 2 < uncached_time_ns
 
 			# Cache should keep size
-			assert len(lic._cached_state) == 1
+			assert len(lic.cached_state) == 1
 
 
 def test_opsi_license_pool_unknown_module_id() -> None:
@@ -951,7 +952,9 @@ def test_opsi_modules_file(tmp_path: Path) -> None:
 		if modules[lic.module_id] not in ("yes", "no"):
 			client_number = int(modules[lic.module_id])
 		assert lic.client_number == client_number
+		assert lic.signature
 		assert lic.signature.hex() == signature
+		assert lic.additional_data
 		assert sorted([x for x in raw_data.replace("\r", "").split("\n") if x and not x.startswith("signature")]) == sorted(
 			[x for x in lic.additional_data.replace("\r", "").split("\n") if x]
 		)
