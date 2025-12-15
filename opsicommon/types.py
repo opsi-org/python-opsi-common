@@ -599,17 +599,17 @@ def forceInstallationStatus(var: Any) -> str:
 	return var
 
 
-def forceActionRequest(var: Any) -> str:
+def forceActionRequest(var: Any) -> str | None:
 	var = forceStringLower(var)
 	if var:
 		if var == "undefined":
-			var = "none"
+			return None
 		elif var not in ("setup", "uninstall", "update", "always", "once", "custom", "none"):
 			raise ValueError(f"Bad action request: '{var}'")
 	return var
 
 
-def forceActionRequestList(var: Any) -> list[str]:
+def forceActionRequestList(var: Any) -> list[str | None]:
 	return [forceActionRequest(element) for element in forceList(var)]
 
 
