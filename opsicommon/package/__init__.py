@@ -10,7 +10,7 @@ opsi package class and associated methods
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal
 
 import tomlkit
 
