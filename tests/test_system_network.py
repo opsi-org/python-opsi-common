@@ -24,7 +24,11 @@ def test_get_network_info() -> None:
 	assert network_info.routes
 	assert network_info.dns_nameservers
 	assert network_info.search_domains
-	assert any(route.is_default for route in network_info.routes)
+	default_routes = [route for route in network_info.routes if route.is_default]
+	assert default_routes
+	default_route_interfaces = [interface for interface in network_info.interfaces if interface.is_default_gateway]
+	assert default_route_interfaces
+	assert set(route.interface_name for route in default_routes) == set(interface.name for interface in default_route_interfaces)
 	assert any(interface.is_loopback for interface in network_info.interfaces)
 	assert any(not interface.is_loopback for interface in network_info.interfaces)
 	for interface in network_info.interfaces:

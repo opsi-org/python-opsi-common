@@ -38,6 +38,7 @@ class NetworkInterface:
 	mac_address: str | None = None
 	is_loopback: bool = False
 	is_link_local: bool = False
+	is_default_gateway: bool = False
 
 
 @dataclass
@@ -143,6 +144,10 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 						mac_address=if_addresses.get(netifaces.AF_LINK, [{}])[0].get("addr"),
 						is_loopback=address.is_loopback,
 						is_link_local=address.is_link_local,
+						is_default_gateway=any(
+							route.is_default and route.interface_name == iface_name and route.family == family
+							for route in network_info.routes
+						),
 					)
 				)
 	return network_info
