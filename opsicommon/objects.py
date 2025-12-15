@@ -1857,7 +1857,7 @@ class ProductDependency(Relationship):
 	def setPackageVersion(self, packageVersion: str) -> None:
 		self.packageVersion = forcePackageVersion(packageVersion)
 
-	def getProductAction(self) -> str:
+	def getProductAction(self) -> str | None:
 		return self.productAction
 
 	def setProductAction(self, productAction: str) -> None:
