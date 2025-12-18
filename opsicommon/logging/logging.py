@@ -832,7 +832,7 @@ def set_format(
 
 
 @contextmanager
-def log_context(new_context: dict[str, Any], replace: bool = True) -> Generator[None, None, None]:
+def log_context(new_context: dict[str, Any], *, replace: bool = True) -> Generator[None, None, None]:
 	"""
 	Contextmanager to set a context.
 
@@ -845,21 +845,16 @@ def log_context(new_context: dict[str, Any], replace: bool = True) -> Generator[
 	:param replace: If true, the new_context replaces the existing one, else it is merged.
 	:type replace: bool
 	"""
-	if not replace:
-		cur_context = _context.get().copy()
-		cur_context.update(new_context)
-		new_context = cur_context
-
 	token = None
 	try:
-		token = set_context(new_context)
+		token = set_context(new_context, replace=replace)
 		yield
 	finally:
 		if token is not None:
 			_context.reset(token)
 
 
-def set_context(new_context: dict[str, Any]) -> contextvars.Token | None:
+def set_context(new_context: dict[str, Any], *, replace: bool = True) -> contextvars.Token | None:
 	"""
 	Sets a context.
 
@@ -870,10 +865,18 @@ def set_context(new_context: dict[str, Any]) -> contextvars.Token | None:
 
 	:returns: reset-token for the context (stores previous value).
 	:rtype: contextvars.Token
+	:param replace: If true, the new_context replaces the existing one, else it is merged.
+	:type replace: bool
 	"""
-	if isinstance(new_context, dict):
-		return _context.set(new_context)
-	return None
+	if not isinstance(new_context, dict):
+		raise ValueError("new_context must be a dictionary")
+
+	if not replace:
+		cur_context = _context.get().copy()
+		cur_context.update(new_context)
+		new_context = cur_context
+
+	return _context.set(new_context)
 
 
 def add_context_filter_to_logger(_logger: logging.Logger) -> None:

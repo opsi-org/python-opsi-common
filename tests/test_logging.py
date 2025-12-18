@@ -254,7 +254,6 @@ def test_context_base() -> None:
 
 		stream.seek(0)
 		log = stream.read()
-		print(log)
 		assert "[first-context] message-1 " in log
 		assert "[second-context,1.2.3.4,value] message-2 " in log
 		assert "[second-context,new-value,info] message-3 " in log
