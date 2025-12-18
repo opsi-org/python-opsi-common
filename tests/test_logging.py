@@ -199,7 +199,7 @@ def test_secret_filter() -> None:
 		assert log.count("VISIBLE_SECRETSTRING") == 2
 
 
-def test_context() -> None:
+def test_context_base() -> None:
 	with log_stream(LOG_SECRET) as stream:
 		set_format(
 			stderr_format=(
@@ -210,14 +210,56 @@ def test_context() -> None:
 
 		logger.info("before setting context")
 		with log_context({"whoami": "first-context"}):
-			logger.warning("lorem ipsum")
-		with log_context({"whoami": "second-context"}):
-			logger.error("dolor sit amet")
-			assert context_filter.get_context() == {"logger": "root", "whoami": "second-context"}
+			logger.warning("message-1")
+			assert context_filter.get_context() == {
+				"logger": "root",
+				"whoami": "first-context",
+			}
+
+		with log_context({"whoami": "second-context", "remote_addr": "1.2.3.4", "extra": "value"}):
+			logger.error("message-2")
+			assert context_filter.get_context() == {
+				"logger": "root",
+				"whoami": "second-context",
+				"remote_addr": "1.2.3.4",
+				"extra": "value",
+			}
+
+			with log_context({"whoami": "second-context", "extra": "new-value", "additional": "info"}, replace=True):
+				logger.error("message-3")
+				assert context_filter.get_context() == {
+					"logger": "root",
+					"whoami": "second-context",
+					"extra": "new-value",
+					"additional": "info",
+				}
+
+			with log_context({"extra": "new-value-2", "additional": "info"}, replace=False):
+				logger.error("message-4")
+				assert context_filter.get_context() == {
+					"logger": "root",
+					"whoami": "second-context",
+					"remote_addr": "1.2.3.4",
+					"extra": "new-value-2",
+					"additional": "info",
+				}
+
+			logger.error("message-5")
+			assert context_filter.get_context() == {
+				"logger": "root",
+				"whoami": "second-context",
+				"remote_addr": "1.2.3.4",
+				"extra": "value",
+			}
+
 		stream.seek(0)
 		log = stream.read()
-		assert "first-context" in log
-		assert "second-context" in log
+		print(log)
+		assert "[first-context] message-1 " in log
+		assert "[second-context,1.2.3.4,value] message-2 " in log
+		assert "[second-context,new-value,info] message-3 " in log
+		assert "[second-context,1.2.3.4,new-value-2,info] message-4 " in log
+		assert "[second-context,1.2.3.4,value] message-5 " in log
 
 
 def test_context_threads() -> None:

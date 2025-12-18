@@ -832,7 +832,7 @@ def set_format(
 
 
 @contextmanager
-def log_context(new_context: dict[str, Any]) -> Generator[None, None, None]:
+def log_context(new_context: dict[str, Any], replace: bool = True) -> Generator[None, None, None]:
 	"""
 	Contextmanager to set a context.
 
@@ -842,7 +842,14 @@ def log_context(new_context: dict[str, Any]) -> Generator[None, None, None]:
 	Example: with log_context({"instance": "context-name"}): ...
 	:param new_context: new context to set for the section.
 	:type new_context: dict
+	:param replace: If true, the new_context replaces the existing one, else it is merged.
+	:type replace: bool
 	"""
+	if not replace:
+		cur_context = _context.get().copy()
+		cur_context.update(new_context)
+		new_context = cur_context
+
 	token = None
 	try:
 		token = set_context(new_context)
