@@ -411,7 +411,8 @@ def test_set_context() -> None:
 
 		stream.seek(0)
 		stream.truncate()
-		set_context("suddenly a string")  # type: ignore[arg-type]
+		with pytest.raises(ValueError):
+			set_context("suddenly a string")  # type: ignore[arg-type]
 		logger.error("test message")
 		stream.seek(0)
 		log = stream.read()

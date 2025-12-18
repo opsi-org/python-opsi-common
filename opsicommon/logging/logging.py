@@ -832,7 +832,7 @@ def set_format(
 
 
 @contextmanager
-def log_context(new_context: dict[str, Any], *, replace: bool = True) -> Generator[None, None, None]:
+def log_context(new_context: dict[str, Any] | None, *, replace: bool = True) -> Generator[None, None, None]:
 	"""
 	Contextmanager to set a context.
 
@@ -854,7 +854,7 @@ def log_context(new_context: dict[str, Any], *, replace: bool = True) -> Generat
 			_context.reset(token)
 
 
-def set_context(new_context: dict[str, Any], *, replace: bool = True) -> contextvars.Token | None:
+def set_context(new_context: dict[str, Any] | None, *, replace: bool = True) -> contextvars.Token | None:
 	"""
 	Sets a context.
 
@@ -868,6 +868,8 @@ def set_context(new_context: dict[str, Any], *, replace: bool = True) -> context
 	:param replace: If true, the new_context replaces the existing one, else it is merged.
 	:type replace: bool
 	"""
+	if new_context is None:
+		new_context = {}
 	if not isinstance(new_context, dict):
 		raise ValueError("new_context must be a dictionary")
 
