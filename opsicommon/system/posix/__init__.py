@@ -9,7 +9,7 @@ This file is part of opsi - https://www.opsi.org
 
 from contextlib import contextmanager
 from fcntl import LOCK_EX, LOCK_NB, LOCK_SH, LOCK_UN, flock, lockf
-from time import sleep, time
+from time import monotonic, sleep, time
 from typing import IO, BinaryIO, Generator, Literal, TextIO
 
 from opsicommon.logging import get_logger
@@ -33,14 +33,14 @@ def lock_file(
 	:raises ValueError: If an invalid lock_method is specified.
 	"""
 	lock_flags = LOCK_NB | (LOCK_EX if exclusive else LOCK_SH)
-	start = time()
+	start = monotonic()
 	lock_meth = lockf if lock_method == "lockf" else flock
 	while True:
 		try:
 			lock_meth(file, lock_flags)
 			break
 		except (IOError, BlockingIOError):
-			if time() >= start + timeout:
+			if monotonic() >= start + timeout:
 				raise TimeoutError(f"Failed to lock file after {timeout:0.2f} seconds") from None
 			sleep(0.1)
 	try:

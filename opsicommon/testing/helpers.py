@@ -865,9 +865,9 @@ class HTTPTestServer(threading.Thread, BaseServer):
 		self.wait_for_server_socket()
 
 	def wait_for_server_socket(self, timeout: int = 15) -> bool:
-		start = time.time()
+		start = time.monotonic()
 		sock_type = socket.AF_INET6 if self.ip_version == 6 else socket.AF_INET
-		while time.time() - start < timeout:
+		while time.monotonic() - start < timeout:
 			with closing(socket.socket(sock_type, socket.SOCK_STREAM)) as sock:
 				sock.settimeout(1)
 				res = sock.connect_ex(("::1" if self.ip_version == 6 else "127.0.0.1", self.port))

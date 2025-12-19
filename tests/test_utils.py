@@ -314,10 +314,10 @@ def test_retry() -> None:
 		def failing_function() -> None:
 			raise ValueError("Test")
 
-		start = time.time()
+		start = time.monotonic()
 		with pytest.raises(ValueError):
 			failing_function()
-		assert time.time() - start >= 1
+		assert time.monotonic() - start >= 1
 
 		assert len(caught_exceptions) == 2
 		assert isinstance(caught_exceptions[0], ValueError)

@@ -473,7 +473,7 @@ def test_licensing_info_and_cache() -> None:
 
 		timings = []
 		for num in range(3):
-			start = time.time()
+			start = time.monotonic()
 			info: dict[str, Any] = {
 				"client_numbers": olp.client_numbers,
 				"available_modules": [module_id for module_id, info in olp.get_modules().items() if info["available"]],
@@ -485,7 +485,7 @@ def test_licensing_info_and_cache() -> None:
 			info["dates"] = {}
 			for at_date in olp.get_relevant_dates():
 				info["dates"][str(at_date)] = {"modules": olp.get_modules(at_date=at_date)}
-			timings.append(time.time() - start)
+			timings.append(time.monotonic() - start)
 			if num == 1:
 				# Cached should be faster
 				assert timings[1] < timings[0]

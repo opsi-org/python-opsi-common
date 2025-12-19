@@ -61,10 +61,10 @@ def test_test_http_server_headers() -> None:
 
 def test_test_http_server_response_delay() -> None:
 	with http_test_server(response_delay=2) as server:
-		start = time.time()
+		start = time.monotonic()
 		res = requests.get(f"http://localhost:{server.port}", timeout=10)
 		assert res.status_code == 200
-		delay = round(time.time() - start)
+		delay = round(time.monotonic() - start)
 		assert 6 >= delay >= 2
 
 

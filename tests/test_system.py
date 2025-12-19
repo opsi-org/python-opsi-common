@@ -148,7 +148,7 @@ class Task:
 		self.res_queue = res_queue
 
 	def run(self) -> None:
-		start = time.time()
+		start = time.monotonic()
 		result: str | Exception | None = None
 		try:
 			with open(self.file, "a+", encoding="utf8") as test_fh:
@@ -163,7 +163,7 @@ class Task:
 					time.sleep(self.wait)
 		except Exception as err:
 			result = err
-		self.res_queue.put((result, time.time() - start))
+		self.res_queue.put((result, time.monotonic() - start))
 
 
 class ThreadTask(threading.Thread):

@@ -59,9 +59,9 @@ class MessageSender:
 		error_on_timeout: bool = True,
 		true_count: bool = False,
 	) -> list[Message]:
-		start = time.time()
+		start = time.monotonic()
 		while len(self.messages_sent) < count:
-			if time.time() - start > timeout:
+			if time.monotonic() - start > timeout:
 				if error_on_timeout:
 					raise TimeoutError(f"Timeout waiting for {count} messages, got {len(self.messages_sent)}")
 				break

@@ -9,7 +9,7 @@ This file is part of opsi - https://www.opsi.org
 
 from contextlib import contextmanager
 from datetime import datetime
-from time import sleep, time
+from time import monotonic, sleep, time
 from typing import IO, BinaryIO, Generator, Literal, TextIO
 
 import pywintypes  # type: ignore[import]
@@ -45,14 +45,14 @@ def get_system_uuid() -> str:
 
 def _lock_file(file: TextIO | BinaryIO | IO, exclusive: bool = False, timeout: float = 5.0) -> None:
 	lock_flags = win32con.LOCKFILE_FAIL_IMMEDIATELY | (win32con.LOCKFILE_EXCLUSIVE_LOCK if exclusive else 0)
-	start = time()
+	start = monotonic()
 	while True:
 		try:
 			hfile = win32file._get_osfhandle(file.fileno())
 			win32file.LockFileEx(hfile, lock_flags, 0, 0x7FFF0000, pywintypes.OVERLAPPED())
 			break
 		except pywintypes.error:
-			if time() >= start + timeout:
+			if monotonic() >= start + timeout:
 				raise TimeoutError(f"Failed to lock file after {timeout:0.2f} seconds") from None
 			sleep(0.1)
 

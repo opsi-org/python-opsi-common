@@ -1912,10 +1912,10 @@ def test_timeouts() -> None:
 
 		with ServiceClient(f"https://127.0.0.1:{server.port}", connect_timeout=4, verify="accept_all") as client:
 			client.connect()
-			start = time.time()
+			start = time.monotonic()
 			with pytest.raises(OpsiServiceTimeoutError):
 				client.get("/", read_timeout=2)
-			assert round(time.time() - start) >= 2
+			assert round(time.monotonic() - start) >= 2
 
 			assert client.get("/", read_timeout=4)[0] == 200
 
