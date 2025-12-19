@@ -9,7 +9,7 @@ This file is part of opsi - https://www.opsi.org
 
 from contextlib import contextmanager
 from fcntl import LOCK_EX, LOCK_NB, LOCK_SH, LOCK_UN, flock, lockf
-from time import monotonic, sleep, time
+from time import monotonic, sleep
 from typing import IO, BinaryIO, Generator, Literal, TextIO
 
 from opsicommon.logging import get_logger

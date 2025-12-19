@@ -9,7 +9,7 @@ This file is part of opsi - https://www.opsi.org
 
 from contextlib import contextmanager
 from datetime import datetime
-from time import monotonic, sleep, time
+from time import monotonic, sleep
 from typing import IO, BinaryIO, Generator, Literal, TextIO
 
 import pywintypes  # type: ignore[import]
