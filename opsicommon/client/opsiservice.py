@@ -1994,9 +1994,8 @@ class Messagebus(Thread):
 		# Do not resubscribe to session channels
 		self._resubscribe_channels = [c for c in self._subscribed_channels if not c.startswith("session:")]
 
-		if not self._next_connect_wait:
-			# Add random wait time to reduce the load on the server
-			self._next_connect_wait += float(randint(self.reconnect_wait_min, self.reconnect_wait_max))
+		# Add random wait time to reduce the load on the server
+		self._next_connect_wait += float(randint(self.reconnect_wait_min, self.reconnect_wait_max))
 
 		for listener in self._listener:
 			self._run_listener_callback(listener, "messagebus_connection_closed", messagebus=self)
