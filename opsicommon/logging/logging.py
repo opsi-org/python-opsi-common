@@ -411,9 +411,12 @@ class ContextSecretFormatter(Formatter):
 
 		if context_ := getattr(record, "context", None):
 			logger_name = _logger_context_names.get(record.name) or ""
-			record.contextstring = ",".join(  # type: ignore[attr-defined]
-				[logger_name if k == "logger" else str(v) for k, v in context_.items() if logger_name or k != "logger"]
-			)
+			ctx = [logger_name] if logger_name else []
+			for k, v in context_.items():
+				if k == "logger" or (k == "instance" and v == logger_name):
+					continue
+				ctx.append(str(v))
+			record.contextstring = ",".join(ctx)  # type: ignore[attr-defined]
 
 		msg = self.orig_formatter.format(record)
 		if not self.secret_filter_enabled:
