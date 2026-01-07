@@ -1578,6 +1578,37 @@ def test_messagebus_reconnect() -> None:
 			assert all((rpc_id in rpc_ids for rpc_id in [1, 2, 3, 11, 12, 13]))
 
 
+def test_messagebus_connect_503() -> None:
+	connect_attempts = 0
+
+	def request_callback(handler: HTTPTestServerRequestHandler, request: dict) -> bool:
+		nonlocal connect_attempts
+		if request["path"].startswith("/messagebus"):
+			connect_attempts += 1
+			handler.set_response_status(503, "Service Unavailable")
+			handler.set_response_headers({"server": "opsiconfd 4.3.0.0 (uvicorn)", "Retry-After": "1", "x-opsi-error": "maintenance mode"})
+		else:
+			handler.set_response_headers({"server": "opsiconfd 4.3.0.0 (uvicorn)"})
+		return False
+
+	def ws_connect_callback(handler: HTTPTestServerRequestHandler) -> None:
+		smsg = ChannelSubscriptionEventMessage(
+			sender="service:worker:test:1", channel="host:test-client.uib.local", subscribed_channels=["chan1", "chan2", "chan3"]
+		)
+		handler.ws_send_message(lz4.frame.compress(smsg.to_msgpack(), compression_level=0, block_linked=True))
+
+	with http_test_server(generate_cert=True, ws_connect_callback=ws_connect_callback, request_callback=request_callback) as server:
+		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
+			client.messagebus.reconnect_wait_min = 1
+			client.messagebus.reconnect_wait_max = 3600
+
+			client.messagebus.connect(wait=False)
+			time.sleep(10)
+
+			# Should always reconnect after one second (retry-after)
+			assert connect_attempts >= 4
+
+
 def test_messagebus_reconnect_exception() -> None:
 	class MBListener(MessagebusListener):
 		next_connect_wait = []

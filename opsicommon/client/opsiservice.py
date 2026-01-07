@@ -1952,6 +1952,17 @@ class Messagebus(Thread):
 	def _on_error(self, websocket: WebSocket, error: Exception) -> None:
 		status_code = getattr(error, "status_code", 0)
 		logger.warning("Websocket error: %d - %s (id=%r)", status_code, error, self.id)
+		if status_code == 503:
+			resp_headers = getattr(error, "resp_headers", {})
+			logger.debug("Service unavailable, headers: %r", resp_headers)
+			if resp_headers and "retry-after" in resp_headers:
+				try:
+					retry_after = int(resp_headers.get("retry-after", ""))
+					self._next_connect_wait = max(1, min(retry_after, 7200))
+					logger.debug("Setting next connect wait to %d seconds based on Retry-After header", self._next_connect_wait)
+				except ValueError:
+					pass
+
 		self._connect_exception = error
 		self._connected_result.set()
 		for listener in self._listener:
@@ -1979,14 +1990,13 @@ class Messagebus(Thread):
 					self._next_connect_wait = max(1, min(int(match.group(1)), 7200))
 			except ValueError:
 				pass
-		else:
-			self._next_connect_wait = 0
 
 		# Do not resubscribe to session channels
 		self._resubscribe_channels = [c for c in self._subscribed_channels if not c.startswith("session:")]
 
-		# Add random wait time to reduce the load on the server
-		self._next_connect_wait += float(randint(self.reconnect_wait_min, self.reconnect_wait_max))
+		if not self._next_connect_wait:
+			# Add random wait time to reduce the load on the server
+			self._next_connect_wait += float(randint(self.reconnect_wait_min, self.reconnect_wait_max))
 
 		for listener in self._listener:
 			self._run_listener_callback(listener, "messagebus_connection_closed", messagebus=self)
@@ -2138,7 +2148,6 @@ class Messagebus(Thread):
 				raise self._connect_exception
 			if self._connect_exception:
 				status_code = getattr(self._connect_exception, "status_code", 0)
-				headers = getattr(self._connect_exception, "headers", {})
 				cls: type[OpsiServiceError] = OpsiServiceConnectionError
 				if status_code == 401:
 					cls = OpsiServiceAuthenticationError
@@ -2146,12 +2155,6 @@ class Messagebus(Thread):
 					cls = OpsiServicePermissionError
 				elif status_code == 503:
 					cls = OpsiServiceUnavailableError
-					self._next_connect_wait = 60
-					try:
-						retry_after = int(headers.get("Retry-After", ""))
-						self._next_connect_wait = max(1, min(retry_after, 7200))
-					except ValueError:
-						pass
 				logger.debug("Raising %r: %r", cls, self._connect_exception)
 				raise cls(str(self._connect_exception)) from self._connect_exception
 
@@ -2294,6 +2297,9 @@ class Messagebus(Thread):
 						for _ in range(round(self._next_connect_wait)):
 							if self._should_stop.wait(1):
 								return
+
+					# Reset next connect wait
+					self._next_connect_wait = 0.0
 					logger.debug("Calling _connect() (id=%r)", self.id)
 					# Call of _connect() will block until the connection is lost
 					self._connect()
