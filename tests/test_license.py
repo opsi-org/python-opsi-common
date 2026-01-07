@@ -66,7 +66,7 @@ LIC1: dict[str, Any] = {
 	"client_number": 1000,
 	"issued_at": "2021-08-05",
 	"valid_from": "2021-09-01",
-	"valid_until": "2025-12-31",
+	"valid_until": "2026-12-31",
 	"revoked_ids": ["c6af25cf-62e4-4b90-8f4b-21c542d8b74b", "cc4e2986-d28d-4bef-807b-a74ba9a8df04"],
 	"note": "Some notes",
 	"additional_data": None,
@@ -272,10 +272,10 @@ def test_opsi_license_to_from_dict() -> None:
 def test_opsi_license_hash() -> None:
 	lic = OpsiLicense(**LIC1)
 	assert lic.get_hash(hex_digest=True) == (
-		"48f66b80da530eede6dda641d25a5716aabc3515873890b40cfdc53263e6bb30145b5558c384b8c94fbcd6b33ce57edafd5b65489b6da07b58dcf75a9c352cea"
+		"d737249f2e42d409bd6d8079ba7897c923c4b6af7b84db11e08858ef4872be79e92e8a8c7545a7932ef41fc29e794084bf8cb4b4298448bfb9d0914ee80b0d42"
 	)
 	assert lic.get_hash(digest=True) == bytes.fromhex(
-		"48f66b80da530eede6dda641d25a5716aabc3515873890b40cfdc53263e6bb30145b5558c384b8c94fbcd6b33ce57edafd5b65489b6da07b58dcf75a9c352cea"
+		"d737249f2e42d409bd6d8079ba7897c923c4b6af7b84db11e08858ef4872be79e92e8a8c7545a7932ef41fc29e794084bf8cb4b4298448bfb9d0914ee80b0d42"
 	)
 
 
@@ -415,13 +415,13 @@ def test_opsi_license_pool_licenses_checksum() -> None:
 		assert olp.get_licenses_checksum() == "00000000"
 
 		lic1.sign(private_key)
-		assert olp.get_licenses_checksum() == "0a753ec9"
+		assert olp.get_licenses_checksum() == "44bb3bf9"
 
 		lic2 = OpsiLicense(**LIC1)
 		lic2.module_id = "dynamic_depot"
 		lic2.sign(private_key)
 		olp.add_license(lic2)
-		assert olp.get_licenses_checksum() == "9659f392"
+		assert olp.get_licenses_checksum() == "c89e52b4"
 
 
 def test_opsi_license_pool_relevant_dates() -> None:
