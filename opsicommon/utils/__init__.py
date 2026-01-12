@@ -29,8 +29,6 @@ from types import EllipsisType
 from typing import TYPE_CHECKING, Any, Callable, Generator, Iterable, Literal, Type
 
 import lz4.frame  # type: ignore[import]
-from msgpack import packb as _msgpack_msgpack_encode  # type: ignore[import]
-from msgpack import unpackb as _msgpack_msgpack_decode  # type: ignore[import]
 from packaging.version import InvalidVersion, Version
 from pydantic_core import from_json as _pydantic_json_decode
 from pydantic_core import to_json as _pydantic_json_encode
@@ -50,7 +48,8 @@ try:
 	from msgspec.msgpack import decode as _msgspec_msgpack_decode
 	from msgspec.msgpack import encode as _msgspec_msgpack_encode
 except ImportError:
-	pass
+	from msgpack import packb as _msgpack_msgpack_encode  # type: ignore[import]
+	from msgpack import unpackb as _msgpack_msgpack_decode  # type: ignore[import]
 
 
 if platform.system().lower() == "windows":

@@ -712,7 +712,7 @@ wheels = [
 
 [[package]]
 name = "python-opsi-common"
-version = "4.3.49.3"
+version = "4.3.40.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
