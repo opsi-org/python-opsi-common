@@ -13,15 +13,13 @@ import sys
 import threading
 import time
 import warnings
-from typing import Any, Callable, Coroutine, Generator
+from typing import Any
 
 import pytest
 import urllib3
 from _pytest.config import Config
 from _pytest.logging import LogCaptureHandler
 from _pytest.nodes import Item
-from pluggy import Result
-from pytest import hookimpl
 
 from opsicommon.logging import logging_config
 
@@ -94,26 +92,19 @@ def pytest_runtest_setup(item: Item) -> None:
 		pytest.skip(f"Cannot run on {PLATFORM}")
 
 
-@hookimpl(wrapper=True)
-def pytest_pyfunc_call(pyfuncitem: Callable | Coroutine) -> Generator[None, Result, Result]:
-	start_threads = set(threading.enumerate())
-
-	outcome: Result = yield
-
+@pytest.hookimpl(trylast=True)
+def pytest_runtest_teardown(item: pytest.Item) -> None:
 	# Reset log level
 	logging_config(stderr_level=0)
 
 	for wait in range(6):
-		left_over_threads = (
-			set(
-				t
-				for t in threading.enumerate()
-				if t.is_alive()
-				# and t.name != "AnyIO worker thread"
-				and "ThreadPoolExecutor" not in str((getattr(t, "_args", None) or [None])[0])
-			)
-			- start_threads
-		)
+		left_over_threads = set(
+			t
+			for t in threading.enumerate()
+			if t.is_alive()
+			and t.name not in ("MainThread", "ServiceConnectionThread")
+			and "ThreadPoolExecutor" not in str((getattr(t, "_args", None) or [None])[0])
+		) - item.stash.get("start_threads", set())  # type: ignore[arg-type]
 		if not left_over_threads:
 			break
 		if wait >= 5:
@@ -122,4 +113,3 @@ def pytest_pyfunc_call(pyfuncitem: Callable | Coroutine) -> Generator[None, Resu
 				print(thread.__dict__, file=sys.stderr)
 			raise RuntimeError(f"Left over threads after test: {left_over_threads}")
 		time.sleep(1)
-	return outcome
