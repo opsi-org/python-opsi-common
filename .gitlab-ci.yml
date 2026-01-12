@@ -10,7 +10,7 @@ pytest-macos:
   tags:
     - catalina-py311-x64
   script:
-    - export UV_PYTHON="3.13"
+    - export UV_PYTHON="3.13-x86_64"
     - export UV_PYTHON_PREFERENCE="only-managed"
     - curl -sS "${OPSIDEVTOOLS_INSTALLER_URL_MACOS_X64}" | sh
     - uv self update
@@ -35,7 +35,7 @@ pytest-windows:
     - $Env:UV_PYTHON_INSTALL_DIR = "c:\\uv\\python"
     - $Env:UV_CACHE_DIR = "c:\\uv\\cache"
     - $Env:UV_PYTHON_PREFERENCE = "only-managed"
-    - $Env:UV_PYTHON = ((uv python list | findstr 3.13 | findstr "\-x86\-" | findstr /v freethreaded) -split ' ')[0]
+    - $Env:UV_PYTHON = "3.13-x86"
     - irm "${OPSIDEVTOOLS_INSTALLER_URL_WINDOWS_X86}" | iex
     - uv sync --frozen
     - uv run pytest --tb=short -x -o junit_family=xunit2 --junitxml=testreport_windows1.xml --cov-append --cov opsicommon --cov-report term --cov-report xml -v --ignore=tests\\test_logging.py tests
@@ -53,7 +53,7 @@ pytest-windows:
 pytest-linux:
   stage: test
   script:
-    - export UV_PYTHON="3.13"
+    - export UV_PYTHON="3.13-x86_64"
     - export UV_PYTHON_PREFERENCE="only-managed"
     - apt update
     - apt --yes install zstd # need zstd for packaging tests
@@ -83,7 +83,7 @@ lint-and-test:
     - job: pytest-linux
       artifacts: true
   script:
-    - export UV_PYTHON="3.13"
+    - export UV_PYTHON="3.13-x86_64"
     - export UV_PYTHON_PREFERENCE="only-managed"
     - apt-get update
     - apt-get --yes --allow-downgrades install libsqlite3-0=3.16.2-5+deb9u1
@@ -132,7 +132,7 @@ build-and-publish-apidoc:
 publish-uib-pypi:
   stage: publish
   script:
-    - export UV_PYTHON="3.13"
+    - export UV_PYTHON="3.13-x86_64"
     - export UV_PYTHON_PREFERENCE="only-managed"
     - curl -sS "${OPSIDEVTOOLS_INSTALLER_URL_LINUX_X64}" | sh
     - uv self update
