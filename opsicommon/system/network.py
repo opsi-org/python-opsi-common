@@ -15,9 +15,7 @@ import subprocess
 from dataclasses import dataclass, field
 
 import netifaces
-import psutil
 from dns.resolver import Resolver
-from psutil import net_if_addrs
 
 from opsicommon.logging import get_logger
 from opsicommon.types import forceFqdn
@@ -79,6 +77,7 @@ class NetworkInfo:
 
 
 def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
+	# res.search[0].to_unicode(omit_final_dot=True)
 	network_info = NetworkInfo()
 	gateways = netifaces.gateways()
 	logger.debug("Gateways: %s", gateways)
@@ -116,47 +115,41 @@ def get_network_info(*, include_link_local: bool = True) -> NetworkInfo:
 		except ValueError:
 			continue
 
-	ifaces = net_if_addrs()
+	ifaces = netifaces.interfaces()
 	logger.debug("Network interfaces: %s", ifaces)
-	for iface_name, iface_infos in ifaces.items():
-		mac_address = None
-		for if_info in iface_infos:
-			if if_info.family == psutil.AF_LINK:
-				mac_address = if_info.address
-
-		for if_info in iface_infos:
-			if if_info.family not in (socket.AF_INET, socket.AF_INET6):
-				continue
-			try:
-				address = ipaddress.ip_address(if_info.address.split("%")[0])
-				if (not include_link_local) and address.is_link_local:
+	for iface_name in ifaces:
+		if_addresses = netifaces.ifaddresses(iface_name)
+		for family in (socket.AF_INET, socket.AF_INET6):
+			for if_info in if_addresses.get(family, []):
+				try:
+					address = ipaddress.ip_address(if_info["addr"].split("%")[0])
+					if (not include_link_local) and address.is_link_local:
+						continue
+				except ValueError:
 					continue
-			except ValueError:
-				continue
 
-			network_address: ipaddress.IPv4Network | ipaddress.IPv6Network | None = (
-				ipaddress.ip_network(f"{if_info.address}/{int(ipaddress.ip_address(if_info.netmask)).bit_count()}", strict=False)
-				if if_info.netmask
-				else None
-			)
-
-			network_info.interfaces.append(
-				NetworkInterface(
-					family=if_info.family,
-					name=iface_name,
-					address=address,
-					netmask=network_address.netmask if network_address else None,
-					broadcast=network_address.broadcast_address if network_address else None,
-					prefixlen=network_address.prefixlen if network_address else None,
-					mac_address=mac_address,
-					is_loopback=address.is_loopback,
-					is_link_local=address.is_link_local,
-					is_default_gateway=any(
-						route.is_default and route.interface_name == iface_name and route.family == family for route in network_info.routes
-					),
+				network_address = (
+					ipaddress.ip_network(f"{if_info['addr']}/{if_info['netmask'].split('/')[-1]}", strict=False)
+					if "netmask" in if_info
+					else None
 				)
-			)
-
+				network_info.interfaces.append(
+					NetworkInterface(
+						family=family,
+						name=iface_name,
+						address=address,
+						netmask=network_address.netmask if network_address else None,
+						broadcast=network_address.broadcast_address if network_address else None,
+						prefixlen=network_address.prefixlen if network_address else None,
+						mac_address=if_addresses.get(netifaces.AF_LINK, [{}])[0].get("addr"),
+						is_loopback=address.is_loopback,
+						is_link_local=address.is_link_local,
+						is_default_gateway=any(
+							route.is_default and route.interface_name == iface_name and route.family == family
+							for route in network_info.routes
+						),
+					)
+				)
 	return network_info
 
 
