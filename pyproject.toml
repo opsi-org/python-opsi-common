@@ -4,7 +4,7 @@ version = "4.3.51.0"
 description = "The opsi python common library"
 readme = "README.md"
 license = "AGPL-3.0-only"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11,<3.15"
 dependencies = [
 	"aiofiles>=24.1",
 	"annotated-types>=0.7",
