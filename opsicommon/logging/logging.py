@@ -9,7 +9,6 @@ logging
 
 from __future__ import annotations
 
-import codecs
 import contextvars
 import logging
 import os
@@ -22,6 +21,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from logging import NOTSET, FileHandler, Formatter, Handler, LogRecord, NullHandler, PlaceHolder, StreamHandler
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from traceback import format_stack, format_tb
 from typing import IO, TYPE_CHECKING, Any, Generator
 from urllib.parse import quote
@@ -242,8 +242,8 @@ def handle_log_exception(
 			sys.stderr.write(text)
 
 		if temp_file:
-			filename = os.path.join(tempfile.gettempdir(), f"log_exception_{os.getpid()}.txt")
-			with codecs.open(filename, "a", "utf-8") as file:
+			file_path = Path(tempfile.gettempdir()) / f"log_exception_{os.getpid()}.txt"
+			with open(file_path, "a", encoding="utf-8") as file:
 				file.write(text)
 
 		if log:

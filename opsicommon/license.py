@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import ast
 import base64
-import codecs
 import configparser
 import glob
 import json
@@ -504,8 +503,7 @@ class OpsiLicenseFile:
 		if not self.filename:
 			raise ValueError("Filename not defined")
 		data = self.write_string()
-		with codecs.open(self.filename, "w", "utf-8") as file:
-			file.write(data)
+		Path(self.filename).write_text(data, encoding="utf-8")
 
 
 class OpsiModulesFile:
