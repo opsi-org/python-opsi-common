@@ -67,7 +67,7 @@ from opsicommon.types import (
 	forceUserId,
 	forceUUIDString,
 )
-from opsicommon.utils import combine_versions, generate_opsi_host_key, json_decode, json_encode, timestamp
+from opsicommon.utils import combine_versions, generate_opsi_host_key, json_decode, json_encode, utc_timestamp
 
 __all__ = (
 	"AuditHardware",
@@ -568,7 +568,7 @@ class User(Entity):
 	def setDefaults(self) -> None:
 		Entity.setDefaults(self)
 		if self.created is None:
-			self.setCreated(timestamp())
+			self.setCreated(utc_timestamp())
 		if self.mfaState is None:
 			self.mfaState = "inactive"
 		if self.groups is None:
@@ -744,9 +744,9 @@ class OpsiClient(Host):
 		if self.opsiHostKey is None:
 			self.setOpsiHostKey(generate_opsi_host_key())
 		if self.created is None:
-			self.setCreated(timestamp())
+			self.setCreated(utc_timestamp())
 		if self.lastSeen is None:
-			self.setLastSeen(timestamp())
+			self.setLastSeen(utc_timestamp())
 
 	def getLastSeen(self) -> str | None:
 		return self.lastSeen
@@ -2046,7 +2046,7 @@ class ProductOnClient(Relationship):
 		if self.actionRequest is None:
 			self.setActionRequest("none")
 		if self.modificationTime is None:
-			self.setModificationTime(timestamp())
+			self.setModificationTime(utc_timestamp())
 
 	def getProductId(self) -> str:
 		return self.productId
@@ -2368,7 +2368,7 @@ class LicenseContract(Entity):
 		if self.partner is None:
 			self.setPartner("")
 		if self.conclusionDate is None:
-			self.setConclusionDate(timestamp())
+			self.setConclusionDate(utc_timestamp())
 		if self.notificationDate is None:
 			self.setNotificationDate("0000-00-00 00:00:00")
 		if self.expirationDate is None:
@@ -3021,9 +3021,9 @@ class AuditSoftwareOnClient(Relationship):
 		if self.binaryName is None:
 			self.setBinaryName("")
 		if self.firstseen is None:
-			self.setFirstseen(timestamp())
+			self.setFirstseen(utc_timestamp())
 		if self.lastseen is None:
-			self.setLastseen(timestamp())
+			self.setLastseen(utc_timestamp())
 		if self.state is None:
 			self.setState(1)
 		if self.usageFrequency is None:
@@ -3408,9 +3408,9 @@ class AuditHardwareOnHost(Relationship):
 	def setDefaults(self) -> None:
 		Relationship.setDefaults(self)
 		if self.firstseen is None:
-			self.setFirstseen(timestamp())
+			self.setFirstseen(utc_timestamp())
 		if self.lastseen is None:
-			self.setLastseen(timestamp())
+			self.setLastseen(utc_timestamp())
 		if self.state is None:
 			self.setState(1)
 
