@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Callable, Generator
 
 import zstandard
+from blake3 import blake3
 
 from opsicommon.logging import get_logger
 from opsicommon.objects import ProductDependency
@@ -109,12 +110,13 @@ class RepoMetaPackageDependency:
 		return RepoMetaPackageDependency(**data)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class RepoMetaPackage:
 	url: str | list[str]
 	size: int
-	md5_hash: str
-	sha256_hash: str
+	md5_hash: str = ""
+	sha256_hash: str = ""  # kept for backward compatibility
+	blake3_hash: str = ""
 	product_id: str
 	product_version: str
 	package_version: str
@@ -141,7 +143,8 @@ class RepoMetaPackage:
 		with open(package_file, "rb", buffering=0) as file_handle:
 			# file_digest is python>=3.11 only
 			data["md5_hash"] = hashlib.file_digest(file_handle, "md5").hexdigest()  # type: ignore
-			data["sha256_hash"] = hashlib.file_digest(file_handle, "sha256").hexdigest()  # type: ignore
+			data["sha256_hash"] = ""  # Replaced by blake3
+			data["blake3_hash"] = blake3(file_handle.read()).hexdigest()
 		if package_file.with_name(f"{package_file.name}.zsync").exists():
 			if isinstance(url, str):
 				data["zsync_url"] = f"{url}.zsync"
