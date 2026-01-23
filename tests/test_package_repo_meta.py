@@ -125,7 +125,7 @@ def test_repo_meta_package(tmp_path: Path) -> None:
 	assert repo_meta_package.url == url
 	assert repo_meta_package.size == 10240
 	assert repo_meta_package.md5_hash == "15329eb8cd987f46024b593f200b5295"
-	assert repo_meta_package.blake3_hash == "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262"
+	assert repo_meta_package.blake3_hash == "fccd8a39574852f75d0e31c5e6d38f73d677712c0ed60471ba5f731607fd2cc5"
 	assert repo_meta_package.product_id == "localboot_new"
 	assert repo_meta_package.name == "localboot new"
 	assert repo_meta_package.priority == 10

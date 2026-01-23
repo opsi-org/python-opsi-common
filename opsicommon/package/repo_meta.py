@@ -144,7 +144,11 @@ class RepoMetaPackage:
 			# file_digest is python>=3.11 only
 			data["md5_hash"] = hashlib.file_digest(file_handle, "md5").hexdigest()  # type: ignore
 			data["sha256_hash"] = ""  # Replaced by blake3
-			data["blake3_hash"] = blake3(file_handle.read()).hexdigest()
+			file_handle.seek(0)
+			blake3_hasher = blake3()
+			while chunk := file_handle.read(256_000):
+				blake3_hasher.update(chunk)
+			data["blake3_hash"] = blake3_hasher.hexdigest()
 		if package_file.with_name(f"{package_file.name}.zsync").exists():
 			if isinstance(url, str):
 				data["zsync_url"] = f"{url}.zsync"
