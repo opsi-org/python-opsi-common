@@ -226,29 +226,38 @@ def prepare_proxy_environment(
 		from requests import Session
 
 		session = Session()
+
 	if proxy_url:
+		# Use a proxy
 		try:
 			update_environment_from_config_files()
 		except Exception as error:
 			logger.error("Failed to update environment from config files: %s", error)
+
+		env_http_proxy = os.environ.get("http_proxy") or ""
+		env_https_proxy = os.environ.get("https_proxy") or ""
+		env_no_proxy = os.environ.get("no_proxy") or ""
+		no_proxy_list = [x.strip() for x in env_no_proxy.split(",") if x.strip()]
 		logger.debug(
-			"Current proxy related environment variables: http_proxy=%s, https_proxy=%s, no_proxy=%s",
-			os.environ.get("http_proxy"),
-			os.environ.get("https_proxy"),
-			os.environ.get("no_proxy"),
+			"Current proxy related environment variables: http_proxy=%s, https_proxy=%s, no_proxy=%s, no_proxy_list=%s",
+			env_http_proxy,
+			env_https_proxy,
+			env_no_proxy,
+			no_proxy_list,
 		)
-		# Use a proxy
-		no_proxy = [x.strip() for x in os.environ.get("no_proxy", "").split(",") if x.strip()]
+
 		if proxy_url.lower() == "system":
+			logger.debug("Using system proxy settings")
 			# Making sure system proxy has correct form
-			if os.environ.get("http_proxy"):
-				os.environ["http_proxy"] = add_protocol(os.environ.get("http_proxy", ""))
-			if os.environ.get("https_proxy"):
-				os.environ["https_proxy"] = add_protocol(os.environ.get("https_proxy", ""))
-			if no_proxy != ["*"]:
-				no_proxy.extend(no_proxy_addresses)
+			if env_http_proxy:
+				os.environ["http_proxy"] = add_protocol(env_http_proxy)
+			if env_https_proxy:
+				os.environ["https_proxy"] = add_protocol(env_https_proxy)
+			if no_proxy_list != ["*"]:
+				no_proxy_list.extend(no_proxy_addresses)
 		else:
 			proxy_url = add_protocol(proxy_url)
+			logger.debug("Using explicit proxy URL: %s", proxy_url)
 			if hostname in no_proxy_addresses:
 				logger.info("Not using proxy for address %s", hostname)
 			else:
@@ -261,11 +270,12 @@ def prepare_proxy_environment(
 				for key in ("http_proxy", "https_proxy"):
 					if key in os.environ:
 						del os.environ[key]
-			no_proxy = no_proxy_addresses
+			no_proxy_list = no_proxy_addresses
 
-		os.environ["no_proxy"] = ",".join(set(no_proxy))
+		os.environ["no_proxy"] = ",".join(set(no_proxy_list))
 	else:
 		# Do not use a proxy
+		logger.debug("Not using a proxy")
 		os.environ["no_proxy"] = "*"
 
 	logger.info(
