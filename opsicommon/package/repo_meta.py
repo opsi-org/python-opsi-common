@@ -213,7 +213,7 @@ class RepoMetaPackage:
 
 @dataclass
 class RepoMetaPackageCollection:
-	schema_version: str = "1.1"
+	schema_version: str = "1.2"
 	repository: RepoMetaRepository = field(default_factory=RepoMetaRepository)
 	metadata_files: list[RepoMetaMetadataFile] = field(default_factory=list)
 	packages: dict[str, dict[str, RepoMetaPackage]] = field(default_factory=dict)
