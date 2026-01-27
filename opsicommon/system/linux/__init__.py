@@ -76,8 +76,9 @@ def run_process_in_session(command: list[str], session_id: str, shell: bool = Fa
 	for proc in procs:
 		try:
 			env = proc.environ()
-		except psutil.AccessDenied:
-			pass
+		except (psutil.AccessDenied, psutil.NoSuchProcess) as err:
+			logger.debug(err)
+			continue
 		if env and (env.get("DISPLAY") or session.type != "x11"):
 			# Need environment var DISPLAY to start process in x11
 			break
