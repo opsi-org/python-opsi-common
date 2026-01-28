@@ -9,7 +9,6 @@ opsi packages repository metadata handling
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
 from enum import StrEnum
@@ -17,7 +16,6 @@ from pathlib import Path
 from typing import Any, Callable, Generator
 
 import zstandard
-from blake3 import blake3
 
 from opsicommon.logging import get_logger
 from opsicommon.objects import ProductDependency
@@ -25,6 +23,7 @@ from opsicommon.package import OpsiPackage, PackageDependency
 from opsicommon.system import lock_file
 from opsicommon.types import Architecture, OperatingSystem
 from opsicommon.utils import LegacyVersion, json_decode, json_encode, msgpack_decode, msgpack_encode
+from opsicommon.utils.hashing import compute_file_hash
 
 logger = get_logger("opsicommon.package")
 
@@ -139,16 +138,13 @@ class RepoMetaPackage:
 	@classmethod
 	def from_package_file(cls, package_file: Path, url: str | list[str]) -> RepoMetaPackage:
 		logger.notice("Reading package file %s", package_file)
-		data: dict[str, Any] = {"url": url, "size": package_file.stat().st_size}
-		with open(package_file, "rb", buffering=0) as file_handle:
-			# file_digest is python>=3.11 only
-			data["md5_hash"] = hashlib.file_digest(file_handle, "md5").hexdigest()  # type: ignore
-			data["sha256_hash"] = ""  # Replaced by blake3
-			file_handle.seek(0)
-			blake3_hasher = blake3()
-			while chunk := file_handle.read(256_000):
-				blake3_hasher.update(chunk)
-			data["blake3_hash"] = blake3_hasher.hexdigest()
+		data: dict[str, Any] = {
+			"url": url,
+			"size": package_file.stat().st_size,
+			"md5_hash": compute_file_hash(package_file, "md5"),
+			"blake3_hash": compute_file_hash(package_file, "blake3"),
+			"sha256_hash": "",  # Replaced by blake3
+		}
 		if package_file.with_name(f"{package_file.name}.zsync").exists():
 			if isinstance(url, str):
 				data["zsync_url"] = f"{url}.zsync"
