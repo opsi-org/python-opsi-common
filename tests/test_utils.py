@@ -81,7 +81,7 @@ def test_msgpack_encode_decode_dataclass() -> None:
 
 	data = TestClass(id=1, result={"key1": "value1", "key2": ["listvalue1", "listvalue2"]})
 	encoded = msgpack_encode(data)
-	assert msgpack_decode(encoded) == asdict(data)  # type: ignore[no-matching-overload]
+	assert msgpack_decode(encoded) == asdict(data)
 
 
 @pytest.mark.parametrize(

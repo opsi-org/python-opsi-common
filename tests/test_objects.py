@@ -282,7 +282,6 @@ def test_object_classes() -> None:
 			if value is not None:
 				setter(value)
 
-		# type: ignore[assignment]
 		if not isinstance(obj, (Entity, Relationship)):
 			raise ValueError(f"wrong type: {type(obj)}")
 
@@ -717,7 +716,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_no_arguments() -> 
 			pass
 
 	obj = NoArgs()
-	assert mandatory_constructor_args(obj.__class__) == []  # type: ignore[arg-type]
+	assert mandatory_constructor_args(obj.__class__) == []
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_only_mandatory_arguments() -> None:
@@ -726,7 +725,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_only_mandatory_arg
 			pass
 
 	obj = OnlyMandatory(1, 1, 1)
-	assert mandatory_constructor_args(obj.__class__) == ["arg1", "arg2", "arg3"]  # type: ignore[arg-type]
+	assert mandatory_constructor_args(obj.__class__) == ["arg1", "arg2", "arg3"]
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_only_optional_arguments() -> None:
@@ -735,7 +734,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_only_optional_argu
 			pass
 
 	obj = OnlyOptional()
-	assert mandatory_constructor_args(obj.__class__) == []  # type: ignore[arg-type]
+	assert mandatory_constructor_args(obj.__class__) == []
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_mixed_arguments() -> None:
@@ -744,7 +743,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_mixed_arguments() 
 			pass
 
 	obj = MixedArgs(True, True)
-	assert mandatory_constructor_args(obj.__class__) == ["arg1", "arg2"]  # type: ignore[arg-type]
+	assert mandatory_constructor_args(obj.__class__) == ["arg1", "arg2"]
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_wildcard_arguments() -> None:
@@ -753,7 +752,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_wildcard_arguments
 			pass
 
 	obj = WildcardOnly("yeah", "great", "thing")
-	assert mandatory_constructor_args(obj.__class__) == []  # type: ignore[arg-type]
+	assert mandatory_constructor_args(obj.__class__) == []
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_keyword_arguments() -> None:
@@ -762,7 +761,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_keyword_arguments(
 			pass
 
 	obj = Kwargz(goand=1, get="asdf", them=[], girl=True)
-	assert mandatory_constructor_args(obj.__class__) == []  # type: ignore[arg-type]
+	assert mandatory_constructor_args(obj.__class__) == []
 
 
 def test_get_mandatory_constructor_args_from_constructor_with_mixed_with_args_and_kwargs() -> None:
@@ -771,7 +770,7 @@ def test_get_mandatory_constructor_args_from_constructor_with_mixed_with_args_an
 			pass
 
 	obj = KwargzAndMore(False, True, "some", "more", things="here")
-	assert mandatory_constructor_args(obj.__class__) == ["crosseyed", "heart"]  # type: ignore[arg-type]
+	assert mandatory_constructor_args(obj.__class__) == ["crosseyed", "heart"]
 
 
 def test_product_name_can_be_very_long() -> None:

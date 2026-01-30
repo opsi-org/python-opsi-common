@@ -32,14 +32,14 @@ from unittest import mock
 from urllib.parse import unquote
 from warnings import catch_warnings, simplefilter
 
-import lz4.frame  # type: ignore[import]
+import lz4.frame
 
 from opsicommon.logging import logger
 from opsicommon.logging.constants import LOG_TRACE
 
 with catch_warnings():
 	simplefilter("ignore")
-	import pproxy  # type: ignore[import]
+	import pproxy
 
 import psutil
 import pytest
@@ -92,7 +92,7 @@ from opsicommon.messagebus.message import (
 from opsicommon.objects import OpsiClient
 from opsicommon.ssl import as_pem, create_ca, create_server_cert
 from opsicommon.system.info import is_macos, is_windows
-from opsicommon.testing.helpers import HTTPTestServerRequestHandler, environment, http_test_server, opsi_config  # type: ignore[import]
+from opsicommon.testing.helpers import HTTPTestServerRequestHandler, environment, http_test_server, opsi_config
 
 from .helpers import log_stream
 
@@ -295,8 +295,8 @@ def test_arguments() -> None:
 
 	# proxy_url
 	assert ServiceClient("::1", proxy_url="system")._proxy_url == "system"
-	assert ServiceClient("::1", proxy_url=None)._proxy_url is None  # type: ignore[arg-type]
-	assert ServiceClient("::1", proxy_url="none")._proxy_url is None  # type: ignore[arg-type]
+	assert ServiceClient("::1", proxy_url=None)._proxy_url is None
+	assert ServiceClient("::1", proxy_url="none")._proxy_url is None
 	assert ServiceClient("::1", proxy_url="https://proxy:1234")._proxy_url == "https://proxy:1234"
 
 	# user_agent
@@ -1574,7 +1574,7 @@ def test_messagebus_reconnect() -> None:
 			print("messages", listener.messages)
 			expected_messages = 3 + 9  # 3 * ChannelSubscriptionEventMessage + 9 * JSONRPCResponseMessage
 			assert len(listener.messages) == expected_messages
-			rpc_ids = [int(m.rpc_id) for m in listener.messages if hasattr(m, "rpc_id")]  # type: ignore[attr-defined]
+			rpc_ids = [int(m.rpc_id) for m in listener.messages if hasattr(m, "rpc_id")]
 			assert all((rpc_id in rpc_ids for rpc_id in [1, 2, 3, 11, 12, 13]))
 
 
@@ -1761,7 +1761,7 @@ def test_download(tmp_path: Path) -> None:
 		nonlocal values
 		values.append((progress, total))
 
-	def mocked_webdav_content(self, path: str, include_base_path: bool = False) -> list[DAVFileInfo]:  # type: ignore  # noqa
+	def mocked_webdav_content(self, path: str, include_base_path: bool = False) -> list[DAVFileInfo]:
 		responsens: dict[str, list[DAVFileInfo]] = {
 			"/some_dir": [
 				DAVFileInfo(path="/some_dir", type="dir", size=0),
@@ -1783,7 +1783,7 @@ def test_download(tmp_path: Path) -> None:
 
 	with http_test_server(generate_cert=True, serve_directory=remote_dir) as server:
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
-			with mock.patch("opsicommon.client.opsiservice.ServiceClient.webdav_content", mocked_webdav_content):  # type: ignore
+			with mock.patch("opsicommon.client.opsiservice.ServiceClient.webdav_content", mocked_webdav_content):
 				client.download("/some_dir", local_dir, progress_callback=progress_callback)
 			assert (remote_dir / "some_dir" / "some_file").read_bytes() == data1
 			assert (local_dir / "some_dir" / "some_nested_dir" / "some_deep_file").read_bytes() == data2
@@ -1978,7 +1978,7 @@ def test_messagebus_ping() -> None:
 		# Test original _on_pong method
 		with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 			client.messagebus.ping_interval = 1
-			client.messagebus.ping_timeout = None  # type: ignore[assignment]
+			client.messagebus.ping_timeout = None
 			client.connect_messagebus()
 			time.sleep(3)
 
@@ -1986,7 +1986,7 @@ def test_messagebus_ping() -> None:
 		with mock.patch("opsicommon.client.opsiservice.Messagebus._on_pong", _on_pong):
 			with ServiceClient(f"https://127.0.0.1:{server.port}", verify="accept_all") as client:
 				client.messagebus.ping_interval = 1
-				client.messagebus.ping_timeout = None  # type: ignore[assignment]
+				client.messagebus.ping_timeout = None
 				client.connect_messagebus()
 				time.sleep(5)
 				assert pong_count >= 3

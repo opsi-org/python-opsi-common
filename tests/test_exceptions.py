@@ -105,7 +105,7 @@ def test_exception_has__repr__(exception: Exception) -> None:
 	),
 )
 def test_opsi_product_ordering_exception(message: str, problematic_requirements: list[str] | None) -> None:
-	exc = OpsiProductOrderingError(message, problematic_requirements)  # type: ignore[arg-type]
+	exc = OpsiProductOrderingError(message, problematic_requirements)
 	_repr = repr(exc)
 	assert _repr.startswith("<")
 	assert _repr.endswith(">")

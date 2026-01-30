@@ -418,7 +418,7 @@ def test_set_context() -> None:
 		log = stream.read()
 		assert "suddenly a string" not in log  # must be given as dictionary
 
-		set_context(None)  # type: ignore[arg-type]
+		set_context(None)
 
 
 def test_foreign_logs() -> None:

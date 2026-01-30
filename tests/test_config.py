@@ -15,7 +15,7 @@ from unittest.mock import patch
 import pytest
 
 from opsicommon.config.opsi import DEFAULT_OPSICONFD_USER, OPSICONFD_CONF, OpsiConfig, get_opsiconfd_user
-from opsicommon.testing.helpers import environment  # type: ignore[import]
+from opsicommon.testing.helpers import environment
 
 
 def test_upgrade_config_from_ini(tmp_path: Path) -> None:
