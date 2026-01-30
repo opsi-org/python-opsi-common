@@ -1950,18 +1950,25 @@ class Messagebus(Thread):
 		self._connect_attempt = 0
 
 	def _on_error(self, websocket: WebSocket, error: Exception) -> None:
+		retry_after = 0
 		logger.warning("Websocket error: %s (id=%r)", error, self.id)
 		try:
-			if data := getattr(error, "data", None):
+			if getattr(error, "status_code", 0) == 503:
+				resp_headers = getattr(error, "resp_headers", {})
+				logger.debug("Service unavailable, headers: %r", resp_headers)
+				if resp_headers and "retry-after" in resp_headers:
+					retry_after = int(resp_headers.get("retry-after", ""))
+			elif data := getattr(error, "data", None):
 				data_str = data.decode("utf-8", errors="replace")
 				logger.debug("Websocket error data: %s", data_str)
 				for dat in data_str.lower().splitlines():
 					if dat.startswith("retry-after:"):
 						retry_after = int(dat.split(":", 1)[1].strip())
-						self._next_connect_wait = max(1, min(retry_after, 7200))
-						logger.info("Setting next connect wait to %d seconds based on Retry-After header", self._next_connect_wait)
 		except Exception as exc:
 			logger.error("Error in websocket error handler: %s", exc, exc_info=True)
+		if retry_after:
+			self._next_connect_wait = max(1, min(retry_after, 7200))
+			logger.debug("Setting next connect wait to %d seconds based on Retry-After header", self._next_connect_wait)
 
 		self._connect_exception = error
 		self._connected_result.set()
