@@ -12,7 +12,7 @@ from hashlib import md5
 from pathlib import Path
 from typing import Callable
 
-from pyzsync import create_zsync_file  # type: ignore[import]
+from pyzsync import create_zsync_file
 
 from opsicommon.logging import get_logger
 

@@ -39,7 +39,7 @@ LOG_CRITICAL = 2
 LOG_ESSENTIAL = LOG_DEVEL = LOG_COMMENT = 1
 LOG_NONE = LOG_NOTSET = 0
 
-NOTSET = logging.NOTSET = 0  # type: ignore
+NOTSET = logging.NOTSET = 0
 SECRET = CONFIDENTIAL = logging.SECRET = logging.CONFIDENTIAL = 10  # type: ignore
 TRACE = DEBUG2 = logging.TRACE = logging.DEBUG2 = 20  # type: ignore
 DEBUG = logging.DEBUG = 30  # type: ignore
@@ -66,16 +66,16 @@ LEVEL_TO_NAME = {
 logging._levelToName = logging.level_to_name = LEVEL_TO_NAME  # type: ignore[attr-defined]
 
 NAME_TO_LEVEL = {
-	"SECRET": SECRET,  # type: ignore[attr-defined]
-	"TRACE": TRACE,  # type: ignore[attr-defined]
+	"SECRET": SECRET,
+	"TRACE": TRACE,
 	"DEBUG": DEBUG,
 	"INFO": INFO,
-	"NOTICE": NOTICE,  # type: ignore[attr-defined]
+	"NOTICE": NOTICE,
 	"WARNING": WARNING,
 	"ERROR": ERROR,
 	"CRITICAL": CRITICAL,
-	"ESSENTIAL": ESSENTIAL,  # type: ignore[attr-defined]
-	"NONE": NONE,  # type: ignore[attr-defined]
+	"ESSENTIAL": ESSENTIAL,
+	"NONE": NONE,
 }
 logging._nameToLevel = logging.name_to_level = NAME_TO_LEVEL  # type: ignore[attr-defined]
 

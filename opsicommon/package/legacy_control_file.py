@@ -247,7 +247,7 @@ class LegacyControlFile:
 				continue
 
 			for i, currentSection in enumerate(secs):
-				for option, value in currentSection.items():  # type: ignore
+				for option, value in currentSection.items():
 					if (
 						(sectionType == "product" and option == "productclasses")
 						or (sectionType == "package" and option == "depends")
@@ -304,7 +304,7 @@ class LegacyControlFile:
 					self.packageDependencies.append({"package": package, "condition": condition, "version": version})
 
 		# Create Product object
-		product = self._sections["product"][0]  # type: ignore
+		product = self._sections["product"][0]
 		Class: type
 		if product.get("type") == "NetbootProduct":  # type: ignore
 			Class = NetbootProduct
@@ -328,8 +328,8 @@ class LegacyControlFile:
 		self.product = Class(
 			id=product.get("id"),  # type: ignore
 			name=product.get("name"),  # type: ignore
-			productVersion=productVersion,  # type: ignore
-			packageVersion=packageVersion,  # type: ignore
+			productVersion=productVersion,
+			packageVersion=packageVersion,
 			licenseRequired=product.get("licenserequired"),  # type: ignore
 			setupScript=product.get("setupscript"),  # type: ignore
 			uninstallScript=product.get("uninstallscript"),  # type: ignore
@@ -342,7 +342,7 @@ class LegacyControlFile:
 			advice=product.get("advice"),  # type: ignore
 			productClassIds=product.get("productclasses"),  # type: ignore
 			windowsSoftwareIds=self._sections.get("windows", [{}])[0].get("softwareids", []),  # type: ignore
-			changelog=self._sections.get("changelog"),  # type: ignore
+			changelog=self._sections.get("changelog"),
 		)
 		if isinstance(self.product, NetbootProduct) and product.get("pxeconfigtemplate") is not None:  # type: ignore
 			self.product.setPxeConfigTemplate(product.get("pxeconfigtemplate"))  # type: ignore
@@ -387,9 +387,9 @@ class LegacyControlFile:
 				productId=self.product.getId(),  # type: ignore
 				productVersion=self.product.getProductVersion(),  # type: ignore
 				packageVersion=self.product.getPackageVersion(),  # type: ignore
-				propertyId=productProperty.get("name", ""),  # type: ignore
-				description=productProperty.get("description", ""),  # type: ignore
-				defaultValues=productProperty.get("default", []),  # type: ignore
+				propertyId=productProperty.get("name", ""),
+				description=productProperty.get("description", ""),
+				defaultValues=productProperty.get("default", []),
 			)
 		)
 		if isinstance(self.productProperties[-1], UnicodeProductProperty):
@@ -500,7 +500,7 @@ class LegacyControlFile:
 				lines.append(f"editable: {productProperty.getEditable()}")
 			if productProperty.getDescription():
 				lines.append("description: ")
-				descLines = (productProperty.getDescription() or "").split("\n")  # type: ignore
+				descLines = (productProperty.getDescription() or "").split("\n")
 				if len(descLines) > 0:
 					lines[-1] += descLines[0]
 					if len(descLines) > 1:

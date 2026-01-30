@@ -154,7 +154,7 @@ class Popen(PopenOrig):
 			if session_desktop:
 				env["_opsi_popen_session_desktop"] = str(session_desktop)
 
-		PopenOrig.__init__(  # type: ignore
+		PopenOrig.__init__(
 			self,
 			args=args,
 			bufsize=bufsize,

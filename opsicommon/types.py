@@ -647,7 +647,7 @@ def forceObjectClass(var: Any, objectClass: type[BaseObjectT]) -> BaseObjectT:
 			from opsicommon.objects import from_json
 
 		try:
-			return from_json(var)  # type: ignore[misc]
+			return from_json(var)
 		except Exception as err:
 			raise ValueError(f"{var!r} is not a {objectClass}: {err}") from err
 
@@ -658,7 +658,7 @@ def forceObjectClass(var: Any, objectClass: type[BaseObjectT]) -> BaseObjectT:
 			_class = objectClass
 			if "type" in var:
 				try:
-					_class = get_object_type(var["type"])  # type: ignore[misc]
+					_class = get_object_type(var["type"])
 				except KeyError as err:
 					raise ValueError(f"Invalid object type: {var['type']}") from err
 				if not issubclass(_class, objectClass):

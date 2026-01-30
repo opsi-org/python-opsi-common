@@ -195,7 +195,7 @@ class TraceRequestMessage(Message):
 	"""
 
 	type: str = MessageType.TRACE_REQUEST.value
-	trace: dict[str, Any] = Field(default_factory=dict)  # type: ignore[assignment]
+	trace: dict[str, Any] = Field(default_factory=dict)
 	payload: bytes | None = None
 
 

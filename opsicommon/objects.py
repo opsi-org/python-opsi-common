@@ -169,7 +169,7 @@ class BaseObject:
 		return self.foreign_id_attributes
 
 	def getIdentAttributes(self) -> tuple[str, ...]:
-		return get_ident_attributes(self.__class__)  # type: ignore[arg-type]
+		return get_ident_attributes(self.__class__)
 
 	def getIdent(self, returnType: str = "unicode") -> list[str] | tuple[str, ...] | dict[str, str] | str:
 		returnType = forceStringLower(returnType)
@@ -242,11 +242,11 @@ class BaseObject:
 			_hash = _hash.copy()
 		_cls = cls
 		try:
-			_cls = get_object_type(_hash.pop("type"))  # type: ignore
+			_cls = get_object_type(_hash.pop("type"))
 		except KeyError:
 			pass
 
-		possible_attributes = get_possible_class_attributes(_cls)  # type: ignore
+		possible_attributes = get_possible_class_attributes(_cls)
 		decode_ident(_cls, _hash)
 		kwargs = {attr: val for attr, val in _hash.items() if attr in possible_attributes}
 		return _cls(**kwargs)
@@ -316,8 +316,8 @@ class BaseObject:
 
 @lru_cache()
 def mandatory_constructor_args(_class: type[BaseObject]) -> list[str]:
-	cache_key = _class.__name__  # type: ignore[attr-defined]
-	spec = getfullargspec(_class.__init__)  # type: ignore[misc]
+	cache_key = _class.__name__
+	spec = getfullargspec(_class.__init__)
 	args = spec.args
 	defaults = spec.defaults
 	mandatory = None
@@ -332,7 +332,7 @@ def mandatory_constructor_args(_class: type[BaseObject]) -> list[str]:
 
 @lru_cache()
 def get_ident_attributes(_class: type[BaseObject]) -> tuple[str, ...]:
-	ident_attributes = tuple(mandatory_constructor_args(_class))  # type: ignore[arg-type]
+	ident_attributes = tuple(mandatory_constructor_args(_class))
 	if "hardwareClass" in ident_attributes:
 		ident_attributes = tuple([a for a in ident_attributes if a != "hardwareClass"])
 	return ident_attributes
@@ -348,9 +348,9 @@ def get_possible_class_attributes(_class: type[BaseObject]) -> set[str]:
 	"""
 	Returns the possible attributes of a class.
 	"""
-	attributes = getfullargspec(_class.__init__).args  # type: ignore[misc]
+	attributes = getfullargspec(_class.__init__).args
 	for sub_class in _class.sub_classes.values():
-		attributes.extend(getfullargspec(sub_class.__init__).args)  # type: ignore[misc]
+		attributes.extend(getfullargspec(sub_class.__init__).args)
 
 	attributes_set = set(attributes)
 	attributes_set.add("type")
@@ -374,12 +374,12 @@ def decode_ident(_class: type[BaseObject], _hash: dict[str, Any]) -> dict[str, A
 
 	ident = _hash.pop("ident")
 	if not isinstance(ident, dict):
-		ident_keys = mandatory_constructor_args(_class)  # type: ignore[arg-type]
+		ident_keys = mandatory_constructor_args(_class)
 		ident_values = []
 		if isinstance(ident, str):
 			ident_values = ident.split(_class.ident_separator)
 		elif isinstance(ident, (tuple, list)):
-			ident_values = ident  # type: ignore[assignment]
+			ident_values = ident
 
 		if len(ident_values) != len(ident_keys):
 			raise ValueError(f"Ident {ident} does not match class '{_class}' constructor arguments {ident_keys}")
@@ -3199,25 +3199,25 @@ class AuditHardware(Entity):
 
 		try:
 			if getattr(self, "vendorId", None):
-				self.vendorId = forceHardwareVendorId(self.vendorId)  # type: ignore[has-type]
+				self.vendorId = forceHardwareVendorId(self.vendorId)
 		except AttributeError:
 			pass
 
 		try:
 			if getattr(self, "subsystemVendorId", None):
-				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)  # type: ignore[has-type]
+				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)
 		except AttributeError:
 			pass
 
 		try:
 			if getattr(self, "deviceId", None):
-				self.deviceId = forceHardwareDeviceId(self.deviceId)  # type: ignore[has-type]
+				self.deviceId = forceHardwareDeviceId(self.deviceId)
 		except AttributeError:
 			pass
 
 		try:
 			if getattr(self, "subsystemDeviceId", None):
-				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)  # type: ignore[has-type]
+				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)
 		except AttributeError:
 			pass
 
@@ -3373,25 +3373,25 @@ class AuditHardwareOnHost(Relationship):
 
 		try:
 			if getattr(self, "vendorId", None):
-				self.vendorId = forceHardwareVendorId(self.vendorId)  # type: ignore[has-type]
+				self.vendorId = forceHardwareVendorId(self.vendorId)
 		except AttributeError:
 			pass
 
 		try:
 			if getattr(self, "subsystemVendorId", None):
-				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)  # type: ignore[has-type]
+				self.subsystemVendorId = forceHardwareVendorId(self.subsystemVendorId)
 		except AttributeError:
 			pass
 
 		try:
 			if getattr(self, "deviceId", None):
-				self.deviceId = forceHardwareDeviceId(self.deviceId)  # type: ignore[has-type]
+				self.deviceId = forceHardwareDeviceId(self.deviceId)
 		except AttributeError:
 			pass
 
 		try:
 			if getattr(self, "subsystemDeviceId", None):
-				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)  # type: ignore[has-type]
+				self.subsystemDeviceId = forceHardwareDeviceId(self.subsystemDeviceId)
 		except AttributeError:
 			pass
 
@@ -3520,7 +3520,7 @@ def deserialize(obj: Any, deep: bool = False, prevent_object_creation: bool = Fa
 		if not prevent_object_creation:
 			try:
 				obj_type = get_object_type(obj["type"])
-				return obj_type.fromHash(obj)  # type: ignore[union-attr]
+				return obj_type.fromHash(obj)
 			except KeyError:
 				pass
 			except Exception as err:

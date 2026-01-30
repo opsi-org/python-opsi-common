@@ -204,7 +204,7 @@ class OpsiPackage:
 		if not self.product:
 			raise ValueError("Product information is missing. Cannot generate control file.")
 		legacy_control_file = LegacyControlFile()
-		legacy_control_file.product = self.product  # type: ignore[assignment]
+		legacy_control_file.product = self.product
 		legacy_control_file.productDependencies = self.product_dependencies
 		legacy_control_file.productProperties = self.product_properties
 		legacy_control_file.packageDependencies = [asdict(pdep) for pdep in self.package_dependencies]

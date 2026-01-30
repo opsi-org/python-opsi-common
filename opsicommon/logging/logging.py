@@ -139,7 +139,7 @@ class OPSILogger(logging.Logger):
 					caller = frame.f_back.f_back  # type: ignore[union-attr]
 					code = caller.f_code  # type: ignore[union-attr]
 					return code.co_filename, caller.f_lineno, code.co_name, None  # type: ignore[union-attr]
-				frame = frame.f_back  # type: ignore[assignment]
+				frame = frame.f_back
 		except AttributeError:
 			pass
 		raise ValueError("Failed to find caller")
@@ -337,7 +337,7 @@ class ContextFilter(logging.Filter, metaclass=Singleton):
 		:rtype: bool
 		"""
 		if not getattr(record, "context", None):
-			record.context = _context.get()  # type: ignore[attr-defined]
+			record.context = _context.get()
 			record.context["logger"] = record.name  # type: ignore[attr-defined]
 
 		for filter_key, filter_values in self.filter_dict.items():
@@ -416,7 +416,7 @@ class ContextSecretFormatter(Formatter):
 				if k == "logger" or (k == "instance" and v == logger_name):
 					continue
 				ctx.append(str(v))
-			record.contextstring = ",".join(ctx)  # type: ignore[attr-defined]
+			record.contextstring = ",".join(ctx)
 
 		msg = self.orig_formatter.format(record)
 		if not self.secret_filter_enabled:
@@ -716,11 +716,7 @@ def logging_config(
 	logging.root.setLevel(min_value)
 
 	if logger_levels:
-		loggers = {
-			logger_.name: logger_
-			for logger_ in list(logging.Logger.manager.loggerDict.values())  # type: ignore[union-attr]
-			if hasattr(logger_, "name")
-		}
+		loggers = {logger_.name: logger_ for logger_ in list(logging.Logger.manager.loggerDict.values()) if hasattr(logger_, "name")}
 		re_compile = re.compile
 		for logger_re, level in logger_levels.items():
 			logger_re = re_compile(logger_re)
@@ -739,7 +735,7 @@ def logging_config(
 		and not stderr_is_rich_console
 		and hasattr(stderr_file, "isatty")
 		and callable(stderr_file.isatty)
-		and not stderr_file.isatty()
+		and not stderr_file.isatty()  # type: ignore[call-top-callable]
 	):
 		stderr_format = stderr_format.replace("%(log_color)s", "").replace("%(reset)s", "")
 

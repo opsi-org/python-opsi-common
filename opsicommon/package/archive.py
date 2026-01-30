@@ -138,7 +138,7 @@ class ProgressTarFile(tarfile.TarFile):
 
 	def addfile(self, tarinfo: tarfile.TarInfo, fileobj: SupportsRead[bytes] | None = None) -> None:
 		if fileobj and self._progress:
-			fileobj = ProgressFileWrapper(filesize=tarinfo.size, fileobj=fileobj, progress=self._progress)  # type: ignore[assignment]
+			fileobj = ProgressFileWrapper(filesize=tarinfo.size, fileobj=fileobj, progress=self._progress)
 		return super().addfile(tarinfo, fileobj)
 
 
@@ -291,7 +291,7 @@ def extract_archive_internal(
 
 	is_zstd = archive.suffixes and archive.suffixes[-1] == ".zstd"
 	with open(archive, "rb") as file:
-		file = ProgressFileWrapper(filesize=filesize, fileobj=file, progress=progress)  # type: ignore[assignment]
+		file = ProgressFileWrapper(filesize=filesize, fileobj=file, progress=progress)
 		with zstandard.ZstdDecompressor().stream_reader(file) if is_zstd else nullcontext(file) as fileobj:  # type: ignore[attr-defined]
 			# compression can be None, gz, bz2 or xz
 			with tarfile.open(fileobj=fileobj, mode="r:" if is_zstd else "r") as tar_object:  # type: ignore[no-matching-overload]
@@ -559,7 +559,7 @@ def create_archive_internal(
 		compressor = zstandard.ZstdCompressor()
 		with open(archive, "wb") as archive_file:
 			with compressor.stream_writer(archive_file) as zstd_writer:
-				with ProgressTarFile.open(fileobj=zstd_writer, dereference=dereference, mode="w:") as tar_object:  # type: ignore[call-arg]
+				with ProgressTarFile.open(fileobj=zstd_writer, dereference=dereference, mode="w:") as tar_object:
 					for file in files:
 						tar_object.add(file.path, arcname=file.archive_path, filter=set_tarinfo)
 						if progress:

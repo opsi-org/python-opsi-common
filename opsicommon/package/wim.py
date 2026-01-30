@@ -187,4 +187,4 @@ def wim_info(wim_file: Path | str) -> WIMInfo:
 		if windows_info:
 			data["windows_info"] = WIMImageWindowsInfo(**windows_info)
 		info_data["images"].append(WIMImageInfo(**data))
-	return WIMInfo(**info_data)  # type: ignore[arg-type]
+	return WIMInfo(**info_data)

@@ -28,7 +28,7 @@ from pathlib import Path
 from types import EllipsisType
 from typing import TYPE_CHECKING, Any, Callable, Generator, Iterable, Literal, Type
 
-import lz4.frame  # type: ignore[import]
+import lz4.frame
 from packaging.version import InvalidVersion, Version
 from pydantic_core import from_json as _pydantic_json_decode
 from pydantic_core import to_json as _pydantic_json_encode
@@ -393,7 +393,7 @@ def _legacy_cmpkey(version: str) -> tuple[str, ...]:
 # Inspired by packaging.version.LegacyVersion (deprecated)
 class LegacyVersion(Version):
 	def __init__(self, version: str):
-		self._version = str(version)  # type: ignore[assignment]
+		self._version = str(version)
 		self._key = _legacy_cmpkey(self._version)  # type: ignore[assignment,arg-type]
 
 	def __str__(self) -> str:

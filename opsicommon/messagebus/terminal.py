@@ -100,7 +100,7 @@ else:
 
 		logger.info("Starting new pty with shell %r, rows %r, cols %r, cwd %r", shell, rows, cols, cwd)
 
-		from ptyprocess import PtyProcess  # type: ignore[import]
+		from ptyprocess import PtyProcess
 
 		argv = shlex.split(shell)
 		sp_env = get_subprocess_environment()
@@ -347,7 +347,7 @@ class Terminal:
 					terminal_id=self.terminal_id,
 				)
 				await self._send_message(res_message)
-			with terminals_lock if use_terminals_lock else nullcontext():  # type: ignore[attr-defined]
+			with terminals_lock if use_terminals_lock else nullcontext():
 				if self.terminal_id in terminals:
 					del terminals[self.terminal_id]
 			if self._pty_stop:

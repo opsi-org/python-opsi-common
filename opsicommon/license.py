@@ -492,7 +492,7 @@ class OpsiLicenseFile:
 				if value in (None, ""):
 					value = ""
 				elif field_name == "revoked_ids":
-					value = ",".join(value)  # type: ignore[arg-type]
+					value = ",".join(value)
 				elif field_name in ("customer_name", "customer_address", "customer_unit", "note"):
 					value = repr(value)[1:-1]
 				data = f"{data}{field_name} = {value}\n"
@@ -558,7 +558,7 @@ class OpsiModulesFile:
 				common_lic["customer_name"] = value
 			elif attribute == "expires":
 				if value == "never":
-					value = OPSI_LICENSE_DATE_UNLIMITED  # type: ignore[assignment]
+					value = OPSI_LICENSE_DATE_UNLIMITED
 				common_lic["valid_until"] = value
 			else:
 				module_id = attribute.lower()
@@ -576,7 +576,7 @@ class OpsiModulesFile:
 			kwargs["id"] = f"legacy-{module_id}"
 			kwargs["module_id"] = module_id
 			kwargs["client_number"] = client_number
-			self.add_license(OpsiLicense(**kwargs))  # type: ignore[arg-type]
+			self.add_license(OpsiLicense(**kwargs))
 
 
 class OpsiLicensePool:
@@ -778,7 +778,7 @@ class OpsiLicensePool:
 						value = value.strip()
 						if attribute != "customer":
 							try:
-								value = int(value)  # type: ignore[assignment]
+								value = int(value)
 							except ValueError:
 								pass
 						modules[attribute] = value

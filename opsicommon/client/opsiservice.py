@@ -40,7 +40,7 @@ from urllib.parse import quote, unquote, urlparse
 from uuid import uuid4
 from xml.etree import ElementTree
 
-import lz4.frame  # type: ignore[import,no-redef]
+import lz4.frame
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from packaging import version
@@ -302,7 +302,7 @@ class KeyPasswordHTTPAdapter(HTTPAdapter):
 	def init_poolmanager(self, *args: Any, **kwargs: Any) -> None:
 		if self.key_password:
 			kwargs["key_password"] = self.key_password
-		super().init_poolmanager(*args, **kwargs)  # type: ignore[no-untyped-call]
+		super().init_poolmanager(*args, **kwargs)
 
 
 class UploadFile:
@@ -495,7 +495,7 @@ class ServiceClient:
 
 		verify = verify or []
 		if isinstance(verify, (str, ServiceVerificationFlags)):
-			verify = [verify]  # type: ignore[list-item]
+			verify = [verify]
 
 		self._verify: list[ServiceVerificationFlags] = []
 		for verify_flag in list(verify):
@@ -1664,7 +1664,7 @@ class ServiceClient:
 			data=data,
 			connect_timeout=connect_timeout,
 			read_timeout=read_timeout,
-			allow_status_codes=allow_status_codes,  # type: ignore[arg-type]
+			allow_status_codes=allow_status_codes,
 			assert_connected=assert_connected,
 		)
 		data = response.content
@@ -2236,10 +2236,10 @@ class Messagebus(Thread):
 			url,
 			header=header,
 			cookie=cookie,
-			on_open=self._on_open,
-			on_error=self._on_error,
-			on_close=self._on_close,
-			on_message=self._on_message,
+			on_open=self._on_open,  # type: ignore[invalid-argument-type]
+			on_error=self._on_error,  # type: ignore[invalid-argument-type]
+			on_close=self._on_close,  # type: ignore[invalid-argument-type]
+			on_message=self._on_message,  # type: ignore[invalid-argument-type]
 			on_ping=self._on_ping,
 			on_pong=self._on_pong,
 		)
@@ -2264,7 +2264,7 @@ class Messagebus(Thread):
 		)
 
 		websocket_setdefaulttimeout(self._connect_timeout)
-		self._app.run_forever(  # type: ignore[attr-defined]
+		self._app.run_forever(
 			sslopt=sslopt,
 			skip_utf8_validation=True,
 			proxy_type=proxy_type,  # type: ignore[arg-type]
@@ -2284,7 +2284,7 @@ class Messagebus(Thread):
 		self._connect_attempt = 0
 		if self._app and self._app.sock:
 			try:
-				self._app.close()  # type: ignore[attr-defined]
+				self._app.close()
 			except Exception as err:
 				logger.error(err, exc_info=True)
 		self._app = None

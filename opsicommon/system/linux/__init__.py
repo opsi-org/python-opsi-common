@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Generator
 
-import psutil  # type: ignore[import]
+import psutil
 
 from opsicommon.logging import get_logger
 
