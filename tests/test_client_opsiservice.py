@@ -1665,7 +1665,7 @@ def test_messagebus_reconnect_exception() -> None:
 
 			# Between reconnect_wait min and max
 			assert 1 <= listener.next_connect_wait[0] <= 3
-			# # Between reconnect_wait min and max + retry-after
+			# Between reconnect_wait min and max + retry-after
 			assert 6 <= listener.next_connect_wait[1] <= 8
 			# Between reconnect_wait min and max
 			assert 1 <= listener.next_connect_wait[2] <= 3
