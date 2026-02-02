@@ -16,6 +16,8 @@ import tempfile
 import threading
 import time
 import warnings
+from multiprocessing import Process
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -42,8 +44,10 @@ from opsicommon.logging import (
 	set_format,
 	use_logging_config,
 )
-from opsicommon.logging.constants import LOG_DEBUG, LOG_ERROR, LOG_INFO, LOG_NOTSET, LOG_SECRET, LOG_TRACE, LOG_WARNING
-from opsicommon.logging.logging import get_logger_levels, reset_logging
+from opsicommon.logging.constants import INFO, LOG_DEBUG, LOG_ERROR, LOG_INFO, LOG_NOTSET, LOG_SECRET, LOG_TRACE, LOG_WARNING
+from opsicommon.logging.logging import get_logger_levels, remove_all_handlers, reset_logging
+from opsicommon.logging.sqlite import SQLiteHandler
+from opsicommon.utils import unix_timestamp
 
 from .helpers import log_stream
 
@@ -631,3 +635,245 @@ def test_use_logging_config() -> None:
 		assert "info2" in log
 		assert "warning3" in log
 		assert "info3" not in log
+
+
+def test_sqlite_handler_base(tmp_path: Path) -> None:
+	log_db = Path(tmp_path) / "logs.db"
+	sqlite_handler = SQLiteHandler(db_path=log_db)
+
+	remove_all_handlers()
+
+	logger.addHandler(sqlite_handler)
+	logger.setLevel(LOG_TRACE)
+
+	now_ms = unix_timestamp(millis=True)
+	with log_context({"ctx1": "val1", "ctx2": "val2"}):
+		logger.info("info message: %s %d", "arg1", 1)
+	time.sleep(0.1)
+	logger.debug("debug message")
+
+	records = list(sqlite_handler.get_records())
+	assert len(records) == 2
+
+	assert now_ms <= records[0].created * 1000 <= now_ms + 1000
+	assert records[0].levelno == logging.INFO
+	assert getattr(records[0], "opsilevel") == LOG_INFO
+	assert records[0].getMessage() == "info message: arg1 1"
+	assert getattr(records[0], "context") == {"ctx1": "val1", "ctx2": "val2", "logger": "root"}
+
+	assert now_ms <= records[1].created * 1000 <= now_ms + 1000
+	assert records[1].created > records[0].created
+	assert records[1].levelno == logging.DEBUG
+	assert getattr(records[1], "opsilevel") == LOG_DEBUG
+	assert records[1].getMessage() == "debug message"
+	assert getattr(records[1], "context") == {"logger": "root"}
+
+	sqlite_handler.delete_records(end_time=now_ms / 1000 - 10)  # delete records older than 10 seconds ago
+	assert len(list(sqlite_handler.get_records())) == 2
+
+	sqlite_handler.delete_records(end_time=now_ms / 1000 + 10)  # delete records older than 10 seconds in the future
+	records = list(sqlite_handler.get_records())
+	assert len(records) == 0
+
+	# Test performance
+	start_time = time.perf_counter()
+	log_level = 0
+	num_records = 0
+	for context in ({"ctx1": "val1"}, {"ctx2": "val2"}, {"ctx1": "val1", "ctx2": "val2"}):
+		with log_context(context):
+			for num in range(9_000):
+				log_level += 10
+				if log_level > 90:
+					log_level = 10
+				logger.log(log_level, "trace message %d", num)
+				num_records += 1
+
+	end_time = time.perf_counter()
+	duration = end_time - start_time
+	print(f"Logged {num_records} trace messages in {duration:.2f} seconds ({num_records / duration:.2f} messages/second)")
+	assert duration < 30.0
+
+	start_time = time.perf_counter()
+	records = list(sqlite_handler.get_records())
+	end_time = time.perf_counter()
+	duration = end_time - start_time
+	print(f"Read {len(records)} records in {duration:.2f} seconds ({len(records) / duration:.2f} records/second)")
+	assert duration < 10.0
+
+	# Test filtering
+	records = list(sqlite_handler.get_records(max_level=LOG_WARNING))
+	assert len(records) == 4_000 * 3
+	for record in records:
+		assert getattr(record, "opsilevel") <= LOG_WARNING
+
+	records = list(sqlite_handler.get_records(max_level=INFO))
+	assert len(records) == 6_000 * 3
+	for record in records:
+		assert getattr(record, "opsilevel") <= LOG_INFO
+
+	records = list(sqlite_handler.get_records(max_level=LOG_WARNING))
+	assert len(records) == 4_000 * 3
+	for record in records:
+		assert getattr(record, "opsilevel") <= LOG_WARNING
+
+	records = list(sqlite_handler.get_records(context={"ctx1": "val1"}))
+	assert len(records) == 18_000
+	expected_first_record = records[-5000]
+	expected_last_record = records[-1]
+
+	records = list(sqlite_handler.get_records(context={"ctx1": "val1"}, max_records=5_000))
+	assert len(records) == 5_000
+	assert records[0].getMessage() == expected_first_record.getMessage()
+	assert records[-1].getMessage() == expected_last_record.getMessage()
+
+	records = list(sqlite_handler.get_records(context={"ctx1": "val1", "ctx2": "val2"}))
+	assert len(records) == 9_000
+	expected_first_record = records[-5000]
+	expected_last_record = records[-1]
+
+	time.sleep(1)
+	now_ms = unix_timestamp(millis=True)
+	logger.info("New record")
+
+	start_time = time.perf_counter()
+	records = list(sqlite_handler.get_records(start_time=now_ms / 1000))
+	end_time = time.perf_counter()
+	duration = end_time - start_time
+	print(f"Read {len(records)} new records in {duration:.2f} seconds")
+	assert len(records) == 1
+
+	start_time = time.perf_counter()
+	records = list(sqlite_handler.get_records(start_time=now_ms / 1000, end_time=now_ms / 1000 + 1))
+	end_time = time.perf_counter()
+	duration = end_time - start_time
+	print(f"Read {len(records)} new records in {duration:.2f} seconds")
+	assert len(records) == 1
+
+	sqlite_handler.delete_records(keep_number=1_000)
+	records = list(sqlite_handler.get_records())
+	assert len(records) == 1_000
+
+	sqlite_handler.delete_records()
+	records = list(sqlite_handler.get_records())
+	assert len(records) == 0
+
+	sqlite_handler.close()
+
+
+def test_sqlite_handler_threaded(tmp_path: Path) -> None:
+	log_db = Path(tmp_path) / "logs_threaded.db"
+	sqlite_handler = SQLiteHandler(db_path=log_db)
+
+	remove_all_handlers()
+
+	logger.addHandler(sqlite_handler)
+	logger.setLevel(LOG_TRACE)
+
+	num_threads = 10
+
+	def log_messages(thread_id: int) -> None:
+		with log_context({"thread_id": str(thread_id)}):
+			for i in range(1000):
+				logger.info("info message from thread %d: %d", thread_id, i)
+			if i % 100 == 0:
+				sqlite_handler.get_records(max_records=50)
+				time.sleep(0.001)
+
+	threads = []
+	for thread_id in range(num_threads):
+		thread = threading.Thread(target=log_messages, args=(thread_id,))
+		threads.append(thread)
+
+	for thread in threads:
+		thread.start()
+
+	for thread in threads:
+		thread.join()
+
+	records = list(sqlite_handler.get_records())
+	assert len(records) == num_threads * 1000
+
+	thread_message_counts = {str(i): 0 for i in range(num_threads)}
+	for record in records:
+		context = getattr(record, "context", {})
+		thread_id = context.get("thread_id")
+		if thread_id in thread_message_counts:
+			thread_message_counts[thread_id] += 1
+
+	for count in thread_message_counts.values():
+		assert count == 1000
+
+	sqlite_handler.close()
+
+
+@pytest.mark.linux
+def test_sqlite_handler_multiprocess(tmp_path: Path) -> None:
+	log_db = Path(tmp_path) / "logs_multiprocess.db"
+
+	sqlite_handler = SQLiteHandler(db_path=log_db)
+
+	def log_messages(process_id: int) -> None:
+		sqlite_handler = SQLiteHandler(db_path=log_db)
+		with log_context({"process_id": str(process_id)}):
+			for i in range(1000):
+				sqlite_handler.emit(
+					logger.makeRecord(
+						name="root",
+						level=logging.INFO,
+						fn="",
+						lno=0,
+						msg="Info message from process %d: %d",
+						args=(process_id, i),
+						exc_info=None,
+					)
+				)
+				time.sleep(0.001)
+		sqlite_handler.close()
+
+	processes = []
+	num_processes = 5
+	for process_id in range(num_processes):
+		process = Process(target=log_messages, args=(process_id,))
+		processes.append(process)
+	for process in processes:
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", DeprecationWarning)
+			process.start()
+	for process in processes:
+		process.join()
+	records = list(sqlite_handler.get_records())
+	assert len(records) == num_processes * 1000
+	sqlite_handler.close()
+
+
+def test_sqlite_handler_follow(tmp_path: Path) -> None:
+	log_db = Path(tmp_path) / "logs_follow.db"
+	sqlite_handler = SQLiteHandler(db_path=log_db)
+
+	remove_all_handlers()
+
+	logger.addHandler(sqlite_handler)
+	logger.setLevel(LOG_TRACE)
+	for num in range(1, 20):
+		logger.info("Info message %d", num)
+		logger.error("Error message %d", num)
+
+	def log_writer() -> None:
+		for num in range(20, 40):
+			logger.info("Info message %d", num)
+			logger.error("Error message %d", num)
+			time.sleep(0.05)
+
+	records = []
+	for record in sqlite_handler.get_records(max_records=10, max_level=LOG_ERROR, follow=True):
+		records.append(record)
+		if record.getMessage() == "Error message 19":
+			threading.Thread(target=log_writer).start()
+		elif record.getMessage() == "Error message 39":
+			break
+
+	assert len(records) == 30
+	for idx, record in enumerate(records):
+		assert record.getMessage() == f"Error message {idx + 10}"
+
+	sqlite_handler.close()

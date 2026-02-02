@@ -994,12 +994,18 @@ def remove_all_handlers(handler_type: type | None = None, handler_name: str | No
 	:type handler_type: class
 	"""
 	for _logger in get_all_loggers():
-		if not isinstance(_logger, PlaceHolder):
-			for _handler in _logger.handlers:
-				if (
-					not handler_type or type(_handler) == handler_type  # exact type needed, not subclass # noqa: E721
-				) and (not handler_name or _handler.name == handler_name):
-					_logger.removeHandler(_handler)
+		if isinstance(_logger, PlaceHolder):
+			continue
+		remove_handlers = [
+			_handler
+			for _handler in _logger.handlers
+			if (
+				not handler_type or type(_handler) == handler_type  # exact type needed, not subclass # noqa: E721
+			)
+			and (not handler_name or _handler.name == handler_name)
+		]
+		for _handler in remove_handlers:
+			_logger.removeHandler(_handler)
 
 
 def get_logger_levels(opsi_level: bool = True) -> dict[str, int]:

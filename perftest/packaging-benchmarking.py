@@ -11,16 +11,18 @@ import platform
 import random
 import shutil
 import statistics
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
-import time
+
 from opsicommon.package.archive import (
+	ArchiveProgressListener,
 	create_archive_external,
 	create_archive_internal,
 	extract_archive_external,
 	extract_archive_internal,
-	ArchiveProgressListener,
+	get_archive_files,
 )
 from opsicommon.utils import make_temp_dir
 
@@ -47,6 +49,7 @@ def create_source(work_dir: Path) -> None:
 def time_tar_create(work_dir: Path, method: Callable, compression: str | None = None, progress: bool = False) -> None:
 	timings = []
 	size = 0
+	method_name = getattr(method, "__name__", str(method))
 	for _ in range(REPETITIONS):
 		archive = work_dir / "archive"
 		start = time.perf_counter() * 1000
@@ -56,11 +59,11 @@ def time_tar_create(work_dir: Path, method: Callable, compression: str | None = 
 		timings.append(time.perf_counter() * 1000 - start)
 		size = archive.stat().st_size
 		if _ == 0:
-			(Path() / method.__name__ / str(compression)).mkdir(exist_ok=True, parents=True)
-			shutil.copy(archive, Path() / method.__name__ / str(compression))
+			(Path() / method_name / str(compression)).mkdir(exist_ok=True, parents=True)
+			shutil.copy(archive, Path() / method_name / str(compression))
 		archive.unlink(missing_ok=True)
 
-	print(f"method: {method.__name__}, compression: {compression}, progress: {progress}, size: {(size / 1_000_000):.1f} MB")
+	print(f"method: {method_name}, compression: {compression}, progress: {progress}, size: {(size / 1_000_000):.1f} MB")
 	print(f"mean:\t{statistics.mean(timings):.2f}ms")
 	print(f"stdev:\t{statistics.stdev(timings):.2f}ms")
 	print(f"min:\t{min(timings):.2f}ms")
@@ -81,6 +84,7 @@ def benchmark_tar_create() -> None:
 def time_tar_extract(archive: Path, method: Callable, compression: str | None = None, progress: bool = False) -> None:
 	timings = []
 	size = archive.stat().st_size
+	method_name = getattr(method, "__name__", str(method))
 
 	for _ in range(REPETITIONS):
 		with make_temp_dir(Path("/tmp")) as temp_dir:
@@ -88,7 +92,7 @@ def time_tar_extract(archive: Path, method: Callable, compression: str | None = 
 			method(archive, temp_dir, progress_listener=ProgressListener() if progress else None)
 			timings.append((datetime.now() - start).microseconds / 1000)
 
-	print(f"method: {method.__name__}, compression: {compression}, progress: {progress}, size: {(size / 1_000_000):.1f} MB")
+	print(f"method: {method_name}, compression: {compression}, progress: {progress}, size: {(size / 1_000_000):.1f} MB")
 	print(f"mean:\t{statistics.mean(timings):.2f}ms")
 	print(f"stdev:\t{statistics.stdev(timings):.2f}ms")
 	print(f"min:\t{min(timings):.2f}ms")
@@ -100,7 +104,7 @@ def benchmark_tar_extract() -> None:
 		create_source(temp_dir)
 		for compression in COMPRESSIONS:
 			archive = temp_dir / f"archive.tar{f'.{compression}' if compression else ''}"
-			create_archive_internal(archive, [temp_dir / "source"], temp_dir, compression=compression)
+			create_archive_internal(archive, list(get_archive_files(temp_dir / "source")), compression=compression)
 			for method in (extract_archive_external, extract_archive_internal):
 				if platform.system().lower() != "linux" and method is extract_archive_external:
 					continue

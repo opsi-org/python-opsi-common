@@ -92,7 +92,7 @@ lint-and-test:
     - uv self update
     - uv sync --frozen
     - uv run ruff check opsicommon tests
-    - uv run ty check opsicommon tests
+    - uv run ty check opsicommon tests perftest
     - for db in coverage_*; do sqlite3 $db 'update file set path=replace(substr(path,instr(path,"opsicommon")),"\","/");'; done
     - echo -e '[run]\nrelative_files = True\n' > .coveragerc
     - uv run coverage combine coverage_*
