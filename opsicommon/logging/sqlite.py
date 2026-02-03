@@ -6,11 +6,13 @@ import queue
 import sqlite3
 import threading
 import time
-from logging import Handler, LogRecord
+from logging import Formatter, Handler, LogRecord
 from pathlib import Path
 from typing import Generator
 
-from opsicommon.logging.constants import OPSI_LEVEL_TO_LEVEL
+from colorlog import ColoredFormatter
+
+from opsicommon.logging.constants import DATETIME_FORMAT, DEFAULT_COLORED_FORMAT, DEFAULT_FORMAT, LOG_COLORS, OPSI_LEVEL_TO_LEVEL
 from opsicommon.utils import json_decode, json_encode
 
 
@@ -28,6 +30,7 @@ class SQLiteLogReader:
 
 	def get_records(
 		self,
+		*,
 		start_time: float | None = None,
 		end_time: float | None = None,
 		max_level: int | None = None,
@@ -99,6 +102,32 @@ class SQLiteLogReader:
 					max_id = rec[0]
 					break
 				time.sleep(0.1)
+
+	def get_lines(
+		self,
+		*,
+		start_time: float | None = None,
+		end_time: float | None = None,
+		max_level: int | None = None,
+		context: dict[str, str] | None = None,
+		max_records: int | None = None,
+		follow: bool = False,
+		format: str | None = None,
+		datefmt: str = DATETIME_FORMAT,
+		colored: bool = False,
+	) -> Generator[str, None, None]:
+		format = format or (DEFAULT_COLORED_FORMAT if colored else DEFAULT_FORMAT)
+		formatter = ColoredFormatter(format, datefmt=datefmt, log_colors=LOG_COLORS) if colored else Formatter(format, datefmt=datefmt)
+
+		for record in self.get_records(
+			start_time=start_time,
+			end_time=end_time,
+			max_level=max_level,
+			context=context,
+			max_records=max_records,
+			follow=follow,
+		):
+			yield formatter.format(record)
 
 	def close(self) -> None:
 		"""Closes the database connection."""
