@@ -31,7 +31,6 @@ from opsicommon.logging import (
 	get_all_handlers,
 	get_logger,
 	handle_log_exception,
-	init_logging,
 	init_warnings_capture,
 	log_context,
 	logging_config,
@@ -85,10 +84,10 @@ def test_caller_filename() -> None:
 			assert line.split()[-1] == "test_logging.py"
 
 
-def test_log_file(tmpdir: str) -> None:
-	log_file1 = tmpdir + "/log1"
-	log_file2 = tmpdir + "/log2"
-	log_file3 = tmpdir + "/log3"
+def test_log_file(tmp_path: Path) -> None:
+	log_file1 = tmp_path / "log1"
+	log_file2 = tmp_path / "log2"
+	log_file3 = tmp_path / "log3"
 	logger.addHandler(logging.FileHandler(log_file1))
 	logging_config(log_file=log_file2, file_level=logging.INFO, file_format="%(message)s", remove_handlers=False)
 	logger.warning("message")
@@ -508,21 +507,18 @@ def test_log_devel() -> None:
 		assert "debug" not in log
 
 
-def test_multi_call_init_logging(tmpdir: str) -> None:
-	log_file = tmpdir.join("opsi.log")
-	init_logging(stderr_level=logging.INFO, log_file=log_file, file_level=logging.INFO, file_format="%(message)s")
+def test_multi_call_logging_config(tmp_path: Path) -> None:
+	log_file = tmp_path / "opsi.log"
+	logging_config(stderr_level=logging.INFO, log_file=log_file, file_level=logging.INFO, file_format="%(message)s")
 	print_logger_info()
 	logger.info("LINE1")
-	init_logging(stderr_level=logging.INFO, log_file=log_file, file_level=logging.INFO, file_format="%(message)s")
+	logging_config(stderr_level=logging.INFO, log_file=log_file, file_level=logging.INFO, file_format="%(message)s")
 	logger.info("LINE2")
-	init_logging(stderr_level=logging.INFO, log_file=log_file, file_level=logging.ERROR, file_format="%(message)s")
+	logging_config(stderr_level=logging.INFO, log_file=log_file, file_level=logging.ERROR, file_format="%(message)s")
 	logger.info("LINE3")
-	init_logging(stderr_level=logging.NONE, file_level=logging.INFO)  # type: ignore[attr-defined]
+	logging_config(stderr_level=logging.NONE, file_level=logging.INFO)  # type: ignore[attr-defined]
 	logger.info("LINE4")
-
-	with open(log_file, encoding="utf-8") as file:
-		data = file.read()
-		assert data == "LINE1\nLINE2\nLINE4\n"
+	assert log_file.read_text(encoding="utf-8") == "LINE1\nLINE2\nLINE4\n"
 
 
 def test_log_warnings() -> None:
@@ -760,6 +756,27 @@ def test_sqlite_handler_base(tmp_path: Path) -> None:
 	sqlite_handler.close()
 
 
+def test_sqlite_handler_max_records(tmp_path: Path) -> None:
+	log_db = Path(tmp_path) / "logs_max_records.db"
+	sqlite_handler = SQLiteHandler(db_path=log_db, max_records=50, truncate_interval=1.0)
+
+	remove_all_handlers()
+
+	logger.addHandler(sqlite_handler)
+	logger.setLevel(LOG_TRACE)
+
+	for i in range(100):
+		logger.info("info message: %d", i)
+
+	time.sleep(2)  # Wait for truncate to happen
+	records = list(sqlite_handler.get_records())
+	assert len(records) == 50
+	assert records[0].getMessage() == "info message: 50"
+	assert records[-1].getMessage() == "info message: 99"
+
+	sqlite_handler.close()
+
+
 def test_sqlite_handler_threaded(tmp_path: Path) -> None:
 	log_db = Path(tmp_path) / "logs_threaded.db"
 	sqlite_handler = SQLiteHandler(db_path=log_db)
@@ -876,4 +893,16 @@ def test_sqlite_handler_follow(tmp_path: Path) -> None:
 	for idx, record in enumerate(records):
 		assert record.getMessage() == f"Error message {idx + 10}"
 
+	sqlite_handler.close()
+
+
+def test_logging_config_log_db(tmp_path: Path) -> None:
+	log_db = tmp_path / "logs.db"
+	logging_config(log_db=log_db, db_level=logging.INFO)
+	logger.info("message")
+	time.sleep(1.0)  # Wait for flush
+	sqlite_handler = get_all_handlers(SQLiteHandler)[0]
+	records = list(sqlite_handler.get_records())  # type: ignore[unresolved-attribute]
+	assert len(records) == 1
+	assert records[0].getMessage() == "message"
 	sqlite_handler.close()

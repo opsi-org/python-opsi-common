@@ -67,6 +67,7 @@ from .logging import (
 	set_format,
 	use_logging_config,
 )
+from .sqlite import SQLiteHandler
 
 __all__ = [
 	"CRITICAL",
@@ -125,4 +126,5 @@ __all__ = [
 	"set_filter_from_string",
 	"set_format",
 	"use_logging_config",
+	"SQLiteHandler",
 ]

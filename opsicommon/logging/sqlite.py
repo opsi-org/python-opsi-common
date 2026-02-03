@@ -2,10 +2,10 @@
 # Copyright (c) 2020-2025 uib GmbH <info@uib.de>
 # This code is owned by the uib GmbH, Mainz, Germany (uib.de). All rights reserved.
 # License: AGPL-3.0-only
-
 import queue
 import sqlite3
 import threading
+import time
 from logging import Handler, LogRecord
 from pathlib import Path
 from typing import Generator
@@ -19,16 +19,19 @@ class SQLiteHandler(Handler):
 	Logging handler for logging messages to a SQLite database.
 	"""
 
-	def __init__(self, db_path: Path) -> None:
+	def __init__(self, db_path: Path | str, max_records: int = 0, flush_interval: float = 0.01, truncate_interval: float = 60.0) -> None:
 		super().__init__()
-		self.db_path = db_path
+		self.db_path = Path(db_path)
+		self.max_records = max_records
 		self.connection: sqlite3.Connection
 		self._lock = threading.RLock()
 
 		self._queue: queue.Queue[tuple[int, int, str, str, int, bytes | None]] = queue.Queue()
 		self._stop_event = threading.Event()
 		self._writer_thread = threading.Thread(target=self._writer_loop, name="SQLiteHandlerWriter", daemon=True)
-		self._flush_interval = 0.01
+		self._flush_interval = flush_interval
+		self._truncate_interval = truncate_interval
+		self._last_truncate_time = time.time()
 
 		self._initialize_database()
 		self._writer_thread.start()
@@ -57,6 +60,11 @@ class SQLiteHandler(Handler):
 		while not self._stop_event.wait(self._flush_interval):
 			if self._queue.qsize() > 0:
 				self.flush()
+			if self.max_records > 0:
+				current_time = time.time()
+				if current_time - self._last_truncate_time >= self._truncate_interval:
+					self._last_truncate_time = current_time
+					self.delete_records(keep_number=self.max_records)
 
 	def emit(self, record: LogRecord) -> None:
 		"""Queues a log record for insertion into the SQLite database."""

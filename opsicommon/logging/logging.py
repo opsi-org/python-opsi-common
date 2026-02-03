@@ -597,6 +597,7 @@ class _LoggingState:
 	stderr_file: IO | Console | None = None
 	file_level: int | None = None
 	file_format: str | None = None
+	db_level: int | None = None
 
 	def reset(self) -> None:
 		self.stderr_level = None
@@ -604,6 +605,7 @@ class _LoggingState:
 		self.stderr_file = None
 		self.file_level = None
 		self.file_format = None
+		self.db_level = None
 
 
 _logging_state = _LoggingState()
@@ -613,11 +615,14 @@ def logging_config(
 	*,
 	stderr_level: int | None = None,
 	stderr_format: str | None = None,
-	log_file: str | None = None,
+	log_file: Path | str | None = None,
 	file_level: int | None = None,
 	file_format: str | None = None,
 	file_rotate_max_bytes: int = 0,
 	file_rotate_backup_count: int = 0,
+	log_db: Path | str | None = None,
+	db_level: int | None = None,
+	db_max_records: int = 0,
 	remove_handlers: bool = False,
 	stderr_file: IO | Console | None = None,
 	logger_levels: dict | None = None,
@@ -634,7 +639,7 @@ def logging_config(
 	:param stderr_file: File handle for stderr stream.
 	:type stderr_file: IO
 	:param log_file: Name of the file to write logging stream to.
-	:type log_file: str
+	:type log_file: Path | str
 	:param file_level: Loglevel to set for the file logging stream.
 	:type file_level: int
 	:param file_format: Format to set for the file logging stream.
@@ -643,6 +648,12 @@ def logging_config(
 	:type file_rotate_max_bytes: int
 	:param file_rotate_backup_count: Keep this number of backups when rotating
 	:type file_rotate_backup_count: int
+	:param log_db: Path to SQLite database file to log to.
+	:type log_db: Path | str
+	:param db_level: Loglevel to set for the database logging stream.
+	:type db_level: int
+	:param db_max_records: Maximum number of records to keep in the database.
+	:type db_max_records: int
 	:param remove_handlers: Remove all current handlers
 	:type remove_handlers: bool
 	"""
@@ -656,13 +667,6 @@ def logging_config(
 		file_format = _logging_state.file_format or DEFAULT_FORMAT
 	_logging_state.file_format = file_format
 
-	if stderr_file is None:
-		stderr_file = _logging_state.stderr_file or sys.stderr
-	stderr_file_changed = stderr_file != _logging_state.stderr_file
-	_logging_state.stderr_file = stderr_file
-	# Importing rich is slow, so check class name instead of using isinstance
-	stderr_is_rich_console = stderr_file and stderr_file.__class__.__name__ == "Console"
-
 	if stderr_level is not None:
 		if stderr_level < 10:
 			stderr_level = OPSI_LEVEL_TO_LEVEL[stderr_level]
@@ -673,24 +677,17 @@ def logging_config(
 			file_level = OPSI_LEVEL_TO_LEVEL[file_level]
 		_logging_state.file_level = file_level
 
-	if log_file:
-		if remove_handlers:
-			remove_all_handlers(handler_type=FileHandler)
-			remove_all_handlers(handler_type=RotatingFileHandler)
-		else:
-			remove_all_handlers(handler_name="opsi_file_handler")
+	if db_level is not None:
+		if db_level < 10:
+			db_level = OPSI_LEVEL_TO_LEVEL[db_level]
+		_logging_state.db_level = db_level
 
-		handler: FileHandler
-		if file_rotate_max_bytes and file_rotate_max_bytes > 0:
-			handler = RotatingFileHandler(log_file, encoding="utf-8", maxBytes=file_rotate_max_bytes, backupCount=file_rotate_backup_count)
-		else:
-			handler = FileHandler(log_file, encoding="utf-8")
-		handler.name = "opsi_file_handler"
-		logging.root.addHandler(handler)
-
-	if file_level is not None:
-		for hdlr in get_all_handlers((FileHandler, RotatingFileHandler)):
-			hdlr.setLevel(file_level)
+	if stderr_file is None:
+		stderr_file = _logging_state.stderr_file or sys.stderr
+	stderr_file_changed = stderr_file != _logging_state.stderr_file
+	_logging_state.stderr_file = stderr_file
+	# Importing rich is slow, so check class name instead of using isinstance
+	stderr_is_rich_console = stderr_file and stderr_file.__class__.__name__ == "Console"
 
 	if stderr_level is not None:
 		if stderr_file_changed:
@@ -708,6 +705,39 @@ def logging_config(
 				logging.root.addHandler(shandler)
 		for hdlr in get_all_handlers((StreamHandler, RichConsoleHandler)):
 			hdlr.setLevel(stderr_level)
+
+	if log_file:
+		if remove_handlers:
+			remove_all_handlers(handler_type=FileHandler)
+			remove_all_handlers(handler_type=RotatingFileHandler)
+		else:
+			remove_all_handlers(handler_name="opsi_file_handler")
+
+		fhandler: FileHandler
+		if file_rotate_max_bytes and file_rotate_max_bytes > 0:
+			fhandler = RotatingFileHandler(log_file, encoding="utf-8", maxBytes=file_rotate_max_bytes, backupCount=file_rotate_backup_count)
+		else:
+			fhandler = FileHandler(log_file, encoding="utf-8")
+		fhandler.name = "opsi_file_handler"
+		logging.root.addHandler(fhandler)
+
+	if file_level is not None:
+		for hdlr in get_all_handlers((FileHandler, RotatingFileHandler)):
+			hdlr.setLevel(file_level)
+
+	if log_db:
+		from opsicommon.logging import SQLiteHandler
+
+		remove_all_handlers(handler_name="opsi_db_handler")
+		dbhandler = SQLiteHandler(log_db, max_records=db_max_records)
+		dbhandler.name = "opsi_db_handler"
+		logging.root.addHandler(dbhandler)
+
+	if db_level is not None:
+		from opsicommon.logging import SQLiteHandler
+
+		for hdlr in get_all_handlers(SQLiteHandler):
+			hdlr.setLevel(db_level)
 
 	min_value = NONE
 	for hdlr in get_all_handlers():
