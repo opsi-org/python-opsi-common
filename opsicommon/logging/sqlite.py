@@ -14,65 +14,17 @@ from opsicommon.logging.constants import OPSI_LEVEL_TO_LEVEL
 from opsicommon.utils import json_decode, json_encode
 
 
-class SQLiteHandler(Handler):
+class SQLiteLogReader:
 	"""
-	Logging handler for logging messages to a SQLite database.
+	Reader for log records stored in a SQLite database.
 	"""
 
-	def __init__(self, db_path: Path | str, max_records: int = 0, flush_interval: float = 0.01, truncate_interval: float = 60.0) -> None:
-		super().__init__()
+	def __init__(self, db_path: Path | str) -> None:
 		self.db_path = Path(db_path)
-		self.max_records = max_records
-		self.connection: sqlite3.Connection
-		self._lock = threading.RLock()
-
-		self._queue: queue.Queue[tuple[int, int, str, str, int, bytes | None]] = queue.Queue()
-		self._stop_event = threading.Event()
-		self._writer_thread = threading.Thread(target=self._writer_loop, name="SQLiteHandlerWriter", daemon=True)
-		self._flush_interval = flush_interval
-		self._truncate_interval = truncate_interval
-		self._last_truncate_time = time.time()
-
-		self._initialize_database()
-		self._writer_thread.start()
-
-	def _initialize_database(self) -> None:
-		"""Initializes the SQLite database and creates the logs table if it doesn't exist."""
 		self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
-		self.connection.execute("PRAGMA synchronous = EXTRA")
-		cursor = self.connection.cursor()
-		cursor.execute("""
-			CREATE TABLE IF NOT EXISTS log_records (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				timestamp_ms INTEGER NOT NULL,
-				level INTEGER NOT NULL,
-				message TEXT NOT NULL,
-				filename TEXT NOT NULL,
-				line_number INTEGER NOT NULL,
-				context TEXT
-			)
-		""")
-		cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_records_timestamp ON log_records (timestamp_ms)")
-		cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_records_level ON log_records (level)")
-		self.connection.commit()
 
-	def _writer_loop(self) -> None:
-		while not self._stop_event.wait(self._flush_interval):
-			if self._queue.qsize() > 0:
-				self.flush()
-			if self.max_records > 0:
-				current_time = time.time()
-				if current_time - self._last_truncate_time >= self._truncate_interval:
-					self._last_truncate_time = current_time
-					self.delete_records(keep_number=self.max_records)
-
-	def emit(self, record: LogRecord) -> None:
-		"""Queues a log record for insertion into the SQLite database."""
-		context_json = None
-		if context := getattr(record, "context", None):
-			context_json = json_encode(context)
-
-		self._queue.put((int(record.created * 1000), record.levelno, record.getMessage(), record.filename, record.lineno, context_json))
+	def flush(self) -> None:
+		pass
 
 	def get_records(
 		self,
@@ -127,9 +79,9 @@ class SQLiteHandler(Handler):
 		cursor = self.connection.cursor()
 		while True:
 			cursor.execute(query, filter_values)
-			modification_time = self.db_path.stat().st_mtime
+			last_record_id_read = 0
 			for row in cursor:
-				last_record_id_read = row[0]
+				last_record_id_read = row[0] or 0
 				record = LogRecord(name="", level=row[2], pathname=row[4] or "", lineno=row[5], msg=row[3], args=None, exc_info=None)
 				if row[6]:
 					setattr(record, "context", json_decode(row[6]))
@@ -139,9 +91,83 @@ class SQLiteHandler(Handler):
 			if "last_record_id_read" not in filter_values:
 				query = f"{base_query} AND id > :last_record_id_read ORDER BY id ASC"
 			filter_values["last_record_id_read"] = last_record_id_read
-			while modification_time == self.db_path.stat().st_mtime:
-				if self._stop_event.wait(self._flush_interval):
-					return
+
+			while True:
+				cursor.execute(
+					"SELECT id FROM log_records WHERE id = :next_id",
+					{"next_id": last_record_id_read + 1},
+				)
+				if cursor.fetchone():
+					break
+				time.sleep(0.1)
+
+	def close(self) -> None:
+		"""Closes the database connection."""
+		try:
+			self.connection.close()
+		except Exception:
+			pass
+
+
+class SQLiteHandler(Handler, SQLiteLogReader):
+	"""
+	Logging handler for logging messages to a SQLite database.
+	"""
+
+	def __init__(self, db_path: Path | str, max_records: int = 0, flush_interval: float = 0.01, truncate_interval: float = 60.0) -> None:
+		Handler.__init__(self)
+		SQLiteLogReader.__init__(self, db_path)
+		self.max_records = max_records
+		self.connection: sqlite3.Connection
+		self._lock = threading.RLock()
+
+		self._queue: queue.Queue[tuple[int, int, str, str, int, bytes | None]] = queue.Queue()
+		self._stop_event = threading.Event()
+		self._writer_thread = threading.Thread(target=self._writer_loop, name="SQLiteHandlerWriter", daemon=True)
+		self._flush_interval = flush_interval
+		self._truncate_interval = truncate_interval
+		self._last_truncate_time = time.time()
+
+		self._initialize_database()
+		self._writer_thread.start()
+
+	def _initialize_database(self) -> None:
+		"""Initializes the SQLite database and creates the logs table if it doesn't exist."""
+		self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
+		self.connection.execute("PRAGMA synchronous = EXTRA")
+		cursor = self.connection.cursor()
+		cursor.execute("""
+			CREATE TABLE IF NOT EXISTS log_records (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				timestamp_ms INTEGER NOT NULL,
+				level INTEGER NOT NULL,
+				message TEXT NOT NULL,
+				filename TEXT NOT NULL,
+				line_number INTEGER NOT NULL,
+				context TEXT
+			)
+		""")
+		cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_records_timestamp ON log_records (timestamp_ms)")
+		cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_records_level ON log_records (level)")
+		self.connection.commit()
+
+	def _writer_loop(self) -> None:
+		while not self._stop_event.wait(self._flush_interval):
+			if self._queue.qsize() > 0:
+				self.flush()
+			if self.max_records > 0:
+				current_time = time.time()
+				if current_time - self._last_truncate_time >= self._truncate_interval:
+					self._last_truncate_time = current_time
+					self.delete_records(keep_number=self.max_records)
+
+	def emit(self, record: LogRecord) -> None:
+		"""Queues a log record for insertion into the SQLite database."""
+		context_json = None
+		if context := getattr(record, "context", None):
+			context_json = json_encode(context)
+
+		self._queue.put((int(record.created * 1000), record.levelno, record.getMessage(), record.filename, record.lineno, context_json))
 
 	def delete_records(self, end_time: float | None = None, keep_number: int | None = None) -> None:
 		"""
@@ -193,8 +219,5 @@ class SQLiteHandler(Handler):
 		if self._writer_thread.is_alive():
 			self._writer_thread.join(timeout=2)
 		self.flush()
-		super().close()
-		try:
-			self.connection.close()
-		except Exception:
-			pass
+		Handler.close(self)
+		SQLiteLogReader.close(self)
