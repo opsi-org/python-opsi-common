@@ -79,7 +79,7 @@ class SQLiteLogReader:
 		cursor = self.connection.cursor()
 		while True:
 			cursor.execute(query, filter_values)
-			last_record_id_read = 0
+			max_id = 0
 			for row in cursor:
 				last_record_id_read = row[0] or 0
 				record = LogRecord(name="", level=row[2], pathname=row[4] or "", lineno=row[5], msg=row[3], args=None, exc_info=None)
@@ -93,11 +93,10 @@ class SQLiteLogReader:
 			filter_values["last_record_id_read"] = last_record_id_read
 
 			while True:
-				cursor.execute(
-					"SELECT id FROM log_records WHERE id = :next_id",
-					{"next_id": last_record_id_read + 1},
-				)
-				if cursor.fetchone():
+				cursor.execute("SELECT max(id) FROM log_records")
+				rec = cursor.fetchone()
+				if rec and rec[0] is not None and rec[0] > max_id:
+					max_id = rec[0]
 					break
 				time.sleep(0.1)
 
