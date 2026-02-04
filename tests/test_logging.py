@@ -870,7 +870,8 @@ def test_sqlite_handler_multiprocess(tmp_path: Path) -> None:
 	sqlite_handler.close()
 
 
-def test_sqlite_handler_follow(tmp_path: Path) -> None:
+@pytest.mark.parametrize("max_level", [None, LOG_ERROR])
+def test_sqlite_handler_follow(tmp_path: Path, max_level: int | None) -> None:
 	log_db = Path(tmp_path) / "logs_follow.db"
 	sqlite_handler = SQLiteHandler(db_path=log_db)
 
@@ -889,16 +890,19 @@ def test_sqlite_handler_follow(tmp_path: Path) -> None:
 			time.sleep(0.05)
 
 	records = []
-	for record in sqlite_handler.get_records(max_records=10, max_level=LOG_ERROR, follow=True):
+	for record in sqlite_handler.get_records(max_records=10, max_level=max_level, follow=True):
 		records.append(record)
 		if record.getMessage() == "Error message 19":
 			threading.Thread(target=log_writer).start()
 		elif record.getMessage() == "Error message 39":
 			break
 
-	assert len(records) == 30
-	for idx, record in enumerate(records):
-		assert record.getMessage() == f"Error message {idx + 10}"
+	if max_level is None:
+		assert len(records) == 50
+	else:
+		assert len(records) == 30
+		for idx, record in enumerate(records):
+			assert record.getMessage() == f"Error message {idx + 10}"
 
 	sqlite_handler.close()
 

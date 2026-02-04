@@ -92,7 +92,7 @@ class SQLiteLogReader:
 			if not follow:
 				return
 			if "last_record_id_read" not in filter_values:
-				query = f"{base_query} AND id > :last_record_id_read ORDER BY id ASC"
+				query = base_query + (" AND " if filter_clause else " WHERE ") + "id > :last_record_id_read ORDER BY id ASC"
 			filter_values["last_record_id_read"] = last_record_id_read
 
 			while True:
