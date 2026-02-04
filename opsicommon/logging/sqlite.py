@@ -182,6 +182,10 @@ class SQLiteHandler(Handler, SQLiteLogReader):
 		try:
 			self.connection.execute("PRAGMA synchronous = EXTRA")
 		except sqlite3.DatabaseError:
+			try:
+				self.connection.close()
+			except Exception:
+				pass
 			if recreate:
 				raise
 			return self._initialize_database(recreate=True)
