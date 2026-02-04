@@ -1013,7 +1013,7 @@ def get_all_handlers(handler_type: type | tuple[type, ...] | None = None, handle
 	return handlers
 
 
-def remove_all_handlers(handler_type: type | None = None, handler_name: str | None = None) -> None:
+def remove_all_handlers(handler_type: type | None = None, handler_name: str | None = None) -> list[logging.Handler]:
 	"""
 	Removes all handlers (of a certain type).
 
@@ -1023,6 +1023,7 @@ def remove_all_handlers(handler_type: type | None = None, handler_name: str | No
 	:param handler_type: type of handlers that should be removed.
 	:type handler_type: class
 	"""
+	removed_handlers = []
 	for _logger in get_all_loggers():
 		if isinstance(_logger, PlaceHolder):
 			continue
@@ -1035,7 +1036,10 @@ def remove_all_handlers(handler_type: type | None = None, handler_name: str | No
 			and (not handler_name or _handler.name == handler_name)
 		]
 		for _handler in remove_handlers:
+			_handler.close()
 			_logger.removeHandler(_handler)
+			removed_handlers.append(_handler)
+	return removed_handlers
 
 
 def get_logger_levels(opsi_level: bool = True) -> dict[str, int]:
