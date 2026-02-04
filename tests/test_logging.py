@@ -25,6 +25,7 @@ import requests
 from _pytest.capture import CaptureFixture
 
 from opsicommon.logging import (
+	SECRET_REPLACEMENT_STRING,
 	ContextSecretFormatter,
 	ObservableHandler,
 	context_filter,
@@ -641,28 +642,35 @@ def test_sqlite_handler_base(tmp_path: Path) -> None:
 
 	logger.addHandler(sqlite_handler)
 	logger.setLevel(LOG_TRACE)
+	secret_filter.add_secrets("PASSWORD", "2SHORT", "SECRETSTRING")
 
 	now_ms = unix_timestamp(millis=True)
+	time.sleep(0.001)
 	with log_context({"ctx1": "val1", "ctx2": "val2"}):
-		logger.info("info message: %s %d", "arg1", 1)
-	time.sleep(0.1)
-	logger.debug("debug message")
+		logger.info("info message: %s %d PASSWORD", "arg1", 1)
+	time.sleep(1.1)
+	logger.debug("debug SECRETSTRING message")
 
 	records = list(sqlite_handler.get_records())
 	assert len(records) == 2
 
-	assert now_ms <= records[0].created * 1000 <= now_ms + 1000
+	assert now_ms <= records[0].created * 1000 <= now_ms + 5000
+
+	assert records[0].msecs == round(records[0].created % 1 * 1000)
 	assert records[0].levelno == logging.INFO
 	assert getattr(records[0], "opsilevel") == LOG_INFO
-	assert records[0].getMessage() == "info message: arg1 1"
+	assert records[0].getMessage() == f"info message: arg1 1 {SECRET_REPLACEMENT_STRING}"
 	assert getattr(records[0], "context") == {"ctx1": "val1", "ctx2": "val2", "logger": "root"}
 
-	assert now_ms <= records[1].created * 1000 <= now_ms + 1000
+	assert now_ms <= records[1].created * 1000 <= now_ms + 5000
+	assert records[1].msecs == round(records[1].created % 1 * 1000)
 	assert records[1].created > records[0].created
 	assert records[1].levelno == logging.DEBUG
 	assert getattr(records[1], "opsilevel") == LOG_DEBUG
-	assert records[1].getMessage() == "debug message"
+	assert records[1].getMessage() == f"debug {SECRET_REPLACEMENT_STRING} message"
 	assert getattr(records[1], "context") == {"logger": "root"}
+
+	assert records[1].created - records[0].created >= 1.09
 
 	sqlite_handler.delete_records(end_time=now_ms / 1000 - 10)  # delete records older than 10 seconds ago
 	assert len(list(sqlite_handler.get_records())) == 2
@@ -904,6 +912,29 @@ def test_sqlite_handler_follow(tmp_path: Path, max_level: int | None) -> None:
 		for idx, record in enumerate(records):
 			assert record.getMessage() == f"Error message {idx + 10}"
 
+	sqlite_handler.close()
+
+
+def test_sqlite_corrupt_db(tmp_path: Path) -> None:
+	log_db = Path(tmp_path) / "logs.db"
+	sqlite_handler = SQLiteHandler(db_path=log_db)
+
+	remove_all_handlers()
+
+	logger.addHandler(sqlite_handler)
+	logger.setLevel(LOG_TRACE)
+	for num in range(10):
+		logger.info("Info message %d", num)
+	sqlite_handler.close()
+
+	# Corrupt the database
+	with open(log_db, "r+b") as file:
+		file.seek(20)
+		file.write(b"CORRUPTED")
+
+	# Reopen the handler, it should recreate the database
+	sqlite_handler = SQLiteHandler(db_path=log_db)
+	assert len(list(sqlite_handler.get_records())) == 0
 	sqlite_handler.close()
 
 

@@ -2,6 +2,7 @@
 # Copyright (c) 2020-2025 uib GmbH <info@uib.de>
 # This code is owned by the uib GmbH, Mainz, Germany (uib.de). All rights reserved.
 # License: AGPL-3.0-only
+
 import queue
 import sqlite3
 import threading
@@ -12,7 +13,15 @@ from typing import Generator
 
 from colorlog import ColoredFormatter
 
-from opsicommon.logging.constants import DATETIME_FORMAT, DEFAULT_COLORED_FORMAT, DEFAULT_FORMAT, LOG_COLORS, OPSI_LEVEL_TO_LEVEL
+from opsicommon.logging import secret_filter
+from opsicommon.logging.constants import (
+	DATETIME_FORMAT,
+	DEFAULT_COLORED_FORMAT,
+	DEFAULT_FORMAT,
+	LOG_COLORS,
+	OPSI_LEVEL_TO_LEVEL,
+	SECRET_REPLACEMENT_STRING,
+)
 from opsicommon.utils import json_decode, json_encode
 
 
@@ -84,11 +93,16 @@ class SQLiteLogReader:
 			cursor.execute(query, filter_values)
 			max_id = 0
 			for row in cursor:
-				last_record_id_read = row[0] or 0
-				record = LogRecord(name="", level=row[2], pathname=row[4] or "", lineno=row[5], msg=row[3], args=None, exc_info=None)
-				if row[6]:
-					setattr(record, "context", json_decode(row[6]))
-				yield record
+				try:
+					last_record_id_read = row[0] or 0
+					record = LogRecord(name="", level=row[2], pathname=row[4] or "", lineno=row[5], msg=row[3], args=None, exc_info=None)
+					record.created = (row[1] or 0) / 1000
+					record.msecs = (row[1] or 0) % 1000
+					if row[6]:
+						setattr(record, "context", json_decode(row[6]))
+					yield record
+				except Exception:
+					continue
 			if not follow:
 				return
 			if "last_record_id_read" not in filter_values:
@@ -159,10 +173,19 @@ class SQLiteHandler(Handler, SQLiteLogReader):
 		self._initialize_database()
 		self._writer_thread.start()
 
-	def _initialize_database(self) -> None:
+	def _initialize_database(self, recreate: bool = False) -> None:
 		"""Initializes the SQLite database and creates the logs table if it doesn't exist."""
+		if recreate and self.db_path.exists():
+			self.db_path.unlink()
+
 		self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
-		self.connection.execute("PRAGMA synchronous = EXTRA")
+		try:
+			self.connection.execute("PRAGMA synchronous = EXTRA")
+		except sqlite3.DatabaseError:
+			if recreate:
+				raise
+			return self._initialize_database(recreate=True)
+
 		cursor = self.connection.cursor()
 		cursor.execute("""
 			CREATE TABLE IF NOT EXISTS log_records (
@@ -195,7 +218,19 @@ class SQLiteHandler(Handler, SQLiteLogReader):
 		if context := getattr(record, "context", None):
 			context_json = json_encode(context)
 
-		self._queue.put((int(record.created * 1000), record.levelno, record.getMessage(), record.filename, record.lineno, context_json))
+		try:
+			msg = record.getMessage()
+		except TypeError:
+			msg = record.msg
+		for secret in secret_filter.secrets:
+			msg = msg.replace(secret, SECRET_REPLACEMENT_STRING)
+
+		if hasattr(record, "exc_info") and record.exc_info:
+			# By calling format the formatted exception information is cached in attribute exc_text
+			self.format(record)
+			record.exc_info = None
+
+		self._queue.put((int(record.created * 1000), record.levelno, msg, record.filename, record.lineno, context_json))
 
 	def delete_records(self, end_time: float | None = None, keep_number: int | None = None) -> None:
 		"""
