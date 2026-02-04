@@ -30,8 +30,14 @@ class SQLiteLogReader:
 	Reader for log records stored in a SQLite database.
 	"""
 
+	connection: sqlite3.Connection
+
 	def __init__(self, db_path: Path | str) -> None:
 		self.db_path = Path(db_path)
+		self._initialize_database()
+
+	def _initialize_database(self, recreate: bool = False) -> None:
+		"""Initializes the SQLite database connection."""
 		self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
 
 	def flush(self) -> None:
@@ -159,7 +165,6 @@ class SQLiteHandler(Handler, SQLiteLogReader):
 		Handler.__init__(self)
 		SQLiteLogReader.__init__(self, db_path)
 		self.max_records = max_records
-		self.connection: sqlite3.Connection
 		self._lock = threading.RLock()
 
 		self._queue: queue.Queue[tuple[int, int, str, str, int, bytes | None]] = queue.Queue()
@@ -169,7 +174,6 @@ class SQLiteHandler(Handler, SQLiteLogReader):
 		self._truncate_interval = truncate_interval
 		self._last_truncate_time = time.time()
 
-		self._initialize_database()
 		self._writer_thread.start()
 
 	def _initialize_database(self, recreate: bool = False) -> None:
