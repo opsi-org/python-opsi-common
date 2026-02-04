@@ -753,12 +753,14 @@ def test_sqlite_handler_base(tmp_path: Path) -> None:
 	print(f"Read {len(records)} new records in {duration:.2f} seconds")
 	assert len(records) == 1
 
-	line_regex = re.compile(r"^\[\d] \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\] \[.*\] .*")
+	line_regex = re.compile(r"^\[\d] \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\] \[(.*)\] .*")
 	for colored in (True, False):
-		for line in sqlite_handler.get_lines(colored=colored, max_records=10):
+		for line in sqlite_handler.get_lines(colored=colored, max_records=10, context={"ctx1": "val1", "ctx2": "val2"}):
 			assert ("\x1b[" in line) == colored
 			if not colored:
-				assert line_regex.match(line)
+				match = line_regex.match(line)
+				assert match
+				assert match.group(1).strip() == "val1,val2"
 
 	sqlite_handler.delete_records(keep_number=1_000)
 	records = list(sqlite_handler.get_records())

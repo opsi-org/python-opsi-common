@@ -13,7 +13,7 @@ from typing import Generator
 
 from colorlog import ColoredFormatter
 
-from opsicommon.logging import secret_filter
+from opsicommon.logging import ContextSecretFormatter, secret_filter
 from opsicommon.logging.constants import (
 	DATETIME_FORMAT,
 	DEFAULT_COLORED_FORMAT,
@@ -136,7 +136,9 @@ class SQLiteLogReader:
 		colored: bool = False,
 	) -> Generator[str, None, None]:
 		format = format or (DEFAULT_COLORED_FORMAT if colored else DEFAULT_FORMAT)
-		formatter = ColoredFormatter(format, datefmt=datefmt, log_colors=LOG_COLORS) if colored else Formatter(format, datefmt=datefmt)
+		formatter = ContextSecretFormatter(
+			ColoredFormatter(format, datefmt=datefmt, log_colors=LOG_COLORS) if colored else Formatter(format, datefmt=datefmt)
+		)
 
 		for record in self.get_records(
 			start_time=start_time,
