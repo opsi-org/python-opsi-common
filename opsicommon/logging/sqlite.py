@@ -90,8 +90,8 @@ class SQLiteLogReader:
 		self.flush()
 		cursor = self.connection.cursor()
 		while True:
+			mtime = self.db_path.stat().st_mtime
 			cursor.execute(query, filter_values)
-			max_id = 0
 			for row in cursor:
 				try:
 					last_record_id_read = row[0] or 0
@@ -105,17 +105,16 @@ class SQLiteLogReader:
 					continue
 			if not follow:
 				return
+
 			if "last_record_id_read" not in filter_values:
 				query = base_query + (" AND " if filter_clause else " WHERE ") + "id > :last_record_id_read ORDER BY id ASC"
 			filter_values["last_record_id_read"] = last_record_id_read
 
 			while True:
-				cursor.execute("SELECT max(id) FROM log_records")
-				rec = cursor.fetchone()
-				if rec and rec[0] is not None and rec[0] > max_id:
-					max_id = rec[0]
+				# Wait for new records
+				if self.db_path.stat().st_mtime != mtime:
 					break
-				time.sleep(0.1)
+				time.sleep(0.2)
 
 	def get_lines(
 		self,
