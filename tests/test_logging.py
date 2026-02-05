@@ -49,6 +49,7 @@ from opsicommon.logging import (
 from opsicommon.logging.constants import INFO, LOG_DEBUG, LOG_ERROR, LOG_INFO, LOG_NOTSET, LOG_SECRET, LOG_TRACE, LOG_WARNING
 from opsicommon.logging.logging import get_logger_levels, remove_all_handlers, reset_logging
 from opsicommon.logging.sqlite import SQLiteHandler
+from opsicommon.system import is_windows
 from opsicommon.utils import unix_timestamp
 
 from .helpers import log_stream
@@ -746,7 +747,12 @@ def test_sqlite_handler_base(tmp_path: Path) -> None:
 	now_unix = unix_timestamp()
 	now_utc = datetime.now(timezone.utc)
 	now_loc: datetime = datetime.now()
-	now_pst = datetime.now(ZoneInfo("US/Pacific"))
+	if is_windows():
+		# On Windows, datetime with ZoneInfo("US/Pacific") does not exist
+		now_pst = datetime.now()
+	else:
+		now_pst = datetime.now(ZoneInfo("US/Pacific"))
+
 	logger.info("New record")
 
 	for since in now_unix, now_utc, now_loc, now_pst:
