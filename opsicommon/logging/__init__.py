@@ -67,7 +67,7 @@ from .logging import (
 	set_format,
 	use_logging_config,
 )
-from .sqlite import SQLiteHandler, SQLiteLogReader
+from .sqlite import SQLiteHandler, SQLiteLogDatabase
 
 __all__ = [
 	"CRITICAL",
@@ -127,5 +127,5 @@ __all__ = [
 	"set_format",
 	"use_logging_config",
 	"SQLiteHandler",
-	"SQLiteLogReader",
+	"SQLiteLogDatabase",
 ]

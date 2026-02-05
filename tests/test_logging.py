@@ -49,7 +49,7 @@ from opsicommon.logging import (
 from opsicommon.logging.constants import INFO, LOG_DEBUG, LOG_ERROR, LOG_INFO, LOG_NOTSET, LOG_SECRET, LOG_TRACE, LOG_WARNING
 from opsicommon.logging.logging import get_logger_levels, remove_all_handlers, reset_logging
 from opsicommon.logging.sqlite import SQLiteHandler
-from opsicommon.system import is_windows
+from opsicommon.system.info import is_windows
 from opsicommon.utils import unix_timestamp
 
 from .helpers import log_stream

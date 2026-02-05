@@ -34,20 +34,50 @@ def _timestamp_ms(time: float | datetime) -> int:
 	return int(time * 1000)
 
 
-class SQLiteLogReader:
+class SQLiteLogDatabase:
 	"""
-	Reader for log records stored in a SQLite database.
+	SQLite log database base class.
 	"""
 
 	connection: sqlite3.Connection
 
 	def __init__(self, db_path: Path | str) -> None:
 		self.db_path = Path(db_path)
+		self._lock = threading.RLock()
 		self._initialize_database()
 
 	def _initialize_database(self, recreate: bool = False) -> None:
-		"""Initializes the SQLite database connection."""
+		"""Initializes the SQLite database and creates the logs table if it doesn't exist."""
+		if recreate and self.db_path.exists():
+			self.db_path.unlink()
+
 		self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
+		try:
+			self.connection.execute("PRAGMA synchronous = EXTRA")
+		except sqlite3.DatabaseError:
+			try:
+				self.connection.close()
+			except Exception:
+				pass
+			if recreate:
+				raise
+			return self._initialize_database(recreate=True)
+
+		cursor = self.connection.cursor()
+		cursor.execute("""
+			CREATE TABLE IF NOT EXISTS log_records (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				timestamp_ms INTEGER NOT NULL,
+				level INTEGER NOT NULL,
+				message TEXT NOT NULL,
+				filename TEXT NOT NULL,
+				line_number INTEGER NOT NULL,
+				context TEXT
+			)
+		""")
+		cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_records_timestamp ON log_records (timestamp_ms)")
+		cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_records_level ON log_records (level)")
+		self.connection.commit()
 
 	def flush(self) -> None:
 		pass
@@ -164,6 +194,29 @@ class SQLiteLogReader:
 		):
 			yield formatter.format(record)
 
+	def delete_records(self, until: float | datetime | None = None, keep_number: int | None = None) -> None:
+		"""
+		Deletes log records from the SQLite database.
+		If until is provided, deletes records with a timestamp less than or equal to until.
+		If until is None, deletes all records.
+		If keep_number is provided, keeps the most recent 'keep_number' records.
+		"""
+		filter_clauses = []
+		filter_values = []
+		if until is not None:
+			filter_clauses.append("timestamp_ms <= ?")
+			filter_values.append(_timestamp_ms(until))
+		if keep_number is not None:
+			filter_clauses.append("id NOT IN (SELECT id FROM log_records ORDER BY id DESC LIMIT ?)")
+			filter_values.append(keep_number)
+
+		filter_clause = "WHERE " + " AND ".join(filter_clauses) if filter_clauses else ""
+		query = f"DELETE FROM log_records {filter_clause}"
+		with self._lock:
+			cursor = self.connection.cursor()
+			cursor.execute(query, filter_values)
+			self.connection.commit()
+
 	def close(self) -> None:
 		"""Closes the database connection."""
 		try:
@@ -172,16 +225,15 @@ class SQLiteLogReader:
 			pass
 
 
-class SQLiteHandler(Handler, SQLiteLogReader):
+class SQLiteHandler(Handler, SQLiteLogDatabase):
 	"""
 	Logging handler for logging messages to a SQLite database.
 	"""
 
 	def __init__(self, db_path: Path | str, max_records: int = 0, flush_interval: float = 0.01, truncate_interval: float = 60.0) -> None:
 		Handler.__init__(self)
-		SQLiteLogReader.__init__(self, db_path)
+		SQLiteLogDatabase.__init__(self, db_path)
 		self.max_records = max_records
-		self._lock = threading.RLock()
 
 		self._queue: queue.Queue[tuple[int, int, str, str, int, bytes | None]] = queue.Queue()
 		self._stop_event = threading.Event()
@@ -191,39 +243,6 @@ class SQLiteHandler(Handler, SQLiteLogReader):
 		self._last_truncate_time = time.time()
 
 		self._writer_thread.start()
-
-	def _initialize_database(self, recreate: bool = False) -> None:
-		"""Initializes the SQLite database and creates the logs table if it doesn't exist."""
-		if recreate and self.db_path.exists():
-			self.db_path.unlink()
-
-		self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
-		try:
-			self.connection.execute("PRAGMA synchronous = EXTRA")
-		except sqlite3.DatabaseError:
-			try:
-				self.connection.close()
-			except Exception:
-				pass
-			if recreate:
-				raise
-			return self._initialize_database(recreate=True)
-
-		cursor = self.connection.cursor()
-		cursor.execute("""
-			CREATE TABLE IF NOT EXISTS log_records (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				timestamp_ms INTEGER NOT NULL,
-				level INTEGER NOT NULL,
-				message TEXT NOT NULL,
-				filename TEXT NOT NULL,
-				line_number INTEGER NOT NULL,
-				context TEXT
-			)
-		""")
-		cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_records_timestamp ON log_records (timestamp_ms)")
-		cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_records_level ON log_records (level)")
-		self.connection.commit()
 
 	def _writer_loop(self) -> None:
 		while not self._stop_event.wait(self._flush_interval):
@@ -255,29 +274,6 @@ class SQLiteHandler(Handler, SQLiteLogReader):
 
 		self._queue.put((int(record.created * 1000), record.levelno, msg, record.filename, record.lineno, context_json))
 
-	def delete_records(self, until: float | datetime | None = None, keep_number: int | None = None) -> None:
-		"""
-		Deletes log records from the SQLite database.
-		If until is provided, deletes records with a timestamp less than or equal to until.
-		If until is None, deletes all records.
-		If keep_number is provided, keeps the most recent 'keep_number' records.
-		"""
-		filter_clauses = []
-		filter_values = []
-		if until is not None:
-			filter_clauses.append("timestamp_ms <= ?")
-			filter_values.append(_timestamp_ms(until))
-		if keep_number is not None:
-			filter_clauses.append("id NOT IN (SELECT id FROM log_records ORDER BY id DESC LIMIT ?)")
-			filter_values.append(keep_number)
-
-		filter_clause = "WHERE " + " AND ".join(filter_clauses) if filter_clauses else ""
-		query = f"DELETE FROM log_records {filter_clause}"
-		with self._lock:
-			cursor = self.connection.cursor()
-			cursor.execute(query, filter_values)
-			self.connection.commit()
-
 	def flush(self) -> None:
 		with self._lock:
 			batch: list[tuple[int, int, str, str, int, bytes | None]] = []
@@ -306,4 +302,4 @@ class SQLiteHandler(Handler, SQLiteLogReader):
 			self._writer_thread.join(timeout=2)
 		self.flush()
 		Handler.close(self)
-		SQLiteLogReader.close(self)
+		SQLiteLogDatabase.close(self)
