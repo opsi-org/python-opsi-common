@@ -7,6 +7,7 @@ import queue
 import sqlite3
 import threading
 import time
+from datetime import datetime, timezone
 from logging import Formatter, Handler, LogRecord
 from pathlib import Path
 from typing import Generator
@@ -23,6 +24,14 @@ from opsicommon.logging.constants import (
 	SECRET_REPLACEMENT_STRING,
 )
 from opsicommon.utils import json_decode, json_encode
+
+
+def _timestamp_ms(time: float | datetime) -> int:
+	if isinstance(time, datetime):
+		if not time.tzinfo:
+			time = time.astimezone()
+		time = time.astimezone(timezone.utc).timestamp()
+	return int(time * 1000)
 
 
 class SQLiteLogReader:
@@ -46,16 +55,17 @@ class SQLiteLogReader:
 	def get_records(
 		self,
 		*,
-		start_time: float | None = None,
-		end_time: float | None = None,
+		since: float | datetime | None = None,
+		until: float | datetime | None = None,
 		max_level: int | None = None,
 		context: dict[str, str] | None = None,
+		search: str | None = None,
 		max_records: int | None = None,
 		follow: bool = False,
 	) -> Generator[LogRecord, None, None]:
 		"""
 		Retrieves records from the SQLite database.
-		Can filter records based on start_time, end_time, max_level, and context.
+		Can filter records based on since, until, max_level, and context.
 		Yields LogRecord instances.
 		"""
 		if max_level is not None and max_level < 10:
@@ -63,16 +73,15 @@ class SQLiteLogReader:
 
 		filter_clauses = []
 		filter_values = {}
-		if start_time is not None:
-			filter_clauses.append("timestamp_ms >= :start_time")
-			filter_values["start_time"] = int(start_time * 1000)
-		if end_time is not None:
-			filter_clauses.append("timestamp_ms <= :end_time")
-			filter_values["end_time"] = int(end_time * 1000)
+		if since is not None:
+			filter_clauses.append("timestamp_ms >= :since")
+			filter_values["since"] = _timestamp_ms(since)
+		if until is not None:
+			filter_clauses.append("timestamp_ms <= :until")
+			filter_values["until"] = _timestamp_ms(until)
 		if max_level is not None:
 			filter_clauses.append("level >= :max_level")
 			filter_values["max_level"] = int(max_level)
-
 		if context is not None:
 			idx = 0
 			for key, value in context.items():
@@ -80,6 +89,9 @@ class SQLiteLogReader:
 				filter_clauses.append(f"json_extract(context, :context_key_{idx}) = :context_value_{idx}")
 				filter_values[f"context_key_{idx}"] = f"$.{key}"
 				filter_values[f"context_value_{idx}"] = value
+		if search is not None:
+			filter_clauses.append("message LIKE :search")
+			filter_values["search"] = f"%{search}%"
 
 		filter_clause = "WHERE " + " AND ".join(filter_clauses) if filter_clauses else ""
 		base_query = f"""
@@ -125,10 +137,11 @@ class SQLiteLogReader:
 	def get_lines(
 		self,
 		*,
-		start_time: float | None = None,
-		end_time: float | None = None,
+		since: float | datetime | None = None,
+		until: float | datetime | None = None,
 		max_level: int | None = None,
 		context: dict[str, str] | None = None,
+		search: str | None = None,
 		max_records: int | None = None,
 		follow: bool = False,
 		format: str | None = None,
@@ -141,10 +154,11 @@ class SQLiteLogReader:
 		)
 
 		for record in self.get_records(
-			start_time=start_time,
-			end_time=end_time,
+			since=since,
+			until=until,
 			max_level=max_level,
 			context=context,
+			search=search,
 			max_records=max_records,
 			follow=follow,
 		):
@@ -241,18 +255,18 @@ class SQLiteHandler(Handler, SQLiteLogReader):
 
 		self._queue.put((int(record.created * 1000), record.levelno, msg, record.filename, record.lineno, context_json))
 
-	def delete_records(self, end_time: float | None = None, keep_number: int | None = None) -> None:
+	def delete_records(self, until: float | datetime | None = None, keep_number: int | None = None) -> None:
 		"""
 		Deletes log records from the SQLite database.
-		If end_time is provided, deletes records with a timestamp less than or equal to end_time.
-		If end_time is None, deletes all records.
+		If until is provided, deletes records with a timestamp less than or equal to until.
+		If until is None, deletes all records.
 		If keep_number is provided, keeps the most recent 'keep_number' records.
 		"""
 		filter_clauses = []
 		filter_values = []
-		if end_time is not None:
+		if until is not None:
 			filter_clauses.append("timestamp_ms <= ?")
-			filter_values.append(int(end_time * 1000))
+			filter_values.append(_timestamp_ms(until))
 		if keep_number is not None:
 			filter_clauses.append("id NOT IN (SELECT id FROM log_records ORDER BY id DESC LIMIT ?)")
 			filter_values.append(keep_number)

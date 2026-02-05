@@ -16,9 +16,11 @@ import tempfile
 import threading
 import time
 import warnings
+from datetime import datetime, timezone
 from multiprocessing import Process
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
 import requests
@@ -672,10 +674,10 @@ def test_sqlite_handler_base(tmp_path: Path) -> None:
 
 	assert records[1].created - records[0].created >= 1.09
 
-	sqlite_handler.delete_records(end_time=now_ms / 1000 - 10)  # delete records older than 10 seconds ago
+	sqlite_handler.delete_records(until=now_ms / 1000 - 10)  # delete records older than 10 seconds ago
 	assert len(list(sqlite_handler.get_records())) == 2
 
-	sqlite_handler.delete_records(end_time=now_ms / 1000 + 10)  # delete records older than 10 seconds in the future
+	sqlite_handler.delete_records(until=now_ms / 1000 + 10)  # delete records older than 10 seconds in the future
 	records = list(sqlite_handler.get_records())
 	assert len(records) == 0
 
@@ -720,6 +722,11 @@ def test_sqlite_handler_base(tmp_path: Path) -> None:
 	for record in records:
 		assert getattr(record, "opsilevel") <= LOG_WARNING
 
+	records = list(sqlite_handler.get_records(search="message 1"))
+	assert len(records) == 1_111 * 3
+	for record in records:
+		assert "message 1" in record.getMessage()
+
 	records = list(sqlite_handler.get_records(context={"ctx1": "val1"}))
 	assert len(records) == 18_000
 	expected_first_record = records[-5000]
@@ -736,18 +743,23 @@ def test_sqlite_handler_base(tmp_path: Path) -> None:
 	expected_last_record = records[-1]
 
 	time.sleep(1)
-	now_ms = unix_timestamp(millis=True)
+	now_unix = unix_timestamp()
+	now_utc = datetime.now(timezone.utc)
+	now_loc: datetime = datetime.now()
+	now_pst = datetime.now(ZoneInfo("US/Pacific"))
 	logger.info("New record")
 
-	start_time = time.perf_counter()
-	records = list(sqlite_handler.get_records(start_time=now_ms / 1000))
-	end_time = time.perf_counter()
-	duration = end_time - start_time
-	print(f"Read {len(records)} new records in {duration:.2f} seconds")
-	assert len(records) == 1
+	for since in now_unix, now_utc, now_loc, now_pst:
+		print("Using since =", since)
+		start_time = time.perf_counter()
+		records = list(sqlite_handler.get_records(since=since))
+		end_time = time.perf_counter()
+		duration = end_time - start_time
+		print(f"Read {len(records)} new records in {duration:.2f} seconds")
+		assert len(records) == 1
 
 	start_time = time.perf_counter()
-	records = list(sqlite_handler.get_records(start_time=now_ms / 1000, end_time=now_ms / 1000 + 1))
+	records = list(sqlite_handler.get_records(since=now_unix, until=now_unix + 1))
 	end_time = time.perf_counter()
 	duration = end_time - start_time
 	print(f"Read {len(records)} new records in {duration:.2f} seconds")
