@@ -282,9 +282,6 @@ class SQLiteHandler(Handler, SQLiteLogDatabase):
 		self._queue.put((int(record.created * 1000), record.levelno, msg, record.filename, record.lineno, context_json))
 
 	def flush(self) -> None:
-		if self._stop_event.is_set():
-			return
-
 		with self._lock:
 			batch: list[tuple[int, int, str, str, int, bytes | None]] = []
 			while True:
@@ -295,15 +292,20 @@ class SQLiteHandler(Handler, SQLiteLogDatabase):
 			if not batch:
 				return
 
-			cursor = self.connection.cursor()
-			cursor.executemany(
-				"""
-					INSERT INTO log_records (timestamp_ms, level, message, filename, line_number, context)
-					VALUES (?, ?, ?, ?, ?, ?)
-					""",
-				batch,
-			)
-			self.connection.commit()
+			try:
+				cursor = self.connection.cursor()
+				cursor.executemany(
+					"""
+						INSERT INTO log_records (timestamp_ms, level, message, filename, line_number, context)
+						VALUES (?, ?, ?, ?, ?, ?)
+						""",
+					batch,
+				)
+				self.connection.commit()
+			except Exception:
+				if self._stop_event.is_set():
+					return
+				raise
 
 	def close(self) -> None:
 		"""Closes the database connection."""
