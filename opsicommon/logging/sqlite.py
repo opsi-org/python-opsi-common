@@ -278,7 +278,7 @@ class SQLiteHandler(Handler, SQLiteLogDatabase):
 
 		self._queue.put((int(record.created * 1000), record.levelno, msg, record.filename, record.lineno, context_json))
 
-	def flush(self) -> None:
+	def flush(self, ignore_errors: bool = False) -> None:
 		with self._lock:
 			batch: list[tuple[int, int, str, str, int, bytes | None]] = []
 			while True:
@@ -289,7 +289,12 @@ class SQLiteHandler(Handler, SQLiteLogDatabase):
 			if not batch:
 				return
 
-			cursor = self.connection.cursor()
+			try:
+				cursor = self.connection.cursor()
+			except sqlite3.ProgrammingError as exc:
+				if ignore_errors and "closed database" in str(exc).lower():
+					return
+				raise
 			cursor.executemany(
 				"""
 					INSERT INTO log_records (timestamp_ms, level, message, filename, line_number, context)
@@ -304,6 +309,6 @@ class SQLiteHandler(Handler, SQLiteLogDatabase):
 		self._stop_event.set()
 		if self._writer_thread.is_alive():
 			self._writer_thread.join(timeout=2)
-		self.flush()
+		self.flush(ignore_errors=True)
 		Handler.close(self)
 		SQLiteLogDatabase.close(self)
