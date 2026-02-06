@@ -108,3 +108,7 @@ OPSI_LEVEL_TO_LEVEL = {
 }
 logging.opsi_level_to_level = OPSI_LEVEL_TO_LEVEL  # type: ignore[attr-defined]
 logging._opsiLevelToLevel = OPSI_LEVEL_TO_LEVEL  # type: ignore[attr-defined]
+
+
+class LoggingError(Exception):
+	pass

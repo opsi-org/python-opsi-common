@@ -22,6 +22,7 @@ from opsicommon.logging.constants import (
 	LOG_COLORS,
 	OPSI_LEVEL_TO_LEVEL,
 	SECRET_REPLACEMENT_STRING,
+	LoggingError,
 )
 from opsicommon.utils import json_decode, json_encode
 
@@ -44,7 +45,10 @@ class SQLiteLogDatabase:
 	def __init__(self, db_path: Path | str) -> None:
 		self.db_path = Path(db_path)
 		self._lock = threading.RLock()
-		self._initialize_database()
+		try:
+			self._initialize_database()
+		except Exception as exc:
+			raise LoggingError(f"Failed to connect to SQLite database at {self.db_path}: {exc}") from exc
 
 	def _initialize_database(self, recreate: bool = False) -> None:
 		"""Initializes the SQLite database and creates the logs table if it doesn't exist."""
