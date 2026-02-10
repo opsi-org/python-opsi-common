@@ -141,6 +141,7 @@ class SQLiteLogDatabase:
 
 		self.flush()
 		cursor = self.connection.cursor()
+		last_record_id_read = 0
 		while True:
 			mtime = self.db_path.stat().st_mtime
 			cursor.execute(query, filter_values)
