@@ -801,6 +801,18 @@ def test_sqlite_errors(tmp_path: Path) -> None:
 		SQLiteLogDatabase(db_path=log_db)
 
 
+def test_sqlite_log_database_context_manager(tmp_path: Path) -> None:
+	log_db = Path(tmp_path) / "logs_context_manager.db"
+	sqlite_log_database = None
+	with pytest.raises(RuntimeError):
+		with SQLiteLogDatabase(db_path=log_db) as db:
+			sqlite_log_database = db
+			raise RuntimeError("Test exception to check context manager handling")
+
+	assert sqlite_log_database
+	assert sqlite_log_database._connection is None
+
+
 def test_sqlite_handler_max_records(tmp_path: Path) -> None:
 	log_db = Path(tmp_path) / "logs_max_records.db"
 	sqlite_handler = SQLiteHandler(db_path=log_db, max_records=50, truncate_interval=1.0)

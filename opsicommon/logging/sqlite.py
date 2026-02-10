@@ -3,6 +3,8 @@
 # This code is owned by the uib GmbH, Mainz, Germany (uib.de). All rights reserved.
 # License: AGPL-3.0-only
 
+from __future__ import annotations
+
 import queue
 import sqlite3
 import threading
@@ -10,6 +12,7 @@ import time
 from datetime import datetime, timezone
 from logging import Formatter, Handler, LogRecord
 from pathlib import Path
+from types import TracebackType
 from typing import Generator
 
 from colorlog import ColoredFormatter
@@ -48,6 +51,12 @@ class SQLiteLogDatabase:
 			self._initialize_database()
 		except Exception as exc:
 			raise LoggingError(f"Failed to connect to SQLite database at {self.db_path}: {exc}") from exc
+
+	def __enter__(self) -> SQLiteLogDatabase:
+		return self
+
+	def __exit__(self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None) -> None:
+		self.close()
 
 	def _initialize_database(self, recreate: bool = False) -> None:
 		"""Initializes the SQLite database and creates the logs table if it doesn't exist."""
