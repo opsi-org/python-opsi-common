@@ -30,6 +30,7 @@ from opsicommon.logging import (
 	SECRET_REPLACEMENT_STRING,
 	ContextSecretFormatter,
 	ObservableHandler,
+	SQLiteLogDatabase,
 	context_filter,
 	get_all_handlers,
 	get_logger,
@@ -46,7 +47,7 @@ from opsicommon.logging import (
 	set_format,
 	use_logging_config,
 )
-from opsicommon.logging.constants import INFO, LOG_DEBUG, LOG_ERROR, LOG_INFO, LOG_NOTSET, LOG_SECRET, LOG_TRACE, LOG_WARNING
+from opsicommon.logging.constants import INFO, LOG_DEBUG, LOG_ERROR, LOG_INFO, LOG_NOTSET, LOG_SECRET, LOG_TRACE, LOG_WARNING, LoggingError
 from opsicommon.logging.logging import get_logger_levels, remove_all_handlers, reset_logging
 from opsicommon.logging.sqlite import SQLiteHandler
 from opsicommon.system.info import is_windows
@@ -789,6 +790,15 @@ def test_sqlite_handler_base(tmp_path: Path) -> None:
 	assert len(records) == 0
 
 	sqlite_handler.close()
+
+
+def test_sqlite_errors(tmp_path: Path) -> None:
+	log_db = Path(tmp_path) / "sub" / "logs_max_records.db"
+	with pytest.raises(LoggingError, match="unable to open database file"):
+		SQLiteHandler(db_path=log_db, max_records=50, truncate_interval=1.0)
+
+	with pytest.raises(LoggingError, match="unable to open database file"):
+		SQLiteLogDatabase(db_path=log_db)
 
 
 def test_sqlite_handler_max_records(tmp_path: Path) -> None:

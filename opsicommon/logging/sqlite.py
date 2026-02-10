@@ -40,10 +40,9 @@ class SQLiteLogDatabase:
 	SQLite log database base class.
 	"""
 
-	connection: sqlite3.Connection
-
 	def __init__(self, db_path: Path | str) -> None:
 		self.db_path = Path(db_path)
+		self._connection: sqlite3.Connection | None = None
 		self._lock = threading.RLock()
 		try:
 			self._initialize_database()
@@ -55,19 +54,21 @@ class SQLiteLogDatabase:
 		if recreate and self.db_path.exists():
 			self.db_path.unlink()
 
-		self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
+		self._connection = sqlite3.connect(self.db_path, check_same_thread=False)
 		try:
-			self.connection.execute("PRAGMA synchronous = EXTRA")
-		except sqlite3.DatabaseError:
+			self._connection.execute("PRAGMA synchronous = EXTRA")
+		except sqlite3.DatabaseError as exc:
+			raise RuntimeError(f"INITIALIZE {exc}")
 			try:
-				self.connection.close()
+				self._connection.close()
+				self._connection = None
 			except Exception:
 				pass
 			if recreate:
 				raise
 			return self._initialize_database(recreate=True)
 
-		cursor = self.connection.cursor()
+		cursor = self._connection.cursor()
 		cursor.execute("""
 			CREATE TABLE IF NOT EXISTS log_records (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,7 +82,7 @@ class SQLiteLogDatabase:
 		""")
 		cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_records_timestamp ON log_records (timestamp_ms)")
 		cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_records_level ON log_records (level)")
-		self.connection.commit()
+		self._connection.commit()
 
 	def flush(self) -> None:
 		pass
@@ -96,12 +97,16 @@ class SQLiteLogDatabase:
 		search: str | None = None,
 		max_records: int | None = None,
 		follow: bool = False,
+		timeout: float | None = None,
 	) -> Generator[LogRecord, None, None]:
 		"""
 		Retrieves records from the SQLite database.
 		Can filter records based on since, until, max_level, and context.
 		Yields LogRecord instances.
 		"""
+		if self._connection is None:
+			raise LoggingError("SQLite database connection is not initialized")
+
 		if max_level is not None and max_level < 10:
 			max_level = OPSI_LEVEL_TO_LEVEL[max_level]
 
@@ -140,8 +145,9 @@ class SQLiteLogDatabase:
 			query = f"{base_query} ORDER BY id ASC"
 
 		self.flush()
-		cursor = self.connection.cursor()
+		cursor = self._connection.cursor()
 		last_record_id_read = 0
+		start_time = time.monotonic()
 		while True:
 			mtime = self.db_path.stat().st_mtime
 			cursor.execute(query, filter_values)
@@ -164,6 +170,8 @@ class SQLiteLogDatabase:
 			filter_values["last_record_id_read"] = last_record_id_read
 
 			while True:
+				if timeout is not None and time.monotonic() - start_time > timeout:
+					return
 				# Wait for new records
 				if self.db_path.stat().st_mtime != mtime:
 					break
@@ -182,6 +190,7 @@ class SQLiteLogDatabase:
 		format: str | None = None,
 		datefmt: str = DATETIME_FORMAT,
 		colored: bool = False,
+		timeout: float | None = None,
 	) -> Generator[str, None, None]:
 		format = format or (DEFAULT_COLORED_FORMAT if colored else DEFAULT_FORMAT)
 		formatter = ContextSecretFormatter(
@@ -196,6 +205,7 @@ class SQLiteLogDatabase:
 			search=search,
 			max_records=max_records,
 			follow=follow,
+			timeout=timeout,
 		):
 			yield formatter.format(record)
 
@@ -206,6 +216,9 @@ class SQLiteLogDatabase:
 		If until is None, deletes all records.
 		If keep_number is provided, keeps the most recent 'keep_number' records.
 		"""
+		if self._connection is None:
+			raise LoggingError("SQLite database connection is not initialized")
+
 		filter_clauses = []
 		filter_values = []
 		if until is not None:
@@ -218,14 +231,16 @@ class SQLiteLogDatabase:
 		filter_clause = "WHERE " + " AND ".join(filter_clauses) if filter_clauses else ""
 		query = f"DELETE FROM log_records {filter_clause}"
 		with self._lock:
-			cursor = self.connection.cursor()
+			cursor = self._connection.cursor()
 			cursor.execute(query, filter_values)
-			self.connection.commit()
+			self._connection.commit()
 
 	def close(self) -> None:
 		"""Closes the database connection."""
 		try:
-			self.connection.close()
+			if self._connection:
+				self._connection.close()
+				self._connection = None
 		except Exception:
 			pass
 
@@ -237,15 +252,16 @@ class SQLiteHandler(Handler, SQLiteLogDatabase):
 
 	def __init__(self, db_path: Path | str, max_records: int = 0, flush_interval: float = 0.01, truncate_interval: float = 60.0) -> None:
 		Handler.__init__(self)
-		SQLiteLogDatabase.__init__(self, db_path)
 		self.max_records = max_records
 
 		self._queue: queue.Queue[tuple[int, int, str, str, int, bytes | None]] = queue.Queue()
 		self._stop_event = threading.Event()
-		self._writer_thread = threading.Thread(target=self._writer_loop, name="SQLiteHandlerWriter", daemon=True)
 		self._flush_interval = flush_interval
 		self._truncate_interval = truncate_interval
 		self._last_truncate_time = time.time()
+		self._writer_thread = threading.Thread(target=self._writer_loop, name="SQLiteHandlerWriter", daemon=True)
+
+		SQLiteLogDatabase.__init__(self, db_path)
 
 		self._writer_thread.start()
 
@@ -283,6 +299,9 @@ class SQLiteHandler(Handler, SQLiteLogDatabase):
 		self._queue.put((int(record.created * 1000), record.levelno, msg, record.filename, record.lineno, context_json))
 
 	def flush(self) -> None:
+		if not self._connection:
+			return
+
 		with self._lock:
 			batch: list[tuple[int, int, str, str, int, bytes | None]] = []
 			while True:
@@ -294,7 +313,7 @@ class SQLiteHandler(Handler, SQLiteLogDatabase):
 				return
 
 			try:
-				cursor = self.connection.cursor()
+				cursor = self._connection.cursor()
 				cursor.executemany(
 					"""
 						INSERT INTO log_records (timestamp_ms, level, message, filename, line_number, context)
@@ -302,7 +321,7 @@ class SQLiteHandler(Handler, SQLiteLogDatabase):
 						""",
 					batch,
 				)
-				self.connection.commit()
+				self._connection.commit()
 			except Exception:
 				if self._stop_event.is_set():
 					return
