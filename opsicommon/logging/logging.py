@@ -726,7 +726,7 @@ def logging_config(
 			hdlr.setLevel(file_level)
 
 	if log_db:
-		from opsicommon.logging import SQLiteHandler
+		from opsicommon.logging.sqlite import SQLiteHandler
 
 		remove_all_handlers(handler_name="opsi_db_handler")
 		dbhandler = SQLiteHandler(log_db, max_records=db_max_records)
@@ -734,7 +734,7 @@ def logging_config(
 		logging.root.addHandler(dbhandler)
 
 	if db_level is not None:
-		from opsicommon.logging import SQLiteHandler
+		from opsicommon.logging.sqlite import SQLiteHandler
 
 		for hdlr in get_all_handlers(SQLiteHandler):
 			hdlr.setLevel(db_level)
