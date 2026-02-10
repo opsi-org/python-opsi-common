@@ -57,8 +57,7 @@ class SQLiteLogDatabase:
 		self._connection = sqlite3.connect(self.db_path, check_same_thread=False)
 		try:
 			self._connection.execute("PRAGMA synchronous = EXTRA")
-		except sqlite3.DatabaseError as exc:
-			raise RuntimeError(f"INITIALIZE {exc}")
+		except sqlite3.DatabaseError:
 			try:
 				self._connection.close()
 				self._connection = None
