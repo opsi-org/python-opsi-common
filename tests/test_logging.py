@@ -30,7 +30,6 @@ from opsicommon.logging import (
 	SECRET_REPLACEMENT_STRING,
 	ContextSecretFormatter,
 	ObservableHandler,
-	SQLiteLogDatabase,
 	context_filter,
 	get_all_handlers,
 	get_logger,
@@ -49,7 +48,7 @@ from opsicommon.logging import (
 )
 from opsicommon.logging.constants import INFO, LOG_DEBUG, LOG_ERROR, LOG_INFO, LOG_NOTSET, LOG_SECRET, LOG_TRACE, LOG_WARNING, LoggingError
 from opsicommon.logging.logging import get_logger_levels, remove_all_handlers, reset_logging
-from opsicommon.logging.sqlite import SQLiteHandler
+from opsicommon.logging.sqlite import SQLiteHandler, SQLiteLogDatabase
 from opsicommon.system.info import is_windows
 from opsicommon.utils import unix_timestamp
 
