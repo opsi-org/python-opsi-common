@@ -23,7 +23,7 @@ if is_windows():
 	from opsicommon.system.windows.subprocess import get_process, get_process_user_token, patch_create_process
 
 
-LD_LIBRARY_EXCLUDE_LIST = ["/usr/lib/opsiclientd", "/usr/lib/opsiconfd"]
+LD_LIBRARY_EXCLUDE_LIST = ["/usr/lib/opsiclientd", "/usr/lib/opsiconfd", "/usr/lib/opsi-agent"]
 
 logger = get_logger()
 
