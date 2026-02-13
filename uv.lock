@@ -795,7 +795,7 @@ wheels = [
 
 [[package]]
 name = "python-opsi-common"
-version = "4.3.54.12"
+version = "4.3.54.15"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },

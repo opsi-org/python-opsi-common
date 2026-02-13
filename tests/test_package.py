@@ -707,7 +707,7 @@ def test_load_package_tar_zstd() -> None:
 				"requiredPackageVersion": None,
 				"requiredAction": "always",
 				"requiredInstallationStatus": None,
-				"requirementType": "before",
+				"requirementType": None,
 			},
 		),
 		(
