@@ -301,7 +301,7 @@ class FileDownload(FileTransfer):
 
 		await self._send_message(message)
 
-		logger.info("Started %r")
+		logger.debug("Started %r", self)
 
 	async def _manager(self) -> None:
 		logger.debug("Starting download manager")
