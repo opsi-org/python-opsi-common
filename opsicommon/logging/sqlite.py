@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import os
 import queue
 import sqlite3
 import threading
@@ -77,6 +78,10 @@ class SQLiteLogDatabase:
 			return self._initialize_database(recreate=True)
 
 		cursor = self._connection.cursor()
+		cursor.execute("PRAGMA table_info(log_records)")
+		columns = [row[1] for row in cursor.fetchall()]
+		if columns and "pid" not in columns:
+			cursor.execute("DROP TABLE log_records")
 		cursor.execute("""
 			CREATE TABLE IF NOT EXISTS log_records (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,11 +90,13 @@ class SQLiteLogDatabase:
 				message TEXT NOT NULL,
 				filename TEXT NOT NULL,
 				line_number INTEGER NOT NULL,
+				pid INTEGER NOT NULL,
 				context TEXT
 			)
 		""")
 		cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_records_timestamp ON log_records (timestamp_ms)")
 		cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_records_level ON log_records (level)")
+		cursor.execute("CREATE INDEX IF NOT EXISTS idx_log_records_pid ON log_records (pid)")
 		self._connection.commit()
 
 	def flush(self) -> None:
@@ -101,6 +108,7 @@ class SQLiteLogDatabase:
 		since: float | datetime | None = None,
 		until: float | datetime | None = None,
 		max_level: int | None = None,
+		pid: int | None = None,
 		context: dict[str, str] | None = None,
 		search: str | None = None,
 		max_records: int | None = None,
@@ -129,6 +137,9 @@ class SQLiteLogDatabase:
 		if max_level is not None:
 			filter_clauses.append("level >= :max_level")
 			filter_values["max_level"] = int(max_level)
+		if pid is not None:
+			filter_clauses.append("pid = :pid")
+			filter_values["pid"] = pid
 		if context is not None:
 			idx = 0
 			for key, value in context.items():
@@ -262,7 +273,8 @@ class SQLiteHandler(Handler, SQLiteLogDatabase):
 		Handler.__init__(self)
 		self.max_records = max_records
 
-		self._queue: queue.Queue[tuple[int, int, str, str, int, bytes | None]] = queue.Queue()
+		self._pid = os.getpid()
+		self._queue: queue.Queue[tuple[int, int, str, str, int, int, bytes | None]] = queue.Queue()
 		self._stop_event = threading.Event()
 		self._flush_interval = flush_interval
 		self._truncate_interval = truncate_interval
@@ -304,14 +316,14 @@ class SQLiteHandler(Handler, SQLiteLogDatabase):
 			self.format(record)
 			record.exc_info = None
 
-		self._queue.put((int(record.created * 1000), record.levelno, msg, record.filename, record.lineno, context_json))
+		self._queue.put((int(record.created * 1000), record.levelno, msg, record.filename, record.lineno, self._pid, context_json))
 
 	def flush(self) -> None:
 		if not self._connection:
 			return
 
 		with self._lock:
-			batch: list[tuple[int, int, str, str, int, bytes | None]] = []
+			batch: list[tuple[int, int, str, str, int, int, bytes | None]] = []
 			while True:
 				try:
 					batch.append(self._queue.get_nowait())
@@ -324,8 +336,8 @@ class SQLiteHandler(Handler, SQLiteLogDatabase):
 				cursor = self._connection.cursor()
 				cursor.executemany(
 					"""
-						INSERT INTO log_records (timestamp_ms, level, message, filename, line_number, context)
-						VALUES (?, ?, ?, ?, ?, ?)
+						INSERT INTO log_records (timestamp_ms, level, message, filename, line_number, pid, context)
+						VALUES (?, ?, ?, ?, ?, ?, ?)
 						""",
 					batch,
 				)

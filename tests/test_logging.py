@@ -723,6 +723,12 @@ def test_sqlite_handler_base(tmp_path: Path) -> None:
 	for record in records:
 		assert getattr(record, "opsilevel") <= LOG_WARNING
 
+	records = list(sqlite_handler.get_records(pid=os.getpid()))
+	assert len(records) == 27_000
+
+	records = list(sqlite_handler.get_records(pid=os.getpid() + 1))
+	assert not records
+
 	records = list(sqlite_handler.get_records(search="message 1"))
 	assert len(records) == 1_111 * 3
 	for record in records:
