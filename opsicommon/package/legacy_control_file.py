@@ -275,7 +275,7 @@ class LegacyControlFile:
 					self._sections[sectionType][i][option] = value  # type: ignore
 
 		if not self._sections.get("product"):
-			raise ValueError(f"Error in control file '{control_file}': 'product' section not found")
+			raise ValueError(f"Error in control file '{control_file}': Section 'Product' not found")
 
 		# Get package info
 		for option, value in self._sections.get("package", [{}])[0].items():  # type: ignore
@@ -305,13 +305,17 @@ class LegacyControlFile:
 
 		# Create Product object
 		product = self._sections["product"][0]
+		for key in ("id", "version", "type"):
+			if not product.get(key):  # type: ignore
+				raise ValueError(f"Error in control file '{control_file}': Product {key} is required")
+
 		Class: type
 		if product.get("type") == "NetbootProduct":  # type: ignore
 			Class = NetbootProduct
 		elif product.get("type") == "LocalbootProduct":  # type: ignore
 			Class = LocalbootProduct
 		else:
-			raise ValueError(f"Error in control file '{control_file}': unknown product type '{product.get('type')}'")  # type: ignore
+			raise ValueError(f"Error in control file '{control_file}': Invalid product type '{product.get('type')}'")  # type: ignore
 
 		productVersion = product.get("version")  # type: ignore
 		if not productVersion:

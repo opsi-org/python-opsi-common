@@ -233,6 +233,48 @@ def test_control_multiline_description_property() -> None:
 			assert string in result.splitlines()
 
 
+@pytest.mark.parametrize("legacy", (True, False))
+def test_broken_control_file(tmp_path: Path, legacy: bool) -> None:
+	control_file = tmp_path / ("control" if legacy else "control.toml")
+	control_file.write_text("", encoding="utf-8")
+
+	package = OpsiPackage()
+	with pytest.raises(ValueError, match="Section 'Product' not found"):
+		if legacy:
+			package.parse_control_file_legacy(control_file)
+		else:
+			package.parse_control_file(control_file)
+
+	control_file.write_text("[Package]\n[Product]\n", encoding="utf-8")
+	with pytest.raises(ValueError, match="Product id is required"):
+		if legacy:
+			package.parse_control_file_legacy(control_file)
+		else:
+			package.parse_control_file(control_file)
+
+	if legacy:
+		control_file.write_text("[Package]\n[Product]\ntype: localboot\n", encoding="utf-8")
+	else:
+		control_file.write_text('[Package]\n[Product]\ntype = "LocalbootProduct"\n', encoding="utf-8")
+	with pytest.raises(ValueError, match="Product id is required"):
+		if legacy:
+			package.parse_control_file_legacy(control_file)
+		else:
+			package.parse_control_file(control_file)
+
+	if legacy:
+		control_file.write_text("[Product]\ntype: localboot\nid: pid\nversion: 1\n", encoding="utf-8")
+	else:
+		control_file.write_text('[Product]\ntype = "LocalbootProduct"\nid = "pid"\nversion = "1"\n', encoding="utf-8")
+
+	if legacy:
+		# In legacy control file, the 'Package' section is not mandatory
+		package.parse_control_file_legacy(control_file)
+	else:
+		with pytest.raises(ValueError, match="Section 'Package' not found"):
+			package.parse_control_file(control_file)
+
+
 @pytest.mark.linux
 @pytest.mark.parametrize(
 	"product_type, form",

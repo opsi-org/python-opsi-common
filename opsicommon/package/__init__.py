@@ -218,6 +218,13 @@ class OpsiPackage:
 		doc = tomlkit.loads(control_file.read_text()).unwrap()
 		# changelog key in changelog section... better idea?
 		self.changelog = doc.get("changelog", {}).get("changelog")
+		if "Product" not in doc:
+			raise ValueError(f"Error in control file '{control_file}': Section 'Product' not found")
+		for key in ("id", "version", "type"):
+			if not doc["Product"].get(key):
+				raise ValueError(f"Error in control file '{control_file}': Product {key} is required")
+		if "Package" not in doc:
+			raise ValueError(f"Error in control file '{control_file}': Section 'Package' not found")
 		self.product = create_product(doc)
 		self.package_dependencies = [
 			PackageDependency(package=str(pdep["package"]), version=pdep.get("version"), condition=pdep.get("condition"))
