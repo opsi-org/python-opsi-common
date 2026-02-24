@@ -352,8 +352,8 @@ def test_set_addresses() -> None:
 	assert service_client.base_url == "https://localhost:4447"
 
 
-def test_read_write_ca_cert_file(tmpdir: Path) -> None:
-	ca_cert_file = tmpdir / "ca_certs.pem"
+def test_read_write_ca_cert_file(tmp_path: Path) -> None:
+	ca_cert_file = tmp_path / "ca_certs.pem"
 	ca_cert1, _ = create_ca(subject={"CN": "python-opsi-common test CA 1"}, valid_days=30)
 	ca_cert2, _ = create_ca(subject={"CN": "python-opsi-common test CA 2"}, valid_days=30)
 	ca_cert3, _ = create_ca(subject={"CN": "python-opsi-common test CA 3"}, valid_days=30)
@@ -383,7 +383,7 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:
 	assert certs[1].subject == ca_cert2.subject
 	assert certs[2].subject == ca_cert3.subject
 
-	ca_cert_file = tmpdir / "new" / "dir" / "ca_certs.pem"
+	ca_cert_file = tmp_path / "new" / "dir" / "ca_certs.pem"
 	service_client = ServiceClient("localhost", ca_cert_file=ca_cert_file)
 	service_client.write_ca_cert_file(certs)
 	certs = service_client.read_ca_cert_file()
@@ -481,8 +481,8 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:
 	assert len(certs) == 4
 
 
-def test_get_opsi_ca_certs_state(tmpdir: Path) -> None:
-	ca_cert_file = tmpdir / "ca_certs.pem"
+def test_get_opsi_ca_certs_state(tmp_path: Path) -> None:
+	ca_cert_file = tmp_path / "ca_certs.pem"
 	service_client = ServiceClient("localhost", ca_cert_file=ca_cert_file)
 	assert service_client.get_opsi_ca_certs_state() == OpsiCaState.UNAVAILABLE
 
@@ -520,12 +520,12 @@ def test_get_opsi_ca_certs_state(tmpdir: Path) -> None:
 		("4.3.18.15", "ca-certs.pem"),
 	),
 )
-def test_verify(tmpdir: Path, server_version: str, pem_name: str) -> None:
+def test_verify(tmp_path: Path, server_version: str, pem_name: str) -> None:
 	other_ca_cert, _ = create_ca(subject={"CN": "python-opsi-common test other ca"}, valid_days=3)
 
 	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3)
-	ca_key_file = tmpdir / "ca_key.pem"
-	ca_cert_file = tmpdir / "ca_cert.pem"
+	ca_key_file = tmp_path / "ca_key.pem"
+	ca_cert_file = tmp_path / "ca_cert.pem"
 	ca_key_file.write_text(as_pem(ca_key), encoding="utf-8", newline="")
 	ca_cert_file.write_text(as_pem(ca_cert), encoding="utf-8", newline="")
 
@@ -537,13 +537,13 @@ def test_verify(tmpdir: Path, server_version: str, pem_name: str) -> None:
 		ca_key=ca_key,
 		ca_cert=ca_cert,
 	)
-	server_key_file = tmpdir / "server_key.pem"
-	server_cert_file = tmpdir / "server_cert.pem"
+	server_key_file = tmp_path / "server_key.pem"
+	server_cert_file = tmp_path / "server_cert.pem"
 	server_key_file.write_text(as_pem(server_key), encoding="utf-8", newline="")
 	server_cert_file.write_text(as_pem(server_cert), encoding="utf-8", newline="")
-	server_log_file = Path(tmpdir) / "server.log"
+	server_log_file = Path(tmp_path) / "server.log"
 
-	opsi_ca_file_on_client = tmpdir / "opsi_ca_file_on_client.pem"
+	opsi_ca_file_on_client = tmp_path / "opsi_ca_file_on_client.pem"
 
 	print(f"UTC: {datetime.now(tz=timezone.utc)}")
 	print(f"CA cert: {ca_cert.not_valid_before_utc} - {ca_cert.not_valid_after_utc}")
@@ -674,10 +674,10 @@ def test_verify(tmpdir: Path, server_version: str, pem_name: str) -> None:
 
 
 @pytest.mark.parametrize("client_key_password", (None, "kd7ejsUU&sjsdl!="))
-def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
+def test_client_certificate(tmp_path: Path, client_key_password: str) -> None:
 	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3)
-	ca_key_file = tmpdir / "ca_key.pem"
-	ca_cert_file = tmpdir / "ca_cert.pem"
+	ca_key_file = tmp_path / "ca_key.pem"
+	ca_cert_file = tmp_path / "ca_cert.pem"
 	ca_key_file.write_text(as_pem(ca_key), encoding="utf-8", newline="")
 	ca_cert_file.write_text(as_pem(ca_cert), encoding="utf-8", newline="")
 
@@ -689,8 +689,8 @@ def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 		ca_key=ca_key,
 		ca_cert=ca_cert,
 	)
-	server_key_file = tmpdir / "server_key.pem"
-	server_cert_file = tmpdir / "server_cert.pem"
+	server_key_file = tmp_path / "server_key.pem"
+	server_cert_file = tmp_path / "server_cert.pem"
 	server_key_file.write_text(as_pem(server_key), encoding="utf-8", newline="")
 	server_cert_file.write_text(as_pem(server_cert), encoding="utf-8", newline="")
 
@@ -702,7 +702,7 @@ def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 		ca_key=ca_key,
 		ca_cert=ca_cert,
 	)
-	client_cert_file = tmpdir / "client_cert.pem"
+	client_cert_file = tmp_path / "client_cert.pem"
 	client_cert_file.write_text(as_pem(client_key, passphrase=client_key_password) + as_pem(client_cert), encoding="utf-8", newline="")
 
 	# Server without CA cert
@@ -786,7 +786,7 @@ def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 			client._session.cookies = None  # type: ignore[assignment]
 			client.connect_messagebus()
 
-		client_key_file = tmpdir / "client_key.pem"
+		client_key_file = tmp_path / "client_key.pem"
 		client_key_file.write_text(as_pem(client_key, passphrase=client_key_password), encoding="utf-8", newline="")
 		client_cert_file.write_text(as_pem(client_cert), encoding="utf-8", newline="")
 

@@ -70,8 +70,8 @@ def test_run_process_in_session_linux() -> None:
 
 
 @pytest.mark.linux
-def test_ensure_not_already_running_linux(tmpdir: Path) -> None:
-	test_system_sleep = tmpdir / "test_system_sleep"
+def test_ensure_not_already_running_linux(tmp_path: Path) -> None:
+	test_system_sleep = tmp_path / "test_system_sleep"
 	shutil.copy("/bin/sleep", test_system_sleep)
 	with subprocess.Popen([f"{test_system_sleep} 5 </dev/null &>/dev/null &"], shell=True):
 		time.sleep(1)
@@ -80,8 +80,8 @@ def test_ensure_not_already_running_linux(tmpdir: Path) -> None:
 
 
 @pytest.mark.linux
-def test_ensure_not_already_running_child_process_linux(tmpdir: Path) -> None:
-	test_system_sleep = tmpdir / "test_system_sleep_child"
+def test_ensure_not_already_running_child_process_linux(tmp_path: Path) -> None:
+	test_system_sleep = tmp_path / "test_system_sleep_child"
 	shutil.copy("/bin/sleep", test_system_sleep)
 	with subprocess.Popen([test_system_sleep, "5"]):
 		time.sleep(1)
@@ -112,8 +112,8 @@ def test_set_system_datetime() -> None:
 
 
 @pytest.mark.linux
-def test_get_kernel_params(tmpdir: Path) -> None:
-	cmdline_path = tmpdir / "cmdline"
+def test_get_kernel_params(tmp_path: Path) -> None:
+	cmdline_path = tmp_path / "cmdline"
 	cmdline_path.write_text("root=/root rw quiet splash apparmor=1 security=apparmor", encoding="utf-8", newline="")
 
 	from opsicommon.system.linux import get_kernel_params
@@ -260,5 +260,6 @@ def test_lock_file(tmp_path: Path, task_type: type, lock_method: Literal["flock"
 	success_results = [r for r in results if not isinstance(r[0], Exception)]
 	assert len(success_results) == num_tasks
 	for res in success_results:
+		assert res[0] == file_data
 		assert res[0] == file_data
 		assert res[0] == file_data

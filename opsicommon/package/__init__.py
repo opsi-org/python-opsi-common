@@ -270,9 +270,11 @@ class OpsiPackage:
 		if self.product_dependencies:
 			doc["ProductDependency"] = dictify_product_dependencies(self.product_dependencies)
 		if self.product.getChangelog() is not None:
-			(control_file.parent / "changelog.txt").write_text(self.changelog.strip(), encoding="utf-8", newline="")
+			with open(control_file.parent / "changelog.txt", "w", encoding="utf-8", newline="") as f:
+				f.write(self.changelog.strip())
 
-		control_file.write_text(tomlkit.dumps(doc), encoding="utf-8", newline="")
+		with open(control_file, "w", encoding="utf-8", newline="") as f:
+			f.write(tomlkit.dumps(doc))
 
 	def get_dirs(self, base_dir: Path, custom_name: str | None, custom_only: bool) -> dict[PACKAGE_DIR_TYPES, list[Path]]:
 		"""
