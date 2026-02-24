@@ -281,7 +281,7 @@ class OpsiConfig(metaclass=Singleton):
 
 		new_data = dumps(config)
 		if new_data != data:
-			file.write_text(new_data, encoding="utf-8")
+			file.write_text(new_data, encoding="utf-8", newline="")
 
 		self._upgrade_done = True
 
@@ -305,5 +305,5 @@ class OpsiConfig(metaclass=Singleton):
 	def write_config_file(self) -> None:
 		with self.file_lock:
 			file = Path(self.config_file)
-			file.write_text(dumps(self._config), encoding="utf-8")
+			file.write_text(dumps(self._config), encoding="utf-8", newline="")
 			self._config_file_mtime = file.stat().st_mtime

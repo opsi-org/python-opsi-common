@@ -114,7 +114,7 @@ def test_set_system_datetime() -> None:
 @pytest.mark.linux
 def test_get_kernel_params(tmpdir: Path) -> None:
 	cmdline_path = tmpdir / "cmdline"
-	cmdline_path.write_text("root=/root rw quiet splash apparmor=1 security=apparmor", encoding="utf-8")
+	cmdline_path.write_text("root=/root rw quiet splash apparmor=1 security=apparmor", encoding="utf-8", newline="")
 
 	from opsicommon.system.linux import get_kernel_params
 
@@ -243,7 +243,7 @@ def test_lock_file(tmp_path: Path, task_type: type, lock_method: Literal["flock"
 		assert task_id == task_ids[0]
 
 	file_data = "opsi" * 10
-	test_file.write_text(file_data)
+	test_file.write_text(file_data, newline="")
 
 	# Shared lock / read lock
 	num_tasks = 10
@@ -260,4 +260,5 @@ def test_lock_file(tmp_path: Path, task_type: type, lock_method: Literal["flock"
 	success_results = [r for r in results if not isinstance(r[0], Exception)]
 	assert len(success_results) == num_tasks
 	for res in success_results:
+		assert res[0] == file_data
 		assert res[0] == file_data

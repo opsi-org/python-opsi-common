@@ -503,7 +503,7 @@ class OpsiLicenseFile:
 		if not self.filename:
 			raise ValueError("Filename not defined")
 		data = self.write_string()
-		Path(self.filename).write_text(data, encoding="utf-8")
+		Path(self.filename).write_text(data, encoding="utf-8", newline="")
 
 
 class OpsiModulesFile:

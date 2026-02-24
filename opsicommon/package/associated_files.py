@@ -62,7 +62,7 @@ def create_package_content_file(base_dir: Path) -> Path:
 				lines.append(f"{entry_type} '{filename}' {size} {additional}")
 			except Exception as err:
 				logger.error(err, exc_info=True)
-		package_content_file.write_text("\n".join(lines), encoding="utf-8")
+		package_content_file.write_text("\n".join(lines), encoding="utf-8", newline="")
 	except Exception as err:
 		logger.error(err, exc_info=True)
 		raise RuntimeError(f"Failed to create package content file of directory '{base_dir}': {err}") from err
@@ -72,7 +72,7 @@ def create_package_content_file(base_dir: Path) -> Path:
 def create_package_md5_file(package_path: Path, filename: Path | None = None, progress_callback: Callable | None = None) -> Path:
 	if not filename:
 		filename = Path(f"{package_path}.md5")
-	filename.write_text(md5sum(package_path, progress_callback), encoding="utf-8")
+	filename.write_text(md5sum(package_path, progress_callback), encoding="utf-8", newline="")
 	return filename
 
 

@@ -320,7 +320,7 @@ def test_as_pem() -> None:
 def test_load_key(tmp_path: Path) -> None:
 	key_file = tmp_path / "key.pem"
 	key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-	key_file.write_text(as_pem(key, passphrase="password"), encoding="utf-8")
+	key_file.write_text(as_pem(key, passphrase="password"), encoding="utf-8", newline="")
 	with pytest.raises(RuntimeError, match=r".*Incorrect password, could not decrypt key.*"):
 		load_key(key_file, "wrongpassword")
 	with pytest.raises(TypeError, match=r".*Password was not given but private key is encrypted.*"):
@@ -427,8 +427,8 @@ def test_wget(tmp_path: Path) -> None:
 
 	server_cert = tmp_path / "server_cert.pem"
 	server_key = tmp_path / "server_key.pem"
-	server_cert.write_text(as_pem(cert), encoding="utf-8")
-	server_key.write_text(as_pem(key), encoding="utf-8")
+	server_cert.write_text(as_pem(cert), encoding="utf-8", newline="")
+	server_key.write_text(as_pem(key), encoding="utf-8", newline="")
 
 	with http_test_server(server_key=server_key, server_cert=server_cert) as server:
 		install_ca(ca_cert)

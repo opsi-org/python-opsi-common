@@ -524,4 +524,4 @@ class LegacyControlFile:
 			lines.append("[Changelog]")
 			lines.extend((self.product.getChangelog() or "").split("\n"))
 
-		control_file.write_text("\n".join(lines))
+		control_file.write_text("\n".join(lines), encoding="utf-8", newline="")

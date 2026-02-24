@@ -582,8 +582,8 @@ def test_wim_capture(tmp_path: Path) -> None:
 	source = tmp_path / "source"
 	(source / "testdir1").mkdir(parents=True)
 	(source / "testdir2").mkdir()
-	(source / "testfile1").write_text("opsi")
-	(source / "testdir1" / "testfile2").write_text("opsi")
+	(source / "testfile1").write_text("opsi", newline="")
+	(source / "testdir1" / "testfile2").write_text("opsi", newline="")
 	wim_capture(
 		tmp_path, wim_file, image_name="image name", image_description="image description", boot=True, dereference=True, unix_data=True
 	)
@@ -607,4 +607,5 @@ def test_wim_capture(tmp_path: Path) -> None:
 	assert img.hard_link_bytes == 0
 	print(img.creation_time.tzinfo)
 	assert abs((img.creation_time - datetime.now(tz=timezone.utc)).total_seconds()) < 10
+	assert abs((img.last_modification_time - datetime.now(tz=timezone.utc)).total_seconds()) < 10
 	assert abs((img.last_modification_time - datetime.now(tz=timezone.utc)).total_seconds()) < 10

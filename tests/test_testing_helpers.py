@@ -81,7 +81,7 @@ def test_test_http_server_serve_files(tmp_path: Path) -> None:
 	test_file1 = test_dir / "file1"
 	test_file1.touch()
 	test_file2 = test_dir / "file2"
-	test_file2.write_text("test2", encoding="utf-8")
+	test_file2.write_text("test2", encoding="utf-8", newline="")
 	with http_test_server(serve_directory=tmp_path) as server:
 		res = requests.get(f"http://127.0.0.1:{server.port}/dir1", timeout=10)
 		assert res.status_code == 200
@@ -99,7 +99,7 @@ def test_test_http_server_serve_files(tmp_path: Path) -> None:
 		assert res.status_code == 206
 		assert res.text == "t2"
 
-		(test_dir / "index.html").write_text("index", encoding="utf-8")
+		(test_dir / "index.html").write_text("index", encoding="utf-8", newline="")
 
 		res = requests.get(f"http://127.0.0.1:{server.port}/dir1", timeout=10)
 		assert res.status_code == 200
@@ -226,4 +226,5 @@ def test_http_server_request_callback() -> None:
 
 		res = requests.put(f"http://127.0.0.1:{server.port}/", timeout=10)
 		assert res.status_code == 200
+		assert res.headers["X-method"] == "PUT"
 		assert res.headers["X-method"] == "PUT"

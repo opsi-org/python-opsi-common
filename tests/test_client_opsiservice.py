@@ -360,7 +360,7 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:
 	service_client = ServiceClient("localhost", ca_cert_file=ca_cert_file)
 
 	pem = as_pem(ca_cert1) + as_pem(ca_cert2) + as_pem(ca_cert3)
-	ca_cert_file.write_text(pem, encoding="utf-8")
+	ca_cert_file.write_text(pem, encoding="utf-8", newline="")
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 3
 	assert certs[0].subject == ca_cert1.subject
@@ -368,7 +368,7 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:
 	assert certs[2].subject == ca_cert3.subject
 
 	pem = pem.replace("-\n-", "--")
-	ca_cert_file.write_text(pem, encoding="utf-8")
+	ca_cert_file.write_text(pem, encoding="utf-8", newline="")
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 3
 	assert certs[0].subject == ca_cert1.subject
@@ -376,7 +376,7 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:
 	assert certs[2].subject == ca_cert3.subject
 
 	pem = "\r\n\r\n\r\ngarbage" + as_pem(ca_cert1) + "\ngarbage\r\n\n" + as_pem(ca_cert2) + "garbage" + as_pem(ca_cert3) + "garbage\n\n\r\n"
-	ca_cert_file.write_text(pem, encoding="utf-8")
+	ca_cert_file.write_text(pem, encoding="utf-8", newline="")
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 3
 	assert certs[0].subject == ca_cert1.subject
@@ -475,7 +475,7 @@ def test_read_write_ca_cert_file(tmpdir: Path) -> None:
 		assert uib_opsi_ca.subject not in (cert.subject for cert in certs)
 
 	pem = "\r\n\r\n\r\ngarbage" + as_pem(ca_cert2) + "\ngarbage\r\n\n" + as_pem(ca_cert3) + "garbage" + as_pem(ca_cert1) + "garbage\n\n\r\n"
-	ca_cert_file.write_text(pem, encoding="utf-8")
+	ca_cert_file.write_text(pem, encoding="utf-8", newline="")
 	service_client.handle_uib_opsi_ca_in_cert_file("add")
 	certs = service_client.read_ca_cert_file()
 	assert len(certs) == 4
@@ -526,8 +526,8 @@ def test_verify(tmpdir: Path, server_version: str, pem_name: str) -> None:
 	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3)
 	ca_key_file = tmpdir / "ca_key.pem"
 	ca_cert_file = tmpdir / "ca_cert.pem"
-	ca_key_file.write_text(as_pem(ca_key), encoding="utf-8")
-	ca_cert_file.write_text(as_pem(ca_cert), encoding="utf-8")
+	ca_key_file.write_text(as_pem(ca_key), encoding="utf-8", newline="")
+	ca_cert_file.write_text(as_pem(ca_cert), encoding="utf-8", newline="")
 
 	server_cert, server_key = create_server_cert(
 		subject={"CN": "python-opsi-common test server cert"},
@@ -539,8 +539,8 @@ def test_verify(tmpdir: Path, server_version: str, pem_name: str) -> None:
 	)
 	server_key_file = tmpdir / "server_key.pem"
 	server_cert_file = tmpdir / "server_cert.pem"
-	server_key_file.write_text(as_pem(server_key), encoding="utf-8")
-	server_cert_file.write_text(as_pem(server_cert), encoding="utf-8")
+	server_key_file.write_text(as_pem(server_key), encoding="utf-8", newline="")
+	server_cert_file.write_text(as_pem(server_cert), encoding="utf-8", newline="")
 	server_log_file = Path(tmpdir) / "server.log"
 
 	opsi_ca_file_on_client = tmpdir / "opsi_ca_file_on_client.pem"
@@ -610,12 +610,12 @@ def test_verify(tmpdir: Path, server_version: str, pem_name: str) -> None:
 			client.connect()
 		assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert).strip() + "\n" + GLOBALSIGN_ROOT_CA.strip() + "\n"
 
-		opsi_ca_file_on_client.write_text(as_pem(other_ca_cert), encoding="utf-8")
+		opsi_ca_file_on_client.write_text(as_pem(other_ca_cert), encoding="utf-8", newline="")
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="opsi_ca") as client:
 			with pytest.raises(OpsiServiceVerificationError):
 				client.connect()
 
-			opsi_ca_file_on_client.write_text("", encoding="utf-8")
+			opsi_ca_file_on_client.write_text("", encoding="utf-8", newline="")
 			client.connect()
 
 			assert opsi_ca_file_on_client.read_text(encoding="utf-8") == as_pem(ca_cert).strip() + "\n" + GLOBALSIGN_ROOT_CA.strip() + "\n"
@@ -630,7 +630,7 @@ def test_verify(tmpdir: Path, server_version: str, pem_name: str) -> None:
 			)
 
 		# Empty client ca file => accept once
-		opsi_ca_file_on_client.write_text("", encoding="utf-8")
+		opsi_ca_file_on_client.write_text("", encoding="utf-8", newline="")
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="uib_opsi_ca") as client:
 			client.connect()
 			assert (
@@ -639,7 +639,7 @@ def test_verify(tmpdir: Path, server_version: str, pem_name: str) -> None:
 			)
 
 		# Only uib opsi ca in ca file => accept once
-		opsi_ca_file_on_client.write_text(UIB_OPSI_CA, encoding="utf-8")
+		opsi_ca_file_on_client.write_text(UIB_OPSI_CA, encoding="utf-8", newline="")
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="uib_opsi_ca") as client:
 			client.connect()
 			assert (
@@ -660,7 +660,7 @@ def test_verify(tmpdir: Path, server_version: str, pem_name: str) -> None:
 			ca_cert_expired, _ = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3, key=ca_key)
 			assert ca_cert_expired.not_valid_before_utc < datetime.now(tz=timezone.utc)
 			assert ca_cert_expired.not_valid_after_utc < datetime.now(tz=timezone.utc)
-			opsi_ca_file_on_client.write_text(as_pem(ca_cert_expired), encoding="utf-8")
+			opsi_ca_file_on_client.write_text(as_pem(ca_cert_expired), encoding="utf-8", newline="")
 
 		with ServiceClient(f"https://127.0.0.1:{server.port}", ca_cert_file=opsi_ca_file_on_client, verify="opsi_ca") as client:
 			with pytest.raises(OpsiServiceVerificationError, match="certificate has expired"):
@@ -678,8 +678,8 @@ def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 	ca_cert, ca_key = create_ca(subject={"CN": "python-opsi-common test ca"}, valid_days=3)
 	ca_key_file = tmpdir / "ca_key.pem"
 	ca_cert_file = tmpdir / "ca_cert.pem"
-	ca_key_file.write_text(as_pem(ca_key), encoding="utf-8")
-	ca_cert_file.write_text(as_pem(ca_cert), encoding="utf-8")
+	ca_key_file.write_text(as_pem(ca_key), encoding="utf-8", newline="")
+	ca_cert_file.write_text(as_pem(ca_cert), encoding="utf-8", newline="")
 
 	server_cert, server_key = create_server_cert(
 		subject={"CN": "python-opsi-common test server cert"},
@@ -691,8 +691,8 @@ def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 	)
 	server_key_file = tmpdir / "server_key.pem"
 	server_cert_file = tmpdir / "server_cert.pem"
-	server_key_file.write_text(as_pem(server_key), encoding="utf-8")
-	server_cert_file.write_text(as_pem(server_cert), encoding="utf-8")
+	server_key_file.write_text(as_pem(server_key), encoding="utf-8", newline="")
+	server_cert_file.write_text(as_pem(server_cert), encoding="utf-8", newline="")
 
 	client_cert, client_key = create_server_cert(
 		subject={"CN": "python-opsi-common test client cert"},
@@ -703,7 +703,7 @@ def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 		ca_cert=ca_cert,
 	)
 	client_cert_file = tmpdir / "client_cert.pem"
-	client_cert_file.write_text(as_pem(client_key, passphrase=client_key_password) + as_pem(client_cert), encoding="utf-8")
+	client_cert_file.write_text(as_pem(client_key, passphrase=client_key_password) + as_pem(client_cert), encoding="utf-8", newline="")
 
 	# Server without CA cert
 	with (
@@ -787,8 +787,8 @@ def test_client_certificate(tmpdir: Path, client_key_password: str) -> None:
 			client.connect_messagebus()
 
 		client_key_file = tmpdir / "client_key.pem"
-		client_key_file.write_text(as_pem(client_key, passphrase=client_key_password), encoding="utf-8")
-		client_cert_file.write_text(as_pem(client_cert), encoding="utf-8")
+		client_key_file.write_text(as_pem(client_key, passphrase=client_key_password), encoding="utf-8", newline="")
+		client_cert_file.write_text(as_pem(client_cert), encoding="utf-8", newline="")
 
 		with ServiceClient(
 			f"https://127.0.0.1:{server.port}",

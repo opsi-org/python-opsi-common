@@ -46,7 +46,7 @@ def librsync_testfile(tmp_path: Path) -> Path:
 		"im geplanten Ausmaß gesammelt wurden."
 	)
 	testfile = tmp_path / "librsync_signature.txt"
-	testfile.write_text(data, "utf-8")
+	testfile.write_text(data, "utf-8", newline="")
 	return testfile
 
 
@@ -89,8 +89,8 @@ def test_librsync_delta_size(tmp_path: Path) -> None:
 	size = 1 * 1024 * 1024  # 1MiB
 
 	data = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(size))
-	base_file.write_text(data, encoding="utf-8")
-	oldfile.write_text(data[: int(size / 2)], encoding="utf-8")
+	base_file.write_text(data, encoding="utf-8", newline="")
+	oldfile.write_text(data[: int(size / 2)], encoding="utf-8", newline="")
 
 	signature = librsync_signature(oldfile, False)
 	librsync_delta_file(base_file, signature, delta_file)
@@ -178,4 +178,5 @@ def test_librsync_patch_file_creates_new_file_based_on_delta(librsync_testfile: 
 @pytest.mark.parametrize("old, delta, new", list(combinations_with_replacement(("foo", "bar"), 3)))
 def test_librsync_patch_file_avoids_patching_same_file(old: str, delta: str, new: str) -> None:
 	with pytest.raises(ValueError):
+		librsync_patch_file(old, delta, new)
 		librsync_patch_file(old, delta, new)

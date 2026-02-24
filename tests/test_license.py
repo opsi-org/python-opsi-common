@@ -750,7 +750,7 @@ def test_opsi_license_pool_unknown_module_id() -> None:
 def test_license_state_modules(tmp_path: Path) -> None:
 	modules = Path("tests/data/license/modules").read_text(encoding="utf-8")
 	modules_file = tmp_path / "modules"
-	modules_file.write_text(modules)
+	modules_file.write_text(modules, encoding="utf-8", newline="")
 
 	omf = OpsiModulesFile(str(modules_file))
 	omf.read()
@@ -783,7 +783,7 @@ def test_license_state_modules(tmp_path: Path) -> None:
 	assert lic.get_state(at_date=date.today() - timedelta(days=1)) == OPSI_LICENSE_STATE_NOT_YET_VALID
 
 	modules = re.sub(r"secureboot.*", "secureboot = 100", modules, flags=re.MULTILINE)
-	modules_file.write_text(modules)
+	modules_file.write_text(modules, encoding="utf-8", newline="")
 	omf.read()
 	lic = omf.licenses[0]
 
@@ -938,7 +938,7 @@ def test_opsi_modules_file(tmp_path: Path) -> None:
 	raw_data = Path(orig_modules_file).read_text(encoding="utf-8")
 
 	modules_file = tmp_path / "modules"
-	modules_file.write_text(raw_data, encoding="utf-8")
+	modules_file.write_text(raw_data, encoding="utf-8", newline="")
 
 	modules, expires, _customer, signature = _read_modules_file(modules_file)
 	omf = OpsiModulesFile(modules_file)
@@ -960,7 +960,7 @@ def test_opsi_modules_file(tmp_path: Path) -> None:
 		)
 
 	raw_data = re.sub(r"expires.*", "expires = never", raw_data, flags=re.MULTILINE)
-	modules_file.write_text(raw_data, encoding="utf-8")
+	modules_file.write_text(raw_data, encoding="utf-8", newline="")
 	omf = OpsiModulesFile(modules_file)
 	omf.read()
 	assert len(modules) == len(omf.licenses)

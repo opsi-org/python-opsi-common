@@ -48,7 +48,7 @@ async def test_file_upload(tmp_path: Path) -> None:
 	chunk_size = 1000
 	upload_path = tmp_path / "upload"
 	test_file = Path(tmp_path) / "file.txt"
-	test_file.write_text("opsi" * chunk_size, encoding="ascii")
+	test_file.write_text("opsi" * chunk_size, encoding="ascii", newline="")
 	file_size = test_file.stat().st_size
 	assert file_size == chunk_size * 4
 	message_sender = MessageSender()

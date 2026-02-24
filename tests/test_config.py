@@ -36,7 +36,7 @@ def test_upgrade_config_from_ini(tmp_path: Path) -> None:
 	ldap_url = ldaps://ad.opsi.test/dc=ad,dc=opsi,dc=test
 	"""
 	data = dedent(data)
-	config_file.write_text(data, encoding="utf-8")
+	config_file.write_text(data, encoding="utf-8", newline="")
 	config = OpsiConfig()
 	config.upgrade_config_file()
 	new_data = config_file.read_text(encoding="utf-8")
@@ -69,7 +69,7 @@ def test_fill_from_legacy_config_depotserver(tmp_path: Path) -> None:
 	OpsiConfig.config_file = str(config_file)
 	config = OpsiConfig()
 
-	dispatch_conf.write_text("# comment\n.* : jsonrpc\n", encoding="utf-8")
+	dispatch_conf.write_text("# comment\n.* : jsonrpc\n", encoding="utf-8", newline="")
 	jsonrpc_conf.write_text(
 		dedent(
 			"""
@@ -82,6 +82,7 @@ def test_fill_from_legacy_config_depotserver(tmp_path: Path) -> None:
 	"""
 		),
 		encoding="utf-8",
+		newline="",
 	)
 	with (
 		patch("opsicommon.config.opsi.DISPATCH_CONF", str(dispatch_conf)),
@@ -103,7 +104,7 @@ def test_fill_from_legacy_config_configserver(tmp_path: Path) -> None:
 	OpsiConfig.config_file = str(config_file)
 	config = OpsiConfig()
 
-	dispatch_conf.write_text(".* : mysql\n", encoding="utf-8")
+	dispatch_conf.write_text(".* : mysql\n", encoding="utf-8", newline="")
 	with (
 		patch("opsicommon.config.opsi.DISPATCH_CONF", str(dispatch_conf)),
 		patch("opsicommon.config.opsi.MYSQL_CONF", str(mysql_conf)),
@@ -116,13 +117,13 @@ def test_fill_from_legacy_config_configserver(tmp_path: Path) -> None:
 		config_file.write_bytes(b"")
 		OpsiConfig._instances = {}
 		config = OpsiConfig()
-		global_conf.write_text("\n\n hostname =  config.server.id \n\n", encoding="utf-8")
+		global_conf.write_text("\n\n hostname =  config.server.id \n\n", encoding="utf-8", newline="")
 		assert config.get("host", "id") == "config.server.id"
 
 		config_file.write_bytes(b"")
 		OpsiConfig._instances = {}
 		config = OpsiConfig()
-		global_conf.write_text("\n\n", encoding="utf-8")
+		global_conf.write_text("\n\n", encoding="utf-8", newline="")
 		with environment({"OPSI_HOST_ID": "", "OPSI_HOSTNAME": "env-config.server.id"}):
 			assert config.get("host", "id") == "env-config.server.id"
 
@@ -142,7 +143,7 @@ def test_read_config_file(tmp_path: Path) -> None:
 	ldap_url = "ldaps://test"
 	use_member_of_rdn = false
 	"""
-	config_file.write_text(dedent(data), encoding="utf-8")
+	config_file.write_text(dedent(data), encoding="utf-8", newline="")
 	config = OpsiConfig()
 	assert config._config_file_mtime == 0.0
 	assert config.get("ldap_auth", "ldap_url") == "ldaps://test"
@@ -157,7 +158,7 @@ def test_read_config_file(tmp_path: Path) -> None:
 	ldap_url = "ldaps://test2"
 	use_member_of_rdn = true
 	"""
-	config_file.write_text(dedent(data), encoding="utf-8")
+	config_file.write_text(dedent(data), encoding="utf-8", newline="")
 	assert config.get("ldap_auth", "ldap_url") == "ldaps://test2"
 	assert config.get("ldap_auth", "use_member_of_rdn") is True
 
@@ -170,7 +171,7 @@ def test_get_config(tmp_path: Path) -> None:
 	[groups]
 	fileadmingroup = "FaG"
 	"""
-	config_file.write_text(dedent(data), encoding="utf-8")
+	config_file.write_text(dedent(data), encoding="utf-8", newline="")
 	config = OpsiConfig()
 	assert isinstance(config.get("groups", "fileadmingroup"), str)
 	assert config.get("groups", "fileadmingroup") == "fag"
@@ -190,7 +191,7 @@ def test_set_config(tmp_path: Path) -> None:
 	fileadmingroup = "fag"
 	admingroup = "ag"
 	"""
-	config_file.write_text(dedent(data), encoding="utf-8")
+	config_file.write_text(dedent(data), encoding="utf-8", newline="")
 	config = OpsiConfig()
 	config.set("groups", "fileadmingroup", "new", persistent=True)
 	new_data = config_file.read_text(encoding="utf-8")
@@ -241,7 +242,7 @@ def test_run_as_user_value_from_config_file(tmp_path: Path) -> None:
 	with patch("opsicommon.config.opsi.OPSICONFD_CONF", str(confd_conf)):
 		get_opsiconfd_user.cache_clear()
 		config_file = Path(confd_conf)
-		config_file.write_text("run-as-user = test_user", encoding="utf-8")
+		config_file.write_text("run-as-user = test_user", encoding="utf-8", newline="")
 
 		# Call the function and assert the return value is the run-as-user value from the config file
 		assert get_opsiconfd_user() == "test_user"
@@ -252,7 +253,7 @@ def test_ignore_commented_and_invalid_lines_in_config_file(tmp_path: Path) -> No
 	with patch("opsicommon.config.opsi.OPSICONFD_CONF", str(confd_conf)):
 		get_opsiconfd_user.cache_clear()
 		config_file = Path(confd_conf)
-		config_file.write_text("# run-as-user = test_user\ninvalid_line\n", encoding="utf-8")
+		config_file.write_text("# run-as-user = test_user\ninvalid_line\n", encoding="utf-8", newline="")
 
 		# Call the function and assert the return value is the default opsiconfd user
 		assert get_opsiconfd_user() == DEFAULT_OPSICONFD_USER
@@ -276,6 +277,7 @@ grafana-internal-url = http://opsiconfd:aqmfgATF@localhost:3000
 port = 443
 		""",
 			encoding="utf-8",
+			newline="",
 		)
 		# Call the function and assert the return value is the default opsiconfd user
 		assert get_opsiconfd_user() == "opsiconfd-dev"
@@ -298,6 +300,7 @@ grafana-internal-url = http://opsiconfd:aqmfgATF@localhost:3000
 port = 443
 	""",
 		encoding="utf-8",
+		newline="",
 	)
 	# Call the function and assert the return value is the default opsiconfd user
 	assert get_opsiconfd_user() == DEFAULT_OPSICONFD_USER
@@ -313,7 +316,10 @@ def test_read_config_file_with_invalid_groups(tmp_path: Path) -> None:
 	admingroup = "opsiadmin"
 	readonly = ""
 	"""
-	config_file.write_text(dedent(data), encoding="utf-8")
+	config_file.write_text(dedent(data), encoding="utf-8", newline="")
 	with pytest.raises(ValueError):
 		opsi_config.read_config_file()
+	opsi_config.config_file = "/etc/opsi/opsi.conf"
+	opsi_config.config_file = "/etc/opsi/opsi.conf"
+	opsi_config.config_file = "/etc/opsi/opsi.conf"
 	opsi_config.config_file = "/etc/opsi/opsi.conf"

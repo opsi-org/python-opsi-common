@@ -236,7 +236,7 @@ def test_control_multiline_description_property() -> None:
 @pytest.mark.parametrize("legacy", (True, False))
 def test_broken_control_file(tmp_path: Path, legacy: bool) -> None:
 	control_file = tmp_path / ("control" if legacy else "control.toml")
-	control_file.write_text("", encoding="utf-8")
+	control_file.write_text("", encoding="utf-8", newline="")
 
 	package = OpsiPackage()
 	with pytest.raises(ValueError, match="Section 'Product' not found"):
@@ -245,7 +245,7 @@ def test_broken_control_file(tmp_path: Path, legacy: bool) -> None:
 		else:
 			package.parse_control_file(control_file)
 
-	control_file.write_text("[Package]\n[Product]\n", encoding="utf-8")
+	control_file.write_text("[Package]\n[Product]\n", encoding="utf-8", newline="")
 	with pytest.raises(ValueError, match="Product id is required"):
 		if legacy:
 			package.parse_control_file_legacy(control_file)
@@ -253,9 +253,9 @@ def test_broken_control_file(tmp_path: Path, legacy: bool) -> None:
 			package.parse_control_file(control_file)
 
 	if legacy:
-		control_file.write_text("[Package]\n[Product]\ntype: localboot\n", encoding="utf-8")
+		control_file.write_text("[Package]\n[Product]\ntype: localboot\n", encoding="utf-8", newline="")
 	else:
-		control_file.write_text('[Package]\n[Product]\ntype = "LocalbootProduct"\n', encoding="utf-8")
+		control_file.write_text('[Package]\n[Product]\ntype = "LocalbootProduct"\n', encoding="utf-8", newline="")
 	with pytest.raises(ValueError, match="Product id is required"):
 		if legacy:
 			package.parse_control_file_legacy(control_file)
@@ -263,9 +263,9 @@ def test_broken_control_file(tmp_path: Path, legacy: bool) -> None:
 			package.parse_control_file(control_file)
 
 	if legacy:
-		control_file.write_text("[Product]\ntype: localboot\nid: pid\nversion: 1\n", encoding="utf-8")
+		control_file.write_text("[Product]\ntype: localboot\nid: pid\nversion: 1\n", encoding="utf-8", newline="")
 	else:
-		control_file.write_text('[Product]\ntype = "LocalbootProduct"\nid = "pid"\nversion = "1"\n', encoding="utf-8")
+		control_file.write_text('[Product]\ntype = "LocalbootProduct"\nid = "pid"\nversion = "1"\n', encoding="utf-8", newline="")
 
 	if legacy:
 		# In legacy control file, the 'Package' section is not mandatory
@@ -395,8 +395,8 @@ def test_create_package(compression: Literal["zstd", "bz2", "gz"], create_missin
 	with make_temp_dir() as temp_dir:
 		for _dir in (temp_dir / "OPSI", temp_dir / "CLIENT_DATA", temp_dir / "SERVER_DATA"):
 			_dir.mkdir()
-		(temp_dir / "CLIENT_DATA" / "client_data").write_text("client_data", encoding="utf-8")
-		(temp_dir / "SERVER_DATA" / "server_data").write_text("server_data", encoding="utf-8")
+		(temp_dir / "CLIENT_DATA" / "client_data").write_text("client_data", encoding="utf-8", newline="")
+		(temp_dir / "SERVER_DATA" / "server_data").write_text("server_data", encoding="utf-8", newline="")
 		copy(TEST_DATA / "control.toml", temp_dir / "OPSI")
 		package_archive = package.create_package_archive(
 			temp_dir,
@@ -479,16 +479,18 @@ def test_create_package_custom(
 
 		control_data = control.read_text(encoding="utf-8")
 		if default_control:
-			(opsi_dir / "control.toml").write_text(control_data.replace("priority = 0", "priority = 10"), encoding="utf-8")
+			(opsi_dir / "control.toml").write_text(control_data.replace("priority = 0", "priority = 10"), encoding="utf-8", newline="")
 		if custom_control:
-			(opsi_dir_custom / "control.toml").write_text(control_data.replace("priority = 0", "priority = 20"), encoding="utf-8")
+			(opsi_dir_custom / "control.toml").write_text(
+				control_data.replace("priority = 0", "priority = 20"), encoding="utf-8", newline=""
+			)
 		if default_client_data:
-			(client_dir / "testfile1").write_text("MAIN1", encoding="utf-8")
-			(client_dir / "testfile2").write_text("MAIN2", encoding="utf-8")
-			(client_dir / "testfile3").write_text("MAIN3", encoding="utf-8")
+			(client_dir / "testfile1").write_text("MAIN1", encoding="utf-8", newline="")
+			(client_dir / "testfile2").write_text("MAIN2", encoding="utf-8", newline="")
+			(client_dir / "testfile3").write_text("MAIN3", encoding="utf-8", newline="")
 		if custom_client_data:
-			(client_dir_custom / "testfile2").write_text("CUSTOM2", encoding="utf-8")
-			(client_dir_custom / "testfile4").write_text("CUSTOM4", encoding="utf-8")
+			(client_dir_custom / "testfile2").write_text("CUSTOM2", encoding="utf-8", newline="")
+			(client_dir_custom / "testfile4").write_text("CUSTOM4", encoding="utf-8", newline="")
 
 		expected_exception_type: type[Exception] | None = None
 		expected_exception_match: str | None = None
@@ -852,6 +854,10 @@ def test_get_package_dependencies_as_json(package_dependencies: list[PackageDepe
 
 
 def test_package_data_from_archive() -> None:
+	result = package_data_from_archive(TEST_DATA / "package_id-with_underscore-and-dash_42.0-1337.1.opsi")
+	assert result["id"] == "package_id-with_underscore-and-dash"
+	assert result["productVersion"] == "42.0"
+	assert result["packageVersion"] == "1337.1"
 	result = package_data_from_archive(TEST_DATA / "package_id-with_underscore-and-dash_42.0-1337.1.opsi")
 	assert result["id"] == "package_id-with_underscore-and-dash"
 	assert result["productVersion"] == "42.0"
