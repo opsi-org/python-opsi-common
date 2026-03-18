@@ -39,12 +39,16 @@ logger = get_logger("opsicommon.package")
 
 @contextmanager
 def chdir(new_dir: Path) -> Generator[None, None, None]:
-	old_path = os.getcwd()
+	try:
+		old_path = os.getcwd()
+	except FileNotFoundError:
+		old_path = None
 	try:
 		os.chdir(str(new_dir))
 		yield
 	finally:
-		os.chdir(old_path)
+		if old_path:
+			os.chdir(old_path)
 
 
 # IDEA: tar can use --zstd
