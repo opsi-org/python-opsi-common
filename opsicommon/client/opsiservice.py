@@ -34,7 +34,7 @@ from ipaddress import IPv6Address, ip_address
 from pathlib import Path
 from random import randint
 from threading import Event, Lock, Thread
-from types import MethodType, TracebackType
+from types import TracebackType
 from typing import TYPE_CHECKING, Any, BinaryIO, Callable, Generator, Iterable, Literal, overload
 from urllib.parse import quote, unquote, urlparse
 from uuid import uuid4
@@ -436,7 +436,7 @@ class ServiceClient:
 		self.jsonrpc_create_methods = bool(jsonrpc_create_methods)
 		self._jsonrpc_path = "/rpc"
 		self._jsonrpc_interface: dict[str, dict[str, Any]] = {}
-		self._jsonrpc_method_params: dict[str, dict[str, Any]] = {}
+		self._jsonrpc_method_params: dict[str, dict[str, tuple[int, Any]]] = {}
 		self._messagebus_available = False
 		self._connected = False
 		self._max_time_diff = max_time_diff
@@ -960,60 +960,86 @@ class ServiceClient:
 
 		instance = instance or self
 
-		def backend_getInterface(self: ServiceClient) -> list[dict[str, Any]]:
+		def backend_getInterface() -> list[dict[str, Any]]:
 			return self.jsonrpc_interface
 
-		def backend_exit(self: ServiceClient) -> None:
-			return self.disconnect()
+		def backend_exit() -> None:
+			self.disconnect()
+
+		def make_jsonrpc_method(method_name: str, method_interface: dict[str, Any]) -> Callable[..., Any]:
+			logger.debug("Creating instance method: %s", method_name)
+
+			arg_names = [arg for arg in method_interface["args"] if arg != "self"]
+			arg_positions = {arg_name: pos for pos, arg_name in enumerate(arg_names)}
+			defaults = list(method_interface["defaults"] or [])
+			keywords = method_interface["keywords"]
+			varargs = method_interface["varargs"]
+			required_args = len(arg_names) - len(defaults)
+
+			if logger.isEnabledFor(TRACE):
+				logger.trace(
+					"%s: args=%r, defaults=%r, varargs=%r, keywords=%r",
+					method_name,
+					arg_names,
+					defaults,
+					varargs,
+					keywords,
+				)
+
+			def jsonrpc_method(*call_args: Any, **call_kwargs: Any) -> Any:
+				if len(call_args) > len(arg_names) and not varargs:
+					raise TypeError(
+						f"{method_name}() takes {len(arg_names)} positional argument{'s' if len(arg_names) != 1 else ''} "
+						f"but {len(call_args)} were given"
+					)
+
+				bound_args = list(call_args[: len(arg_names)])
+				extra_args = list(call_args[len(arg_names) :])
+				extra_kwargs: dict[str, Any] = {}
+
+				for name, value in call_kwargs.items():
+					idx = arg_positions.get(name)
+					if idx is not None:
+						if idx < len(bound_args):
+							raise TypeError(f"{method_name}() got multiple values for argument '{name}'")
+						while len(bound_args) < idx:
+							bound_args.append(None)
+						bound_args.append(value)
+					elif keywords:
+						extra_kwargs[name] = value
+					else:
+						raise TypeError(f"{method_name}() got an unexpected keyword argument '{name}'")
+
+				if len(bound_args) < required_args:
+					missing = [arg_names[idx] for idx in range(len(bound_args), required_args)]
+					plural = "s" if len(missing) != 1 else ""
+					missing_args = "', '".join(missing)
+					raise TypeError(f"{method_name}() missing {len(missing)} required positional argument{plural}: '{missing_args}'")
+
+				default_offset = len(arg_names) - len(defaults)
+				for idx in range(len(bound_args), len(arg_names)):
+					bound_args.append(defaults[idx - default_offset])
+
+				params = bound_args
+				if extra_args:
+					params.extend(extra_args)
+				if extra_kwargs:
+					params.append(extra_kwargs)
+				return self.jsonrpc(method_name, params)
+
+			jsonrpc_method.__name__ = method_name
+			jsonrpc_method.__qualname__ = f"{self.__class__.__name__}.{method_name}"
+			jsonrpc_method.__doc__ = method_interface.get("doc")
+			return jsonrpc_method
+
+		special_methods = {
+			"backend_getInterface": backend_getInterface,
+			"backend_exit": backend_exit,
+		}
 
 		for method_name, method in self._jsonrpc_interface.items():
 			try:
-				exec_locals: dict[str, object] = {}
-
-				if method_name not in ("backend_getInterface", "backend_exit"):
-					logger.debug("Creating instance method: %s", method_name)
-
-					args = method["args"]
-					varargs = method["varargs"]
-					keywords = method["keywords"]
-					defaults = method["defaults"]
-
-					arg_list = []
-					call_list = []
-					for i, argument in enumerate(args):
-						if argument == "self":
-							continue
-
-						if isinstance(defaults, (tuple, list)) and len(defaults) + i >= len(args):
-							default = defaults[len(defaults) - len(args) + i]
-							if isinstance(default, str):
-								default = repr(default)
-							arg_list.append(f"{argument}={default}")
-						else:
-							arg_list.append(argument)
-						call_list.append(argument)
-
-					if varargs:
-						for vararg in varargs:
-							arg_list.append(f"*{vararg}")
-							call_list.append(vararg)
-
-					if keywords:
-						arg_list.append(f"**{keywords}")
-						call_list.append(keywords)
-
-					arg_string = ", ".join(arg_list)
-					call_string = ", ".join(call_list)
-
-					logger.trace("%s: arg string is: %s", method_name, arg_string)
-					logger.trace("%s: call string is: %s", method_name, call_string)
-					with warnings.catch_warnings():
-						exec(
-							f'def {method_name}(self, {arg_string}): return self.jsonrpc("{method_name}", [{call_string}])',
-							None,
-							exec_locals,
-						)
-				setattr(instance, method_name, MethodType(exec_locals[method_name] if exec_locals else eval(method_name), self))  # type: ignore[arg-type]
+				setattr(instance, method_name, special_methods.get(method_name) or make_jsonrpc_method(method_name, method))
 			except Exception as err:
 				logger.error("Failed to create instance method '%s': %s", method, err)
 
@@ -1241,7 +1267,7 @@ class ServiceClient:
 						self._jsonrpc_interface[method["name"]] = method
 						self._jsonrpc_method_params[method["name"]] = {}
 						def_idx = 0
-						for param in method["params"]:
+						for idx, param in enumerate(method["params"]):
 							default = None
 							if param[0] == "*":
 								param = param.lstrip("*")
@@ -1251,7 +1277,7 @@ class ServiceClient:
 									except IndexError:
 										pass
 								def_idx += 1
-							self._jsonrpc_method_params[method["name"]][param] = default
+							self._jsonrpc_method_params[method["name"]][param] = (idx, default)
 				except Exception as err:
 					logger.error("Failed to get interface description: %s", err, exc_info=True)
 
@@ -1599,13 +1625,14 @@ class ServiceClient:
 			if m_params is None:
 				raise ValueError(f"Method {method!r} not found in interface description")
 
-			m_param_names = list(m_params)
-			new_params = list(m_params.values())
+			new_params = [None] * len(m_params)
+			for param_name, (idx, default) in m_params.items():
+				new_params[idx] = default
 			max_idx = 0
 			for name, val in params.items():
 				try:
-					idx = m_param_names.index(name)
-				except ValueError as err:
+					idx = m_params[name][0]
+				except KeyError as err:
 					raise ValueError(f"Invalid param {name!r} for method {method!r}") from err
 				new_params[idx] = val
 				max_idx = max(max_idx, idx)
@@ -2387,10 +2414,10 @@ def get_service_client(
 			ca_cert_file = OPSI_CA_CERT_FILE
 		if verify != ServiceVerificationFlags.ACCEPT_ALL and str(ca_cert_file) == str(OPSI_CA_CERT_FILE):
 			verify = ServiceVerificationFlags.STRICT_CHECK
-		if client_cert_auth is None:
+		if client_cert_auth is None and not session_cookie:
 			client_cert_auth = True
 
-	if client_key_file and ca_cert_file and client_cert_auth is None:
+	if client_key_file and ca_cert_file and client_cert_auth is None and not session_cookie:
 		client_cert_auth = True
 
 	if client_cert_auth and (not client_cert_file or not client_key_file):
