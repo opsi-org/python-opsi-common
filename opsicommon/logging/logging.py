@@ -279,6 +279,9 @@ class ContextFilter(logging.Filter):
 		        in order to accept the LogRecord.
 		:type filter_dict: dict
 		"""
+		if getattr(self, "_initialized", False):
+			return
+		self._initialized = True
 		super().__init__()
 		self.filter_dict: dict[str, Any] = {}
 		self.set_filter(filter_dict)
@@ -466,6 +469,9 @@ class SecretFilter:
 		:param min_length: Minimal length of a secret string (Default: 5).
 		:type min_length: int
 		"""
+		if getattr(self, "_initialized", False):
+			return
+		self._initialized = True
 		self._min_length = min_length
 		self.secrets: set[str] = set()
 
@@ -571,6 +577,9 @@ class ObservableHandler(Handler):
 		return cls._instance
 
 	def __init__(self) -> None:
+		if getattr(self, "_initialized", False):
+			return
+		self._initialized = True
 		Handler.__init__(self)
 		self._observers: list[Any] = []
 

@@ -134,7 +134,6 @@ class DirPermission(FilePermission):
 
 
 class PermissionRegistry:
-	_initialized = False
 	_instance: PermissionRegistry | None = None
 
 	def __new__(cls, *args: Any, **kwargs: Any) -> PermissionRegistry:
@@ -143,7 +142,7 @@ class PermissionRegistry:
 		return cls._instance
 
 	def __init__(self) -> None:
-		if self._initialized:
+		if getattr(self, "_initialized", False):
 			return
 		self._initialized = True
 		self._permissions: dict[str, FilePermission] = {}

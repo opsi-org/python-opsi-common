@@ -179,6 +179,9 @@ class OpsiConfig:
 		return cls._instance
 
 	def __init__(self, upgrade_config: bool = True) -> None:
+		if getattr(self, "_initialized", False):
+			return
+		self._initialized = True
 		self._config_file_mtime = 0.0
 		self._config: dict[str, Any] = deepcopy(self.default_config)
 		self._config_file_read = False
