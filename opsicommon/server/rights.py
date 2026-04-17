@@ -7,16 +7,18 @@
 server rights
 """
 
+from __future__ import annotations
+
 import os
 import platform
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from opsicommon.config import OpsiConfig, get_opsiconfd_user
 from opsicommon.logging import get_logger
 from opsicommon.system.info import linux_distro_id_like_contains
-from opsicommon.utils import Singleton
 
 _HAS_ROOT_RIGHTS = False
 if platform.system().lower() == "linux":
@@ -131,8 +133,14 @@ class DirPermission(FilePermission):
 		return super().chown(path, stat_res)
 
 
-class PermissionRegistry(metaclass=Singleton):
+class PermissionRegistry:
 	_initialized = False
+	_instance: PermissionRegistry | None = None
+
+	def __call__(cls, *args: Any, **kwargs: Any) -> PermissionRegistry:
+		if cls._instance is None:
+			cls._instance = super().__call__(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+		return cls._instance
 
 	def __init__(self) -> None:
 		if self._initialized:

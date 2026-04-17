@@ -253,22 +253,20 @@ def handle_log_exception(
 		pass
 
 
-class Singleton(type):
-	_instances: dict[type, type] = {}
-
-	def __call__(cls: Singleton, *args: Any, **kwargs: Any) -> type:
-		if cls not in cls._instances:
-			cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-		return cls._instances[cls]
-
-
-class ContextFilter(logging.Filter, metaclass=Singleton):
+class ContextFilter(logging.Filter):
 	"""
 	class ContextFilter
 
 	This class implements a filter which modifies allows to store context
 	for a single thread/task.
 	"""
+
+	_instance: ContextFilter | None = None
+
+	def __call__(cls, *args: Any, **kwargs: Any) -> ContextFilter:
+		if cls._instance is None:
+			cls._instance = super().__call__(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+		return cls._instance
 
 	def __init__(self, filter_dict: dict[str, Any] | None = None):
 		"""
@@ -443,13 +441,20 @@ class ContextSecretFormatter(Formatter):
 		return getattr(self.orig_formatter, attr)
 
 
-class SecretFilter(metaclass=Singleton):
+class SecretFilter:
 	"""
 	class SecretFilter
 
 	This class implements functionality of maintaining a collection
 	of secrets which can be used by the ContextSecretFormatter.
 	"""
+
+	_instance: SecretFilter | None = None
+
+	def __call__(cls, *args: Any, **kwargs: Any) -> SecretFilter:
+		if cls._instance is None:
+			cls._instance = super().__call__(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+		return cls._instance
 
 	def __init__(self, min_length: int = 5):
 		"""
@@ -557,7 +562,14 @@ class RichConsoleHandler(Handler):
 			self.handleError(record)
 
 
-class ObservableHandler(Handler, metaclass=Singleton):
+class ObservableHandler(Handler):
+	_instance: ObservableHandler | None = None
+
+	def __call__(cls, *args: Any, **kwargs: Any) -> ObservableHandler:
+		if cls._instance is None:
+			cls._instance = super().__call__(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+		return cls._instance
+
 	def __init__(self) -> None:
 		Handler.__init__(self)
 		self._observers: list[Any] = []

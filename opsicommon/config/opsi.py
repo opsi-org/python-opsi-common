@@ -7,6 +7,8 @@
 This file is part of opsi - https://www.opsi.org
 """
 
+from __future__ import annotations
+
 import os
 import re
 import socket
@@ -25,7 +27,6 @@ from tomlkit.items import Item
 from ..logging import get_logger
 from ..system.network import get_fqdn
 from ..types import forceFqdn
-from ..utils import Singleton
 
 logger = get_logger("opsicommon.config")
 
@@ -155,7 +156,7 @@ def get_service_url(server_role: str) -> str:
 	return "https://localhost:4447"
 
 
-class OpsiConfig(metaclass=Singleton):
+class OpsiConfig:
 	file_lock = Lock()
 	config_file = "/etc/opsi/opsi.conf"
 	default_config = {
@@ -170,6 +171,12 @@ class OpsiConfig(metaclass=Singleton):
 		"packages": {"use_pigz": True},
 		"ldap_auth": {"ldap_url": "", "bind_user": "", "group_filter": "", "use_member_of_rdn": False},
 	}
+	_instance: OpsiConfig | None = None
+
+	def __call__(cls, *args: Any, **kwargs: Any) -> OpsiConfig:
+		if cls._instance is None:
+			cls._instance = super().__call__(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+		return cls._instance
 
 	def __init__(self, upgrade_config: bool = True) -> None:
 		self._config_file_mtime = 0.0

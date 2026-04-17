@@ -20,7 +20,7 @@ from opsicommon.testing.helpers import environment
 
 def test_upgrade_config_from_ini(tmp_path: Path) -> None:
 	config_file = tmp_path / "opsi.conf"
-	OpsiConfig._instances = {}
+	OpsiConfig._instance = None
 	OpsiConfig.config_file = str(config_file)
 	data = """
 	[groups]
@@ -65,7 +65,7 @@ def test_fill_from_legacy_config_depotserver(tmp_path: Path) -> None:
 	dispatch_conf = tmp_path / "dispatch.conf"
 	jsonrpc_conf = tmp_path / "jsonrpc.conf"
 
-	OpsiConfig._instances = {}
+	OpsiConfig._instance = None
 	OpsiConfig.config_file = str(config_file)
 	config = OpsiConfig()
 
@@ -100,7 +100,7 @@ def test_fill_from_legacy_config_configserver(tmp_path: Path) -> None:
 	mysql_conf = Path("tests/data/opsi-config/backends/mysql.conf")
 	global_conf = tmp_path / "global.conf"
 
-	OpsiConfig._instances = {}
+	OpsiConfig._instance = None
 	OpsiConfig.config_file = str(config_file)
 	config = OpsiConfig()
 
@@ -115,20 +115,20 @@ def test_fill_from_legacy_config_configserver(tmp_path: Path) -> None:
 		assert config.get("service", "url") == "https://localhost:4447"
 
 		config_file.write_bytes(b"")
-		OpsiConfig._instances = {}
+		OpsiConfig._instance = None
 		config = OpsiConfig()
 		global_conf.write_text("\n\n hostname =  config.server.id \n\n", encoding="utf-8", newline="")
 		assert config.get("host", "id") == "config.server.id"
 
 		config_file.write_bytes(b"")
-		OpsiConfig._instances = {}
+		OpsiConfig._instance = None
 		config = OpsiConfig()
 		global_conf.write_text("\n\n", encoding="utf-8", newline="")
 		with environment({"OPSI_HOST_ID": "", "OPSI_HOSTNAME": "env-config.server.id"}):
 			assert config.get("host", "id") == "env-config.server.id"
 
 		config_file.write_bytes(b"")
-		OpsiConfig._instances = {}
+		OpsiConfig._instance = None
 		config = OpsiConfig()
 		with environment({"OPSI_HOST_ID": "env-config2.server.id", "OPSI_HOSTNAME": ""}):
 			assert config.get("host", "id") == "env-config2.server.id"
@@ -136,7 +136,7 @@ def test_fill_from_legacy_config_configserver(tmp_path: Path) -> None:
 
 def test_read_config_file(tmp_path: Path) -> None:
 	config_file = tmp_path / "opsi.conf"
-	OpsiConfig._instances = {}
+	OpsiConfig._instance = None
 	OpsiConfig.config_file = str(config_file)
 	data = """
 	[ldap_auth]
@@ -165,7 +165,7 @@ def test_read_config_file(tmp_path: Path) -> None:
 
 def test_get_config(tmp_path: Path) -> None:
 	config_file = tmp_path / "opsi.conf"
-	OpsiConfig._instances = {}
+	OpsiConfig._instance = None
 	OpsiConfig.config_file = str(config_file)
 	data = """
 	[groups]
@@ -184,7 +184,7 @@ def test_get_config(tmp_path: Path) -> None:
 
 def test_set_config(tmp_path: Path) -> None:
 	config_file = tmp_path / "opsi.conf"
-	OpsiConfig._instances = {}
+	OpsiConfig._instance = None
 	OpsiConfig.config_file = str(config_file)
 	data = """
 	[groups]
