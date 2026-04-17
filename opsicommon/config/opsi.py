@@ -173,9 +173,9 @@ class OpsiConfig:
 	}
 	_instance: OpsiConfig | None = None
 
-	def __call__(cls, *args: Any, **kwargs: Any) -> OpsiConfig:
+	def __new__(cls, *args: Any, **kwargs: Any) -> OpsiConfig:
 		if cls._instance is None:
-			cls._instance = super().__call__(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+			cls._instance = super().__new__(cls)
 		return cls._instance
 
 	def __init__(self, upgrade_config: bool = True) -> None:

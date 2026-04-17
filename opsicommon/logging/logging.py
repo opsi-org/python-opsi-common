@@ -263,9 +263,9 @@ class ContextFilter(logging.Filter):
 
 	_instance: ContextFilter | None = None
 
-	def __call__(cls, *args: Any, **kwargs: Any) -> ContextFilter:
+	def __new__(cls, *args: Any, **kwargs: Any) -> ContextFilter:
 		if cls._instance is None:
-			cls._instance = super().__call__(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+			cls._instance = super().__new__(cls)
 		return cls._instance
 
 	def __init__(self, filter_dict: dict[str, Any] | None = None):
@@ -451,9 +451,9 @@ class SecretFilter:
 
 	_instance: SecretFilter | None = None
 
-	def __call__(cls, *args: Any, **kwargs: Any) -> SecretFilter:
+	def __new__(cls, *args: Any, **kwargs: Any) -> SecretFilter:
 		if cls._instance is None:
-			cls._instance = super().__call__(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+			cls._instance = super().__new__(cls)
 		return cls._instance
 
 	def __init__(self, min_length: int = 5):
@@ -565,9 +565,9 @@ class RichConsoleHandler(Handler):
 class ObservableHandler(Handler):
 	_instance: ObservableHandler | None = None
 
-	def __call__(cls, *args: Any, **kwargs: Any) -> ObservableHandler:
+	def __new__(cls, *args: Any, **kwargs: Any) -> ObservableHandler:
 		if cls._instance is None:
-			cls._instance = super().__call__(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+			cls._instance = super().__new__(cls)
 		return cls._instance
 
 	def __init__(self) -> None:

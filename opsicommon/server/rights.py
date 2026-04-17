@@ -137,9 +137,9 @@ class PermissionRegistry:
 	_initialized = False
 	_instance: PermissionRegistry | None = None
 
-	def __call__(cls, *args: Any, **kwargs: Any) -> PermissionRegistry:
+	def __new__(cls, *args: Any, **kwargs: Any) -> PermissionRegistry:
 		if cls._instance is None:
-			cls._instance = super().__call__(*args, **kwargs)  # ty: ignore[unresolved-attribute]
+			cls._instance = super().__new__(cls)
 		return cls._instance
 
 	def __init__(self) -> None:
