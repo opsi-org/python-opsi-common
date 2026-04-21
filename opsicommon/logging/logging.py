@@ -197,8 +197,9 @@ def logrecord_init(
 	self.contextstring = ""
 
 
-logging.LogRecord.__init_orig__ = logging.LogRecord.__init__  # type: ignore[attr-defined]
-logging.LogRecord.__init__ = logrecord_init  # type: ignore[assignment]
+if not hasattr(logging.LogRecord, "__init_orig__"):
+	logging.LogRecord.__init_orig__ = logging.LogRecord.__init__  # type: ignore[attr-defined]
+	logging.LogRecord.__init__ = logrecord_init  # type: ignore[assignment]
 
 
 def handle_log_exception(
